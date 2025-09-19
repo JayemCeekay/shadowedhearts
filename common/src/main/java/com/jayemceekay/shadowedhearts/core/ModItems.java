@@ -44,6 +44,15 @@ public final class ModItems {
             "mission_gateway",
             () -> new BlockItem(ModBlocks.MISSION_GATEWAY.get(), new Item.Properties()));
 
+    // PokeTOSS
+    public static final RegistrySupplier<Item> PASTURE_BLOCK_ITEM = ITEMS.register(
+            "pasture_block",
+            () -> new BlockItem(ModBlocks.PASTURE_BLOCK.get(), new Item.Properties()));
+
+    public static final RegistrySupplier<Item> TRAINERS_WHISTLE = ITEMS.register(
+            "trainers_whistle",
+            () -> new com.jayemceekay.shadowedhearts.poketoss.TrainersWhistleItem(new Item.Properties().stacksTo(1)));
+
     // --- Theme fragments (examples) ---
     public static final RegistrySupplier<Item> FRAGMENT_THEME_GRAVE = ITEMS.register(
             "fragment_theme_grave",

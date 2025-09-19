@@ -27,8 +27,11 @@ public class ModShadersPlatformImpl {
             evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:shadow_pool", DefaultVertexFormat.PARTICLE),
                     shader -> ModShaders.SHADOW_POOL = shader);
 
-            evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:shadow_darken_layer", DefaultVertexFormat.NEW_ENTITY),
+            evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:apply_overlay_tint", DefaultVertexFormat.NEW_ENTITY),
                     shader -> ModShaders.SHADOW_DARKEN_LAYER = shader);
+
+            evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:whistle_ground_overlay", DefaultVertexFormat.PARTICLE),
+                    shader -> ModShaders.WHISTLE_GROUND_OVERLAY = shader);
 
         } catch (IOException e) {
             throw new RuntimeException("Failed to load shaders", e);

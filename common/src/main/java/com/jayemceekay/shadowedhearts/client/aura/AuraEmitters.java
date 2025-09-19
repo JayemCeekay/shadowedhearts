@@ -22,6 +22,7 @@ import java.lang.ref.WeakReference;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -40,8 +41,14 @@ public final class AuraEmitters {
     public static void receiveState(AuraStateS2C pkt) {
         var mc = Minecraft.getInstance();
         if (mc == null || mc.level == null) return;
-        AuraInstance inst = ACTIVE.computeIfPresent(pkt.entityId(), (integer, auraInstance) -> auraInstance);
+        AuraInstance inst = ACTIVE.getOrDefault(pkt.entityId(), null);
         if (inst == null) {
+            return;
+        }
+        // ID reuse guard: ensure the entity UUID matches the instance's UUID; otherwise, ignore this state
+        Entity cur = mc.level.getEntity(pkt.entityId());
+        java.util.UUID curUuid = (cur != null) ? cur.getUUID() : null;
+        if (inst.entityUuid != null && curUuid != null && !inst.entityUuid.equals(curUuid)) {
             return;
         }
         // Enforce ordering by server tick; ignore stale or duplicate packets
@@ -90,14 +97,18 @@ public final class AuraEmitters {
         long now = mc.level.getGameTime();
         switch (pkt.action()) {
             case START -> {
-                // Create or refresh the aura instance
-                ACTIVE.compute(pkt.entityId(), (id, inst) -> {
-                    if (inst != null) {
-                        return inst;
-                    }// already present
-                    Entity e = mc.level.getEntity(id);
-                    return new AuraInstance(id, e, now, FADE_IN, SUSTAIN, FADE_OUT, pkt.x(), pkt.y(), pkt.z(), pkt.dx(), pkt.dy(), pkt.dz(), pkt.bbw(), pkt.bbh(), pkt.bbs(), pkt.corruption());
-                });
+                // Replace any existing instance for this entity ID (handles rapid entity ID reuse on recall/swap)
+                Entity ent = mc.level.getEntity(pkt.entityId());
+                UUID newUuid = (ent != null) ? ent.getUUID() : null;
+                if (newUuid != null) {
+                    for (Map.Entry<Integer, AuraInstance> e : ACTIVE.entrySet()) {
+                        AuraInstance ai = e.getValue();
+                        if (ai != null && newUuid.equals(ai.entityUuid) && e.getKey() != pkt.entityId()) {
+                            ACTIVE.remove(e.getKey());
+                        }
+                    }
+                }
+                ACTIVE.put(pkt.entityId(), new AuraInstance(pkt.entityId(), ent, now, FADE_IN, SUSTAIN, FADE_OUT, pkt.x(), pkt.y(), pkt.z(), pkt.dx(), pkt.dy(), pkt.dz(), pkt.bbw(), pkt.bbh(), pkt.bbs(), pkt.corruption()));
             }
             case FADE_OUT -> {
                 ACTIVE.computeIfPresent(pkt.entityId(), (id, inst) -> {
@@ -119,10 +130,11 @@ public final class AuraEmitters {
     private static final double TELEPORT_SNAP_DIST2 = 36.0; // 6 blocks squared
 
     // Trail settings
-    private static final int TRAIL_LIFETIME_TICKS = 18; // how long a ghost lingers
-    private static final float TRAIL_EMIT_DIST = 0.3f;  // spacing in blocks between ghosts
+    private static final int TRAIL_LIFETIME_TICKS = 36; // how long a ghost lingers
+    private static final int TRAIL_FADE_IN_TICKS = 6;   // how long each node takes to fade in to full alpha
+    private static final float TRAIL_EMIT_DIST = 0.6f;  // spacing in blocks between ghosts
     private static final int TRAIL_MAX_NODES = 16;      // cap per entity to avoid perf spikes
-    private static final float TRAIL_SHRINK_MIN = 0.35f; // final scale relative to start
+    private static final float TRAIL_SHRINK_MIN = 0.15f; // final scale relative to start
     private static final float TRAIL_ALPHA_BASE = 0.55f; // base opacity multiplier for trail
 
     public static void init() {
@@ -173,7 +185,13 @@ public final class AuraEmitters {
             // Interpolate position from client-side entity when available; fallback to last server state
             double ix, iy, iz;
             Entity ent = (inst.entityRef != null) ? inst.entityRef.get() : null;
-            if (ent != null && ent.isAlive()) {
+            boolean useEnt = false;
+            if (ent != null && ent.isAlive() && ent.getId() == inst.entityId) {
+                if (inst.entityUuid == null || inst.entityUuid.equals(ent.getUUID())) {
+                    useEnt = true;
+                }
+            }
+            if (useEnt) {
                 ix = Mth.lerp(partialTicks, ent.xOld, ent.getX());
                 iy = Mth.lerp(partialTicks, ent.yOld, ent.getY());
                 iz = Mth.lerp(partialTicks, ent.zOld, ent.getZ());
@@ -253,12 +271,15 @@ public final class AuraEmitters {
                 set1f(u, "uBlackPoint", 0.35f);
             }
 
+
             VertexConsumer vcShell = buffers.getBuffer(AuraRenderTypes.shadow_fog());
-            Matrix4f mat = poseStack.last().pose();
+            Matrix4f mat = new Matrix4f();
             mat.scale(radius, radius, radius);
             com.jayemceekay.shadowedhearts.client.render.geom.SphereBuffers.drawUnitSphere(
                     vcShell, mat, 0, 0, 0, 0
             );
+            // Flush the buffer for this render type to ensure per-instance uniforms apply to this aura only
+            buffers.endLastBatch();
 
             // Emit trail node based on movement spacing
             if (!inst.hasEmitPos) {
@@ -295,7 +316,9 @@ public final class AuraEmitters {
                         it.remove();
                         continue;
                     }
-                    float nodeAlpha = node.baseFade * (1.0f - age);
+                    float fadeInPortion = (float) TRAIL_FADE_IN_TICKS / (float) TRAIL_LIFETIME_TICKS;
+                    float inFrac = fadeInPortion > 0f ? Mth.clamp(age / fadeInPortion, 0f, 1f) : 1f;
+                    float nodeAlpha = node.baseFade * inFrac * (1.0f - age);
                     float nodeRadius = node.startRadius * (1.0f - (1.0f - TRAIL_SHRINK_MIN) * age);
 
                     double nx = node.x - camPos.x;
@@ -360,6 +383,8 @@ public final class AuraEmitters {
                     com.jayemceekay.shadowedhearts.client.render.geom.SphereBuffers.drawUnitSphere(
                             vcTrail, tGeom, 0, 0, 0, 0
                     );
+                    // Flush after each trail node to apply its specific uniforms
+                    buffers.endLastBatch();
                 }
             }
 
@@ -433,6 +458,7 @@ public final class AuraEmitters {
         // Entity reference for client-side interpolation
         private int entityId;
         private WeakReference<Entity> entityRef;
+        private UUID entityUuid;
 
         // Cached transform/state updated from server (used as fallback/smoothing for size & corruption)
         double x, y, z;
@@ -464,6 +490,7 @@ public final class AuraEmitters {
         AuraInstance(int entityId, Entity ent, long startTick, int fadeInTicks, int sustainTicks, int fadeOutTicks, double x, double y, double z, double dx, double dy, double dz, float bbw, float bbh, double bbs, float lastCorruption) {
             this.entityId = entityId;
             this.entityRef = new WeakReference<>(ent);
+            this.entityUuid = (ent != null) ? ent.getUUID() : null;
             this.startTick = startTick;
             this.fadeInTicks = Math.max(1, fadeInTicks);
             this.sustainTicks = Math.max(0, sustainTicks);

@@ -173,6 +173,20 @@ public class ShadowCommands {
                         .then(Commands.argument("runId", LongArgumentType.longArg(1))
                                 .executes(ctx -> MissionCommands.abortStub(ctx, LongArgumentType.getLong(ctx, "runId")))))
         );
+        d.register(Commands.literal("poketoss")
+                .then(Commands.literal("order")
+                        .then(Commands.literal("follow")
+                                .executes(ctx -> PokeTossCommands.follow(ctx, null))
+                                .then(Commands.argument("target", EntityArgument.entity())
+                                        .executes(ctx -> PokeTossCommands.follow(ctx, EntityArgument.getEntity(ctx, "target")))))
+                        .then(Commands.literal("regroup")
+                                .executes(ctx -> PokeTossCommands.regroup(ctx, null))
+                                .then(Commands.argument("target", EntityArgument.entity())
+                                        .executes(ctx -> PokeTossCommands.regroup(ctx, EntityArgument.getEntity(ctx, "target"))))))
+                .then(Commands.literal("clear")
+                        .then(Commands.argument("target", EntityArgument.entity())
+                                .executes(ctx -> PokeTossCommands.clear(ctx, EntityArgument.getEntity(ctx, "target")))))
+        );
 
     }
 }

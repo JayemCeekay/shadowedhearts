@@ -60,6 +60,111 @@ public final class ModNetworking {
                 NetworkManager.sendToPlayer(sp, SnagArmedS2C.TYPE.id(), out);
             });
         });
+
+        // Whistle selection brush: client -> server selection results
+        NetworkManager.registerReceiver(NetworkManager.Side.C2S, WhistleSelectionC2S.TYPE.id(), (buf, ctx) -> {
+            var pkt = WhistleSelectionC2S.STREAM_CODEC.decode(buf);
+            ctx.queue(() -> {
+                if (!(ctx.getPlayer() instanceof ServerPlayer sp)) return;
+                if (!(sp.level() instanceof ServerLevel level)) return;
+                java.util.Set<java.util.UUID> sel = new java.util.HashSet<>();
+                for (int id : pkt.entityIds()) {
+                    Entity e = level.getEntity(id);
+                    if (e instanceof PokemonEntity pe) {
+                        // Basic sanity: within 32 blocks of player
+                        if (sp.distanceToSqr(e) <= (32.0 * 32.0)) {
+                            sel.add(pe.getUUID());
+                        }
+                    }
+                }
+                com.jayemceekay.shadowedhearts.poketoss.PokeToss.setSelection(sp, sel);
+                sp.displayClientMessage(net.minecraft.network.chat.Component.literal("Whistle: Selected " + sel.size() + " Pokémon."), true);
+            });
+        });
+
+        // Target order confirmation: use current selection set to issue order towards a target entity
+        NetworkManager.registerReceiver(NetworkManager.Side.C2S, com.jayemceekay.shadowedhearts.network.payload.IssueTargetOrderC2S.TYPE.id(), (buf, ctx) -> {
+            var pkt = com.jayemceekay.shadowedhearts.network.payload.IssueTargetOrderC2S.STREAM_CODEC.decode(buf);
+            ctx.queue(() -> {
+                if (!(ctx.getPlayer() instanceof ServerPlayer sp)) return;
+                if (!(sp.level() instanceof ServerLevel level)) return;
+                Entity targetEnt = level.getEntity(pkt.targetEntityId());
+                if (!(targetEnt instanceof net.minecraft.world.entity.LivingEntity targetLiving)) return;
+                // Currently only allow Pokémon targets
+                if (!(targetEnt instanceof PokemonEntity)) return;
+                java.util.Set<java.util.UUID> selection = com.jayemceekay.shadowedhearts.poketoss.PokeToss.getSelection(sp);
+                int applied = 0;
+                for (java.util.UUID selUuid : selection) {
+                    Entity allyEnt = level.getEntity(selUuid);
+                    if (allyEnt instanceof net.minecraft.world.entity.LivingEntity allyLiving) {
+                        com.jayemceekay.shadowedhearts.poketoss.TacticalOrder order;
+                        switch (pkt.orderType()) {
+                            case GUARD_TARGET -> order = com.jayemceekay.shadowedhearts.poketoss.TacticalOrder.guard(targetLiving.getUUID(), 6.0f, true);
+                            case ATTACK_TARGET -> order = com.jayemceekay.shadowedhearts.poketoss.TacticalOrder.attack(targetLiving.getUUID());
+                            default -> order = com.jayemceekay.shadowedhearts.poketoss.TacticalOrder.attack(targetLiving.getUUID());
+                        }
+                        boolean ok = com.jayemceekay.shadowedhearts.poketoss.PokeToss.issueOrder(level, allyLiving, order, sp);
+                        if (ok) applied++;
+                    }
+                }
+                if (applied > 0) {
+                    sp.displayClientMessage(net.minecraft.network.chat.Component.literal("Orders issued to " + applied + " Pokémon."), true);
+                }
+            });
+        });
+
+        // Cancel orders for all currently selected allies
+        NetworkManager.registerReceiver(NetworkManager.Side.C2S, com.jayemceekay.shadowedhearts.network.payload.CancelOrdersC2S.TYPE.id(), (buf, ctx) -> {
+            com.jayemceekay.shadowedhearts.network.payload.CancelOrdersC2S.STREAM_CODEC.decode(buf);
+            ctx.queue(() -> {
+                if (!(ctx.getPlayer() instanceof ServerPlayer sp)) return;
+                if (!(sp.level() instanceof ServerLevel level)) return;
+                java.util.Set<java.util.UUID> selection = com.jayemceekay.shadowedhearts.poketoss.PokeToss.getSelection(sp);
+                int cleared = 0;
+                for (java.util.UUID selUuid : selection) {
+                    Entity allyEnt = level.getEntity(selUuid);
+                    if (allyEnt instanceof net.minecraft.world.entity.LivingEntity allyLiving) {
+                        com.jayemceekay.shadowedhearts.poketoss.PokeToss.clearOrder(allyLiving);
+                        cleared++;
+                    }
+                }
+                if (cleared > 0) {
+                    sp.displayClientMessage(net.minecraft.network.chat.Component.literal("Cleared orders for " + cleared + " Pokémon."), true);
+                } else {
+                    sp.displayClientMessage(net.minecraft.network.chat.Component.literal("No orders to clear."), true);
+                }
+            });
+        });
+
+        // Position order confirmation: use current selection set to issue a MOVE_TO or HOLD_POSITION order at a target BlockPos
+        NetworkManager.registerReceiver(NetworkManager.Side.C2S, com.jayemceekay.shadowedhearts.network.payload.IssuePosOrderC2S.TYPE.id(), (buf, ctx) -> {
+            var pkt = com.jayemceekay.shadowedhearts.network.payload.IssuePosOrderC2S.STREAM_CODEC.decode(buf);
+            ctx.queue(() -> {
+                if (!(ctx.getPlayer() instanceof ServerPlayer sp)) return;
+                if (!(sp.level() instanceof ServerLevel level)) return;
+                java.util.Set<java.util.UUID> selection = com.jayemceekay.shadowedhearts.poketoss.PokeToss.getSelection(sp);
+                int applied = 0;
+                for (java.util.UUID selUuid : selection) {
+                    Entity allyEnt = level.getEntity(selUuid);
+                    if (allyEnt instanceof net.minecraft.world.entity.LivingEntity allyLiving) {
+                        com.jayemceekay.shadowedhearts.poketoss.TacticalOrder order;
+                        switch (pkt.orderType()) {
+                            case MOVE_TO -> order = com.jayemceekay.shadowedhearts.poketoss.TacticalOrder.moveTo(pkt.pos(), pkt.radius());
+                            case HOLD_POSITION -> order = com.jayemceekay.shadowedhearts.poketoss.TacticalOrder.holdAt(pkt.pos(), pkt.radius(), pkt.persistent());
+                            default -> {
+                                // Unsupported type here; skip
+                                continue;
+                            }
+                        }
+                        boolean ok = com.jayemceekay.shadowedhearts.poketoss.PokeToss.issueOrder(level, allyLiving, order, sp);
+                        if (ok) applied++;
+                    }
+                }
+                if (applied > 0) {
+                    sp.displayClientMessage(net.minecraft.network.chat.Component.literal("Orders issued to " + applied + " Pokémon."), true);
+                }
+            });
+        });
     }
 
     /** Utility: broadcast to all players tracking the entity (and the entity if it's a player). */

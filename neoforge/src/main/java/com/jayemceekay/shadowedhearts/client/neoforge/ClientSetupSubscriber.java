@@ -23,5 +23,7 @@ public final class ClientSetupSubscriber {
         AuraEmitters.init();
         DepthCapture.init();
         ModShaders.initClient();
+        // Register keybinds
+        com.jayemceekay.shadowedhearts.client.ModKeybinds.init();
     }
 }

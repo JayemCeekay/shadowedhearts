@@ -6,7 +6,9 @@
   "client": [
     "MixinBattleGeneralActionSelection",
     "MixinLivingEntityRenderer",
-    "RenderTargetAccessor"
+    "RenderTargetAccessor",
+    "MixinMouseHandler",
+    "MouseHandlerAccessor"
   ],
   "mixins": [
     "MixinBattleCaptureAction",
@@ -15,6 +17,7 @@
     "MixinPokeBallItem",
     "MixinPokemon",
     "MixinPokemonEntity",
+    "MixinMob_TossGoals",
     "MixinShowdownInterpreter",
     "MixinTypeIcon"
   ],

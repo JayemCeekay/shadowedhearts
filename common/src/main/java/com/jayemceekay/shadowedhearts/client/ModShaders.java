@@ -7,6 +7,7 @@ public final class ModShaders {
     public static ShaderInstance SHADOW_AURA_FOG;
     public static ShaderInstance SHADOW_POOL;
     public static ShaderInstance SHADOW_DARKEN_LAYER;
+    public static ShaderInstance WHISTLE_GROUND_OVERLAY;
 
     private ModShaders() {}
 

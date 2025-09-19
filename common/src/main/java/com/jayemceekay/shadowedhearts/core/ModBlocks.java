@@ -3,6 +3,7 @@ package com.jayemceekay.shadowedhearts.core;
 
 import com.jayemceekay.shadowedhearts.Shadowedhearts;
 
+import com.jayemceekay.shadowedhearts.poketoss.CommandPostBlock;
 import dev.architectury.registry.registries.DeferredRegister;
 import dev.architectury.registry.registries.RegistrySupplier;
 
@@ -38,6 +39,15 @@ public final class ModBlocks {
                     .of().mapColor(MapColor.COLOR_BLACK)
                     .strength(3.5F)
                     .sound(SoundType.STONE))
+    );
+
+    // PokeTOSS: Pasture/Command Post (placeholder)
+    public static final RegistrySupplier<Block> PASTURE_BLOCK = BLOCKS.register(
+            "pasture_block",
+            () -> new CommandPostBlock(BlockBehaviour.Properties
+                    .of().mapColor(MapColor.COLOR_LIGHT_GREEN)
+                    .strength(2.0F)
+                    .sound(SoundType.WOOD))
     );
 
     /** Call once during common init on both loaders. */

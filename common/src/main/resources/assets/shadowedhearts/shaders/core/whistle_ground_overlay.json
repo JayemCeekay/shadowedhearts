@@ -1,0 +1,25 @@
+{
+  "blend": {
+    "func": "add",
+    "srcrgb": "src_alpha",
+    "dstrgb": "one_minus_src_alpha",
+    "srcalpha": "one",
+    "dstalpha": "one_minus_src_alpha"
+  },
+  "vertex": "shadowedhearts:whistle_ground_overlay",
+  "fragment": "shadowedhearts:whistle_ground_overlay",
+  "attributes": [ "Position", "Color", "UV0", "UV2" ],
+  "samplers": [ ],
+  "uniforms": [
+    { "name": "uView",      "type": "matrix4x4", "count": 16, "values": [1,0,0,0,  0,1,0,0,  0,0,1,0,  0,0,0,1] },
+    { "name": "uProj",      "type": "matrix4x4", "count": 16, "values": [1,0,0,0,  0,1,0,0,  0,0,1,0,  0,0,0,1] },
+
+    { "name": "uCenterXZ",  "type": "float",     "count": 2,  "values": [0.0, 0.0] },
+    { "name": "uRadius",    "type": "float",     "count": 1,  "values": [1.0] },
+    { "name": "uColor",     "type": "float",     "count": 3,  "values": [0.5, 1.0, 0.5] },
+    { "name": "uOpacity",   "type": "float",     "count": 1,  "values": [0.7] },
+    { "name": "uSoftness",  "type": "float",     "count": 1,  "values": [0.35] },
+    { "name": "uBaseY",     "type": "float",     "count": 1,  "values": [0.0] },
+    { "name": "uFadeHeight","type": "float",     "count": 1,  "values": [4.0] }
+  ]
+}
