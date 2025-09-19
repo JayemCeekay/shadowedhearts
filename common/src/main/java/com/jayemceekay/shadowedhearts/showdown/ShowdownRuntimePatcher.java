@@ -1,0 +1,439 @@
+package com.jayemceekay.shadowedhearts.showdown;
+
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * Applies small text patches to the runtime-extracted Pokemon Showdown JS files.
+ *
+ * Goals:
+ * - Insert a custom "shadow" type into data/typechart.js.
+ * - Extend sim/battle.js capture(pokemon) to emit a replacement request after capture.
+ *
+ * This runs at mod init and targets common dev/prod locations. The patch is idempotent.
+ */
+public final class ShowdownRuntimePatcher {
+    private ShowdownRuntimePatcher() {}
+
+    public static void applyPatches() {
+        for (Path showdown : locateShowdownDirs()) {
+            try {
+                patchTypechart(showdown.resolve("data").resolve("typechart.js"));
+            } catch (Exception e) {
+                log("Failed to patch typechart.js at " + showdown + ": " + e.getMessage());
+            }
+            try {
+                patchBattleCapture(showdown.resolve("sim").resolve("battle.js"));
+            } catch (Exception e) {
+                log("Failed to patch battle.js at " + showdown + ": " + e.getMessage());
+            }
+            try {
+                patchTeams(showdown.resolve("sim").resolve("teams.js"));
+            } catch (Exception e) {
+                log("Failed to patch teams.js at " + showdown + ": " + e.getMessage());
+            }
+        }
+    }
+
+    private static List<Path> locateShowdownDirs() {
+        List<Path> result = new ArrayList<>();
+        // Common dev environment paths
+        addIfDir(result, Paths.get("fabric", "run", "showdown"));
+        addIfDir(result, Paths.get("neoforge", "run", "showdown"));
+        // Generic runtime paths
+        addIfDir(result, Paths.get("run", "showdown"));
+        addIfDir(result, Paths.get("showdown"));
+        return result;
+    }
+
+    private static void addIfDir(List<Path> list, Path p) {
+        try {
+            if (Files.isDirectory(p)) list.add(p.toRealPath());
+        } catch (IOException ignored) {}
+    }
+
+    private static void patchTypechart(Path typechartPath) throws IOException {
+        if (!Files.isRegularFile(typechartPath)) return;
+        String content = Files.readString(typechartPath, StandardCharsets.UTF_8);
+
+        if (content.contains("\n  shadow: {")) {
+            log("typechart.js already contains shadow type: " + typechartPath);
+            return;
+        }
+
+        final String insertAfter =
+                "  stellar: {\n" +
+                "    damageTaken: {\n" +
+                "      Bug: 0,\n" +
+                "      Dark: 0,\n" +
+                "      Dragon: 0,\n" +
+                "      Electric: 0,\n" +
+                "      Fairy: 0,\n" +
+                "      Fighting: 0,\n" +
+                "      Fire: 0,\n" +
+                "      Flying: 0,\n" +
+                "      Ghost: 0,\n" +
+                "      Grass: 0,\n" +
+                "      Ground: 0,\n" +
+                "      Ice: 0,\n" +
+                "      Normal: 0,\n" +
+                "      Poison: 0,\n" +
+                "      Psychic: 0,\n" +
+                "      Rock: 0,\n" +
+                "      Steel: 0,\n" +
+                "      Stellar: 0,\n" +
+                "      Water: 0\n" +
+                "    }\n" +
+                "  },\n";
+
+        final String shadowBlock =
+                "  shadow: {\n" +
+                "    damageTaken: {\n" +
+                "      Bug: 0,\n" +
+                "      Dark: 0,\n" +
+                "      Dragon: 0,\n" +
+                "      Electric: 0,\n" +
+                "      Fairy: 0,\n" +
+                "      Fighting: 0,\n" +
+                "      Fire: 0,\n" +
+                "      Flying: 0,\n" +
+                "      Ghost: 0,\n" +
+                "      Grass: 0,\n" +
+                "      Ground: 0,\n" +
+                "      Ice: 0,\n" +
+                "      Normal: 0,\n" +
+                "      Poison: 0,\n" +
+                "      Psychic: 0,\n" +
+                "      Rock: 0,\n" +
+                "      Steel: 0,\n" +
+                "      Stellar: 0,\n" +
+                "      Water: 0\n" +
+                "    },\n" +
+                "    isNonstandard: \"Custom\",\n" +
+                "    HPivs: {},\n" +
+                "    HPdvs: {}\n" +
+                "  },\n";
+
+        int stellarIndex = content.indexOf("  stellar: {");
+        if (stellarIndex >= 0) {
+            int waterIndex = content.indexOf("  water: {", stellarIndex);
+            if (waterIndex > stellarIndex) {
+                String patched = content.substring(0, waterIndex)
+                        + shadowBlock
+                        + content.substring(waterIndex);
+                Files.writeString(typechartPath, patched, StandardCharsets.UTF_8);
+                log("Inserted shadow type into typechart.js: " + typechartPath);
+                return;
+            }
+        }
+
+        // Fallback: insert before end of TypeChart object
+        int endIndex = content.lastIndexOf("};");
+        if (endIndex > 0) {
+            String patched = content.substring(0, endIndex)
+                    + shadowBlock
+                    + content.substring(endIndex);
+            Files.writeString(typechartPath, patched, StandardCharsets.UTF_8);
+            log("Appended shadow type at end of TypeChart in typechart.js: " + typechartPath);
+        } else {
+            log("Could not find insertion point in typechart.js: " + typechartPath);
+        }
+    }
+
+    private static void patchBattleCapture(Path battlePath) throws IOException {
+        if (!Files.isRegularFile(battlePath)) return;
+        String content = Files.readString(battlePath, StandardCharsets.UTF_8);
+
+        if (content.contains("pokemon.side.emitRequest(req)") || content.contains("// Build and emit a new request")) {
+            log("battle.js capture() already extended: " + battlePath);
+            return;
+        }
+
+        final String needle =
+                "      if (this.checkWin())\n" +
+                "        return true;\n" +
+                "    }\n" +
+                "    return false;\n" +
+                "  }";
+
+        final String replacement =
+                "      if (this.checkWin())\n" +
+                "        return true;\n" +
+                "      this.checkFainted();\n\n" +
+                "      // Build and emit a new request so the victim side can choose a replacement\n" +
+                "      const activeData = pokemon.side.active.map(pk => pk?.getMoveRequestData());\n" +
+                "      const req = { active: activeData, side: pokemon.side.getRequestData() };\n" +
+                "      if (pokemon.side.allySide) {\n" +
+                "          req.ally = pokemon.side.allySide.getRequestData(true);\n" +
+                "      }\n" +
+                "      pokemon.side.emitRequest(req);\n" +
+                "      pokemon.side.clearChoice();\n" +
+                "    }\n" +
+                "    return false;\n" +
+                "  }";
+
+        if (content.contains(needle)) {
+            String patched = content.replace(needle, replacement);
+            Files.writeString(battlePath, patched, StandardCharsets.UTF_8);
+            log("Patched capture() in battle.js: " + battlePath);
+        } else {
+            log("Could not find capture() tail to patch in battle.js: " + battlePath);
+        }
+    }
+
+    private static void patchTeams(Path teamsPath) throws IOException {
+        if (!Files.isRegularFile(teamsPath)) return;
+        String content = Files.readString(teamsPath, StandardCharsets.UTF_8);
+
+        // Idempotence: if we already added the shadow token handling, skip
+        if (content.contains("set.isShadow") || content.contains("misc[6]") || content.contains(", (set.isShadow ? \"true\" : \"false\")")) {
+            log("teams.js already patched: " + teamsPath);
+            return;
+        }
+
+        int packStart = content.indexOf("  pack(team) {");
+        if (packStart < 0) { log("Could not find pack(team) in teams.js: " + teamsPath); return; }
+        int unpackStart = content.indexOf("\n  unpack(buf) {", packStart);
+        if (unpackStart < 0) { log("Could not find unpack(buf) after pack(team) in teams.js: " + teamsPath); return; }
+        int afterUnpack = content.indexOf("\n  /**", unpackStart);
+        if (afterUnpack < 0) {
+            afterUnpack = content.indexOf("\n  packName(", unpackStart);
+        }
+        if (afterUnpack < 0) { log("Could not find end of unpack(buf) in teams.js: " + teamsPath); return; }
+
+        final String newBlock =
+                "  pack(team) {\n" +
+                "    if (!team)\n" +
+                "      return \"\";\n" +
+                "    function getIv(ivs, s) {\n" +
+                "      return ivs[s] === 31 || ivs[s] === void 0 ? \"\" : ivs[s].toString();\n" +
+                "    }\n" +
+                "    let buf = \"\";\n" +
+                "    for (const set of team) {\n" +
+                "      if (buf)\n" +
+                "        buf += \"]\";\n" +
+                "      buf += set.name || set.species;\n" +
+                "      const id = this.packName(set.species || set.name);\n" +
+                "      buf += \"|\" + (this.packName(set.name || set.species) === id ? \"\" : id);\n" +
+                "      buf += \"|\" + this.packName(set.item);\n" +
+                "      buf += \"|\" + this.packName(set.ability);\n" +
+                "      buf += \"|\" + set.moves.map(this.packName).join(\",\");\n" +
+                "      buf += \"|\" + (set.nature || \"\");\n" +
+                "      let evs = \"|\";\n" +
+                "      if (set.evs) {\n" +
+                "        evs = \"|\" + (set.evs[\"hp\"] || \"\") + \",\" + (set.evs[\"atk\"] || \"\") + \",\" + (set.evs[\"def\"] || \"\") + \",\" + (set.evs[\"spa\"] || \"\") + \",\" + (set.evs[\"spd\"] || \"\") + \",\" + (set.evs[\"spe\"] || \"\");\n" +
+                "      }\n" +
+                "      if (evs === \"|,,,,,\") {\n" +
+                "        buf += \"|\";\n" +
+                "      } else {\n" +
+                "        buf += evs;\n" +
+                "      }\n" +
+                "      if (set.gender) {\n" +
+                "        buf += \"|\" + set.gender;\n" +
+                "      } else {\n" +
+                "        buf += \"|\";\n" +
+                "      }\n" +
+                "      let ivs = \"|\";\n" +
+                "      if (set.ivs) {\n" +
+                "        ivs = \"|\" + getIv(set.ivs, \"hp\") + \",\" + getIv(set.ivs, \"atk\") + \",\" + getIv(set.ivs, \"def\") + \",\" + getIv(set.ivs, \"spa\") + \",\" + getIv(set.ivs, \"spd\") + \",\" + getIv(set.ivs, \"spe\");\n" +
+                "      }\n" +
+                "      if (ivs === \"|,,,,,\") {\n" +
+                "        buf += \"|\";\n" +
+                "      } else {\n" +
+                "        buf += ivs;\n" +
+                "      }\n" +
+                "      if (set.shiny) {\n" +
+                "        buf += \"|S\";\n" +
+                "      } else {\n" +
+                "        buf += \"|\";\n" +
+                "      }\n" +
+                "      if (set.level && set.level !== 100) {\n" +
+                "        buf += \"|\" + set.level;\n" +
+                "      } else {\n" +
+                "        buf += \"|\";\n" +
+                "      }\n" +
+                "      if (set.happiness !== void 0 && set.happiness !== 255) {\n" +
+                "        buf += \"|\" + set.happiness;\n" +
+                "      } else {\n" +
+                "        buf += \"|\";\n" +
+                "      }\n" +
+                "      if (set.pokeball || set.hpType || set.gigantamax || set.dynamaxLevel !== void 0 && set.dynamaxLevel !== 10 || set.teraType || set.isShadow) {\n" +
+                "        buf += \",\" + this.packName(set.pokeball || \"\");\n" +
+                "        buf += \",\" + (set.hpType || \"\");\n" +
+                "        buf += \",\" + (set.gigantamax ? \"G\" : \"\");\n" +
+                "        buf += \",\" + (set.dynamaxLevel !== void 0 && set.dynamaxLevel !== 10 ? set.dynamaxLevel : \"\");\n" +
+                "        buf += \",\" + (set.teraType || \"\");\n" +
+                "        buf += \",\" + (set.isShadow ? \"true\" : \"false\");\n" +
+                "      }\n" +
+                "    }\n" +
+                "    return buf;\n" +
+                "  }\n" +
+                "  unpack(buf) {\n" +
+                "    if (!buf)\n" +
+                "      return null;\n" +
+                "    if (typeof buf !== \"string\")\n" +
+                "      return buf;\n" +
+                "    if (buf.startsWith(\"[\") && buf.endsWith(\"]\")) {\n" +
+                "      try {\n" +
+                "        buf = this.pack(JSON.parse(buf));\n" +
+                "      } catch {\n" +
+                "        return null;\n" +
+                "      }\n" +
+                "    }\n" +
+                "    const team = [];\n" +
+                "    let i = 0;\n" +
+                "    let j = 0;\n" +
+                "    for (let count = 0; count < 24; count++) {\n" +
+                "      const set = {};\n" +
+                "      team.push(set);\n" +
+                "      j = buf.indexOf(\"|\", i);\n" +
+                "      if (j < 0)\n" +
+                "        return null;\n" +
+                "      set.name = buf.substring(i, j);\n" +
+                "      i = j + 1;\n" +
+                "      j = buf.indexOf(\"|\", i);\n" +
+                "      if (j < 0)\n" +
+                "        return null;\n" +
+                "      set.species = this.unpackName(buf.substring(i, j), import_dex.Dex.species) || set.name;\n" +
+                "      i = j + 1;\n" +
+                "      j = buf.indexOf(\"|\", i);\n" +
+                "      if (j < 0)\n" +
+                "        return null;\n" +
+                "      set.uuid = buf.substring(i, j);\n" +
+                "      i = j + 1;\n" +
+                "      j = buf.indexOf(\"|\", i);\n" +
+                "      if (j < 0)\n" +
+                "        return null;\n" +
+                "      set.currentHealth = parseInt(buf.substring(i, j));\n" +
+                "      i = j + 1;\n" +
+                "      j = buf.indexOf(\"|\", i);\n" +
+                "      if (j < 0)\n" +
+                "        return null;\n" +
+                "      set.status = buf.substring(i, j);\n" +
+                "      i = j + 1;\n" +
+                "      j = buf.indexOf(\"|\", i);\n" +
+                "      if (j < 0)\n" +
+                "        return null;\n" +
+                "      set.statusDuration = parseInt(buf.substring(i, j));\n" +
+                "      i = j + 1;\n" +
+                "      j = buf.indexOf(\"|\", i);\n" +
+                "      if (j < 0)\n" +
+                "        return null;\n" +
+                "      set.item = this.unpackName(buf.substring(i, j), import_dex.Dex.items);\n" +
+                "      i = j + 1;\n" +
+                "      j = buf.indexOf(\"|\", i);\n" +
+                "      if (j < 0)\n" +
+                "        return null;\n" +
+                "      const ability = buf.substring(i, j);\n" +
+                "      set.ability = this.unpackName(ability, import_dex.Dex.abilities);\n" +
+                "      i = j + 1;\n" +
+                "      j = buf.indexOf(\"|\", i);\n" +
+                "      if (j < 0)\n" +
+                "        return null;\n" +
+                "      set.moves = buf.substring(i, j).split(\",\", 24).map((name) => this.unpackName(name, import_dex.Dex.moves));\n" +
+                "      i = j + 1;\n" +
+                "      j = buf.indexOf(\"|\", i);\n" +
+                "      if (j < 0)\n" +
+                "        return null;\n" +
+                "      set.movesInfo = buf.substring(i, j).split(\",\", 24).map((moveData) => {\n" +
+                "        const moveInfo = {};\n" +
+                "        let data = moveData.split(\"/\");\n" +
+                "        moveInfo.pp = parseInt(data[0]);\n" +
+                "        moveInfo.maxPp = parseInt(data[1]);\n" +
+                "        return moveInfo;\n" +
+                "      });\n" +
+                "      i = j + 1;\n" +
+                "      j = buf.indexOf(\"|\", i);\n" +
+                "      if (j < 0)\n" +
+                "        return null;\n" +
+                "      set.nature = this.unpackName(buf.substring(i, j), import_dex.Dex.natures);\n" +
+                "      i = j + 1;\n" +
+                "      j = buf.indexOf(\"|\", i);\n" +
+                "      if (j < 0)\n" +
+                "        return null;\n" +
+                "      if (j !== i) {\n" +
+                "        const evs = buf.substring(i, j).split(\",\", 6);\n" +
+                "        set.evs = {\n" +
+                "          hp: Number(evs[0]) || 0,\n" +
+                "          atk: Number(evs[1]) || 0,\n" +
+                "          def: Number(evs[2]) || 0,\n" +
+                "          spa: Number(evs[3]) || 0,\n" +
+                "          spd: Number(evs[4]) || 0,\n" +
+                "          spe: Number(evs[5]) || 0\n" +
+                "        };\n" +
+                "      }\n" +
+                "      i = j + 1;\n" +
+                "      j = buf.indexOf(\"|\", i);\n" +
+                "      if (j < 0)\n" +
+                "        return null;\n" +
+                "      if (i !== j)\n" +
+                "        set.gender = buf.substring(i, j);\n" +
+                "      i = j + 1;\n" +
+                "      j = buf.indexOf(\"|\", i);\n" +
+                "      if (j < 0)\n" +
+                "        return null;\n" +
+                "      if (j !== i) {\n" +
+                "        const ivs = buf.substring(i, j).split(\",\", 6);\n" +
+                "        set.ivs = {\n" +
+                "          hp: ivs[0] === \"\" ? 31 : Number(ivs[0]) || 0,\n" +
+                "          atk: ivs[1] === \"\" ? 31 : Number(ivs[1]) || 0,\n" +
+                "          def: ivs[2] === \"\" ? 31 : Number(ivs[2]) || 0,\n" +
+                "          spa: ivs[3] === \"\" ? 31 : Number(ivs[3]) || 0,\n" +
+                "          spd: ivs[4] === \"\" ? 31 : Number(ivs[4]) || 0,\n" +
+                "          spe: ivs[5] === \"\" ? 31 : Number(ivs[5]) || 0\n" +
+                "        };\n" +
+                "      }\n" +
+                "      i = j + 1;\n" +
+                "      j = buf.indexOf(\"|\", i);\n" +
+                "      if (j < 0)\n" +
+                "        return null;\n" +
+                "      if (i !== j)\n" +
+                "        set.shiny = true;\n" +
+                "      i = j + 1;\n" +
+                "      j = buf.indexOf(\"|\", i);\n" +
+                "      if (j < 0)\n" +
+                "        return null;\n" +
+                "      if (i !== j)\n" +
+                "        set.level = parseInt(buf.substring(i, j));\n" +
+                "      i = j + 1;\n" +
+                "        // happiness + extended misc\n" +
+                "        j = buf.indexOf(']', i);\n" +
+                "        let misc;\n" +
+                "        if (j < 0) {\n" +
+                "            if (i < buf.length) misc = buf.substring(i).split(',', 7);\n" +
+                "        } else {\n" +
+                "            if (i !== j) misc = buf.substring(i, j).split(',', 7);\n" +
+                "        }\n" +
+                "        if (misc) {\n" +
+                "            set.happiness = (misc[0] ? Number(misc[0]) : 255);\n" +
+                "            set.pokeball = this.unpackName(misc[1] || '', import_dex.Dex.items);\n" +
+                "            set.hpType = misc[2] || '';\n" +
+                "            set.gigantamax = !!misc[3];\n" +
+                "            set.dynamaxLevel = (misc[4] ? Number(misc[4]) : 10);\n" +
+                "            set.teraType = misc[5];\n" +
+                "\n" +
+                "            // 7th token: Shadow flag\n" +
+                "            const shadowTok = misc[6];\n" +
+                "            set.isShadow = shadowTok === 'true';\n" +
+                "        }\n" +
+                "      if (j < 0)\n" +
+                "        break;\n" +
+                "      i = j + 1;\n" +
+                "    }\n" +
+                "    return team;\n" +
+                "  }\n";
+
+        String patched = content.substring(0, packStart) + newBlock + content.substring(afterUnpack);
+        Files.writeString(teamsPath, patched, StandardCharsets.UTF_8);
+        log("Patched pack/unpack in teams.js: " + teamsPath);
+    }
+
+    private static void log(String msg) {
+        System.out.println("[ShadowedHearts][ShowdownPatcher] " + msg);
+    }
+}

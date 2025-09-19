@@ -1,0 +1,82 @@
+package com.jayemceekay.shadowedhearts.client.render;
+
+import com.jayemceekay.shadowedhearts.client.ModShaders;
+import com.mojang.blaze3d.platform.GlStateManager;
+import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.vertex.DefaultVertexFormat;
+import com.mojang.blaze3d.vertex.VertexFormat;
+import net.minecraft.client.renderer.GameRenderer;
+import net.minecraft.client.renderer.RenderStateShard;
+import net.minecraft.client.renderer.RenderType;
+import net.minecraft.resources.ResourceLocation;
+
+public final class AuraRenderTypes {
+
+    private static final RenderStateShard.TransparencyStateShard PREMULTIPLIED_TRANSPARENCY = new RenderStateShard.TransparencyStateShard(
+            "shadowedhearts_premultiplied",
+            () -> {
+                RenderSystem.enableBlend();
+                RenderSystem.blendFuncSeparate(
+                        GlStateManager.SourceFactor.ONE,
+                        GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA,
+                        GlStateManager.SourceFactor.ONE,
+                        GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA
+                );
+            },
+            () -> {
+                RenderSystem.disableBlend();
+                RenderSystem.defaultBlendFunc();
+            }
+    );
+
+    // Explicitly disable alpha-to-coverage to prevent texture alpha from affecting stencil/depth coverage.
+    private static final RenderStateShard.TexturingStateShard NO_ALPHA_TO_COVERAGE = new RenderStateShard.TexturingStateShard(
+            "shadowedhearts_no_atoc",
+            () -> org.lwjgl.opengl.GL11.glDisable(org.lwjgl.opengl.GL13.GL_SAMPLE_ALPHA_TO_COVERAGE),
+            () -> org.lwjgl.opengl.GL11.glDisable(org.lwjgl.opengl.GL13.GL_SAMPLE_ALPHA_TO_COVERAGE)
+    );
+
+    public static RenderType shadow_fog() {
+        RenderType.CompositeState state = RenderType.CompositeState.builder()
+                .setShaderState(new RenderStateShard.ShaderStateShard(() -> ModShaders.SHADOW_AURA_FOG != null
+                        ? ModShaders.SHADOW_AURA_FOG
+                        : GameRenderer.getParticleShader()))
+                .setTextureState(RenderStateShard.NO_TEXTURE)
+                .setTransparencyState(PREMULTIPLIED_TRANSPARENCY)
+                .setTexturingState(NO_ALPHA_TO_COVERAGE)
+                .setWriteMaskState(RenderStateShard.COLOR_WRITE)
+                .setDepthTestState(RenderStateShard.LEQUAL_DEPTH_TEST)
+                .setCullState(RenderStateShard.NO_CULL)
+                .setLightmapState(RenderStateShard.LIGHTMAP)
+                .setLayeringState(RenderStateShard.VIEW_OFFSET_Z_LAYERING)
+                .createCompositeState(true);
+        return RenderType.create("shadowedhearts:nebulous_fog_tri", DefaultVertexFormat.PARTICLE, VertexFormat.Mode.TRIANGLES, 512, false, true, state);
+    }
+
+    public static RenderType shadow_pool() {
+        RenderType.CompositeState state = RenderType.CompositeState.builder()
+                .setShaderState(new RenderStateShard.ShaderStateShard(() -> ModShaders.SHADOW_POOL != null
+                        ? ModShaders.SHADOW_POOL
+                        : GameRenderer.getParticleShader()))
+                .setTextureState(RenderStateShard.NO_TEXTURE)
+                .setTransparencyState(RenderStateShard.TRANSLUCENT_TRANSPARENCY)
+                .setDepthTestState(RenderStateShard.LEQUAL_DEPTH_TEST)
+                .setWriteMaskState(RenderStateShard.COLOR_WRITE)
+                .setCullState(RenderStateShard.NO_CULL)
+                .setLayeringState(RenderStateShard.VIEW_OFFSET_Z_LAYERING)
+                .createCompositeState(true);
+        return RenderType.create("shadowedhearts:shadow_pool", DefaultVertexFormat.PARTICLE, VertexFormat.Mode.QUADS, 256, false, true, state);
+    }
+
+    public static RenderType shadow_darken_layer(ResourceLocation texture) {
+        RenderType.CompositeState state = RenderType.CompositeState.builder()
+                .setShaderState(new RenderStateShard.ShaderStateShard(() -> ModShaders.SHADOW_DARKEN_LAYER != null ?
+                        ModShaders.SHADOW_DARKEN_LAYER : GameRenderer.getRendertypeEntitySolidShader()))
+                .setTransparencyState(RenderStateShard.NO_TRANSPARENCY)
+                .setTextureState(new RenderStateShard.TextureStateShard(texture, false, false))
+                .setLightmapState(RenderStateShard.LIGHTMAP)
+                .createCompositeState(true);
+        return RenderType.create("shadowedhearts:shadow_darken_layer", DefaultVertexFormat.NEW_ENTITY, VertexFormat.Mode.QUADS, 1536, true, false, state);
+
+    }
+}

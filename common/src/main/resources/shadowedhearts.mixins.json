@@ -1,0 +1,24 @@
+{
+  "required": true,
+  "package": "com.jayemceekay.shadowedhearts.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "minVersion": "0.8",
+  "client": [
+    "MixinBattleGeneralActionSelection",
+    "MixinLivingEntityRenderer",
+    "RenderTargetAccessor"
+  ],
+  "mixins": [
+    "MixinBattleCaptureAction",
+    "MixinBattleRegistry",
+    "MixinEmptyPokeBallEntity",
+    "MixinPokeBallItem",
+    "MixinPokemon",
+    "MixinPokemonEntity",
+    "MixinShowdownInterpreter",
+    "MixinTypeIcon"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

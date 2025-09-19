@@ -1,0 +1,19 @@
+{
+  "speakers": {
+    "me": { "name": "Bug Catcher Len", "face": "q.npc.face();" },
+    "you": { "name": "q.player.name();" }
+  },
+  "pages": [
+    {
+      "speaker": "me",
+      "text": "Care to battle?",
+      "input": {
+        "type": "option",
+        "options": [
+          { "text": "Battle!", "action": "q.run_command('shadowedhearts start_battle ' + q.npc.uuid());" },
+          { "text": "Not now", "action": "" }
+        ]
+      }
+    }
+  ]
+}

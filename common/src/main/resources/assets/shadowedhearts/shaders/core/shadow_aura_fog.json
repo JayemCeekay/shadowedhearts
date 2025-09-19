@@ -1,0 +1,64 @@
+{
+  "blend": {
+    "func": "add",
+    "srcrgb": "one",
+    "dstrgb": "one_minus_src_alpha",
+    "srcalpha": "one",
+    "dstalpha": "one_minus_src_alpha"
+  },
+  "vertex": "shadowedhearts:shadow_aura_fog",
+  "fragment": "shadowedhearts:shadow_aura_fog",
+
+  "attributes": [ "Position", "Color", "UV0", "UV2" ],
+
+  "samplers": [ ],
+
+  "uniforms": [
+    { "name": "uModel",       "type": "matrix4x4", "count": 16, "values": [1,0,0,0,  0,1,0,0,  0,0,1,0,  0,0,0,1] },
+    { "name": "uView",        "type": "matrix4x4", "count": 16, "values": [1,0,0,0,  0,1,0,0,  0,0,1,0,  0,0,0,1] },
+    { "name": "uProj",        "type": "matrix4x4", "count": 16, "values": [1,0,0,0,  0,1,0,0,  0,0,1,0,  0,0,0,1] },
+    { "name": "uInvModel",    "type": "matrix4x4", "count": 16, "values": [1,0,0,0,  0,1,0,0,  0,0,1,0,  0,0,0,1] },
+
+    { "name": "uCameraPosWS", "type": "float",     "count": 3,  "values": [0.0, 0.0, 0.0] },
+    { "name": "uEntityPosWS", "type": "float",     "count": 3,  "values": [0.0, 0.0, 0.0] },
+    { "name": "uTime",        "type": "float",     "count": 1,  "values": [0.0] },
+    { "name": "uExpand",      "type": "float",     "count": 1,  "values": [1.0] },
+
+    { "name": "uProxyRadius", "type": "float",     "count": 1,  "values": [1.0] },
+    { "name": "uCapsuleHalf", "type": "float",     "count": 1,  "values": [0.0] },
+
+    { "name": "uAuraFade",    "type": "float",     "count": 1,  "values": [1.0] },
+    { "name": "uFadeGamma",   "type": "float",     "count": 1,  "values": [1.5] },
+
+    { "name": "uColorA",      "type": "float",     "count": 3,  "values": [0.20, 0.00, 0.35] },
+    { "name": "uColorB",      "type": "float",     "count": 3,  "values": [0.85, 0.20, 1.00] },
+
+    { "name": "uDensity",         "type": "float", "count": 1, "values": [1.2] },
+    { "name": "uAbsorption",      "type": "float", "count": 1, "values": [0.06] },
+    { "name": "uRimStrength",     "type": "float", "count": 1, "values": [0.15] },
+    { "name": "uRimPower",        "type": "float", "count": 1, "values": [2.0] },
+
+    { "name": "uMaxThickness",     "type": "float", "count": 1, "values": [0.45] },
+    { "name": "uThicknessFeather", "type": "float", "count": 1, "values": [0.045] },
+    { "name": "uEdgeKill",         "type": "float", "count": 1, "values": [0.02] },
+
+    { "name": "uShellFeather",  "type": "float", "count": 1, "values": [0.12] },
+
+    { "name": "uWarpAmp",       "type": "float", "count": 1, "values": [0.08] },
+
+    { "name": "uPixelsPerRadius",  "type": "float",   "count": 1, "values": [20.0] },
+    { "name": "uPosterizeSteps",  "type": "float",   "count": 1, "values": [0.0] },
+    { "name": "uDitherAmount",  "type": "float",   "count": 1, "values": [1.4] },
+
+    { "name": "uLimbSoft",     "type": "float", "count": 1, "values": [0.22] },
+    { "name": "uMinPathNorm",  "type": "float", "count": 1, "values": [0.18] },
+    { "name": "uGlowGamma",    "type": "float", "count": 1, "values": [2.0] },
+    { "name": "uBlackPoint",   "type": "float", "count": 1, "values": [0.08] },
+
+    { "name":"uNoiseScaleRel","type":"float","count":1,"values":[3.0] },
+    { "name":"uScrollSpeedRel","type":"float","count":1,"values":[0.5] },
+    { "name":"uLayersAcrossThickness","type":"float","count":1,"values":[14.0] }
+
+
+  ]
+}
