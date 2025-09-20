@@ -6,6 +6,13 @@ architectury {
     common rootProject.enabled_platforms.split(',')
 }
 
+repositories {
+    maven {
+        name = 'Modrinth'
+        url = 'https://api.modrinth.com/maven'
+    }
+}
+
 dependencies {
     // We depend on Fabric Loader here to use the Fabric @Environment annotations,
     // which get remapped to the correct annotations on each platform.
@@ -18,4 +25,19 @@ dependencies {
         transitive = false
     }
 
+    // Test framework for common module
+    testImplementation "org.junit.jupiter:junit-jupiter:5.10.2"
+
+    //compileOnly("com.external.fightorflight:common:0.0.0-local")
 }
+
+// Enable JUnit 5 platform and useful test logging
+tasks.withType(Test).configureEach {
+    useJUnitPlatform()
+    testLogging {
+        events "passed", "skipped", "failed"
+        exceptionFormat "full"
+        showStandardStreams = true
+    }
+}
+

@@ -5,8 +5,9 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.gen.Accessor;
 
 /**
- * Accessor for MouseHandler's cursor position fields so we can recenter
- * the cursor when opening the order wheel.
+ * Accessor for MouseHandler internals used by our wheel UI.
+ * - Allows recentering the cursor when opening the order wheel.
+ * - Allows consuming the accumulated vertical scroll while the wheel is open.
  */
 @Mixin(MouseHandler.class)
 public interface MouseHandlerAccessor {
@@ -15,4 +16,10 @@ public interface MouseHandlerAccessor {
 
     @Accessor("ypos")
     void shadowedhearts$setYpos(double y);
+
+    @Accessor("accumulatedScrollY")
+    double shadowedhearts$getAccumulatedScrollY();
+
+    @Accessor("accumulatedScrollY")
+    void shadowedhearts$setAccumulatedScrollY(double y);
 }

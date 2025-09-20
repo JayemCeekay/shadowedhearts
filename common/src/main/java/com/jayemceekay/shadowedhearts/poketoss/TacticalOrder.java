@@ -37,10 +37,6 @@ public final class TacticalOrder {
         return new TacticalOrder(TacticalOrderType.FOLLOW, Optional.empty(), Optional.empty(), radius, persistent, now());
     }
 
-    public static TacticalOrder regroup() {
-        return new TacticalOrder(TacticalOrderType.REGROUP, Optional.empty(), Optional.empty(), 0f, false, now());
-    }
-
     public static TacticalOrder holdAt(BlockPos pos, float radius, boolean persistent) {
         return new TacticalOrder(TacticalOrderType.HOLD_POSITION, Optional.empty(), Optional.of(pos), radius, persistent, now());
     }

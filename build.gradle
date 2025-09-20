@@ -30,6 +30,8 @@ subprojects {
         maven { url 'https://maven.impactdev.net/repository/development/' }
         maven { url 'https://maven.neoforged.net/releases' }
         maven { url 'https://thedarkcolour.github.io/KotlinForForge/' }
+        // For GitHub-hosted dependencies via JitPack
+        maven { url 'https://jitpack.io' }
     }
 
     dependencies {

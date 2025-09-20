@@ -10,19 +10,18 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
- * Attach the TossOrderGoal to Cobblemon Pokemon entities by injecting into Mob.registerGoals.
+ * Attach the TossOrderActivity (Brain-based) to Cobblemon Pokemon entities by injecting after Mob.registerGoals.
  */
 @Mixin(Mob.class)
 public abstract class MixinMob_TossGoals {
 
-    @Shadow protected GoalSelector goalSelector;
-
     @Inject(method = "registerGoals", at = @At("RETURN"))
-    private void shadowedhearts$addTossOrderGoal(CallbackInfo ci) {
+    private void shadowedhearts$installTossOrderActivity(CallbackInfo ci) {
         // Only attach to Cobblemon Pokémon
         if (((Object) this) instanceof PokemonEntity) {
             Mob self = (Mob) (Object) this;
-            this.goalSelector.addGoal(2, new com.jayemceekay.shadowedhearts.poketoss.ai.TossOrderGoal(self));
+            // Install our Brain-driven behavior into CORE activity
+            com.jayemceekay.shadowedhearts.poketoss.ai.TossOrderActivity.install(self);
         }
     }
 }

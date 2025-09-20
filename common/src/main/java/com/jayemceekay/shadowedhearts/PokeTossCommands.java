@@ -24,7 +24,23 @@ public final class PokeTossCommands {
     }
 
     public static int regroup(CommandContext<CommandSourceStack> ctx, @Nullable Entity explicitTarget) {
-        return applySimple(ctx, explicitTarget, TacticalOrder.regroup());
+        try {
+            ServerPlayer sp = ctx.getSource().getPlayerOrException();
+            ServerLevel level = sp.serverLevel();
+            LivingEntity target = resolveTarget(ctx.getSource(), explicitTarget);
+            if (target == null) {
+                sp.displayClientMessage(Component.literal("PokeTOSS: No valid Pokémon target in range."), false);
+                return 0;
+            }
+            // Regroup: order the Pokémon to move to the player's current position with a small radius
+            var pos = sp.blockPosition();
+            TacticalOrder order = TacticalOrder.moveTo(pos, 2.0f);
+            boolean ok = PokeToss.issueOrder(level, target, order, sp);
+            return ok ? 1 : 0;
+        } catch (Exception e) {
+            ctx.getSource().sendFailure(Component.literal("PokeTOSS: Command failed."));
+            return 0;
+        }
     }
 
     public static int clear(CommandContext<CommandSourceStack> ctx, Entity explicitTarget) {

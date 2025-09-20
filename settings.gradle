@@ -9,6 +9,14 @@ pluginManagement {
 
 rootProject.name = 'shadowedhearts'
 
-include 'common'
-include 'fabric'
-include 'neoforge'
+include ':common', ':fabric', ':neoforge'
+includeBuild('external/cobblemon') {
+    name = 'cobblemon-src'
+    dependencySubstitution {
+        // Map your external deps to the projects inside Cobblemon.
+        // Adjust module coordinates to match what you use.
+        substitute module('com.cobblemon:cobblemon-common') using project(':common')
+        substitute module('com.cobblemon:cobblemon-fabric') using project(':fabric')
+        substitute module('com.cobblemon:cobblemon-neoforge') using project(':neoforge')
+    }
+}
