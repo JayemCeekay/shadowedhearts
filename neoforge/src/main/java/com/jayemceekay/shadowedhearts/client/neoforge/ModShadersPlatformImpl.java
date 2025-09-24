@@ -16,7 +16,9 @@ public class ModShadersPlatformImpl {
     // Architectury expects a no-arg implementation to be present on NeoForge.
     public static void registerShaders() {
         // No-op on NeoForge; shaders are registered via the MOD event bus (see below).
+
     }
+
 
     @SubscribeEvent
     public static void registerShaders(RegisterShadersEvent evt) {
@@ -26,9 +28,6 @@ public class ModShadersPlatformImpl {
 
             evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:shadow_pool", DefaultVertexFormat.PARTICLE),
                     shader -> ModShaders.SHADOW_POOL = shader);
-
-            evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:apply_overlay_tint", DefaultVertexFormat.NEW_ENTITY),
-                    shader -> ModShaders.SHADOW_DARKEN_LAYER = shader);
 
             evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:whistle_ground_overlay", DefaultVertexFormat.PARTICLE),
                     shader -> ModShaders.WHISTLE_GROUND_OVERLAY = shader);

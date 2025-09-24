@@ -50,5 +50,10 @@ public final class Shadowedhearts {
             ModConfig.get().showdownPatched = true;
             ModConfig.save();
         }
+
+        // Debug banner for micro battle instrumentation
+        try {
+            com.jayemceekay.shadowedhearts.showdown.MicroDebug.log("ShadowedHearts debug build loaded: micro battle instrumentation enabled");
+        } catch (Throwable ignored) {}
     }
 }

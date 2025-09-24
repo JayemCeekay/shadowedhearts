@@ -6,13 +6,15 @@ package com.jayemceekay.shadowedhearts.poketoss;
  * Context: This is a Minecraft Cobblemon mod; all ‘orders’ are gameplay AI directives.
  */
 public enum TacticalOrderType {
+    CANCEL,
+
     // Positioning
     FOLLOW, // follow the commander/anchor
     HOLD_POSITION, // hold position
     MOVE_TO, // travel to the target position
 
     // Combat
-    ATTACK_TARGET, // focus attacks on the target entity (in-game combat)
+    ENGAGE_TARGET, // focus attacks on the target entity (in-game combat)
     GUARD_TARGET, // stay near and defend the anchor entity
     DISENGAGE, // cancel combat behaviors and clear current orders
 

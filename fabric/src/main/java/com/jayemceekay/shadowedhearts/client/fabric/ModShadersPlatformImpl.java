@@ -21,11 +21,6 @@ public final class ModShadersPlatformImpl {
                         program -> ModShaders.SHADOW_POOL = program
                 );
                 registrationContext.register(
-                        ResourceLocation.parse("shadowedhearts:apply_overlay_tint"),
-                        DefaultVertexFormat.NEW_ENTITY,
-                        program -> ModShaders.SHADOW_DARKEN_LAYER = program
-                );
-                registrationContext.register(
                         ResourceLocation.parse("shadowedhearts:whistle_ground_overlay"),
                         DefaultVertexFormat.PARTICLE,
                         program -> ModShaders.WHISTLE_GROUND_OVERLAY = program

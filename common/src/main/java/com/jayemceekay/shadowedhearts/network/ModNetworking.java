@@ -5,6 +5,8 @@ import com.jayemceekay.shadowedhearts.PokemonAspectUtil;
 import com.jayemceekay.shadowedhearts.client.aura.AuraEmitters;
 import com.jayemceekay.shadowedhearts.core.ModItems;
 import com.jayemceekay.shadowedhearts.network.payload.*;
+import com.jayemceekay.shadowedhearts.poketoss.PokeToss;
+import com.jayemceekay.shadowedhearts.poketoss.TacticalOrder;
 import com.jayemceekay.shadowedhearts.snag.SnagCaps;
 import com.jayemceekay.shadowedhearts.snag.SnagConfig;
 import dev.architectury.networking.NetworkManager;
@@ -100,7 +102,7 @@ public final class ModNetworking {
                         com.jayemceekay.shadowedhearts.poketoss.TacticalOrder order;
                         switch (pkt.orderType()) {
                             case GUARD_TARGET -> order = com.jayemceekay.shadowedhearts.poketoss.TacticalOrder.guard(targetLiving.getUUID(), 6.0f, true);
-                            case ATTACK_TARGET -> order = com.jayemceekay.shadowedhearts.poketoss.TacticalOrder.attack(targetLiving.getUUID());
+                            case ENGAGE_TARGET -> order = com.jayemceekay.shadowedhearts.poketoss.TacticalOrder.attack(targetLiving.getUUID());
                             default -> order = com.jayemceekay.shadowedhearts.poketoss.TacticalOrder.attack(targetLiving.getUUID());
                         }
                         boolean ok = com.jayemceekay.shadowedhearts.poketoss.PokeToss.issueOrder(level, allyLiving, order, sp);
@@ -124,7 +126,8 @@ public final class ModNetworking {
                 for (java.util.UUID selUuid : selection) {
                     Entity allyEnt = level.getEntity(selUuid);
                     if (allyEnt instanceof net.minecraft.world.entity.LivingEntity allyLiving) {
-                        com.jayemceekay.shadowedhearts.poketoss.PokeToss.clearOrder(allyLiving);
+                        TacticalOrder order = TacticalOrder.cancel();
+                        PokeToss.issueOrder(level, allyLiving, order, sp);
                         cleared++;
                     }
                 }

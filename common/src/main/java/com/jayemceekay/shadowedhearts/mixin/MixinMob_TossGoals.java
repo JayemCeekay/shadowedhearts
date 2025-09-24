@@ -1,6 +1,7 @@
 package com.jayemceekay.shadowedhearts.mixin;
 
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
+import com.jayemceekay.shadowedhearts.poketoss.ai.TossOrderActivity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.goal.GoalSelector;
 import org.spongepowered.asm.mixin.Mixin;
@@ -21,7 +22,7 @@ public abstract class MixinMob_TossGoals {
         if (((Object) this) instanceof PokemonEntity) {
             Mob self = (Mob) (Object) this;
             // Install our Brain-driven behavior into CORE activity
-            com.jayemceekay.shadowedhearts.poketoss.ai.TossOrderActivity.install(self);
+            //TossOrderActivity.install(self);
         }
     }
 }

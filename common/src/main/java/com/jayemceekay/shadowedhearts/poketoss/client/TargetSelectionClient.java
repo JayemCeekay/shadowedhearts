@@ -26,7 +26,7 @@ public final class TargetSelectionClient {
     public static final float HIL_B = 0.30f;
 
     private static boolean active = false;
-    private static TacticalOrderType pendingOrderType = TacticalOrderType.ATTACK_TARGET;
+    private static TacticalOrderType pendingOrderType = TacticalOrderType.ENGAGE_TARGET;
     private static int highlightedEntityId = -1;
     private static boolean wasUseDown = false;
 
@@ -39,7 +39,7 @@ public final class TargetSelectionClient {
     }
 
     /** Convenience: begin an Attack Target selection. */
-    public static void beginAttack() { begin(TacticalOrderType.ATTACK_TARGET); }
+    public static void beginEngagement() { begin(TacticalOrderType.ENGAGE_TARGET); }
 
     public static void cancel() {
         active = false;

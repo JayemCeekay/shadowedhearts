@@ -6,19 +6,25 @@
   "client": [
     "MixinBattleGeneralActionSelection",
     "MixinLivingEntityRenderer",
-    "RenderTargetAccessor",
     "MixinMouseHandler",
-    "MouseHandlerAccessor"
+    "MouseHandlerAccessor",
+    "RenderTargetAccessor"
   ],
   "mixins": [
+    "AccessorBrain",
+    "MixinAIBattleActor_OnChoiceRequested",
     "MixinBattleCaptureAction",
     "MixinBattleRegistry",
     "MixinEmptyPokeBallEntity",
+    "MixinMob_DoHurtTargetMicro",
+    "MixinMob_TossGoals",
     "MixinPokeBallItem",
     "MixinPokemon",
+    "MixinPokemonBrain",
     "MixinPokemonEntity",
-    "MixinMob_TossGoals",
+    "MixinRequestInstruction",
     "MixinShowdownInterpreter",
+    "MixinTurnInstruction",
     "MixinTypeIcon"
   ],
   "injectors": {

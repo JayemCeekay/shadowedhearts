@@ -51,6 +51,6 @@ public final class ShadowedheartsNeoForgeClient {
 
     @SubscribeEvent
     public static void onGuiRender(RenderGuiEvent.Post e) {
-        com.jayemceekay.shadowedhearts.poketoss.client.WhistleSelectionClient.onHudRender(e.getGuiGraphics(), 0f);
+        com.jayemceekay.shadowedhearts.poketoss.client.WhistleSelectionClient.onHudRender(e.getGuiGraphics(), e.getPartialTick().getGameTimeDeltaTicks());
     }
 }

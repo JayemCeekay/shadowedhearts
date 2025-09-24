@@ -46,11 +46,15 @@ public final class TacticalOrder {
     }
 
     public static TacticalOrder attack(UUID target) {
-        return new TacticalOrder(TacticalOrderType.ATTACK_TARGET, Optional.of(target), Optional.empty(), 0f, false, now());
+        return new TacticalOrder(TacticalOrderType.ENGAGE_TARGET, Optional.of(target), Optional.empty(), 0f, false, now());
     }
 
     public static TacticalOrder guard(UUID target, float radius, boolean persistent) {
         return new TacticalOrder(TacticalOrderType.GUARD_TARGET, Optional.of(target), Optional.empty(), radius, persistent, now());
+    }
+
+    public static TacticalOrder cancel() {
+        return new TacticalOrder(TacticalOrderType.CANCEL, Optional.empty(), Optional.empty(), 0f, false, now());
     }
 
     private static long now() { return Instant.now().getEpochSecond(); }

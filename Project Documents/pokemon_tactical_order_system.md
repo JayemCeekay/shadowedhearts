@@ -76,7 +76,7 @@ The Tactical Order and Stratagem System lets trainers issue **real-time commands
 
 ## ⚙️ Block & Item Mechanics
 
-### Pasture/Command Post Block
+### Command Post Block
 - **Placement**: Crafted or given by NPCs; placed in base.  
 - **Functions**:
   - Stores multiple Pokémon (like PC Box but physical).  

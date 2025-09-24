@@ -42,7 +42,7 @@ public final class AuraRenderTypes {
                         ? ModShaders.SHADOW_AURA_FOG
                         : GameRenderer.getParticleShader()))
                 .setTextureState(RenderStateShard.NO_TEXTURE)
-                .setTransparencyState(PREMULTIPLIED_TRANSPARENCY)
+                .setTransparencyState(RenderStateShard.TRANSLUCENT_TRANSPARENCY)
                 .setTexturingState(NO_ALPHA_TO_COVERAGE)
                 .setWriteMaskState(RenderStateShard.COLOR_WRITE)
                 .setDepthTestState(RenderStateShard.LEQUAL_DEPTH_TEST)
@@ -66,18 +66,6 @@ public final class AuraRenderTypes {
                 .setLayeringState(RenderStateShard.VIEW_OFFSET_Z_LAYERING)
                 .createCompositeState(true);
         return RenderType.create("shadowedhearts:shadow_pool", DefaultVertexFormat.PARTICLE, VertexFormat.Mode.QUADS, 256, false, true, state);
-    }
-
-    public static RenderType shadow_darken_layer(ResourceLocation texture) {
-        RenderType.CompositeState state = RenderType.CompositeState.builder()
-                .setShaderState(new RenderStateShard.ShaderStateShard(() -> ModShaders.SHADOW_DARKEN_LAYER != null ?
-                        ModShaders.SHADOW_DARKEN_LAYER : GameRenderer.getRendertypeEntitySolidShader()))
-                .setTransparencyState(RenderStateShard.NO_TRANSPARENCY)
-                .setTextureState(new RenderStateShard.TextureStateShard(texture, false, false))
-                .setLightmapState(RenderStateShard.LIGHTMAP)
-                .createCompositeState(true);
-        return RenderType.create("shadowedhearts:shadow_darken_layer", DefaultVertexFormat.NEW_ENTITY, VertexFormat.Mode.QUADS, 1536, true, false, state);
-
     }
 
     public static RenderType whistle_ground_overlay() {

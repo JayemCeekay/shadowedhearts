@@ -71,7 +71,6 @@ public final class WhistleSelectionClient {
     private static float utilTween = 0.0f; // 0..1
     private static boolean ctxSubOpen = false;
     private static float ctxTween = 0.0f; // 0..1
-    private static WheelAction pendingAction = WheelAction.NONE;
     // Debounce flag to prevent synthetic re-presses from toggling submenus back immediately
     private static boolean suppressUntilMouseUp = false;
 
@@ -96,17 +95,6 @@ public final class WhistleSelectionClient {
 
     private static final ParticleOptions GREEN_DUST = new DustParticleOptions(new Vector3f(0.6f, 1.0f, 0.6f), 1.25f);
 
-    private enum WheelAction {
-        NONE,
-        COMBAT_ATTACK,
-        COMBAT_GUARD,
-        POSITION_MOVE_TO,
-        POSITION_HOLD,
-        UTILITY_REGROUP_TO_ME,
-        CONTEXT_HOLD_AT_ME,
-        CANCEL_ALL
-    }
-
     public static void init() {
         // no common event bus here; platform-specific clients will call onTick() and onRender() from their hooks
     }
@@ -116,7 +104,7 @@ public final class WhistleSelectionClient {
         var mc = Minecraft.getInstance();
         if (mc == null || mc.level == null || mc.player == null) return;
         // Disable brush selection while in target-selection mode
-        if (com.jayemceekay.shadowedhearts.poketoss.client.TargetSelectionClient.isActive()) {
+        if (TargetSelectionClient.isActive()) {
             return;
         }
         active = true;
@@ -135,8 +123,12 @@ public final class WhistleSelectionClient {
         var mc = Minecraft.getInstance();
         if (mc == null) return;
 
-        // Wheel state handled by TossOrderWheel
-        com.jayemceekay.shadowedhearts.poketoss.client.TossOrderWheel.onTick();
+        // Wheel state handled by separated UIs
+        if (com.jayemceekay.shadowedhearts.config.ModConfig.get().tossOrderBarUI) {
+            TossOrderBarUI.onTick();
+        } else {
+            TossOrderRadialWheel.onTick();
+        }
 
         // Disable brush while targeting an order
         if (com.jayemceekay.shadowedhearts.poketoss.client.TargetSelectionClient.isActive()) {
@@ -201,6 +193,13 @@ public final class WhistleSelectionClient {
             sh.safeGetUniform("uSoftness").set(softness);
             sh.safeGetUniform("uBaseY").set((float) (hit.y + 0.02));
             sh.safeGetUniform("uFadeHeight").set(fadeHeight);
+            // Time for shader animations (seconds)
+            if (mc.level != null) {
+                float timeSec = (Minecraft.getInstance().level.getGameTime() - startTick)/20.0f;
+                sh.safeGetUniform("uTime").set(timeSec);
+            } else {
+                sh.safeGetUniform("uTime").set(0.0f);
+            }
         }
 
         // Build a small grid that conforms to terrain by raycasting above/below each vertex.
@@ -572,8 +571,12 @@ public final class WhistleSelectionClient {
 
     // === HUD (2D) overlay for the order wheel (tween menu) ===
     public static void onHudRender(net.minecraft.client.gui.GuiGraphics gfx, float partialTick) {
-        // Delegate to extracted wheel class
-        com.jayemceekay.shadowedhearts.poketoss.client.TossOrderWheel.onHudRender(gfx, partialTick);
+        // Delegate to separated UI classes
+        if (com.jayemceekay.shadowedhearts.config.ModConfig.get().tossOrderBarUI) {
+            TossOrderBarUI.onHudRender(gfx, partialTick);
+        } else {
+            TossOrderRadialWheel.onHudRender(gfx, partialTick);
+        }
     }
 
     public static boolean isHoldingWhistle() {
@@ -583,10 +586,10 @@ public final class WhistleSelectionClient {
         return p.getMainHandItem().is(ModItems.TRAINERS_WHISTLE.get()) || p.getOffhandItem().is(ModItems.TRAINERS_WHISTLE.get());
     }
 
-    public static boolean isWheelActive() { return com.jayemceekay.shadowedhearts.poketoss.client.TossOrderWheel.isActive(); }
+    public static boolean isWheelActive() { return com.jayemceekay.shadowedhearts.config.ModConfig.get().tossOrderBarUI ? TossOrderBarUI.isActive() : TossOrderRadialWheel.isActive(); }
 
     /** Manage wheel state each tick (delegated to TossOrderWheel). */
     private static void updateWheelMouseLock(Minecraft mc) {
-        com.jayemceekay.shadowedhearts.poketoss.client.TossOrderWheel.onTick();
+        //com.jayemceekay.shadowedhearts.poketoss.client.TossOrderWheel.onTick();
     }
 }

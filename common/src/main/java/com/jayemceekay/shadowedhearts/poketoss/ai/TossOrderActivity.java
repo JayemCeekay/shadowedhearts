@@ -1,7 +1,10 @@
 package com.jayemceekay.shadowedhearts.poketoss.ai;
 
+import com.cobblemon.mod.common.CobblemonActivities;
 import com.cobblemon.mod.common.CobblemonMemories;
 import com.cobblemon.mod.common.api.ai.CobblemonAttackTargetData;
+import com.cobblemon.mod.common.entity.ai.SwapActivityTask;
+import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
 import com.jayemceekay.shadowedhearts.poketoss.PokeToss;
 import com.jayemceekay.shadowedhearts.poketoss.TacticalOrder;
 import com.jayemceekay.shadowedhearts.poketoss.TacticalOrderType;
@@ -11,8 +14,10 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.Brain;
 import net.minecraft.world.entity.ai.behavior.Behavior;
+import net.minecraft.world.entity.ai.behavior.BehaviorControl;
 import net.minecraft.world.entity.ai.behavior.BehaviorUtils;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
+import net.minecraft.world.entity.ai.memory.WalkTarget;
 import net.minecraft.world.entity.schedule.Activity;
 import com.mojang.datafixers.util.Pair;
 import com.google.common.collect.ImmutableList;
@@ -37,8 +42,39 @@ public final class TossOrderActivity {
     @SuppressWarnings({"rawtypes", "unchecked"})
     public static void install(Mob mob) {
         Brain brain = mob.getBrain();
-        // Add our behavior at high priority inside CORE. This keeps it simple and always available.
-        brain.addActivity(Activity.CORE, ImmutableList.of(Pair.of(0, new TossOrderTask())));
+        // Merge our behavior into the existing CORE activity list without wiping Cobblemon's defaults.
+        @SuppressWarnings("unchecked")
+        var accessor = (com.jayemceekay.shadowedhearts.mixin.AccessorBrain<Mob>) (Object) brain;
+        var map = accessor.shadowedhearts$getAvailableBehaviorsByPriority();
+        java.util.List<Pair<Integer, net.minecraft.world.entity.ai.behavior.BehaviorControl<? super Mob>>> existing = java.util.List.of();
+        // Avoid TreeMap.get on Activity keys (Activity is not Comparable). Iterate to find CORE safely.
+        for (var entry : map.entrySet()) {
+            if (entry.getKey() == Activity.CORE) {
+                existing = entry.getValue();
+                break;
+            }
+        }
+        // Idempotency: if our TossOrderTask is already the first CORE behavior, do nothing.
+        if (!existing.isEmpty() && existing.get(0).getSecond() instanceof TossOrderTask) {
+            return;
+        }
+        java.util.ArrayList<Pair<Integer, net.minecraft.world.entity.ai.behavior.BehaviorControl<? super Mob>>> merged = new java.util.ArrayList<>(existing.size() + 1);
+        // Prepend our task with priority 0 so orders take precedence.
+        for(Pair<?, ?> behavior: existing) {
+            System.out.println(behavior.getSecond().toString());
+        }
+        merged.add(Pair.of(0, new TossOrderTask()));
+        // Then keep everything Cobblemon already configured.
+        merged.add(Pair.of(0, SwapActivityTask.INSTANCE.possessing(
+                MemoryModuleType.ATTACK_TARGET,
+                Activity.FIGHT
+        )));
+        for (var p : existing) {
+            @SuppressWarnings("unchecked")
+            Pair<Integer, net.minecraft.world.entity.ai.behavior.BehaviorControl<? super Mob>> cast = (Pair<Integer, net.minecraft.world.entity.ai.behavior.BehaviorControl<? super Mob>>) (Pair<?, ?>) p;
+            merged.add(cast);
+        }
+        brain.addActivity(Activity.CORE, ImmutableList.copyOf(merged));
     }
 
     /**
@@ -57,12 +93,16 @@ public final class TossOrderActivity {
         @Override
         protected boolean canStillUse(ServerLevel level, Mob mob, long gameTime) {
             TacticalOrder order = PokeToss.getOrder(mob);
-            if (order == null) return false;
+            if (order == null) {
+                return false;
+            }
+
             return switch (order.type) {
-                case ATTACK_TARGET -> resolveAttackTarget(level, mob, order) != null;
+                case ENGAGE_TARGET -> resolveAttackTarget(level, mob, order) != null;
                 case GUARD_TARGET -> resolveGuardTarget(level, mob, order) != null;
                 case MOVE_TO, HOLD_POSITION -> order.targetPos.isPresent();
-                default -> false;
+                case DISENGAGE -> true; // allow one tick to cleanup and yield back to Cobblemon
+                default -> true; // unknown orders: run once to clean up and yield
             };
         }
 
@@ -87,23 +127,32 @@ public final class TossOrderActivity {
             TacticalOrder order = PokeToss.getOrder(mob);
             if (order == null) return;
 
-            // Keep PokemonBrain in a coherent state by clearing conflicting memories first
-            Brain<?> brain = mob.getBrain();
-            if (order.type == TacticalOrderType.ATTACK_TARGET) {
-                brain.eraseMemory(MemoryModuleType.WALK_TARGET);
-            } else {
-                brain.eraseMemory(MemoryModuleType.ATTACK_TARGET);
-                // Also clear Cobblemon's extra attack metadata when no longer attacking
-                brain.eraseMemory(CobblemonMemories.INSTANCE.getATTACK_TARGET_DATA());
-            }
-
             switch (order.type) {
-                case ATTACK_TARGET -> tickAttack(level, mob, order);
+                case ENGAGE_TARGET -> tickAttack(level, mob, order);
                 case GUARD_TARGET -> tickGuard(level, mob, order);
                 case MOVE_TO -> tickMoveTo(mob, order);
                 case HOLD_POSITION -> tickHold(mob, order);
+                case DISENGAGE -> {
+                    // Clear our steering memories and yield to stock Cobblemon AI
+                    Brain<?> brain = mob.getBrain();
+                    brain.eraseMemory(MemoryModuleType.WALK_TARGET);
+                    brain.eraseMemory(MemoryModuleType.ATTACK_TARGET);
+                    brain.eraseMemory(MemoryModuleType.LOOK_TARGET);
+                    brain.eraseMemory(CobblemonMemories.INSTANCE.getATTACK_TARGET_DATA());
+                    mob.getNavigation().stop();
+                    // Clear the order so CORE controller stops running next tick
+                    com.jayemceekay.shadowedhearts.poketoss.PokeToss.clearOrder(mob);
+                }
                 default -> {
-                    // not implemented
+                    // Unknown/neutral order: perform same cleanup and yield back to Cobblemon;
+                   /* System.out.println("Unknown order: " + order.type);
+                    Brain<?> brain = mob.getBrain();
+                    brain.eraseMemory(MemoryModuleType.WALK_TARGET);
+                    brain.eraseMemory(MemoryModuleType.ATTACK_TARGET);
+                    brain.eraseMemory(MemoryModuleType.LOOK_TARGET);
+                    brain.eraseMemory(CobblemonMemories.INSTANCE.getATTACK_TARGET_DATA());
+                    mob.getNavigation().stop();
+                    com.jayemceekay.shadowedhearts.poketoss.PokeToss.clearOrder(mob);*/
                 }
             }
         }
@@ -119,8 +168,6 @@ public final class TossOrderActivity {
             brain.setMemory(MemoryModuleType.ATTACK_TARGET, target);
             // Provide Cobblemon-specific context for the fight tasks
             brain.setMemory(CobblemonMemories.INSTANCE.getATTACK_TARGET_DATA(), new CobblemonAttackTargetData());
-            brain.setActiveActivityIfPossible(Activity.FIGHT);
-            System.out.println("TICKING ATTACK");
         }
 
         private void tickGuard(ServerLevel level, Mob mob, TacticalOrder order) {
@@ -135,7 +182,7 @@ public final class TossOrderActivity {
         }
 
         private void tickMoveTo(Mob mob, TacticalOrder order) {
-            order.targetPos.ifPresent(pos -> BehaviorUtils.setWalkAndLookTargetMemories(mob, pos, 1.15f, 1));
+            order.targetPos.ifPresent(pos -> mob.getBrain().setMemory(MemoryModuleType.WALK_TARGET, new WalkTarget(pos, mob.getSpeed(), 1)));
         }
 
         private void tickHold(Mob mob, TacticalOrder order) {

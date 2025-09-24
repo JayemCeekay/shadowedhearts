@@ -3,23 +3,23 @@ package com.jayemceekay.shadowedhearts.poketoss.client;
 import com.jayemceekay.shadowedhearts.client.ModKeybinds;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.network.chat.Component;
 
 /**
- * Extracted tactical order tween menu (radial wheel) logic.
- * Handles wheel state, input, rendering, and dispatching actions.
+ * Radial (tween) Toss Order wheel separated from the bottom-bar UI.
+ * Uses TossOrderCommon for labels and action dispatch.
  */
-public final class TossOrderWheel {
-    private TossOrderWheel() {}
+public final class TossOrderRadialWheel {
+    private TossOrderRadialWheel() {}
 
     // Wheel state
     private static boolean wheelActive = false;
     private static boolean prevWheelActive = false;
     private static boolean wasLeftDown = false;
+    private static boolean wasRightDown = false;
     private static boolean suppressUntilMouseUp = false;
 
-    // Submenus and tweens
+    // Submenus and tweens (radial wheel)
     private static boolean combatSubOpen = false;
     private static float combatTween = 0.0f;
     private static boolean posSubOpen = false;
@@ -29,18 +29,19 @@ public final class TossOrderWheel {
     private static boolean ctxSubOpen = false;
     private static float ctxTween = 0.0f;
 
-    // Scrollable submenu model
-    private static final String[] COMBAT_LABELS = new String[] { "Attack", "Guard", "Disengage" };
+    // Scrollable submenu model (radial wheel)
     private static int combatIndex = 0;
-
-    private static final String[] POSITION_LABELS = new String[] { "Move To", "Hold Position" };
     private static int posIndex = 0;
-
-    private static final String[] UTILITY_LABELS = new String[] { "Regroup to Me" };
     private static int utilIndex = 0;
-
-    private static final String[] CONTEXT_LABELS = new String[] { "Hold At Me" };
     private static int ctxIndex = 0;
+
+    // Radial wheel scroll accumulation (convert wheel delta to discrete steps per frame)
+    private static double radialScrollAccum = 0.0;
+    private static int radialScrollSteps = 0;
+
+    private static TossOrderCommon.WheelAction pendingAction = TossOrderCommon.WheelAction.NONE;
+
+    public static boolean isActive() { return wheelActive; }
 
     private static int wrap(int idx, int size) {
         if (size <= 0) return 0;
@@ -48,22 +49,18 @@ public final class TossOrderWheel {
         return m < 0 ? m + size : m;
     }
 
-    private enum WheelAction {
-        NONE,
-        COMBAT_ATTACK,
-        COMBAT_GUARD,
-        POSITION_MOVE_TO,
-        POSITION_HOLD,
-        UTILITY_REGROUP_TO_ME,
-        CONTEXT_HOLD_AT_ME,
-        CANCEL_ALL
+    // Accumulate scroll for radial submenus
+    public static void onScrollDelta(double vertical) {
+        if (!wheelActive) return;
+        radialScrollAccum += vertical;
+        int s = (int) radialScrollAccum;
+        if (s != 0) {
+            radialScrollSteps += s;
+            radialScrollAccum -= s;
+        }
     }
 
-    private static WheelAction pendingAction = WheelAction.NONE;
-
-    public static boolean isActive() { return wheelActive; }
-
-    /** Tick/update: handle key toggling, close/open, recenter mouse, and dispatch pending actions on close. */
+    /** Tick/update: handle key toggling, recenter mouse, close/open, and dispatch pending actions on close. */
     public static void onTick() {
         Minecraft mc = Minecraft.getInstance();
         if (mc == null) return;
@@ -74,7 +71,8 @@ public final class TossOrderWheel {
             if (WhistleSelectionClient.isHoldingWhistle()) {
                 wheelActive = !wheelActive;
                 if (wheelActive) {
-                    // Recenter cursor to the middle of the window
+                    // Recenter cursor and reset scroll
+                    radialScrollAccum = 0.0; radialScrollSteps = 0;
                     try {
                         int winW = mc.getWindow().getWidth();
                         int winH = mc.getWindow().getHeight();
@@ -102,35 +100,27 @@ public final class TossOrderWheel {
 
         // When the wheel closes, execute any pending action and reset submenu state
         if (!wheelActive && prevWheelActive) {
-            if (pendingAction != WheelAction.NONE) {
-                switch (pendingAction) {
-                    case COMBAT_ATTACK -> TargetSelectionClient.beginAttack();
-                    case COMBAT_GUARD -> TargetSelectionClient.begin(com.jayemceekay.shadowedhearts.poketoss.TacticalOrderType.GUARD_TARGET);
-                    case POSITION_MOVE_TO -> PositionSelectionClient.begin(com.jayemceekay.shadowedhearts.poketoss.TacticalOrderType.MOVE_TO);
-                    case POSITION_HOLD -> PositionSelectionClient.begin(com.jayemceekay.shadowedhearts.poketoss.TacticalOrderType.HOLD_POSITION);
-                    case UTILITY_REGROUP_TO_ME -> WhistleSelectionClient.sendPosOrderAtPlayer(com.jayemceekay.shadowedhearts.poketoss.TacticalOrderType.MOVE_TO, 2.0f, false);
-                    case CONTEXT_HOLD_AT_ME -> WhistleSelectionClient.sendPosOrderAtPlayer(com.jayemceekay.shadowedhearts.poketoss.TacticalOrderType.HOLD_POSITION, 2.5f, true);
-                    case CANCEL_ALL -> WhistleSelectionClient.sendCancelOrdersToServer();
-                    default -> {}
-                }
-                pendingAction = WheelAction.NONE;
+            if (pendingAction != TossOrderCommon.WheelAction.NONE) {
+                TossOrderCommon.dispatch(pendingAction);
+                pendingAction = TossOrderCommon.WheelAction.NONE;
             }
             // Reset submenus/tweens
             combatSubOpen = false; combatTween = 0f;
             posSubOpen = false; posTween = 0f;
             utilSubOpen = false; utilTween = 0f;
             ctxSubOpen = false; ctxTween = 0f;
+            radialScrollAccum = 0.0; radialScrollSteps = 0;
             suppressUntilMouseUp = false;
         }
         prevWheelActive = wheelActive;
     }
 
-    /** 2D HUD overlay rendering and interaction for the wheel. */
+    /** 2D HUD overlay rendering and interaction for the radial wheel. */
     public static void onHudRender(GuiGraphics gfx, float partialTick) {
-        if (!wheelActive) { wasLeftDown = false; return; }
+        if (!wheelActive) { wasLeftDown = false; wasRightDown = false; return; }
         Minecraft mc = Minecraft.getInstance();
-        if (mc == null || mc.player == null) { wasLeftDown = false; return; }
-        if (mc.screen != null) { wasLeftDown = false; return; }
+        if (mc == null || mc.player == null) { wasLeftDown = false; wasRightDown = false; return; }
+        if (mc.screen != null) { wasLeftDown = false; wasRightDown = false; return; }
 
         int w = mc.getWindow().getGuiScaledWidth();
         int h = mc.getWindow().getGuiScaledHeight();
@@ -168,7 +158,9 @@ public final class TossOrderWheel {
         boolean hovTop = mouseX >= topX0 && mouseX <= topX1 && mouseY >= topY0 && mouseY <= topY1;
         boolean hovLeft = mouseX >= leftX0 && mouseX <= leftX1 && mouseY >= leftY0 && mouseY <= leftY1;
         boolean hovRight = mouseX >= rightX0 && mouseX <= rightX1 && mouseY >= rightY0 && mouseY <= rightY1;
-        boolean hovBottom = mouseX >= bottomX0 && mouseX <= bottomX1 && mouseY >= bottomY0 && mouseY <= bottomY1;
+        boolean hovBottom = mouseX >= bottomX0 && mouseX <= bottomY0 && mouseY >= bottomY0 && mouseY <= bottomY1;
+        // Note: above line had a bug in original; ensure bottom uses bottomY0 and bottomY1 properly
+        hovBottom = mouseX >= bottomX0 && mouseX <= bottomX1 && mouseY >= bottomY0 && mouseY <= bottomY1;
 
         int base = 0xAA1E1E1E;
         int hi = 0xFFC8FFC8; // light green highlight
@@ -186,7 +178,7 @@ public final class TossOrderWheel {
         var tCombat = Component.literal("Combat");
         var tPos = Component.literal("Position");
         var tUtil = Component.literal("Utility");
-        var tCtx = Component.literal("Context");
+        var tCtx = Component.literal("Gathering");
         gfx.drawString(font, tCancel, cx - font.width(tCancel) / 2, cy - 4, white, false);
         gfx.drawString(font, tCombat, cx - font.width(tCombat) / 2, topY0 + 12, white, false);
         gfx.drawString(font, tPos, leftX0 + catW / 2 - font.width(tPos) / 2, leftY0 + 12, white, false);
@@ -212,18 +204,11 @@ public final class TossOrderWheel {
         int subY = topY0 - gap - subH;
         int firstX = cx - (subW * subCount + spacing * (subCount - 1)) / 2;
 
-        WheelAction hoveredAction = WheelAction.NONE;
+        TossOrderCommon.WheelAction hoveredAction = TossOrderCommon.WheelAction.NONE;
 
-        // Consume mouse wheel for scrolling within the hovered/open submenu
-        int wheelSteps = 0;
-        try {
-            double ay = ((com.jayemceekay.shadowedhearts.mixin.MouseHandlerAccessor)(Object)mc.mouseHandler).shadowedhearts$getAccumulatedScrollY();
-            int s = (int) ay;
-            if (s != 0) {
-                wheelSteps = s;
-                ((com.jayemceekay.shadowedhearts.mixin.MouseHandlerAccessor)(Object)mc.mouseHandler).shadowedhearts$setAccumulatedScrollY(ay - s);
-            }
-        } catch (Throwable ignored) {}
+        // Consume wheel steps accumulated via onScrollDelta() for radial submenus
+        int wheelSteps = radialScrollSteps;
+        radialScrollSteps = 0;
 
         // Combat submenu (horizontal with wrap-around)
         int combatAreaX0 = firstX;
@@ -232,20 +217,20 @@ public final class TossOrderWheel {
         int combatAreaY1 = subY + subH;
         if (combatTween > 0.05f) {
             if (wheelSteps != 0 && combatSubOpen && mouseX >= combatAreaX0 && mouseX <= combatAreaX1 && mouseY >= combatAreaY0 && mouseY <= combatAreaY1) {
-                combatIndex = wrap(combatIndex - wheelSteps, COMBAT_LABELS.length);
+                combatIndex = wrap(combatIndex - wheelSteps, TossOrderCommon.COMBAT_LABELS.length);
             }
             int x = firstX;
             for (int i = 0; i < subCount; i++) {
-                int idx = wrap(combatIndex + i, COMBAT_LABELS.length);
+                int idx = wrap(combatIndex + i, TossOrderCommon.COMBAT_LABELS.length);
                 int rX0 = x, rY0 = subY, rX1 = x + subW, rY1 = subY + subH; x += subW + spacing;
                 boolean hov = mouseX >= rX0 && mouseX <= rX1 && mouseY >= rY0 && mouseY <= rY1;
                 gfx.fill(rX0, rY0, rX1, rY1, hov ? 0xFF66AAFF : 0xFF2A2A2A);
-                String label = COMBAT_LABELS[idx];
+                String label = TossOrderCommon.COMBAT_LABELS[idx];
                 gfx.drawCenteredString(font, Component.literal(label), (rX0 + rX1) / 2, rY0 + 10, white);
                 if (hov) {
-                    if ("Attack".equals(label)) hoveredAction = WheelAction.COMBAT_ATTACK;
-                    else if ("Guard".equals(label)) hoveredAction = WheelAction.COMBAT_GUARD;
-                    else hoveredAction = WheelAction.NONE; // Disengage not wired yet
+                    if ("Attack Target".equals(label)) hoveredAction = TossOrderCommon.WheelAction.COMBAT_ENGAGE;
+                    else if ("Guard Target".equals(label)) hoveredAction = TossOrderCommon.WheelAction.COMBAT_GUARD;
+                    else hoveredAction = TossOrderCommon.WheelAction.NONE; // Disengage not wired yet
                 }
             }
         }
@@ -274,25 +259,25 @@ public final class TossOrderWheel {
             int pY1b = pY0b + pSubH;
 
             if (wheelSteps != 0 && posSubOpen && mouseX >= pX0 && mouseX <= pX1 && mouseY >= Math.min(pY0a, pY0b) && mouseY <= Math.max(pY1a, pY1b)) {
-                posIndex = wrap(posIndex - wheelSteps, POSITION_LABELS.length);
+                posIndex = wrap(posIndex - wheelSteps, TossOrderCommon.POSITION_LABELS.length);
             }
 
-            int idxA = wrap(posIndex, POSITION_LABELS.length);
+            int idxA = wrap(posIndex, TossOrderCommon.POSITION_LABELS.length);
             boolean hovA = mouseX >= pX0 && mouseX <= pX1 && mouseY >= pY0a && mouseY <= pY1a;
             gfx.fill(pX0, pY0a, pX1, pY1a, hovA ? 0xFF66AAFF : 0xFF2A2A2A);
-            gfx.drawCenteredString(font, Component.literal(POSITION_LABELS[idxA]), (pX0 + pX1) / 2, pY0a + 8, white);
+            gfx.drawCenteredString(font, Component.literal(TossOrderCommon.POSITION_LABELS[idxA]), (pX0 + pX1) / 2, pY0a + 8, white);
             if (hovA) {
-                if ("Move To".equals(POSITION_LABELS[idxA])) hoveredAction = WheelAction.POSITION_MOVE_TO;
-                else if ("Hold Position".equals(POSITION_LABELS[idxA])) hoveredAction = WheelAction.POSITION_HOLD;
+                if ("Move To".equals(TossOrderCommon.POSITION_LABELS[idxA])) hoveredAction = TossOrderCommon.WheelAction.POSITION_MOVE_TO;
+                else if ("Hold Position".equals(TossOrderCommon.POSITION_LABELS[idxA])) hoveredAction = TossOrderCommon.WheelAction.POSITION_HOLD;
             }
 
-            int idxB = wrap(posIndex + 1, POSITION_LABELS.length);
+            int idxB = wrap(posIndex + 1, TossOrderCommon.POSITION_LABELS.length);
             boolean hovB = mouseX >= pX0 && mouseX <= pX1 && mouseY >= pY0b && mouseY <= pY1b;
             gfx.fill(pX0, pY0b, pX1, pY1b, hovB ? 0xFF66AAFF : 0xFF2A2A2A);
-            gfx.drawCenteredString(font, Component.literal(POSITION_LABELS[idxB]), (pX0 + pX1) / 2, pY0b + 8, white);
+            gfx.drawCenteredString(font, Component.literal(TossOrderCommon.POSITION_LABELS[idxB]), (pX0 + pX1) / 2, pY0b + 8, white);
             if (hovB) {
-                if ("Move To".equals(POSITION_LABELS[idxB])) hoveredAction = WheelAction.POSITION_MOVE_TO;
-                else if ("Hold Position".equals(POSITION_LABELS[idxB])) hoveredAction = WheelAction.POSITION_HOLD;
+                if ("Move To".equals(TossOrderCommon.POSITION_LABELS[idxB])) hoveredAction = TossOrderCommon.WheelAction.POSITION_MOVE_TO;
+                else if ("Hold Position".equals(TossOrderCommon.POSITION_LABELS[idxB])) hoveredAction = TossOrderCommon.WheelAction.POSITION_HOLD;
             }
         }
 
@@ -314,14 +299,14 @@ public final class TossOrderWheel {
             int uY1 = uY0 + uSubH;
 
             if (wheelSteps != 0 && utilSubOpen && mouseX >= uX0 && mouseX <= uX1 && mouseY >= uY0 && mouseY <= uY1) {
-                utilIndex = wrap(utilIndex - wheelSteps, UTILITY_LABELS.length);
+                utilIndex = wrap(utilIndex - wheelSteps, TossOrderCommon.UTILITY_LABELS.length);
             }
 
             boolean hov = mouseX >= uX0 && mouseX <= uX1 && mouseY >= uY0 && mouseY <= uY1;
             gfx.fill(uX0, uY0, uX1, uY1, hov ? 0xFF66AAFF : 0xFF2A2A2A);
-            String label = UTILITY_LABELS[wrap(utilIndex, UTILITY_LABELS.length)];
+            String label = TossOrderCommon.UTILITY_LABELS[wrap(utilIndex, TossOrderCommon.UTILITY_LABELS.length)];
             gfx.drawCenteredString(font, Component.literal(label), (uX0 + uX1) / 2, uY0 + 8, white);
-            if (hov && "Regroup to Me".equals(label)) hoveredAction = WheelAction.UTILITY_REGROUP_TO_ME;
+            if (hov && "Regroup to Me".equals(label)) hoveredAction = TossOrderCommon.WheelAction.UTILITY_REGROUP_TO_ME;
         }
 
         // Context submenu (bottom)
@@ -342,14 +327,14 @@ public final class TossOrderWheel {
             int ctxY1 = ctxY0 + cSubH;
 
             if (wheelSteps != 0 && ctxSubOpen && mouseX >= ctxX0 && mouseX <= ctxX1 && mouseY >= ctxY0 && mouseY <= ctxY1) {
-                ctxIndex = wrap(ctxIndex - wheelSteps, CONTEXT_LABELS.length);
+                ctxIndex = wrap(ctxIndex - wheelSteps, TossOrderCommon.GATHERING_LABELS.length);
             }
 
             boolean hov = mouseX >= ctxX0 && mouseX <= ctxX1 && mouseY >= ctxY0 && mouseY <= ctxY1;
             gfx.fill(ctxX0, ctxY0, ctxX1, ctxY1, hov ? 0xFF66AAFF : 0xFF2A2A2A);
-            String label = CONTEXT_LABELS[wrap(ctxIndex, CONTEXT_LABELS.length)];
+            String label = TossOrderCommon.GATHERING_LABELS[wrap(ctxIndex, TossOrderCommon.GATHERING_LABELS.length)];
             gfx.drawCenteredString(font, Component.literal(label), (ctxX0 + ctxX1) / 2, ctxY0 + 8, white);
-            if (hov && "Hold At Me".equals(label)) hoveredAction = WheelAction.CONTEXT_HOLD_AT_ME;
+            if (hov && "Hold At Me".equals(label)) hoveredAction = TossOrderCommon.WheelAction.CONTEXT_HOLD_AT_ME;
         }
 
         // Simple custom cursor
@@ -386,7 +371,7 @@ public final class TossOrderWheel {
             if (!leftDown) suppressUntilMouseUp = false;
         } else if (leftDown && !wasLeftDown) {
             boolean submenuReady = (combatSubOpen && combatTween > 0.8f) || (posSubOpen && posTween > 0.8f) || (utilSubOpen && utilTween > 0.8f) || (ctxSubOpen && ctxTween > 0.8f);
-            if (submenuReady && hoveredAction != WheelAction.NONE) {
+            if (submenuReady && hoveredAction != TossOrderCommon.WheelAction.NONE) {
                 pendingAction = hoveredAction;
                 suppressUntilMouseUp = true;
                 wheelActive = false;
@@ -427,7 +412,7 @@ public final class TossOrderWheel {
                     if (ctxSubOpen) ctxTween = Math.max(ctxTween, 0.2f);
                 }
             } else if (hovCenter) {
-                pendingAction = WheelAction.CANCEL_ALL;
+                pendingAction = TossOrderCommon.WheelAction.CANCEL_ALL;
                 suppressUntilMouseUp = true;
                 wheelActive = false;
             }

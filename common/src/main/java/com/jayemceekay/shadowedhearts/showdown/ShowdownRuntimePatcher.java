@@ -37,6 +37,16 @@ public final class ShowdownRuntimePatcher {
             } catch (Exception e) {
                 log("Failed to patch teams.js at " + showdown + ": " + e.getMessage());
             }
+            try {
+                patchCustomFormats(showdown.resolve("config").resolve("custom-formats.js"));
+            } catch (Exception e) {
+                log("Failed to patch custom-formats.js at " + showdown + ": " + e.getMessage());
+            }
+            try {
+                patchMicroScripts(showdown.resolve("data").resolve("mods").resolve("micro").resolve("scripts.js"));
+            } catch (Exception e) {
+                log("Failed to patch micro scripts.js at " + showdown + ": " + e.getMessage());
+            }
         }
     }
 
@@ -431,6 +441,119 @@ public final class ShowdownRuntimePatcher {
         String patched = content.substring(0, packStart) + newBlock + content.substring(afterUnpack);
         Files.writeString(teamsPath, patched, StandardCharsets.UTF_8);
         log("Patched pack/unpack in teams.js: " + teamsPath);
+    }
+
+    private static void patchCustomFormats(Path customFormatsPath) throws IOException {
+        // Ensure the file exists; if not, scaffold a minimal formats file
+        if (!Files.isRegularFile(customFormatsPath)) {
+            try {
+                Files.createDirectories(customFormatsPath.getParent());
+            } catch (IOException ignored) {}
+            String scaffold = "exports.Formats = [\n];\n";
+            Files.writeString(customFormatsPath, scaffold, StandardCharsets.UTF_8);
+        }
+
+        String content = Files.readString(customFormatsPath, StandardCharsets.UTF_8);
+
+        // Idempotence check
+        if (content.contains("name: \"[Gen 9] Micro\"") || content.contains("name: '[Gen 9] Micro'")) {
+            log("custom-formats.js already contains [Gen 9] Micro: " + customFormatsPath);
+            return;
+        }
+
+        final String microBlock =
+                "\n" +
+                "{\n" +
+                "    section: \"Shadowed Hearts\",\n" +
+                "},\n" +
+                "{\n" +
+                "    name: \"[Gen 9] Micro\",\n" +
+                "    desc: \"Internal one-action micro battle for overworld interactions; not for human play.\",\n" +
+                "    mod: 'micro',\n" +
+                "    gameType: 'singles',\n" +
+                "    searchShow: false,\n" +
+                "    challengeShow: false,\n" +
+                "    tournamentShow: false,\n" +
+                "    rated: false,\n" +
+                "    ruleset: [\n" +
+                "        'Obtainable', 'Species Clause', 'HP Percentage Mod', 'Cancel Mod', 'Illusion Level Mod', 'Endless Battle Clause',\n" +
+                "        'Picked Team Size = 1', 'Max Team Size = 1', 'Min Team Size = 1',\n" +
+                "    ],\n" +
+                "    banlist: [\n" +
+                "        // Hazards and delayed-turn moves\n" +
+                "        'Stealth Rock', 'Spikes', 'Toxic Spikes', 'Sticky Web',\n" +
+                "        'Future Sight', 'Doom Desire', 'Perish Song',\n" +
+                "        // Pivots and passers (avoid switch flow)\n" +
+                "        'Baton Pass', 'Parting Shot',\n" +
+                "        // Two-turn/charge/invuln moves\n" +
+                "        'Sky Drop', 'Dive', 'Dig', 'Bounce', 'Fly', 'Phantom Force', 'Shadow Force', 'Solar Beam', 'Solar Blade', 'Skull Bash', 'Freeze Shock', 'Ice Burn', 'Razor Wind', 'Geomancy',\n" +
+                "    ],\n" +
+                "    onBegin() {\n" +
+                "        // State should be injected by the micro-battle runner; nothing to do here.\n" +
+                "    },\n" +
+                "    onResidual() {\n" +
+                "        // Prevent format-level residual effects; core statuses/weather may still apply if present.\n" +
+                "    },\n" +
+                "},\n";
+
+        int endIndex = content.lastIndexOf("];");
+        String patched;
+        if (endIndex >= 0) {
+            patched = content.substring(0, endIndex) + microBlock + content.substring(endIndex);
+        } else {
+            // No obvious array terminator; reconstruct a minimal formats file
+            patched = "exports.Formats = [\n" + microBlock + "];\n";
+        }
+
+        Files.writeString(customFormatsPath, patched, StandardCharsets.UTF_8);
+        log("Inserted [Gen 9] Micro into custom-formats.js: " + customFormatsPath);
+    }
+
+    private static void patchMicroScripts(Path scriptsPath) throws IOException {
+        // Ensure the directory exists and create or update the micro mod scripts
+        String marker1 = "tiebreak()";
+        String marker2 = "addSideCondition(";
+        if (Files.isRegularFile(scriptsPath)) {
+            String existing = Files.readString(scriptsPath, StandardCharsets.UTF_8);
+            if (existing.contains("exports.Scripts") && existing.contains(marker1) && existing.contains(marker2)) {
+                log("micro/scripts.js already present: " + scriptsPath);
+                return;
+            }
+        } else {
+            try { Files.createDirectories(scriptsPath.getParent()); } catch (IOException ignored) {}
+        }
+
+        String js = "exports.Scripts = {\n" +
+                "\tgen: 9,\n" +
+                "\tinherit: 'gen9',\n\n" +
+                "\t// Keep battles as quiet/minimal as possible; logs are handled by the runner.\n" +
+                "\tbattle: {\n" +
+                "\t\t// Suppress tiebreaks and other special-casing – micro battles should never reach them\n" +
+                "\t\ttiebreak() {\n" +
+                "\t\t\t// no-op\n" +
+                "\t\t},\n" +
+                "\t},\n\n" +
+                "\tside: {\n" +
+                "\t\t// Block adding common hazard/side condition effects; return false to indicate failure\n" +
+                "\t\taddSideCondition(status, source = null, sourceEffect = null) {\n" +
+                "\t\t\t// Fallback to parent implementation for non-hazard conditions\n" +
+                "\t\t\tconst hazards = [\n" +
+                "\t\t\t\t'stealthrock', 'spikes', 'toxicspikes', 'stickyweb',\n" +
+                "\t\t\t\t// G-Max residual hazards\n" +
+                "\t\t\t\t'gmaxsteelsurge', 'gmaxcannonade', 'gmaxvinelash', 'gmaxvolcalith', 'gmaxwildfire',\n" +
+                "\t\t\t];\n" +
+                "\t\t\tconst id = this.battle.toID((status && status.id) || status);\n" +
+                "\t\t\tif (hazards.includes(id)) return false;\n" +
+                "\t\t\treturn this.__proto__.addSideCondition.call(this, status, source, sourceEffect);\n" +
+                "\t\t},\n" +
+                "\t},\n\n" +
+                "\t// Disable global residual tick if possible by preventing the format residual from doing anything.\n" +
+                "\t// Many residual effects (weather/status) still occur via their own hooks; for micro, the\n" +
+                "\t// controlling format will opt not to include residual turns.\n" +
+                "};\n";
+
+        Files.writeString(scriptsPath, js, StandardCharsets.UTF_8);
+        log("Wrote micro mod scripts.js: " + scriptsPath);
     }
 
     private static void log(String msg) {

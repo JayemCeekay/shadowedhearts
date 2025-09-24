@@ -20,6 +20,7 @@
     { "name": "uOpacity",   "type": "float",     "count": 1,  "values": [0.7] },
     { "name": "uSoftness",  "type": "float",     "count": 1,  "values": [0.35] },
     { "name": "uBaseY",     "type": "float",     "count": 1,  "values": [0.0] },
-    { "name": "uFadeHeight","type": "float",     "count": 1,  "values": [4.0] }
+    { "name": "uFadeHeight","type": "float",     "count": 1,  "values": [4.0] },
+    { "name": "uTime",      "type": "float",     "count": 1,  "values": [0.0] }
   ]
 }

@@ -1,5 +1,8 @@
 package com.jayemceekay.shadowedhearts.mixin;
 
+import com.jayemceekay.shadowedhearts.config.ModConfig;
+import com.jayemceekay.shadowedhearts.poketoss.client.TossOrderBarUI;
+import com.jayemceekay.shadowedhearts.poketoss.client.TossOrderRadialWheel;
 import com.jayemceekay.shadowedhearts.poketoss.client.WhistleSelectionClient;
 import net.minecraft.client.MouseHandler;
 import org.spongepowered.asm.mixin.Mixin;
@@ -18,6 +21,16 @@ public abstract class MixinMouseHandler {
     private void shadowedhearts$disableTurningWhenWheelActive(CallbackInfo ci) {
         if (WhistleSelectionClient.isWheelActive()) {
             ci.cancel();
+        }
+    }
+
+    // Forward raw scroll deltas to the TossOrderWheel so it can drive the bar UI reliably
+    @Inject(method = "onScroll", at = @At("HEAD"))
+    private void shadowedhearts$forwardWheelScroll(long window, double horizontal, double vertical, CallbackInfo ci) {
+        if (ModConfig.get().tossOrderBarUI) {
+            TossOrderBarUI.onScrollDelta(vertical);
+        } else {
+            TossOrderRadialWheel.onScrollDelta(vertical);
         }
     }
 
