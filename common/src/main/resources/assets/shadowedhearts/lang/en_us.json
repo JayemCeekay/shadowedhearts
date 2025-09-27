@@ -1,7 +1,7 @@
 {
   "itemGroup.shadowedhearts": "Example Mod Tab",
   "block.shadowedhearts.example_block": "Example Block",
-  "item.shadowedhearts.example_item": "Example Item",
+  "item.shadowedhearts.trainers_whistle": "Trainer's Whistle",
 
   "item.shadowedhearts.mission_signal": "Mission Signal",
   "item.shadowedhearts.fragment_theme_grave": "Signal Fragment - Theme: Grave",
@@ -14,10 +14,6 @@
   "hud.shadowedhearts.mission_active": "Mission Active",
   "block.shadowedhearts.signal_locator": "Signal Locator",
   "block.shadowedhearts.mission_gateway": "Mission Gateway",
-
-  "cobblemon.move.shadowblitz": "Shadow Blitz",
-  "cobblemon.move.shadowblast": "Shadow Blast",
-  "cobblemon.move.shadowbolt": "Shadow Bolt",
 
   "command.shadowedhearts.shadow.description": "Shadow Pokémon admin commands.",
   "command.shadowedhearts.shadow.usage": "/shadow <set|corr|setPurified|setCorrupted|purify|corrupt> ...",
@@ -40,5 +36,9 @@
   "command.shadowedhearts.shadowmission.give_signal.usage": "/shadowmission give_signal <theme> <tier> [affixes]",
   "command.shadowedhearts.shadowmission.start.usage": "/shadowmission start [demo]",
   "command.shadowedhearts.shadowmission.seed.usage": "/shadowmission seed <runId>",
-  "command.shadowedhearts.shadowmission.abort.usage": "/shadowmission abort <runId>"
+  "command.shadowedhearts.shadowmission.abort.usage": "/shadowmission abort <runId>",
+
+  "cobblemon.move.shadowblitz": "Shadow Blitz",
+  "cobblemon.move.shadowblast": "Shadow Blast",
+  "cobblemon.move.shadowbolt": "Shadow Bolt"
 }

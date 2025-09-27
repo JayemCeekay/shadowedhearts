@@ -1,7 +1,7 @@
 package com.jayemceekay.shadowedhearts.mixin;
 
-import com.jayemceekay.shadowedhearts.showdown.MicroBattleAI;
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
+import com.jayemceekay.shadowedhearts.showdown.AutoBattleRunner;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.Mob;
@@ -26,11 +26,11 @@ public abstract class MixinMob_DoHurtTargetMicro {
         if (self instanceof PokemonEntity attacker) {
             if (!attacker.level().isClientSide()) {
                 if (target instanceof PokemonEntity defender) {
-                    MicroBattleAI.fire(attacker, defender);
+                    AutoBattleRunner.fire(attacker, defender);
                     // Pretend the vanilla hit succeeded to advance AI cooldowns, but block default damage/knockback.
                     cir.setReturnValue(true);
                 } else if (target instanceof ServerPlayer player) {
-                    MicroBattleAI.fireAgainstPlayer(attacker, player);
+                    AutoBattleRunner.fireAgainstPlayer(attacker, player);
                     cir.setReturnValue(true);
                 }
             }

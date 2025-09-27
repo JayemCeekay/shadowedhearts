@@ -12,7 +12,7 @@
   ],
   "mixins": [
     "AccessorBrain",
-    "MixinAIBattleActor_OnChoiceRequested",
+    "MixinBattleActor_SetActionResponses",
     "MixinBattleCaptureAction",
     "MixinBattleRegistry",
     "MixinEmptyPokeBallEntity",
@@ -20,11 +20,10 @@
     "MixinMob_TossGoals",
     "MixinPokeBallItem",
     "MixinPokemon",
+    "MixinPokemonBattle",
     "MixinPokemonBrain",
     "MixinPokemonEntity",
-    "MixinRequestInstruction",
     "MixinShowdownInterpreter",
-    "MixinTurnInstruction",
     "MixinTypeIcon"
   ],
   "injectors": {

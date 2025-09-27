@@ -19,7 +19,7 @@ import org.jetbrains.annotations.Nullable;
  * Minimal scaffold per design doc: allocate per-run rectangles and keep a reference to the missions level.
  */
 public final class WorldspaceManager {
-    private WorldspaceManager() {}
+    public WorldspaceManager() {}
 
     public static final int CELL = 1024; // spacing between runs
     public static final ResourceKey<Level> MISSIONS_LEVEL_KEY = ResourceKey.create(Registries.DIMENSION,

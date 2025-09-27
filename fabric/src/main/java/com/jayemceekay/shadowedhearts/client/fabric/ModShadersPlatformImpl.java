@@ -16,6 +16,11 @@ public final class ModShadersPlatformImpl {
                         program -> ModShaders.SHADOW_AURA_FOG = program
                 );
                 registrationContext.register(
+                        ResourceLocation.parse("shadowedhearts:shadow_aura_fog"),
+                        DefaultVertexFormat.NEW_ENTITY,
+                        program -> ModShaders.SHADOW_AURA_FOG_TRAIL = program
+                );
+                registrationContext.register(
                         ResourceLocation.parse("shadowedhearts:shadow_pool"),
                         DefaultVertexFormat.PARTICLE,
                         program -> ModShaders.SHADOW_POOL = program

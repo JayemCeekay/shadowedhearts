@@ -1,44 +1,45 @@
 package com.jayemceekay.shadowedhearts.poketoss.ai;
 
-import com.cobblemon.mod.common.CobblemonActivities;
 import com.cobblemon.mod.common.CobblemonMemories;
 import com.cobblemon.mod.common.api.ai.CobblemonAttackTargetData;
 import com.cobblemon.mod.common.entity.ai.SwapActivityTask;
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
+import com.google.common.collect.ImmutableList;
 import com.jayemceekay.shadowedhearts.poketoss.PokeToss;
 import com.jayemceekay.shadowedhearts.poketoss.TacticalOrder;
-import com.jayemceekay.shadowedhearts.poketoss.TacticalOrderType;
-import net.minecraft.core.BlockPos;
+import com.mojang.datafixers.util.Pair;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.Brain;
 import net.minecraft.world.entity.ai.behavior.Behavior;
-import net.minecraft.world.entity.ai.behavior.BehaviorControl;
 import net.minecraft.world.entity.ai.behavior.BehaviorUtils;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.entity.ai.memory.WalkTarget;
 import net.minecraft.world.entity.schedule.Activity;
-import com.mojang.datafixers.util.Pair;
-import com.google.common.collect.ImmutableList;
 
 import java.util.Map;
 import java.util.UUID;
 
 /**
  * Brain/Behavior-driven replacement for the old TossOrderGoal.
- *
+ * <p>
  * This installs a single Behavior into the CORE activity of a Mob's Brain.
  * The behavior mirrors the minimal functionality previously implemented in
  * TossOrderGoal: ATTACK_TARGET, GUARD_TARGET, MOVE_TO, HOLD_POSITION.
  */
 public final class TossOrderActivity {
-    private TossOrderActivity() {}
+    private TossOrderActivity() {
+    }
 
-    /** Optional custom activity if we ever want a dedicated activity. Currently unused. */
+    /**
+     * Optional custom activity if we ever want a dedicated activity. Currently unused.
+     */
     public static final Activity TOSS_ORDER = new Activity("shadowedhearts_toss_order");
 
-    /** Install the TossOrderBehavior into the entity's Brain under CORE activity. */
+    /**
+     * Install the TossOrderBehavior into the entity's Brain under CORE activity.
+     */
     @SuppressWarnings({"rawtypes", "unchecked"})
     public static void install(Mob mob) {
         Brain brain = mob.getBrain();
@@ -60,7 +61,7 @@ public final class TossOrderActivity {
         }
         java.util.ArrayList<Pair<Integer, net.minecraft.world.entity.ai.behavior.BehaviorControl<? super Mob>>> merged = new java.util.ArrayList<>(existing.size() + 1);
         // Prepend our task with priority 0 so orders take precedence.
-        for(Pair<?, ?> behavior: existing) {
+        for (Pair<?, ?> behavior : existing) {
             System.out.println(behavior.getSecond().toString());
         }
         merged.add(Pair.of(0, new TossOrderTask()));
@@ -158,16 +159,23 @@ public final class TossOrderActivity {
         }
 
         private void tickAttack(ServerLevel level, Mob mob, TacticalOrder order) {
-            LivingEntity target = resolveAttackTarget(level, mob, order);
-            if (target == null) {
-                mob.getBrain().eraseMemory(MemoryModuleType.ATTACK_TARGET);
-                return;
+            if (mob instanceof PokemonEntity pokemonEntity) {
+                LivingEntity target = resolveAttackTarget(level, mob, order);
+                if (target == null) {
+                    mob.getBrain().eraseMemory(MemoryModuleType.ATTACK_TARGET);
+                    mob.getBrain().eraseMemory(CobblemonMemories.INSTANCE.getATTACK_TARGET_DATA());
+                    return;
+                }
+
+                //pokemonEntity.getConfig().setDirectly("melee_range", MoValue.of(2.5f));
+
+                // Hand off to Cobblemon's fight tasks by setting ATTACK_TARGET memory
+                Brain<?> brain = mob.getBrain();
+
+                brain.setMemory(MemoryModuleType.ATTACK_TARGET, target);
+                // Provide Cobblemon-specific context for the fight tasks
+                brain.setMemory(CobblemonMemories.INSTANCE.getATTACK_TARGET_DATA(), new CobblemonAttackTargetData());
             }
-            // Hand off to Cobblemon's fight tasks by setting ATTACK_TARGET memory
-            Brain<?> brain = mob.getBrain();
-            brain.setMemory(MemoryModuleType.ATTACK_TARGET, target);
-            // Provide Cobblemon-specific context for the fight tasks
-            brain.setMemory(CobblemonMemories.INSTANCE.getATTACK_TARGET_DATA(), new CobblemonAttackTargetData());
         }
 
         private void tickGuard(ServerLevel level, Mob mob, TacticalOrder order) {
@@ -182,7 +190,9 @@ public final class TossOrderActivity {
         }
 
         private void tickMoveTo(Mob mob, TacticalOrder order) {
-            order.targetPos.ifPresent(pos -> mob.getBrain().setMemory(MemoryModuleType.WALK_TARGET, new WalkTarget(pos, mob.getSpeed(), 1)));
+            if (mob instanceof PokemonEntity pokemonEntity) {
+                order.targetPos.ifPresent(pos -> mob.getBrain().setMemory(MemoryModuleType.WALK_TARGET, new WalkTarget(pos, 1.0f, 1)));
+            }
         }
 
         private void tickHold(Mob mob, TacticalOrder order) {
@@ -210,11 +220,6 @@ public final class TossOrderActivity {
                 return le;
             }
             return null;
-        }
-
-        private void moveToward(Mob mob, BlockPos pos, double speed) {
-            mob.getNavigation().moveTo(pos.getX() + 0.5, pos.getY(), pos.getZ() + 0.5, speed);
-            mob.getLookControl().setLookAt(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5);
         }
     }
 }

@@ -2,17 +2,15 @@ package com.jayemceekay.shadowedhearts.poketoss.client;
 
 import com.jayemceekay.shadowedhearts.client.ModShaders;
 import com.jayemceekay.shadowedhearts.client.render.AuraRenderTypes;
-import com.jayemceekay.shadowedhearts.network.payload.WhistleSelectionC2S;
 import com.jayemceekay.shadowedhearts.core.ModItems;
+import com.jayemceekay.shadowedhearts.network.payload.WhistleSelectionC2S;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import dev.architectury.networking.NetworkManager;
-import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntList;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.MouseHandler;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.MultiBufferSource;
@@ -20,18 +18,19 @@ import net.minecraft.core.particles.DustParticleOptions;
 import net.minecraft.core.particles.ParticleOptions;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.RegistryFriendlyByteBuf;
-import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.projectile.ProjectileUtil;
 import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.phys.*;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.EntityHitResult;
+import net.minecraft.world.phys.HitResult;
+import net.minecraft.world.phys.Vec3;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 
 /**
  * Client-side helper managing the Trainer's Whistle hold-to-brush selection flow and visuals.
@@ -43,55 +42,19 @@ public final class WhistleSelectionClient {
     private WhistleSelectionClient() {}
 
     // Public selection overlay color to keep visuals consistent across systems (shader and entity tint)
-    public static final float SEL_R = 0.50f;
+    public static final float SEL_R = 0.40f;
     public static final float SEL_G = 1.00f;
-    public static final float SEL_B = 0.50f;
+    public static final float SEL_B = 0.40f;
 
     private static boolean active = false;
     private static long startTick = 0L;
     private static final List<Vec3> samples = new ArrayList<>();
     private static float currentRadius = 0.0f;
-    private static InteractionHand usingHand = InteractionHand.MAIN_HAND;
     private static final IntOpenHashSet selectedIds = new IntOpenHashSet();
-    private static boolean wheelActive = false;
-    private static boolean cursorUnlockedForWheel = false;
-
     private static final float MAX_RADIUS = 3.0f;
     private static final float GROW_PER_TICK = 0.25f; // ~0.25 block per tick -> 12 ticks to max
-    private static final int QUICK_TAP_TICKS = 7; // under ~0.35s counts as quick tap
-
-    // --- Order wheel (tween menu) state ---
-    private static boolean prevWheelActive = false;
-    private static boolean wasLeftDown = false;
-    private static boolean combatSubOpen = false;
-    private static float combatTween = 0.0f; // 0..1
-    private static boolean posSubOpen = false;
-    private static float posTween = 0.0f; // 0..1
-    private static boolean utilSubOpen = false;
-    private static float utilTween = 0.0f; // 0..1
-    private static boolean ctxSubOpen = false;
-    private static float ctxTween = 0.0f; // 0..1
-    // Debounce flag to prevent synthetic re-presses from toggling submenus back immediately
-    private static boolean suppressUntilMouseUp = false;
-
-    // Scrollable submenu model: labels and indices with wrap-around
-    private static final String[] COMBAT_LABELS = new String[] { "Attack", "Guard", "Disengage" };
-    private static int combatIndex = 0; // leftmost visible item index
-
-    private static final String[] POSITION_LABELS = new String[] { "Move To", "Hold Position" };
-    private static int posIndex = 0; // top visible item index
-
-    private static final String[] UTILITY_LABELS = new String[] { "Regroup to Me" };
-    private static int utilIndex = 0; // single visible item index (cycles)
-
-    private static final String[] CONTEXT_LABELS = new String[] { "Hold At Me" };
-    private static int ctxIndex = 0; // single visible item index (cycles)
-
-    private static int wrap(int idx, int size) {
-        if (size <= 0) return 0;
-        int m = idx % size;
-        return m < 0 ? m + size : m;
-    }
+    private static final int QUICK_TAP_TICKS = 10; // under ~0.35s counts as quick tap
+    private static final int RADIUS_GROW_DELAY_TICKS = 20; // delay before brush radius starts growing
 
     private static final ParticleOptions GREEN_DUST = new DustParticleOptions(new Vector3f(0.6f, 1.0f, 0.6f), 1.25f);
 
@@ -112,7 +75,6 @@ public final class WhistleSelectionClient {
         currentRadius = 0.0f;
         samples.clear();
         selectedIds.clear();
-        usingHand = mc.player.getUsedItemHand();
         // Seed first sample from current crosshair hit
         Vec3 hit = currentHitPos(mc.player, 128.0);
         if (hit != null) samples.add(hit);
@@ -155,9 +117,14 @@ public final class WhistleSelectionClient {
                 samples.add(hit);
             }
             // Visualize a ring of particles at the current radius (or small if still growing)
-            growRadius();
-            //spawnRingParticles(mc.level, hit, currentRadius);
-            updateIncrementalSelection(mc.level, hit, currentRadius);
+            long heldTicks = mc.level.getGameTime() - startTick;
+            if (heldTicks >= RADIUS_GROW_DELAY_TICKS) {
+                growRadius();
+                updateIncrementalSelection(mc.level, hit, currentRadius);
+            } else {
+                // Before delay elapsed, do not grow radius; keep showing minimal disk via renderer (radius ~0)
+                updateIncrementalSelection(mc.level, hit, 0.0f);
+            }
         }
     }
 
@@ -173,12 +140,11 @@ public final class WhistleSelectionClient {
         Vec3 hit = currentHitPos(mc.player, 128.0);
         if (hit == null) return;
         hit = hit.subtract(camPos.x, camPos.y, camPos.z);
-        float radius = Math.max(0.35f, currentRadius);
+        float radius = Math.max(0.05f, currentRadius);
         float softness = 0.45f; // Keep in sync with uniform below
         float fadeHeight = 4.0f; // Cylinder fades out this high above the ring
 
         // Set shader and uniforms
-        RenderSystem.setShader(() -> ModShaders.WHISTLE_GROUND_OVERLAY);
         if (ModShaders.WHISTLE_GROUND_OVERLAY != null) {
             var sh = ModShaders.WHISTLE_GROUND_OVERLAY;
             Matrix4f view = RenderSystem.getModelViewMatrix();
@@ -189,7 +155,7 @@ public final class WhistleSelectionClient {
             sh.safeGetUniform("uCenterXZ").set((float) hit.x, (float) hit.z);
             sh.safeGetUniform("uRadius").set(radius);
             sh.safeGetUniform("uColor").set(SEL_R, SEL_G, SEL_B);
-            sh.safeGetUniform("uOpacity").set(0.72f);
+            sh.safeGetUniform("uOpacity").set(0.42f);
             sh.safeGetUniform("uSoftness").set(softness);
             sh.safeGetUniform("uBaseY").set((float) (hit.y + 0.02));
             sh.safeGetUniform("uFadeHeight").set(fadeHeight);
@@ -352,12 +318,11 @@ public final class WhistleSelectionClient {
             vc.addVertex(I, cx0, (float) yTop, cz0).setUv(0, 1).setColor(1f, 1f, 1f, 1f).setLight(LightTexture.FULL_BRIGHT);
         }
 
-        buffers.endBatch(AuraRenderTypes.whistle_ground_overlay());
     }
 
     private static void updateIncrementalSelection(Level level, Vec3 center, float radius) {
         if (radius <= 0.05f) return;
-        double r = Math.max(0.25, radius);
+        double r = Math.max(0.01, radius);
         // Use a vertical cylinder volume: extend upward a few blocks to catch flying entities
         AABB aabb = new AABB(center.x - r, center.y - 1.0, center.z - r, center.x + r, center.y + 4.0, center.z + r).inflate(0.5);
         List<Entity> nearby = level.getEntities((Entity) null, aabb, e -> e.isAlive());

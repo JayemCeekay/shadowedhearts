@@ -38,14 +38,14 @@ public final class ShowdownRuntimePatcher {
                 log("Failed to patch teams.js at " + showdown + ": " + e.getMessage());
             }
             try {
-                patchCustomFormats(showdown.resolve("config").resolve("custom-formats.js"));
-            } catch (Exception e) {
-                log("Failed to patch custom-formats.js at " + showdown + ": " + e.getMessage());
-            }
-            try {
                 patchMicroScripts(showdown.resolve("data").resolve("mods").resolve("micro").resolve("scripts.js"));
             } catch (Exception e) {
                 log("Failed to patch micro scripts.js at " + showdown + ": " + e.getMessage());
+            }
+            try {
+                patchCustomFormats(showdown.resolve("config").resolve("custom-formats.js"));
+            } catch (Exception e) {
+                log("Failed to patch custom-formats.js at " + showdown + ": " + e.getMessage());
             }
         }
     }
@@ -463,7 +463,7 @@ public final class ShowdownRuntimePatcher {
 
         final String microBlock =
                 "\n" +
-                "{\n" +
+                ",{\n" +
                 "    section: \"Shadowed Hearts\",\n" +
                 "},\n" +
                 "{\n" +

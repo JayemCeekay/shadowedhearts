@@ -7,7 +7,7 @@ import com.jayemceekay.shadowedhearts.network.payload.AuraLifecycleS2C;
 import com.jayemceekay.shadowedhearts.network.payload.AuraStateS2C;
 import com.mojang.blaze3d.shaders.Uniform;
 import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.ByteBufferBuilder;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
@@ -16,7 +16,6 @@ import net.minecraft.client.renderer.ShaderInstance;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 import org.joml.Matrix4f;
-import org.lwjgl.opengl.GL11;
 
 import java.lang.ref.WeakReference;
 import java.util.ArrayDeque;
@@ -30,6 +29,8 @@ import java.util.concurrent.ConcurrentHashMap;
  * Rendering is driven by this system, not by the Pokémon's own renderer.
  */
 public final class AuraEmitters {
+    public  static MultiBufferSource.BufferSource buffers = MultiBufferSource.immediate(new ByteBufferBuilder(512 * 1024));
+
     private AuraEmitters() {
     }
 
@@ -124,7 +125,7 @@ public final class AuraEmitters {
 
     // Timings (ticks): ~0.25s fade-in, ~5s sustain, ~0.5s fade-out
     private static final int FADE_IN = 10;
-    private static final int SUSTAIN = 60; // can be tuned; original recent value ~90-100
+    private static final int SUSTAIN = 6000; // can be tuned; original recent value ~90-100
     private static final int FADE_OUT = 10;
     // If a position update jumps farther than this squared distance, snap to avoid long lerp streaks
     private static final double TELEPORT_SNAP_DIST2 = 36.0; // 6 blocks squared
@@ -132,8 +133,8 @@ public final class AuraEmitters {
     // Trail settings
     private static final int TRAIL_LIFETIME_TICKS = 36; // how long a ghost lingers
     private static final int TRAIL_FADE_IN_TICKS = 6;   // how long each node takes to fade in to full alpha
-    private static final float TRAIL_EMIT_DIST = 0.6f;  // spacing in blocks between ghosts
-    private static final int TRAIL_MAX_NODES = 16;      // cap per entity to avoid perf spikes
+    private static final float TRAIL_EMIT_DIST = 1.2f;  // spacing in blocks between ghosts
+    private static final int TRAIL_MAX_NODES = 8;      // cap per entity to avoid perf spikes
     private static final float TRAIL_SHRINK_MIN = 0.15f; // final scale relative to start
     private static final float TRAIL_ALPHA_BASE = 0.55f; // base opacity multiplier for trail
 
@@ -165,8 +166,7 @@ public final class AuraEmitters {
             }
         }
 
-        PoseStack poseStack = new PoseStack();
-        MultiBufferSource.BufferSource buffers = Minecraft.getInstance().renderBuffers().bufferSource();
+
 
         var camPos = camera.getPosition();
         long now = mc.level.getGameTime();
@@ -222,10 +222,9 @@ public final class AuraEmitters {
             Matrix4f mvp = new Matrix4f(proj).mul(view).mul(model);
             Matrix4f invView = new Matrix4f(view).invert();
             Matrix4f invProj = new Matrix4f(proj).invert();
-
-            RenderSystem.setShader(() -> ModShaders.SHADOW_AURA_FOG);
+            var u = ModShaders.SHADOW_AURA_FOG;
             if (ModShaders.SHADOW_AURA_FOG != null) {
-                var u = ModShaders.SHADOW_AURA_FOG;
+
                 setMat4(u, "uModel", model);
                 setMat4(u, "uInvModel", invModel);
                 setMat4(u, "uView", view);
@@ -270,8 +269,7 @@ public final class AuraEmitters {
                 set1f(u, "uGlowGamma", 2.5f);
                 set1f(u, "uBlackPoint", 0.35f);
             }
-
-
+            u.apply();
             VertexConsumer vcShell = buffers.getBuffer(AuraRenderTypes.shadow_fog());
             Matrix4f mat = new Matrix4f();
             mat.scale(radius, radius, radius);
@@ -279,8 +277,8 @@ public final class AuraEmitters {
                     vcShell, mat, 0, 0, 0, 0
             );
             // Flush the buffer for this render type to ensure per-instance uniforms apply to this aura only
-            buffers.endLastBatch();
-
+            u.clear();
+            buffers.endBatch(AuraRenderTypes.shadow_fog());
             // Emit trail node based on movement spacing
             if (!inst.hasEmitPos) {
                 inst.lastEmitX = ix;
@@ -328,10 +326,8 @@ public final class AuraEmitters {
                     Matrix4f nModel = new Matrix4f().translateLocal((float) nx, (float) (ny + (node.height * 0.55F)), (float) nz);
                     Matrix4f nInvModel = new Matrix4f(nModel).invert();
                     Matrix4f nMvp = new Matrix4f(proj).mul(view).mul(nModel);
-
-                    RenderSystem.setShader(() -> ModShaders.SHADOW_AURA_FOG);
-                    if (ModShaders.SHADOW_AURA_FOG != null) {
-                        var u2 = ModShaders.SHADOW_AURA_FOG;
+                    var u2 = ModShaders.SHADOW_AURA_FOG_TRAIL;
+                    if (ModShaders.SHADOW_AURA_FOG_TRAIL != null) {
                         setMat4(u2, "uModel", nModel);
                         setMat4(u2, "uInvModel", nInvModel);
                         setMat4(u2, "uView", view);
@@ -376,23 +372,19 @@ public final class AuraEmitters {
                         set1f(u2, "uGlowGamma", 2.5f);
                         set1f(u2, "uBlackPoint", 0.35f);
                     }
-
-                    VertexConsumer vcTrail = buffers.getBuffer(AuraRenderTypes.shadow_fog());
+                    u2.apply();
+                    VertexConsumer vcTrail = buffers.getBuffer(AuraRenderTypes.shadow_fog_trail());
                     Matrix4f tGeom = new Matrix4f();
-                    tGeom.scale(nodeRadius, nodeRadius, nodeRadius);
+                    tGeom.scale(node.startRadius, node.startRadius, node.startRadius);
                     com.jayemceekay.shadowedhearts.client.render.geom.SphereBuffers.drawUnitSphere(
                             vcTrail, tGeom, 0, 0, 0, 0
                     );
                     // Flush after each trail node to apply its specific uniforms
-                    buffers.endLastBatch();
+                    u2.clear();
+                    buffers.endBatch(AuraRenderTypes.shadow_fog_trail());
                 }
-            }
 
-            // Disable stencil for the pool (if any state was set elsewhere)
-            GL11.glStencilMask(0xFF);
-            GL11.glStencilFunc(GL11.GL_ALWAYS, 0, 0xFF);
-            GL11.glStencilOp(GL11.GL_KEEP, GL11.GL_KEEP, GL11.GL_KEEP);
-            GL11.glDisable(GL11.GL_STENCIL_TEST);
+            }
 
             float poolRadius = Math.max(0.5f, Mth.lerp(partialTicks, inst.prevBbW, inst.lastBbW) * 1.1f);
             if (ModShaders.SHADOW_POOL != null) {

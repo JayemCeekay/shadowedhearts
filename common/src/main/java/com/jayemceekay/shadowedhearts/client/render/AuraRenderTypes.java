@@ -1,33 +1,13 @@
 package com.jayemceekay.shadowedhearts.client.render;
 
 import com.jayemceekay.shadowedhearts.client.ModShaders;
-import com.mojang.blaze3d.platform.GlStateManager;
-import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import com.mojang.blaze3d.vertex.VertexFormat;
 import net.minecraft.client.renderer.GameRenderer;
 import net.minecraft.client.renderer.RenderStateShard;
 import net.minecraft.client.renderer.RenderType;
-import net.minecraft.resources.ResourceLocation;
 
 public final class AuraRenderTypes {
-
-    private static final RenderStateShard.TransparencyStateShard PREMULTIPLIED_TRANSPARENCY = new RenderStateShard.TransparencyStateShard(
-            "shadowedhearts_premultiplied",
-            () -> {
-                RenderSystem.enableBlend();
-                RenderSystem.blendFuncSeparate(
-                        GlStateManager.SourceFactor.ONE,
-                        GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA,
-                        GlStateManager.SourceFactor.ONE,
-                        GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA
-                );
-            },
-            () -> {
-                RenderSystem.disableBlend();
-                RenderSystem.defaultBlendFunc();
-            }
-    );
 
     // Explicitly disable alpha-to-coverage to prevent texture alpha from affecting stencil/depth coverage.
     private static final RenderStateShard.TexturingStateShard NO_ALPHA_TO_COVERAGE = new RenderStateShard.TexturingStateShard(
@@ -46,11 +26,28 @@ public final class AuraRenderTypes {
                 .setTexturingState(NO_ALPHA_TO_COVERAGE)
                 .setWriteMaskState(RenderStateShard.COLOR_WRITE)
                 .setDepthTestState(RenderStateShard.LEQUAL_DEPTH_TEST)
-                .setCullState(RenderStateShard.NO_CULL)
+                .setCullState(RenderStateShard.CULL)
                 .setLightmapState(RenderStateShard.LIGHTMAP)
                 .setLayeringState(RenderStateShard.VIEW_OFFSET_Z_LAYERING)
                 .createCompositeState(true);
         return RenderType.create("shadowedhearts:nebulous_fog_tri", DefaultVertexFormat.PARTICLE, VertexFormat.Mode.TRIANGLES, 512, false, true, state);
+    }
+
+    public static RenderType shadow_fog_trail() {
+        RenderType.CompositeState state = RenderType.CompositeState.builder()
+                .setShaderState(new RenderStateShard.ShaderStateShard(() -> ModShaders.SHADOW_AURA_FOG_TRAIL != null
+                        ? ModShaders.SHADOW_AURA_FOG_TRAIL
+                        : GameRenderer.getParticleShader()))
+                .setTextureState(RenderStateShard.NO_TEXTURE)
+                .setTransparencyState(RenderStateShard.TRANSLUCENT_TRANSPARENCY)
+                .setTexturingState(NO_ALPHA_TO_COVERAGE)
+                .setWriteMaskState(RenderStateShard.COLOR_WRITE)
+                .setDepthTestState(RenderStateShard.LEQUAL_DEPTH_TEST)
+                .setCullState(RenderStateShard.CULL)
+                .setLightmapState(RenderStateShard.LIGHTMAP)
+                .setLayeringState(RenderStateShard.VIEW_OFFSET_Z_LAYERING)
+                .createCompositeState(true);
+        return RenderType.create("shadowedhearts:nebulous_fog_tri_trail", DefaultVertexFormat.PARTICLE, VertexFormat.Mode.TRIANGLES, 512, false, true, state);
     }
 
     public static RenderType shadow_pool() {

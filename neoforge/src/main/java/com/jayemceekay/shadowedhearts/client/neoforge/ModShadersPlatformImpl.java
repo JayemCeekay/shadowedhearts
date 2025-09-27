@@ -26,6 +26,9 @@ public class ModShadersPlatformImpl {
             evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:shadow_aura_fog", DefaultVertexFormat.NEW_ENTITY),
                     shader -> ModShaders.SHADOW_AURA_FOG = shader);
 
+            evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:shadow_aura_fog", DefaultVertexFormat.NEW_ENTITY),
+                    shader -> ModShaders.SHADOW_AURA_FOG_TRAIL = shader);
+
             evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:shadow_pool", DefaultVertexFormat.PARTICLE),
                     shader -> ModShaders.SHADOW_POOL = shader);
 

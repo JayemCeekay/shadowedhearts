@@ -1,19 +1,19 @@
 package com.jayemceekay.shadowedhearts.showdown;
 
+import com.cobblemon.mod.common.Cobblemon;
 import com.cobblemon.mod.common.api.battles.model.actor.AIBattleActor;
 import com.cobblemon.mod.common.api.battles.model.actor.ActorType;
 import com.cobblemon.mod.common.api.battles.model.actor.EntityBackedBattleActor;
 import com.cobblemon.mod.common.api.battles.model.ai.BattleAI;
 import com.cobblemon.mod.common.api.net.NetworkPacket;
+import com.cobblemon.mod.common.api.pokemon.experience.BattleExperienceSource;
 import com.cobblemon.mod.common.battles.pokemon.BattlePokemon;
-import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
 import com.cobblemon.mod.common.net.messages.client.battle.BattleEndPacket;
-import kotlin.Pair;
-import net.minecraft.network.chat.Component;
+import com.cobblemon.mod.common.util.LocalizationUtilsKt;
 import net.minecraft.network.chat.MutableComponent;
-import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.phys.Vec3;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.Collections;
 import java.util.List;
@@ -27,21 +27,17 @@ import java.util.UUID;
  *
  * Context: Minecraft Cobblemon mod; all shadow/purity/corruption/capture/attack/battle/hurt terms are gameplay mechanics.
  */
-public class OwnedPokemonAIBattleActor extends AIBattleActor implements EntityBackedBattleActor<PokemonEntity> {
+public class PlayerAIBattleActor extends AIBattleActor implements EntityBackedBattleActor<ServerPlayer> {
 
     private final BattlePokemon pokemon;
     private final Vec3 initialPos;
 
-    public OwnedPokemonAIBattleActor(UUID uuid, BattlePokemon pokemon, BattleAI ai) {
+    public PlayerAIBattleActor(UUID uuid, BattlePokemon pokemon, BattleAI ai) {
         super(uuid, Collections.singletonList(pokemon), ai);
         this.pokemon = pokemon;
-        Vec3 init = null;
-        try {
-            PokemonEntity e = pokemon.getEntity();
-            if (e != null) init = e.position();
-        } catch (Throwable ignored) {}
-        this.initialPos = init;
+        this.initialPos = pokemon.getEntity().position();
     }
+
 
     @Override
     public ActorType getType() {
@@ -50,22 +46,17 @@ public class OwnedPokemonAIBattleActor extends AIBattleActor implements EntityBa
 
     @Override
     public MutableComponent getName() {
-        try {
-            return pokemon.getEffectedPokemon().getDisplayName(false);
-        } catch (Throwable t) {
-            return Component.literal("Owned Pokémon");
-        }
+        return this.getEntity().getName().copy();
     }
 
     @Override
     public MutableComponent nameOwned(String name) {
-        // For player actors, Showdown will already prefix/format; keep simple.
-        return Component.literal(name);
+        return LocalizationUtilsKt.battleLang("owned_pokemon", this.getName(), name);
     }
 
     @Override
-    public PokemonEntity getEntity() {
-        return pokemon.getEntity();
+    public ServerPlayer getEntity() {
+        return pokemon.getEffectedPokemon().getOwnerPlayer();
     }
 
     @Override
@@ -73,33 +64,26 @@ public class OwnedPokemonAIBattleActor extends AIBattleActor implements EntityBa
         return initialPos;
     }
 
-    // Implemented for EntityBackedBattleActor, but some toolchains may not detect interface override from Java -> Kotlin.
-    public Pair<ServerLevel, Vec3> getWorldAndPosition() {
-        // Prefer anchoring to the owning player when present
-        try {
-            ServerPlayer owner = pokemon.getEffectedPokemon().getOwnerPlayer();
-            if (owner != null) {
-                return new Pair<>(owner.serverLevel(), owner.position());
-            }
-        } catch (Throwable ignored) { }
-        try {
-            PokemonEntity entity = getEntity();
-            if (entity != null && entity.level() instanceof ServerLevel lvl) {
-                return new Pair<>(lvl, entity.position());
-            }
-        } catch (Throwable ignored) { }
-        return null;
-    }
-
     @Override
     public void sendUpdate(NetworkPacket<?> packet) {
         super.sendUpdate(packet);
         // Mirror PokemonBattleActor behavior: clear entity battleId on battle end
         if (packet instanceof BattleEndPacket) {
-            PokemonEntity entity = getEntity();
-            if (entity != null) {
-                entity.setBattleId(null);
+            if (pokemon.getEntity() != null) {
+              pokemon.getEntity().setBattleId(null);
             }
+        }
+    }
+
+    @Override
+    public void awardExperience(@NotNull BattlePokemon battlePokemon, int experience) {
+        if(battle.isPvP() && !Cobblemon.config.getAllowExperienceFromPvP()) {
+            return;
+        }
+
+        BattleExperienceSource source = new BattleExperienceSource(battle, battlePokemon.getFacedOpponents().stream().toList());
+        if(battlePokemon.getEffectedPokemon() == battlePokemon.getOriginalPokemon() && experience > 0) {
+            battlePokemon.getEffectedPokemon().addExperienceWithPlayer(getEntity(), source, experience);
         }
     }
 

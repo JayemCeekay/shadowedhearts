@@ -1,5 +1,6 @@
 package com.jayemceekay.shadowedhearts.showdown;
 
+import com.cobblemon.mod.common.api.battles.model.actor.BattleActor;
 import com.cobblemon.mod.common.battles.BattleFormat;
 import com.cobblemon.mod.common.battles.BattleRegistry;
 import com.cobblemon.mod.common.battles.BattleSide;
@@ -21,8 +22,8 @@ import net.minecraft.world.entity.ai.memory.MemoryModuleType;
  * <p>
  * Context: Minecraft Cobblemon mod; all shadow/purity/corruption/capture terms are gameplay mechanics.
  */
-public final class MicroBattleAI {
-    private MicroBattleAI() {
+public final class AutoBattleRunner {
+    private AutoBattleRunner() {
     }
 
     private static final java.util.concurrent.ConcurrentHashMap<Long, Long> LAST_START = new java.util.concurrent.ConcurrentHashMap<>();
@@ -47,6 +48,9 @@ public final class MicroBattleAI {
     public static void fire(PokemonEntity attacker, PokemonEntity defender) {
         if (attacker == null || defender == null) return;
         if (!(attacker.level() instanceof ServerLevel)) return;
+        if (attacker.isBattling() || defender.isBattling()) {
+            return;
+        }
         if (!attacker.isAlive() || !defender.isAlive()) return;
         if (isDebouncedAndMark(attacker.getId(), defender.getId())) return;
         try {
@@ -56,16 +60,25 @@ public final class MicroBattleAI {
         }
 
         try {
+
             // Build AI actors (no players) so no UI is shown; set fleeDistance to -1 to avoid auto-flee.
-            var atkBP = BattlePokemon.Companion.playerOwned(attacker.getPokemon());
-            var defBP = BattlePokemon.Companion.safeCopyOf(defender.getPokemon());
-            // Use PLAYER-typed AI actor for owned attacker to avoid wild auto-heal and enable proper PvW semantics
-            com.cobblemon.mod.common.pokemon.OriginalTrainerType otType = attacker.getPokemon().getOriginalTrainerType();
-            boolean isOwned = otType == com.cobblemon.mod.common.pokemon.OriginalTrainerType.PLAYER || attacker.getPokemon().getOwnerPlayer() != null;
-            var atkActor = isOwned
-                    ? new OwnedPokemonAIBattleActor(attacker.getPokemon().getUuid(), atkBP, new StrongBattleAI(5))
-                    : new PokemonBattleActor(attacker.getPokemon().getUuid(), atkBP, -1F, new StrongBattleAI(5));
-            var defActor = new PokemonBattleActor(defender.getPokemon().getUuid(), defBP, -1F, new StrongBattleAI(5));
+            var atkBP = new BattlePokemon(attacker.getPokemon(), attacker.getPokemon(), pokemonEntity -> Unit.INSTANCE);
+
+            var defBP = new BattlePokemon(defender.getPokemon(), defender.getPokemon(), pokemonEntity -> Unit.INSTANCE);
+
+            BattleActor atkActor = null;
+            if(atkBP.getOriginalPokemon().isPlayerOwned()) {
+                atkActor = new PlayerAIBattleActor(attacker.getPokemon().getOwnerUUID(), atkBP, new StrongBattleAI(5));
+            } else if(atkBP.getOriginalPokemon().isNPCOwned() || atkBP.getOriginalPokemon().isWild()) {
+                atkActor = new PokemonBattleActor(attacker.getPokemon().getUuid(), atkBP, -1F, new RandomBattleAI());
+            }
+
+            BattleActor defActor = null;
+            if(defender.getPokemon().isPlayerOwned()) {
+                defActor = new PlayerAIBattleActor(defender.getPokemon().getOwnerUUID(), defBP, new StrongBattleAI(5));
+            } else if(defender.getPokemon().isNPCOwned() || defender.getPokemon().isWild()) {
+                defActor = new PokemonBattleActor(defender.getPokemon().getUuid(), defBP, -1F, new RandomBattleAI());
+            }
 
             // Start an actual Cobblemon battle; Showdown service underneath will drive mechanics+particles.
             BattleRegistry.INSTANCE.startBattle(
@@ -74,12 +87,12 @@ public final class MicroBattleAI {
                     new BattleSide(defActor),
                     true
             ).ifSuccessful(battle -> {
-                OneTurnMicroController.mark(battle.getBattleId());
+                AutoBattleController.mark(battle.getBattleId());
                 return kotlin.Unit.INSTANCE;
             });
 
             // Basic self-defense: if defender has no attack target, set it to the attacker (outside of battle cases)
-            //tryMarkDefend(defender, attacker);
+            tryMarkDefend(defender, attacker);
         } catch (Throwable t) {
             t.printStackTrace();
             // Swallow to avoid crashing the server tick; can add a logger if desired
@@ -117,7 +130,7 @@ public final class MicroBattleAI {
             com.cobblemon.mod.common.pokemon.OriginalTrainerType otType2 = attacker.getPokemon().getOriginalTrainerType();
             boolean isOwned2 = otType2 == com.cobblemon.mod.common.pokemon.OriginalTrainerType.PLAYER || attacker.getPokemon().getOwnerPlayer() != null;
             var atkActor = isOwned2
-                    ? new OwnedPokemonAIBattleActor(attacker.getPokemon().getUuid(), atkBP, new StrongBattleAI(5))
+                    ? new PlayerAIBattleActor(attacker.getPokemon().getUuid(), atkBP, new StrongBattleAI(5))
                     : new PokemonBattleActor(attacker.getPokemon().getUuid(), atkBP, -1F, new StrongBattleAI(5));
 
             // Create a proxy Pokémon to represent the player, and anchor visuals to the player by setting OT
@@ -148,7 +161,7 @@ public final class MicroBattleAI {
                     new BattleSide(proxyActor),
                     true
             ).ifSuccessful(battle -> {
-                OneTurnMicroController.mark(battle.getBattleId());
+                AutoBattleController.mark(battle.getBattleId());
                 // Capture by value for handler
                 final int proxyStartHP = proxy.getCurrentHealth();
                 final int proxyMaxHP = proxy.getMaxHealth();

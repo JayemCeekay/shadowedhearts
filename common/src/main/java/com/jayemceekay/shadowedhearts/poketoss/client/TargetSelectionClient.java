@@ -1,8 +1,8 @@
 package com.jayemceekay.shadowedhearts.poketoss.client;
 
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
-import com.jayemceekay.shadowedhearts.poketoss.TacticalOrderType;
 import com.jayemceekay.shadowedhearts.network.payload.IssueTargetOrderC2S;
+import com.jayemceekay.shadowedhearts.poketoss.TacticalOrderType;
 import dev.architectury.networking.NetworkManager;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
@@ -12,6 +12,7 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.projectile.ProjectileUtil;
 import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.phys.*;
+import net.minecraft.world.phys.shapes.CollisionContext;
 
 /**
  * Client-side controller for the post-order target selection mode.
@@ -106,6 +107,15 @@ public final class TargetSelectionClient {
         Vec3 end = eye.add(look.scale(dist));
         // Block clip first
         HitResult block = player.level().clip(new ClipContext(eye, end, blockMode, fluidMode, player));
+        // If we hit a non-collidable (walk-through) block like grass/flowers, ignore it for picking
+        if (block instanceof BlockHitResult bhr) {
+            var pos = bhr.getBlockPos();
+            var state = player.level().getBlockState(pos);
+            var shape = state.getCollisionShape(player.level(), pos, CollisionContext.of(player));
+            if (shape.isEmpty()) {
+                block = null; // treat as no blocking hit
+            }
+        }
         double best = block != null ? block.getLocation().distanceToSqr(eye) : dist * dist;
         // Entity pick within a small expansion box along the ray
         AABB box = player.getBoundingBox().expandTowards(look.scale(dist)).inflate(1.0);
