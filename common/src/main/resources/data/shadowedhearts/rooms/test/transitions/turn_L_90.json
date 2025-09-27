@@ -1,0 +1,12 @@
+{
+  "id": "shadowedhearts:test/transitions/turn_L_90",
+  "type": "transition",
+  "kind": "turn_90",
+  "clearance": [2, 3],
+  "rotatable": true,
+  "structure": "shadowedhearts:test/transitions/turn_L_90",
+  "connectors": [
+    { "face": "NORTH", "role": "A" },
+    { "face": "EAST",  "role": "B" }
+  ]
+}

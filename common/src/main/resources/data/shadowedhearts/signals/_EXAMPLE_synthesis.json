@@ -1,0 +1,18 @@
+{
+  "_comment": "Example only. To activate, rename this file to synthesis.json or merge into your existing rules.",
+  "grid": [3, 3],
+  "required": ["theme", "tier"],
+  "optional": ["affix", "puzzle"],
+  "caps": { "affix": 3 },
+  "resolve": {
+    "seed": "hash(xor(all_fragment_ids) + party_uuid + server_salt)",
+    "theme": "highest_priority(theme)",
+    "tier": "max(tier)",
+    "affixes": "pickUpTo(3, weightedUnique(affix))",
+    "puzzle_bias": "majority(puzzle)"
+  },
+  "validation": {
+    "no_conflicts": true,
+    "min_total_rarity": 3
+  }
+}

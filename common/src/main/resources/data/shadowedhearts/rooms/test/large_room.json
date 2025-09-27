@@ -1,0 +1,16 @@
+{
+  "id": "shadowedhearts:test/rooms/large_room",
+  "type": "room",
+  "size": [15, 9, 15],
+  "tags": ["test", "basic", "large"],
+  "weight": 1,
+  "structure": "shadowedhearts:test/rooms/large_room",
+  "y_offset": 0,
+  "rotatable": true,
+  "sockets": [
+    { "face": "NORTH", "x": 7,  "y": 1, "z": 0,  "width": 3, "height": 3, "kind": "door" },
+    { "face": "SOUTH", "x": 7,  "y": 1, "z": 14, "width": 3, "height": 3, "kind": "door" },
+    { "face": "EAST",  "x": 14, "y": 1, "z": 7,  "width": 3, "height": 3, "kind": "door" },
+    { "face": "WEST",  "x": 0,  "y": 1, "z": 7,  "width": 3, "height": 3, "kind": "door" }
+  ]
+}
