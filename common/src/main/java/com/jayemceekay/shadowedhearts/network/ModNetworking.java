@@ -19,6 +19,7 @@ import net.minecraft.world.entity.Entity;
 /**
  * Architectury-based networking registration and helpers, shared across platforms.
  */
+@SuppressWarnings({"unused", "removal"})
 public final class ModNetworking {
     private ModNetworking() {}
 

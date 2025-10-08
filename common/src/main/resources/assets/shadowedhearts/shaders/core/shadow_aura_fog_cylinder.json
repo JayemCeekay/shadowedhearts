@@ -6,8 +6,8 @@
     "srcalpha": "one",
     "dstalpha": "one_minus_src_alpha"
   },
-  "vertex": "shadowedhearts:shadow_aura_fog",
-  "fragment": "shadowedhearts:shadow_aura_fog",
+  "vertex": "shadowedhearts:shadow_aura_fog_cylinder",
+  "fragment": "shadowedhearts:shadow_aura_fog_cylinder",
 
   "attributes": [ "Position", "Color", "UV0", "UV2" ],
 
@@ -28,7 +28,7 @@
 
     { "name": "uFieldFreq",  "type": "float",     "count": 1,  "values": [3.5] },
     { "name": "uShearK",     "type": "float",     "count": 1,  "values": [-0.25] },
-    { "name": "uLagGamma",   "type": "float",     "count": 1,  "values": [2.5] },
+    { "name": "uLagGamma",   "type": "float",     "count": 1,  "values": [1.5] },
     { "name": "uBaseAdv",    "type": "float",     "count": 1,  "values": [0.12] },
     { "name": "uVelInfluence","type": "float",     "count": 1,  "values": [0.35] },
 
@@ -39,6 +39,7 @@
     { "name": "uExpand",      "type": "float",     "count": 1,  "values": [1.0] },
 
     { "name": "uProxyRadius", "type": "float",     "count": 1,  "values": [1.0] },
+    { "name": "uProxyHalfHeight", "type": "float",  "count": 1,  "values": [0.5] },
 
     { "name": "uAuraFade",    "type": "float",     "count": 1,  "values": [1.0] },
     { "name": "uFadeGamma",   "type": "float",     "count": 1,  "values": [1.5] },
@@ -78,7 +79,7 @@
     { "name": "uPatchStrengthTop",  "type":"float","count":1,"values":[1.85] },
 
     { "name": "uHeightFadeMin",     "type":"float","count":1,"values":[0.20] },
-    { "name": "uHeightFadePow",     "type":"float","count":1,"values":[0.6] }
+    { "name": "uHeightFadePow",     "type":"float","count":1,"values":[1.6] }
 
   ]
 }

@@ -3,6 +3,7 @@ package com.jayemceekay.shadowedhearts.client.aura;
 import com.jayemceekay.shadowedhearts.client.ModShaders;
 import com.jayemceekay.shadowedhearts.client.render.AuraRenderTypes;
 import com.jayemceekay.shadowedhearts.client.render.DepthCapture;
+import com.jayemceekay.shadowedhearts.client.render.geom.CylinderBuffers;
 import com.jayemceekay.shadowedhearts.network.payload.AuraLifecycleS2C;
 import com.jayemceekay.shadowedhearts.network.payload.AuraStateS2C;
 import com.mojang.blaze3d.shaders.Uniform;
@@ -16,6 +17,7 @@ import net.minecraft.client.renderer.ShaderInstance;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 import org.joml.Matrix4f;
+import org.lwjgl.opengl.GL11;
 
 import java.lang.ref.WeakReference;
 import java.util.ArrayDeque;
@@ -29,15 +31,20 @@ import java.util.concurrent.ConcurrentHashMap;
  * Rendering is driven by this system, not by the Pokémon's own renderer.
  */
 public final class AuraEmitters {
-    public  static MultiBufferSource.BufferSource buffers = MultiBufferSource.immediate(new ByteBufferBuilder(512 * 1024));
+    public static MultiBufferSource.BufferSource buffers = MultiBufferSource.immediate(new ByteBufferBuilder(786432));
 
     private AuraEmitters() {
     }
 
     private static final Map<Integer, AuraInstance> ACTIVE = new ConcurrentHashMap<>();
 
+    // Inertial tail smoothing constants/state (per-frame shared timer)
+    private static final double TAU_SECONDS = 0.50; // response time for velocity lag
+    private static final double VIS_TAU_SECONDS = 0.50; // short visual smoothing for uEntityVelWS/uSpeed
+    private static long LAST_FRAME_NANOS = 0L;
+
     /**
-     * Called by networking handler when a state update arrives.
+     * Called by a networking handler when a state update arrives.
      */
     public static void receiveState(AuraStateS2C pkt) {
         var mc = Minecraft.getInstance();
@@ -101,6 +108,7 @@ public final class AuraEmitters {
                 // Replace any existing instance for this entity ID (handles rapid entity ID reuse on recall/swap)
                 Entity ent = mc.level.getEntity(pkt.entityId());
                 UUID newUuid = (ent != null) ? ent.getUUID() : null;
+                System.out.println(ent.getStringUUID());
                 if (newUuid != null) {
                     for (Map.Entry<Integer, AuraInstance> e : ACTIVE.entrySet()) {
                         AuraInstance ai = e.getValue();
@@ -125,32 +133,23 @@ public final class AuraEmitters {
 
     // Timings (ticks): ~0.25s fade-in, ~5s sustain, ~0.5s fade-out
     private static final int FADE_IN = 10;
-    private static final int SUSTAIN = 6000; // can be tuned; original recent value ~90-100
+    private static final int SUSTAIN = 6800; // can be tuned; original recent value ~90-100
     private static final int FADE_OUT = 10;
     // If a position update jumps farther than this squared distance, snap to avoid long lerp streaks
     private static final double TELEPORT_SNAP_DIST2 = 36.0; // 6 blocks squared
-
-    // Trail settings
-    private static final int TRAIL_LIFETIME_TICKS = 36; // how long a ghost lingers
-    private static final int TRAIL_FADE_IN_TICKS = 6;   // how long each node takes to fade in to full alpha
-    private static final float TRAIL_EMIT_DIST = 1.2f;  // spacing in blocks between ghosts
-    private static final int TRAIL_MAX_NODES = 8;      // cap per entity to avoid perf spikes
-    private static final float TRAIL_SHRINK_MIN = 0.15f; // final scale relative to start
-    private static final float TRAIL_ALPHA_BASE = 0.55f; // base opacity multiplier for trail
 
     public static void init() {
         // Server is authoritative for aura lifecycle now. Client no longer subscribes to Cobblemon send/recall events.
     }
 
-
     public static void onPokemonDespawn(int entityId) {
-            // Start a quick fade-out if we still have an instance; if missing, nothing to do
-            var mc = Minecraft.getInstance();
-            long now = (mc != null && mc.level != null) ? mc.level.getGameTime() : 0L;
-            ACTIVE.computeIfPresent(entityId, (id, inst) -> {
-                inst.beginImmediateFadeOut(now, 10);
-                return inst;
-            });
+        // Start a quick fade-out if we still have an instance; if missing, nothing to do
+        var mc = Minecraft.getInstance();
+        long now = (mc != null && mc.level != null) ? mc.level.getGameTime() : 0L;
+        ACTIVE.computeIfPresent(entityId, (id, inst) -> {
+            inst.beginImmediateFadeOut(now, 10);
+            return inst;
+        });
     }
 
     public static void onRender(Camera camera, float partialTicks) {
@@ -158,18 +157,55 @@ public final class AuraEmitters {
         if (mc == null || mc.level == null) return;
 
         // Keep depth available for the aura shader's soft intersection
-        //DepthCapture.captureIfNeeded();
-        if (ModShaders.SHADOW_AURA_FOG != null) {
+        DepthCapture.captureIfNeeded();
+        if (ModShaders.SHADOW_AURA_FOG_CYLINDER != null) {
             try {
-                ModShaders.SHADOW_AURA_FOG.setSampler("uDepth", DepthCapture.textureId());
+                ModShaders.SHADOW_AURA_FOG_CYLINDER.setSampler("uDepth", DepthCapture.textureId());
             } catch (Throwable ignored) {
             }
         }
 
-
+        // Cache per-frame matrices and projection parameters
+        Matrix4f view = RenderSystem.getModelViewMatrix();
+        Matrix4f proj = RenderSystem.getProjectionMatrix();
+        Matrix4f invView = new Matrix4f(view).invert();
+        Matrix4f invProj = new Matrix4f(proj).invert();
+        int screenHeightPx = mc.getWindow().getHeight();
+        // Derive tan(fovY/2) from projection matrix: proj.m11 = cot(fovY/2)
+        float tanHalfFovY = 1.0f / proj.m11();
 
         var camPos = camera.getPosition();
         long now = mc.level.getGameTime();
+
+        // --- Inertial tail: CPU lagged velocity update ---
+        // Compute a per-frame dt from a high-resolution timer; clamp to sane bounds.
+        long nowNano = System.nanoTime();
+        if (LAST_FRAME_NANOS == 0L) LAST_FRAME_NANOS = nowNano;
+        double dtSec = (nowNano - LAST_FRAME_NANOS) / 1_000_000_000.0;
+        if (dtSec < 0.0) dtSec = 0.0;
+        if (dtSec > 0.25)
+            dtSec = 0.25; // avoid huge jumps on stalls
+        LAST_FRAME_NANOS = nowNano;
+
+        // Hoist per-frame uniforms (view/proj/inverses, time) out of the per-instance loop
+        var shFrame = ModShaders.SHADOW_AURA_FOG_CYLINDER;
+        var uuFrame = ModShaders.SHADOW_AURA_FOG_CYLINDER_UNIFORMS;
+        float timeValFrame = (Minecraft.getInstance().level.getGameTime() + partialTicks) * 0.05f;
+        if (shFrame != null) {
+            if (uuFrame != null) {
+                if (uuFrame.uView() != null) uuFrame.uView().set(view);
+                if (uuFrame.uProj() != null) uuFrame.uProj().set(proj);
+                if (uuFrame.uInvView() != null) uuFrame.uInvView().set(invView);
+                if (uuFrame.uInvProj() != null) uuFrame.uInvProj().set(invProj);
+                if (uuFrame.uTime() != null) uuFrame.uTime().set(timeValFrame);
+            } else {
+                setMat4(shFrame, "uView", view);
+                setMat4(shFrame, "uProj", proj);
+                shFrame.safeGetUniform("uInvView").set(invView);
+                shFrame.safeGetUniform("uInvProj").set(invProj);
+                set1f(shFrame, "uTime", timeValFrame);
+            }
+        }
 
         for (Map.Entry<Integer, AuraInstance> en : ACTIVE.entrySet()) {
             AuraInstance inst = en.getValue();
@@ -178,6 +214,10 @@ public final class AuraEmitters {
                 continue;
             }
             if (inst.isExpired(now)) {
+                try {
+                    inst.dispose();
+                } catch (Throwable ignored) {
+                }
                 ACTIVE.remove(en.getKey());
                 continue;
             }
@@ -189,6 +229,7 @@ public final class AuraEmitters {
             if (ent != null && ent.isAlive() && ent.getId() == inst.entityId) {
                 if (inst.entityUuid == null || inst.entityUuid.equals(ent.getUUID())) {
                     useEnt = true;
+
                 }
             }
             if (useEnt) {
@@ -201,11 +242,11 @@ public final class AuraEmitters {
                 iz = Mth.lerp(partialTicks, inst.lastZ, inst.z);
             }
             float fade = inst.fadeFactor(now);
-            if (fade <= 0.001f) continue;
-
-            // Interpolate corruption and skip if effectively invisible
+            // Interpolate corruption
             float corruption = Mth.lerp(partialTicks, inst.prevCorruption, inst.lastCorruption);
-            if (corruption <= 0.01f) continue;
+            // Debug handling: if not debugging, completely skip when invisible; otherwise, proceed so the trail can render
+            boolean hasVisibility = fade > 0.001f && corruption > 0.01f;
+            if (!hasVisibility) continue;
 
             // Build matrices
             double x = ix - camPos.x;
@@ -215,223 +256,105 @@ public final class AuraEmitters {
             float entityHeight = Math.max(0.001f, Mth.lerp(partialTicks, inst.prevBbH, inst.lastBbH));
             float radius = (float) Math.max(0.25f, Mth.lerp(partialTicks, (float) inst.prevBbSize, (float) inst.lastBbSize) * 1.35f);
 
-            Matrix4f view = RenderSystem.getModelViewMatrix();
-            Matrix4f proj = RenderSystem.getProjectionMatrix();
+            // Screen-space radius for LOD selection
+            double cy = y + (entityHeight * 0.55F);
+            double distCenter = Math.sqrt(x * x + cy * cy + z * z);
+            float pxRadiusShell = distCenter > 0.0001 ? (radius * screenHeightPx) / (2f * (float) distCenter * tanHalfFovY) : 9999f;
+            int lodShell = (pxRadiusShell > 150f) ? 3 : (pxRadiusShell > 60f) ? 2 : (pxRadiusShell > 20f) ? 1 : 0;
+
             Matrix4f model = new Matrix4f().translateLocal((float) x, (float) (y + (entityHeight * 0.55F)), (float) z);
             Matrix4f invModel = new Matrix4f(model).invert();
             Matrix4f mvp = new Matrix4f(proj).mul(view).mul(model);
-            Matrix4f invView = new Matrix4f(view).invert();
-            Matrix4f invProj = new Matrix4f(proj).invert();
-            var u = ModShaders.SHADOW_AURA_FOG;
-            if (ModShaders.SHADOW_AURA_FOG != null) {
+            var sh = ModShaders.SHADOW_AURA_FOG_CYLINDER;
+            var uu = ModShaders.SHADOW_AURA_FOG_CYLINDER_UNIFORMS;
+            if (sh != null) {
+                if (uu != null) {
+                    if (uu.uModel() != null) uu.uModel().set(model);
+                    if (uu.uInvModel() != null) uu.uInvModel().set(invModel);
+                    if (uu.uMVP() != null) uu.uMVP().set(mvp);
+                    if (uu.uCameraPosWS() != null)
+                        uu.uCameraPosWS().set(0f, 0f, 0f);
+                    if (uu.uEntityPosWS() != null)
+                        uu.uEntityPosWS().set((float) x, (float) y, (float) z);
+                } else {
+                    // Fallback if caching not initialized yet
+                    setMat4(sh, "uModel", model);
+                    setMat4(sh, "uInvModel", invModel);
+                    sh.safeGetUniform("uMVP").set(mvp);
+                    setVec3(sh, "uCameraPosWS", 0f, 0f, 0f);
+                    setVec3(sh, "uEntityPosWS", (float) x, (float) y, (float) z);
+                }
 
-                setMat4(u, "uModel", model);
-                setMat4(u, "uInvModel", invModel);
-                setMat4(u, "uView", view);
-                setMat4(u, "uProj", proj);
-                u.safeGetUniform("uMVP").set(mvp);
-                u.safeGetUniform("uInvView").set(invView);
-                u.safeGetUniform("uInvProj").set(invProj);
-                setVec3(u, "uCameraPosWS", 0f, 0f, 0f);
-                setVec3(u, "uEntityPosWS", (float) ix, (float) iy, (float) iz);
+                {
+                    float velX = (float) inst.lastDeltaX;
+                    float velY = (float) inst.lastDeltaY + 0.0784000015258789f;
+                    float velZ = (float) inst.lastDeltaZ;
+                    float speed = (float) Math.sqrt(velX * velX + velY * velY + velZ * velZ);
 
-                set1f(u, "uTime", (Minecraft.getInstance().level.getGameTime() + partialTicks) * 0.05f);
-                set1f(u, "uExpand", 1f);
+                    // Exponential smoothing toward current velocity
+                    final double k = 1.0 - Math.exp(-dtSec / TAU_SECONDS);
+                    inst.vLagX += (float) ((velX - inst.vLagX) * k);
+                    inst.vLagY += (float) ((velY - inst.vLagY) * k);
+                    inst.vLagZ += (float) ((velZ - inst.vLagZ) * k);
 
-                set1f(u, "uProxyRadius", radius);
-                set1f(u, "uCapsuleHalf", 0.0f);
+                    // Visual smoothing (short time constant) to prevent abrupt changes
+                    final double kVis = 1.0 - Math.exp(-dtSec / VIS_TAU_SECONDS);
+                    inst.velVisX += (float) ((velX - inst.velVisX) * kVis);
+                    inst.velVisY += (float) ((velY - inst.velVisY) * kVis);
+                    inst.velVisZ += (float) ((velZ - inst.velVisZ) * kVis);
 
-                set1f(u, "uAuraFade", 0.75f * fade);
-                set1f(u, "uFadeGamma", 1.5f);
+                    inst.speedVis += (float) ((speed - inst.speedVis) * kVis);
 
-                setVec3(u, "uColorA", 0.30f, 0.1f, 0.35f);
-                setVec3(u, "uColorB", 0.85f, 0.30f, 1.30f);
+                    if (uu != null) {
+                        if (uu.uEntityVelWS() != null)
+                            uu.uEntityVelWS().set(inst.velVisX, inst.velVisY, inst.velVisZ);
+                        if (uu.uVelLagWS() != null)
+                            uu.uVelLagWS().set(inst.vLagX, inst.vLagY, inst.vLagZ);
+                        if (uu.uSpeed() != null)
+                            uu.uSpeed().set(inst.speedVis * 300);
+                    } else {
+                        setVec3(sh, "uEntityVelWS", inst.velVisX, inst.velVisY, inst.velVisZ);
+                        setVec3(sh, "uVelLagWS", inst.vLagX, inst.vLagY, inst.vLagZ);
+                        set1f(sh, "uSpeed", inst.speedVis * 100);
+                    }
+                }
 
-                set1f(u, "uDensity", radius * .75f);
-                set1f(u, "uAbsorption", 0.15f);
-                set1f(u, "uRimStrength", 2.0f);
-                set1f(u, "uRimPower", 1.0f);
-
-                set1f(u, "uMaxThickness", radius * 1.25f);
-                set1f(u, "uThicknessFeather", radius * 0.015f);
-                set1f(u, "uEdgeKill", 1f);
-
-                set1f(u, "uShellFeather", 0.65f);
-
-                set1f(u, "uNoiseScaleRel", 5f);
-                set1f(u, "uScrollSpeedRel", -2.5f);
-                set1f(u, "uLayersAcrossThickness", 1.0f);
-
-                set1f(u, "uWarpAmp", 0.2f);
-
-                set1f(u, "uLimbSoft", 0.22f);
-                set1f(u, "uMinPathNorm", 0.18f);
-                set1f(u, "uGlowGamma", 2.5f);
-                set1f(u, "uBlackPoint", 0.35f);
+                if (uu != null) {
+                    if (uu.uExpand() != null) uu.uExpand().set(1f);
+                    if (uu.uProxyRadius() != null)
+                        uu.uProxyRadius().set(radius);
+                    if (uu.uProxyHalfHeight() != null)
+                        uu.uProxyHalfHeight().set(entityHeight);
+                    if (uu.uAuraFade() != null)
+                        uu.uAuraFade().set(0.88f * fade);
+                    if (uu.uDensity() != null)
+                        uu.uDensity().set(radius * 3.75f);
+                    if (uu.uMaxThickness() != null)
+                        uu.uMaxThickness().set(radius);
+                    if (uu.uThicknessFeather() != null)
+                        uu.uThicknessFeather().set(0.0f);
+                    if (uu.uEdgeKill() != null)
+                        uu.uEdgeKill().set(radius * 0.65f);
+                } else {
+                    set1f(sh, "uExpand", 1f);
+                    set1f(sh, "uProxyRadius", radius);
+                    set1f(sh, "uProxyHalfHeight", radius * 0.5f);
+                    set1f(sh, "uAuraFade", 0.75f * fade);
+                    set1f(sh, "uDensity", radius);
+                    set1f(sh, "uMaxThickness", radius);
+                    set1f(sh, "uThicknessFeather", 0);
+                    set1f(sh, "uEdgeKill", radius * 0.5f);
+                }
             }
-            u.apply();
             VertexConsumer vcShell = buffers.getBuffer(AuraRenderTypes.shadow_fog());
             Matrix4f mat = new Matrix4f();
-            mat.scale(radius, radius, radius);
-            com.jayemceekay.shadowedhearts.client.render.geom.SphereBuffers.drawUnitSphere(
-                    vcShell, mat, 0, 0, 0, 0
-            );
+            mat.scale(radius, entityHeight, radius);
+            CylinderBuffers.drawCylinderWithDomesLod(vcShell, mat, 1, 0, 0, 0, 0, lodShell);
+            /*
+            com.jayemceekay.shadowedhearts.client.render.geom.SphereBuffers.drawUnitSphereLod(
+                    vcShell, mat, 0, 0, 0, 0, lodShell);*/
             // Flush the buffer for this render type to ensure per-instance uniforms apply to this aura only
-            u.clear();
-            buffers.endBatch(AuraRenderTypes.shadow_fog());
-            // Emit trail node based on movement spacing
-            if (!inst.hasEmitPos) {
-                inst.lastEmitX = ix;
-                inst.lastEmitY = iy;
-                inst.lastEmitZ = iz;
-                inst.hasEmitPos = true;
-                inst.lastEmitTick = now;
-            } else {
-                double ddx = ix - inst.lastEmitX;
-                double ddy = iy - inst.lastEmitY;
-                double ddz = iz - inst.lastEmitZ;
-                double dist2 = ddx * ddx + ddy * ddy + ddz * ddz;
-                if (dist2 >= (double) (TRAIL_EMIT_DIST * TRAIL_EMIT_DIST)) {
-                    // Add a node at previous emit pos so it lags slightly behind
-                    if (inst.trail.size() >= TRAIL_MAX_NODES) {
-                        inst.trail.removeFirst();
-                    }
-                    inst.trail.addLast(new AuraInstance.TrailNode(inst.lastEmitX, inst.lastEmitY, inst.lastEmitZ, entityHeight, radius, now, fade * TRAIL_ALPHA_BASE));
-                    inst.lastEmitX = ix;
-                    inst.lastEmitY = iy;
-                    inst.lastEmitZ = iz;
-                    inst.lastEmitTick = now;
-                }
-            }
-
-            // Render trail nodes with shrinking/fading effect
-            if (!inst.trail.isEmpty()) {
-                var it = inst.trail.iterator();
-                while (it.hasNext()) {
-                    var node = it.next();
-                    float age = ((float) (now - node.spawnTick) + partialTicks) / (float) TRAIL_LIFETIME_TICKS;
-                    if (age >= 1.0f) {
-                        it.remove();
-                        continue;
-                    }
-                    float fadeInPortion = (float) TRAIL_FADE_IN_TICKS / (float) TRAIL_LIFETIME_TICKS;
-                    float inFrac = fadeInPortion > 0f ? Mth.clamp(age / fadeInPortion, 0f, 1f) : 1f;
-                    float nodeAlpha = node.baseFade * inFrac * (1.0f - age);
-                    float nodeRadius = node.startRadius * (1.0f - (1.0f - TRAIL_SHRINK_MIN) * age);
-
-                    double nx = node.x - camPos.x;
-                    double ny = node.y - camPos.y;
-                    double nz = node.z - camPos.z;
-
-                    Matrix4f nModel = new Matrix4f().translateLocal((float) nx, (float) (ny + (node.height * 0.55F)), (float) nz);
-                    Matrix4f nInvModel = new Matrix4f(nModel).invert();
-                    Matrix4f nMvp = new Matrix4f(proj).mul(view).mul(nModel);
-                    var u2 = ModShaders.SHADOW_AURA_FOG_TRAIL;
-                    if (ModShaders.SHADOW_AURA_FOG_TRAIL != null) {
-                        setMat4(u2, "uModel", nModel);
-                        setMat4(u2, "uInvModel", nInvModel);
-                        setMat4(u2, "uView", view);
-                        setMat4(u2, "uProj", proj);
-                        u2.safeGetUniform("uMVP").set(nMvp);
-                        u2.safeGetUniform("uInvView").set(new Matrix4f(view).invert());
-                        u2.safeGetUniform("uInvProj").set(new Matrix4f(proj).invert());
-                        setVec3(u2, "uCameraPosWS", 0f, 0f, 0f);
-                        setVec3(u2, "uEntityPosWS", (float) node.x, (float) node.y, (float) node.z);
-
-                        set1f(u2, "uTime", (Minecraft.getInstance().level.getGameTime() + partialTicks) * 0.05f);
-                        set1f(u2, "uExpand", 1f);
-
-                        set1f(u2, "uProxyRadius", nodeRadius);
-                        set1f(u2, "uCapsuleHalf", 0.0f);
-
-                        set1f(u2, "uAuraFade", nodeAlpha);
-                        set1f(u2, "uFadeGamma", 1.5f);
-
-                        setVec3(u2, "uColorA", 0.30f, 0.1f, 0.35f);
-                        setVec3(u2, "uColorB", 0.85f, 0.30f, 1.30f);
-
-                        set1f(u2, "uDensity", nodeRadius * .75f);
-                        set1f(u2, "uAbsorption", 0.15f);
-                        set1f(u2, "uRimStrength", 2.0f);
-                        set1f(u2, "uRimPower", 1.0f);
-
-                        set1f(u2, "uMaxThickness", nodeRadius * 1.25f);
-                        set1f(u2, "uThicknessFeather", nodeRadius * 0.015f);
-                        set1f(u2, "uEdgeKill", 1f);
-
-                        set1f(u2, "uShellFeather", 0.65f);
-
-                        set1f(u2, "uNoiseScaleRel", 5f);
-                        set1f(u2, "uScrollSpeedRel", -2.5f);
-                        set1f(u2, "uLayersAcrossThickness", 1.0f);
-
-                        set1f(u2, "uWarpAmp", 0.2f);
-
-                        set1f(u2, "uLimbSoft", 0.22f);
-                        set1f(u2, "uMinPathNorm", 0.18f);
-                        set1f(u2, "uGlowGamma", 2.5f);
-                        set1f(u2, "uBlackPoint", 0.35f);
-                    }
-                    u2.apply();
-                    VertexConsumer vcTrail = buffers.getBuffer(AuraRenderTypes.shadow_fog_trail());
-                    Matrix4f tGeom = new Matrix4f();
-                    tGeom.scale(node.startRadius, node.startRadius, node.startRadius);
-                    com.jayemceekay.shadowedhearts.client.render.geom.SphereBuffers.drawUnitSphere(
-                            vcTrail, tGeom, 0, 0, 0, 0
-                    );
-                    // Flush after each trail node to apply its specific uniforms
-                    u2.clear();
-                    buffers.endBatch(AuraRenderTypes.shadow_fog_trail());
-                }
-
-            }
-
-            float poolRadius = Math.max(0.5f, Mth.lerp(partialTicks, inst.prevBbW, inst.lastBbW) * 1.1f);
-            if (ModShaders.SHADOW_POOL != null) {
-                var sp = ModShaders.SHADOW_POOL;
-                setMat4(sp, "uView", view);
-                setMat4(sp, "uProj", proj);
-                sp.safeGetUniform("uTime").set((Minecraft.getInstance().level.getGameTime() + partialTicks) * 0.05f);
-                sp.safeGetUniform("uRippleAmp").set(0.012f);
-                sp.safeGetUniform("uRippleFreq").set(6.0f);
-                sp.safeGetUniform("uRippleSpeed").set(0.35f);
-                sp.safeGetUniform("uRippleEdge").set(0.82f);
-                sp.safeGetUniform("uRippleSteep").set(0.35f);
-                sp.safeGetUniform("uRippleUvAmp").set(0.015f);
-
-                sp.safeGetUniform("uPoolCenterXZ").set((float) ix, (float) iz);
-                sp.safeGetUniform("uRadius").set(poolRadius);
-                sp.safeGetUniform("uGoopScale").set(1.0f);
-                sp.safeGetUniform("uGoopBump").set(0.1f);
-                sp.safeGetUniform("uOutflow").set(0.62f);
-                sp.safeGetUniform("uRingSpacing").set(0.18f);
-                sp.safeGetUniform("uRingWidth").set(0.10f);
-                sp.safeGetUniform("uRingSpeed").set(0.30f);
-                sp.safeGetUniform("uRingAmp").set(0.006f);
-                sp.safeGetUniform("uSwirlOmega").set(0.85f);
-                sp.safeGetUniform("uSwirlFalloff").set(1.25f);
-                sp.safeGetUniform("uSpiralAmp").set(1.020f);
-                sp.safeGetUniform("uSpiralArms").set(3.0f);
-                sp.safeGetUniform("uNormalStr").set(0.8f);
-                sp.safeGetUniform("uSpec1Pow").set(48.0f);
-                sp.safeGetUniform("uSpec1Amp").set(0.12f);
-                sp.safeGetUniform("uSpec2Pow").set(160.0f);
-                sp.safeGetUniform("uSpec2Amp").set(0.20f);
-                sp.safeGetUniform("uSpecColor").set(0.65f, 0.25f, 0.95f);
-                sp.safeGetUniform("uEdgeFeather").set(0.85f);
-                sp.safeGetUniform("uCoreDark").set(1.90f);
-                sp.safeGetUniform("uGlowAmp").set(0.10f);
-                sp.safeGetUniform("uLightDir").set(0.2f, 1.0f, 0.15f);
-                sp.safeGetUniform("uViewDir").set(0.0f, 1.0f, 0.0f);
-                sp.safeGetUniform("uRimAmp").set(0.30f);
-                sp.safeGetUniform("uRimRadius").set(0.92f);
-                sp.safeGetUniform("uRimWidth").set(0.15f);
-                sp.safeGetUniform("uShadowTint").set(0.06f, 0.02f, 0.09f);
-                sp.safeGetUniform("uGlowTint").set(0.26f, 0.09f, 0.45f);
-                sp.safeGetUniform("uGlobalFade").set(0.8f * fade);
-            }
-
-            // Optional pool quad geometry can be added if needed; currently render type handles it.
+            buffers.endLastBatch();
         }
     }
 
@@ -464,18 +387,149 @@ public final class AuraEmitters {
         float prevCorruption = 1.0f;
         long lastServerTick = -1L;
 
+        // Lagged velocity state (object uploads uVelLagWS per frame)
+        float vLagX = 0f, vLagY = 0f, vLagZ = 0f;
+        // Smoothed (display) velocity and speed sent to shader to avoid popping
+        float velVisX = 0f, velVisY = 0f, velVisZ = 0f;
+        float speedVis = 0f;
+
         private static final class TrailNode {
             final double x, y, z;
             final float height;
             final float startRadius;
             final long spawnTick;
             final float baseFade;
+
             TrailNode(double x, double y, double z, float height, float startRadius, long spawnTick, float baseFade) {
-                this.x = x; this.y = y; this.z = z;
+                this.x = x;
+                this.y = y;
+                this.z = z;
                 this.height = height;
                 this.startRadius = startRadius;
                 this.spawnTick = spawnTick;
                 this.baseFade = baseFade;
+            }
+        }
+
+        // Accumulation texture state (per-instance)
+        transient TrailAccum _trailAccum = null;
+        transient long _lastTrailUpdateTick = -1L;
+        transient boolean _hasTrailWorldPos = false;
+        transient double _lastTrailWorldX = 0, _lastTrailWorldY = 0, _lastTrailWorldZ = 0;
+
+        static final class TrailAccum {
+            final int w, h;
+            final java.nio.ByteBuffer pixels; // RGBA
+            int textureId = 0;
+
+            TrailAccum(int w, int h) {
+                this.w = Math.max(8, w);
+                this.h = Math.max(8, h);
+                this.pixels = java.nio.ByteBuffer.allocateDirect(this.w * this.h * 4);
+                for (int i = 0; i < this.w * this.h; i++) {
+                    pixels.put((byte) 0);
+                    pixels.put((byte) 0);
+                    pixels.put((byte) 0);
+                    pixels.put((byte) 0);
+                }
+                this.pixels.flip();
+                textureId = GL11.glGenTextures();
+                GL11.glBindTexture(GL11.GL_TEXTURE_2D, textureId);
+                GL11.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA8, this.w, this.h, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, this.pixels);
+                GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_LINEAR);
+                GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_LINEAR);
+                GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S, GL11.GL_CLAMP);
+                GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_T, GL11.GL_CLAMP);
+                GL11.glBindTexture(GL11.GL_TEXTURE_2D, 0);
+            }
+
+            void clear() {
+                pixels.clear();
+                for (int i = 0; i < w * h; i++) {
+                    pixels.put((byte) 0);
+                    pixels.put((byte) 0);
+                    pixels.put((byte) 0);
+                    pixels.put((byte) 0);
+                }
+                pixels.flip();
+            }
+
+            void decay(float keepFactor) {
+                keepFactor = Math.max(0f, Math.min(1f, keepFactor));
+                int cap = w * h * 4;
+                for (int i = 3; i < cap; i += 4) {
+                    int a = pixels.get(i) & 0xFF;
+                    int na = Math.max(0, Math.min(255, (int) (a * keepFactor)));
+                    pixels.put(i, (byte) (na & 0xFF));
+                }
+            }
+
+            void drawLine(float u0, float v0, float u1, float v1, float widthPx, float intensity) {
+                int x0 = Math.round(u0 * (w - 1));
+                int y0 = Math.round(v0 * (h - 1));
+                int x1 = Math.round(u1 * (w - 1));
+                int y1 = Math.round(v1 * (h - 1));
+                int rx0 = Math.min(Math.max(Math.min(x0, x1) - (int) widthPx - 2, 0), w - 1);
+                int ry0 = Math.min(Math.max(Math.min(y0, y1) - (int) widthPx - 2, 0), h - 1);
+                int rx1 = Math.max(Math.min(Math.max(x0, x1) + (int) widthPx + 2, w - 1), 0);
+                int ry1 = Math.max(Math.min(Math.max(y0, y1) + (int) widthPx + 2, h - 1), 0);
+                float w2 = Math.max(1f, widthPx);
+                float w2Inv = 1.0f / w2;
+                float sx = x1 - x0;
+                float sy = y1 - y0;
+                float segLen2 = sx * sx + sy * sy;
+                if (segLen2 < 1e-4f) {
+                    for (int py = ry0; py <= ry1; py++) {
+                        for (int px = rx0; px <= rx1; px++) {
+                            float dx = px - x0;
+                            float dy = py - y0;
+                            float d = (float) Math.sqrt(dx * dx + dy * dy);
+                            float t = Math.max(0f, 1f - d * (1.0f / w2));
+                            if (t <= 0f) continue;
+                            addAlpha(px, py, (int) (255 * intensity * t));
+                        }
+                    }
+                    return;
+                }
+                for (int py = ry0; py <= ry1; py++) {
+                    for (int px = rx0; px <= rx1; px++) {
+                        float vx = px - x0;
+                        float vy = py - y0;
+                        float t = (vx * sx + vy * sy) / segLen2;
+                        if (t < 0f) t = 0f;
+                        else if (t > 1f) t = 1f;
+                        float nx = x0 + t * sx;
+                        float ny = y0 + t * sy;
+                        float dx = px - nx;
+                        float dy = py - ny;
+                        float dist = (float) Math.sqrt(dx * dx + dy * dy);
+                        float falloff = Math.max(0f, 1f - dist * w2Inv);
+                        if (falloff <= 0f) continue;
+                        addAlpha(px, py, (int) (255 * intensity * falloff));
+                    }
+                }
+            }
+
+            private void addAlpha(int x, int y, int add) {
+                if (x < 0 || y < 0 || x >= w || y >= h) return;
+                int idx = (y * w + x) * 4 + 3;
+                int a = (pixels.get(idx) & 0xFF) + add;
+                if (a > 255) a = 255;
+                pixels.put(idx, (byte) (a & 0xFF));
+            }
+
+            void uploadToGl() {
+                GL11.glBindTexture(GL11.GL_TEXTURE_2D, textureId);
+                pixels.rewind();
+                GL11.glTexSubImage2D(GL11.GL_TEXTURE_2D, 0, 0, 0, w, h, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, pixels);
+                GL11.glBindTexture(GL11.GL_TEXTURE_2D, 0);
+            }
+
+            void dispose() {
+                if (textureId != 0) {
+                    GL11.glDeleteTextures(textureId);
+                    textureId = 0;
+                }
             }
         }
 
@@ -504,6 +558,11 @@ public final class AuraEmitters {
             this.prevBbSize = bbs;
             this.lastCorruption = lastCorruption;
             this.prevCorruption = lastCorruption;
+            // Initialize visual smoothing state to current inputs to avoid first-frame pops
+            this.velVisX = (float) dx;
+            this.velVisY = (float) dy;
+            this.velVisZ = (float) dz;
+            this.speedVis = (float) Math.sqrt(dx * dx + dy * dy + dz * dz);
         }
 
         void beginImmediateFadeOut(long now, int outTicks) {
@@ -531,6 +590,16 @@ public final class AuraEmitters {
 
         float getCorruption() {
             return lastCorruption;
+        }
+
+        void dispose() {
+            if (this._trailAccum != null) {
+                try {
+                    this._trailAccum.dispose();
+                } catch (Throwable ignored) {
+                }
+                this._trailAccum = null;
+            }
         }
     }
 

@@ -19,6 +19,7 @@ import net.minecraft.world.phys.shapes.CollisionContext;
  * When active, highlights the Pokémon under the crosshair in red and
  * sends a C2S packet on right-click to issue the target order.
  */
+@SuppressWarnings("removal")
 public final class TargetSelectionClient {
     private TargetSelectionClient() {}
 

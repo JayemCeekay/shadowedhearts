@@ -2,7 +2,6 @@ package com.jayemceekay.shadowedhearts.client.neoforge;
 
 import com.jayemceekay.shadowedhearts.Shadowedhearts;
 import com.jayemceekay.shadowedhearts.client.ModShaders;
-import com.jayemceekay.shadowedhearts.client.aura.AuraEmitters;
 import com.jayemceekay.shadowedhearts.client.render.DepthCapture;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -20,7 +19,6 @@ public final class ClientSetupSubscriber {
     @SubscribeEvent
     public static void onClientSetup(final FMLClientSetupEvent event) {
         // Client-side common init
-        AuraEmitters.init();
         DepthCapture.init();
         ModShaders.initClient();
         // Register keybinds

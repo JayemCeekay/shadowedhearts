@@ -2,7 +2,6 @@ package com.jayemceekay.shadowedhearts.client;
 
 import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.KeyMapping;
-import net.minecraft.client.Minecraft;
 
 /**
  * Client key mappings shared across platforms. Platform registration occurs in ModKeybindsPlatform.
@@ -11,6 +10,7 @@ public final class ModKeybinds {
     private ModKeybinds() {}
 
     public static KeyMapping ORDER_WHEEL;
+    public static KeyMapping AURA_TRAIL_TOGGLE;
 
     private static final String CAT = "key.categories.shadowedhearts";
 
@@ -26,6 +26,7 @@ public final class ModKeybinds {
             );
         }
         ModKeybindsPlatform.register(ORDER_WHEEL);
+
     }
 
     /** Returns true while the order wheel key is currently held down. */

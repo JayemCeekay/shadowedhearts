@@ -20,6 +20,8 @@ public final class SphereBuffers {
     private SphereBuffers() {}
 
     private static Mesh SUBDIV2; // cached unit icosphere with 2 subdivisions (~320 tris)
+    // Optional cached LOD meshes: 0..3 subdivisions
+    private static final Mesh[] LODS = new Mesh[4];
 
     private record Mesh(float[] positions, int[] indices) {}
 
@@ -27,6 +29,49 @@ public final class SphereBuffers {
     private static Mesh mesh() {
         if (SUBDIV2 == null) SUBDIV2 = buildIcosphere(2);
         return SUBDIV2;
+    }
+
+    /** Returns a mesh for the given LOD (0..3 subdivisions). Clamps out-of-range values. */
+    public static Mesh meshForLod(int lod) {
+        int clamped = Math.max(0, Math.min(3, lod));
+        Mesh cached = LODS[clamped];
+        if (cached == null) {
+            cached = buildIcosphere(clamped);
+            LODS[clamped] = cached;
+        }
+        return cached;
+    }
+
+    /** Draws unit sphere with the given LOD (0=icosahedron, 3=finest). */
+    public static void drawUnitSphereLod(VertexConsumer vc, Matrix4f mat, float r, float g, float b, float a, int lod) {
+        Mesh m = meshForLod(lod);
+        float[] pos = m.positions;
+        int[] idx = m.indices;
+        for (int i = 0; i < idx.length; i += 3) {
+            int ia = idx[i] * 3;
+            int ib = idx[i + 1] * 3;
+            int ic = idx[i + 2] * 3;
+            float ax = pos[ia];
+            float ay = pos[ia + 1];
+            float az = pos[ia + 2];
+            float au = 0.5f + 0.5f * ax;
+            float av = 0.5f + 0.5f * ay;
+            vc.addVertex(mat, ax, ay, az).setUv(au, av).setColor(r, g, b, a).setLight(LightTexture.FULL_BRIGHT);
+
+            float bx = pos[ib];
+            float by = pos[ib + 1];
+            float bz = pos[ib + 2];
+            float bu = 0.5f + 0.5f * bx;
+            float bv = 0.5f + 0.5f * by;
+            vc.addVertex(mat, bx, by, bz).setUv(bu, bv).setColor(r, g, b, a).setLight(LightTexture.FULL_BRIGHT);
+
+            float cx = pos[ic];
+            float cy = pos[ic + 1];
+            float cz = pos[ic + 2];
+            float cu = 0.5f + 0.5f * cx;
+            float cv = 0.5f + 0.5f * cy;
+            vc.addVertex(mat, cx, cy, cz).setUv(cu, cv).setColor(r, g, b, a).setLight(LightTexture.FULL_BRIGHT);
+        }
     }
 
     public static void drawPositionOnly(VertexConsumer vc) {

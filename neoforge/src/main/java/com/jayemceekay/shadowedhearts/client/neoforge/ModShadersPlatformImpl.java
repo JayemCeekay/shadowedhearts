@@ -16,19 +16,26 @@ public class ModShadersPlatformImpl {
     // Architectury expects a no-arg implementation to be present on NeoForge.
     public static void registerShaders() {
         // No-op on NeoForge; shaders are registered via the MOD event bus (see below).
-
     }
-
 
     @SubscribeEvent
     public static void registerShaders(RegisterShadersEvent evt) {
         try {
+            // Base and variants — register and link to router modes
             evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:shadow_aura_fog", DefaultVertexFormat.NEW_ENTITY),
-                    shader -> ModShaders.SHADOW_AURA_FOG = shader);
+                    shader -> {
+                        ModShaders.SHADOW_AURA_FOG = shader;
+                        ModShaders.SHADOW_AURA_FOG_UNIFORMS = com.jayemceekay.shadowedhearts.client.ShadowFogUniforms.from(shader);
+                    });
 
-            evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:shadow_aura_fog", DefaultVertexFormat.NEW_ENTITY),
-                    shader -> ModShaders.SHADOW_AURA_FOG_TRAIL = shader);
+            // Cylinder variant for pillar-style aura bounds
+            evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:shadow_aura_fog_cylinder", DefaultVertexFormat.NEW_ENTITY),
+                    shader -> {
+                        ModShaders.SHADOW_AURA_FOG_CYLINDER = shader;
+                        ModShaders.SHADOW_AURA_FOG_CYLINDER_UNIFORMS = com.jayemceekay.shadowedhearts.client.ShadowFogUniforms.from(shader);
+                    });
 
+            // Other shaders
             evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:shadow_pool", DefaultVertexFormat.PARTICLE),
                     shader -> ModShaders.SHADOW_POOL = shader);
 

@@ -38,6 +38,7 @@ import java.util.List;
  * Minimal implementation: uses particles to visualize a light-green disk up to 3 blocks radius
  * following the crosshair while RMB is held. On release, sends entity id list to server.
  */
+@SuppressWarnings("removal")
 public final class WhistleSelectionClient {
     private WhistleSelectionClient() {}
 

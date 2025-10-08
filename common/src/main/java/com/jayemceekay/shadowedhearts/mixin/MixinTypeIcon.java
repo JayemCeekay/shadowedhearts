@@ -15,7 +15,7 @@ import org.spongepowered.asm.mixin.Unique;
 
 import static com.cobblemon.mod.common.api.gui.GuiUtilsKt.blitk;
 
-@Mixin(TypeIcon.class)
+@Mixin(value = TypeIcon.class, remap = false)
 public class MixinTypeIcon {
 
     @Final

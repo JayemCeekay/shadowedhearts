@@ -16,6 +16,7 @@ import net.minecraft.world.phys.Vec3;
  * Client-side controller for selecting a ground position for a positional order (MOVE_TO / HOLD_POSITION).
  * When active, waits for right-click to confirm and sends a C2S packet with the chosen BlockPos.
  */
+@SuppressWarnings("removal")
 public final class PositionSelectionClient {
     private PositionSelectionClient() {}
 

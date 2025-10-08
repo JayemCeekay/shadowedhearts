@@ -9,7 +9,7 @@ pluginManagement {
 
 rootProject.name = 'shadowedhearts'
 
-include ':common', ':fabric', ':neoforge'
+include ':common', ':fabric', ':neoforge'/*
 includeBuild('external/cobblemon') {
     name = 'cobblemon-src'
     dependencySubstitution {
@@ -19,4 +19,4 @@ includeBuild('external/cobblemon') {
         substitute module('com.cobblemon:cobblemon-fabric') using project(':fabric')
         substitute module('com.cobblemon:cobblemon-neoforge') using project(':neoforge')
     }
-}
+}*/

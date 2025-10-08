@@ -1,7 +1,7 @@
 package com.jayemceekay.shadowedhearts.client.fabric;
 
-import com.jayemceekay.shadowedhearts.client.ModShaders;
 import com.jayemceekay.shadowedhearts.client.ModKeybinds;
+import com.jayemceekay.shadowedhearts.client.ModShaders;
 import com.jayemceekay.shadowedhearts.client.aura.AuraEmitters;
 import com.jayemceekay.shadowedhearts.client.particle.LuminousMoteEmitters;
 import com.jayemceekay.shadowedhearts.client.particle.LuminousMoteParticle;
@@ -11,8 +11,8 @@ import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientEntityEvents;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.particle.v1.ParticleFactoryRegistry;
-import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
+import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
 
 public final class ShadowedheartsFabricClient implements ClientModInitializer {
 
@@ -36,7 +36,11 @@ public final class ShadowedheartsFabricClient implements ClientModInitializer {
 
         // Whistle brush selection
         WhistleSelectionClient.init();
-        ClientTickEvents.END_CLIENT_TICK.register(client -> { WhistleSelectionClient.onTick(); com.jayemceekay.shadowedhearts.poketoss.client.TargetSelectionClient.onTick(); com.jayemceekay.shadowedhearts.poketoss.client.PositionSelectionClient.onTick(); });
+        ClientTickEvents.END_CLIENT_TICK.register(client -> {
+            WhistleSelectionClient.onTick(); 
+            com.jayemceekay.shadowedhearts.poketoss.client.TargetSelectionClient.onTick(); 
+            com.jayemceekay.shadowedhearts.poketoss.client.PositionSelectionClient.onTick(); 
+        });
 
         // Render hooks: aura + luminous motes at late translucent stage
         WorldRenderEvents.AFTER_TRANSLUCENT.register(context -> {
