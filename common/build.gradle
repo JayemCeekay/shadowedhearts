@@ -3,6 +3,7 @@ plugins {
 }
 
 architectury {
+    injectInjectables = false
     common rootProject.enabled_platforms.split(',')
 }
 
@@ -35,15 +36,19 @@ dependencies {
     //compileOnly("com.external.fightorflight:common:0.0.0-local")
 }
 
-// Disable tests for common module (no tests present); avoids environment-specific Gradle/JDK issues
-// If/when tests are added, remove 'enabled = false' and configure JUnit 5 accordingly.
-tasks.withType(Test).configureEach {
-    enabled = false
-    // useJUnitPlatform()
-    // testLogging {
-    //     events "passed", "skipped", "failed"
-    //     exceptionFormat "full"
-    //     showStandardStreams = true
-    // }
+// Default for all resource/copy tasks
+tasks.withType(Copy).configureEach {
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 }
 
+// All archives (Jar/Zip/Shadow)
+tasks.withType(AbstractArchiveTask).configureEach {
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
+
+// If you add per-file matches:
+tasks.named("processResources").configure {
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    // Example:
+    // filesMatching("META-INF/neoforge.mods.toml") { expand version: project.version }
+}

@@ -17,11 +17,8 @@ import net.minecraft.client.renderer.ShaderInstance;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 import org.joml.Matrix4f;
-import org.lwjgl.opengl.GL11;
 
 import java.lang.ref.WeakReference;
-import java.util.ArrayDeque;
-import java.util.Deque;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -39,8 +36,19 @@ public final class AuraEmitters {
     private static final Map<Integer, AuraInstance> ACTIVE = new ConcurrentHashMap<>();
 
     // Inertial tail smoothing constants/state (per-frame shared timer)
-    private static final double TAU_SECONDS = 0.50; // response time for velocity lag
-    private static final double VIS_TAU_SECONDS = 0.50; // short visual smoothing for uEntityVelWS/uSpeed
+    private static final double TAU_SECONDS = 0.50; // response time for velocity lag (trail inertia)
+    private static final double VIS_TAU_SECONDS = 0.50; // short visual smoothing for final visuals
+
+    // Visual safety cap: maximum velocity magnitude considered by the aura visuals (blocks/tick)
+    // This prevents extreme spikes from causing distracting flashes. Consider moving to config if needed.
+    private static final float MAX_SPEED = 0.1f;
+
+    // Envelope follower for start/stop behavior: separate attack/release to avoid pops when stopping/starting
+    private static final double ENV_ATTACK_TAU_SECONDS = 0.22; // how fast visuals ramp up when starting to move
+    private static final double ENV_RELEASE_TAU_SECONDS = 0.85; // how slow visuals decay when stopping
+    private static final double DIR_TAU_SECONDS = 0.35; // direction smoothing for velocity vector
+    private static final float DEAD_SPEED = 0.02f; // deadband to ignore micro jitter from physics
+    private static final float HYSTERESIS = 0.01f; // avoids rapid flip between attack/release near threshold
     private static long LAST_FRAME_NANOS = 0L;
 
     /**
@@ -214,10 +222,6 @@ public final class AuraEmitters {
                 continue;
             }
             if (inst.isExpired(now)) {
-                try {
-                    inst.dispose();
-                } catch (Throwable ignored) {
-                }
                 ACTIVE.remove(en.getKey());
                 continue;
             }
@@ -254,15 +258,15 @@ public final class AuraEmitters {
             double z = iz - camPos.z;
 
             float entityHeight = Math.max(0.001f, Mth.lerp(partialTicks, inst.prevBbH, inst.lastBbH));
-            float radius = (float) Math.max(0.25f, Mth.lerp(partialTicks, (float) inst.prevBbSize, (float) inst.lastBbSize) * 1.35f);
+            float radius = Math.max(0.25f, Mth.lerp(partialTicks, (float) inst.prevBbSize, (float) inst.lastBbSize) * 1.35f);
 
             // Screen-space radius for LOD selection
-            double cy = y + (entityHeight * 0.55F);
+            double cy = y;
             double distCenter = Math.sqrt(x * x + cy * cy + z * z);
             float pxRadiusShell = distCenter > 0.0001 ? (radius * screenHeightPx) / (2f * (float) distCenter * tanHalfFovY) : 9999f;
             int lodShell = (pxRadiusShell > 150f) ? 3 : (pxRadiusShell > 60f) ? 2 : (pxRadiusShell > 20f) ? 1 : 0;
 
-            Matrix4f model = new Matrix4f().translateLocal((float) x, (float) (y + (entityHeight * 0.55F)), (float) z);
+            Matrix4f model = new Matrix4f().translate((float) (x), (float) ((y) + (entityHeight / 2.0f)), (float) (z));
             Matrix4f invModel = new Matrix4f(model).invert();
             Matrix4f mvp = new Matrix4f(proj).mul(view).mul(model);
             var sh = ModShaders.SHADOW_AURA_FOG_CYLINDER;
@@ -273,9 +277,9 @@ public final class AuraEmitters {
                     if (uu.uInvModel() != null) uu.uInvModel().set(invModel);
                     if (uu.uMVP() != null) uu.uMVP().set(mvp);
                     if (uu.uCameraPosWS() != null)
-                        uu.uCameraPosWS().set(0f, 0f, 0f);
+                        uu.uCameraPosWS().set((float) 0f, (float) 0f, (float) 0f);
                     if (uu.uEntityPosWS() != null)
-                        uu.uEntityPosWS().set((float) x, (float) y, (float) z);
+                        uu.uEntityPosWS().set((float) ix, (float) iy, (float) iz);
                 } else {
                     // Fallback if caching not initialized yet
                     setMat4(sh, "uModel", model);
@@ -287,23 +291,90 @@ public final class AuraEmitters {
 
                 {
                     float velX = (float) inst.lastDeltaX;
-                    float velY = (float) inst.lastDeltaY + 0.0784000015258789f;
+                    float velY = (float) inst.lastDeltaY + 0.0784000015258789f; // include gravity bias to keep slight lift
                     float velZ = (float) inst.lastDeltaZ;
                     float speed = (float) Math.sqrt(velX * velX + velY * velY + velZ * velZ);
 
-                    // Exponential smoothing toward current velocity
-                    final double k = 1.0 - Math.exp(-dtSec / TAU_SECONDS);
-                    inst.vLagX += (float) ((velX - inst.vLagX) * k);
-                    inst.vLagY += (float) ((velY - inst.vLagY) * k);
-                    inst.vLagZ += (float) ((velZ - inst.vLagZ) * k);
+                    // Clamp raw velocity magnitude to avoid spikes feeding the pipeline
+                    if (speed > MAX_SPEED) {
+                        float scale = MAX_SPEED / Math.max(1.0e-6f, speed);
+                        velX *= scale;
+                        velY *= scale;
+                        velZ *= scale;
+                        speed = MAX_SPEED;
+                    }
 
-                    // Visual smoothing (short time constant) to prevent abrupt changes
+                    // 1) Lagged velocity for trail inertia (slower, independent of envelope)
+                    final double kLag = 1.0 - Math.exp(-dtSec / TAU_SECONDS);
+                    inst.vLagX = Mth.lerp((float) kLag, inst.vLagX, velX);
+                    inst.vLagY = Mth.lerp((float) kLag, inst.vLagY, velY);
+                    inst.vLagZ = Mth.lerp((float) kLag, inst.vLagZ, velZ);
+
+                    // 2) Speed envelope with attack/release and deadband to avoid sudden start/stop pops
+                    float targetSpeed = speed;
+                    if (targetSpeed < DEAD_SPEED)
+                        targetSpeed = 0f; // ignore micro jitter
+                    if (targetSpeed > MAX_SPEED)
+                        targetSpeed = MAX_SPEED; // enforce cap
+
+                    // Hysteresis-based selection of attack vs release tau
+                    double chosenTau = ENV_ATTACK_TAU_SECONDS;
+                    if (targetSpeed + HYSTERESIS < inst.speedEnv) {
+                        chosenTau = ENV_RELEASE_TAU_SECONDS; // decay slower when stopping
+                    } else if (targetSpeed > inst.speedEnv + HYSTERESIS) {
+                        chosenTau = ENV_ATTACK_TAU_SECONDS; // ramp faster when starting
+                    } else {
+                        // in hysteresis band: keep previous tendency by selecting tau based on last move
+                        chosenTau = inst.envWasReleasing ? ENV_RELEASE_TAU_SECONDS : ENV_ATTACK_TAU_SECONDS;
+                    }
+                    inst.envWasReleasing = chosenTau == ENV_RELEASE_TAU_SECONDS;
+                    final double kEnv = 1.0 - Math.exp(-dtSec / chosenTau);
+                    inst.speedEnv = Mth.lerp((float) kEnv, inst.speedEnv, targetSpeed);
+
+                    // 3) Direction envelope: keep direction stable; align toward current velocity smoothly
+                    float dirX, dirY, dirZ;
+                    if (speed > 1.0e-4f) {
+                        float inv = 1.0f / speed;
+                        dirX = velX * inv;
+                        dirY = velY * inv;
+                        dirZ = velZ * inv;
+                    } else {
+                        // If we're essentially stopped, keep previous direction (or zero if none)
+                        float prevMag = (float) Math.sqrt(inst.envVelX * inst.envVelX + inst.envVelY * inst.envVelY + inst.envVelZ * inst.envVelZ);
+                        if (prevMag > 1.0e-4f) {
+                            float inv = 1.0f / prevMag;
+                            dirX = inst.envVelX * inv;
+                            dirY = inst.envVelY * inv;
+                            dirZ = inst.envVelZ * inv;
+                        } else {
+                            dirX = dirY = dirZ = 0f;
+                        }
+                    }
+                    float targetEnvVelX = dirX * inst.speedEnv;
+                    float targetEnvVelY = dirY * inst.speedEnv;
+                    float targetEnvVelZ = dirZ * inst.speedEnv;
+
+                    final double kDir = 1.0 - Math.exp(-dtSec / DIR_TAU_SECONDS);
+                    inst.envVelX = Mth.lerp((float) kDir, inst.envVelX, targetEnvVelX);
+                    inst.envVelY = Mth.lerp((float) kDir, inst.envVelY, targetEnvVelY);
+                    inst.envVelZ = Mth.lerp((float) kDir, inst.envVelZ, targetEnvVelZ);
+
+                    // 4) Final visual smoothing to avoid micro jitter before sending to shader
                     final double kVis = 1.0 - Math.exp(-dtSec / VIS_TAU_SECONDS);
-                    inst.velVisX += (float) ((velX - inst.velVisX) * kVis);
-                    inst.velVisY += (float) ((velY - inst.velVisY) * kVis);
-                    inst.velVisZ += (float) ((velZ - inst.velVisZ) * kVis);
+                    inst.velVisX = Mth.lerp((float) kVis, inst.velVisX, inst.envVelX);
+                    inst.velVisY = Mth.lerp((float) kVis, inst.velVisY, inst.envVelY);
+                    inst.velVisZ = Mth.lerp((float) kVis, inst.velVisZ, inst.envVelZ);
+                    inst.speedVis = Mth.lerp((float) kVis, inst.speedVis, inst.speedEnv);
 
-                    inst.speedVis += (float) ((speed - inst.speedVis) * kVis);
+                    // Final safety clamps on visuals
+                    float visMag = (float) Math.sqrt(inst.velVisX * inst.velVisX + inst.velVisY * inst.velVisY + inst.velVisZ * inst.velVisZ);
+                    if (visMag > MAX_SPEED) {
+                        float s = MAX_SPEED / Math.max(1.0e-6f, visMag);
+                        inst.velVisX *= s;
+                        inst.velVisY *= s;
+                        inst.velVisZ *= s;
+                    }
+                    if (inst.speedVis > MAX_SPEED) inst.speedVis = MAX_SPEED;
 
                     if (uu != null) {
                         if (uu.uEntityVelWS() != null)
@@ -320,21 +391,49 @@ public final class AuraEmitters {
                 }
 
                 if (uu != null) {
-                    if (uu.uExpand() != null) uu.uExpand().set(1f);
+                    if (uu.uExpand() != null)
+                        uu.uExpand().set(1f);
                     if (uu.uProxyRadius() != null)
                         uu.uProxyRadius().set(radius);
                     if (uu.uProxyHalfHeight() != null)
                         uu.uProxyHalfHeight().set(entityHeight);
                     if (uu.uAuraFade() != null)
-                        uu.uAuraFade().set(0.88f * fade);
+                        uu.uAuraFade().set(0.8f * fade);
                     if (uu.uDensity() != null)
-                        uu.uDensity().set(radius * 3.75f);
+                        uu.uDensity().set(radius);
                     if (uu.uMaxThickness() != null)
-                        uu.uMaxThickness().set(radius);
+                        uu.uMaxThickness().set(radius * 0.65f);
                     if (uu.uThicknessFeather() != null)
-                        uu.uThicknessFeather().set(0.0f);
+                        uu.uThicknessFeather().set(radius * 0f);
                     if (uu.uEdgeKill() != null)
-                        uu.uEdgeKill().set(radius * 0.65f);
+                        uu.uEdgeKill().set(0.0f);
+                    if (uu.uLimbSoft() != null) uu.uLimbSoft().set(0.22f);
+                    if (uu.uLimbHardness() != null)
+                        uu.uLimbHardness().set(2.25f);
+                    if (uu.uMinPathNorm() != null) uu.uMinPathNorm().set(0.15f);
+                    if (uu.uHeightFadePow() != null)
+                        uu.uHeightFadePow().set(0.20f);
+                    if (uu.uHeightFadeMin() != null)
+                        uu.uHeightFadeMin().set(0.60f);
+                    if (uu.uCorePow() != null) uu.uCorePow().set(3.5f);
+                    if (uu.uGlowGamma() != null) uu.uGlowGamma().set(0.5f);
+                    if (uu.uRimPower() != null) uu.uRimPower().set(0.05f);
+                    if (uu.uRimStrength() != null) uu.uRimStrength().set(5.5f);
+                    if (uu.uHeightFadePow() != null)
+                        uu.uHeightFadePow().set(1.60f);
+                    if (uu.uHeightFadeMin() != null)
+                        uu.uHeightFadeMin().set(-0.15f);
+                    if (uu.uPixelsPerRadius() != null)
+                        uu.uPixelsPerRadius().set(20.0f);
+                    if (uu.uPosterizeSteps() != null)
+                        uu.uPosterizeSteps().set(3.0f);
+                    if (uu.uPatchSharpness() != null)
+                        uu.uPatchSharpness().set(0.25f);
+                    if (uu.uPatchGamma() != null) uu.uPatchGamma().set(0.65f);
+                    if (uu.uPatchThreshTop() != null)
+                        uu.uPatchThreshTop().set(0.80f);
+                    if (uu.uPatchThreshBase() != null)
+                        uu.uPatchThreshBase().set(0.30f);
                 } else {
                     set1f(sh, "uExpand", 1f);
                     set1f(sh, "uProxyRadius", radius);
@@ -348,11 +447,10 @@ public final class AuraEmitters {
             }
             VertexConsumer vcShell = buffers.getBuffer(AuraRenderTypes.shadow_fog());
             Matrix4f mat = new Matrix4f();
-            mat.scale(radius, entityHeight, radius);
-            CylinderBuffers.drawCylinderWithDomesLod(vcShell, mat, 1, 0, 0, 0, 0, lodShell);
-            /*
-            com.jayemceekay.shadowedhearts.client.render.geom.SphereBuffers.drawUnitSphereLod(
-                    vcShell, mat, 0, 0, 0, 0, lodShell);*/
+            mat.scale(radius, entityHeight * 1.5f, radius);
+            //CylinderBuffers.drawCylinderFlatCaps(vcShell, mat, 0, 0, 0, 0, lodShell);
+            CylinderBuffers.drawCylinderWithDomesLod(vcShell, mat, 1f, 0, 0, 0, 0, lodShell);
+            /*com.jayemceekay.shadowedhearts.client.render.geom.SphereBuffers.drawUnitSphereLod(vcShell, mat, 0, 0, 0, 0, lodShell);*/
             // Flush the buffer for this render type to ensure per-instance uniforms apply to this aura only
             buffers.endLastBatch();
         }
@@ -363,12 +461,6 @@ public final class AuraEmitters {
         private int fadeInTicks;
         private int sustainTicks;
         private int fadeOutTicks;
-
-        // Trail state
-        private final Deque<TrailNode> trail = new ArrayDeque<>();
-        private double lastEmitX, lastEmitY, lastEmitZ;
-        private boolean hasEmitPos = false;
-        private long lastEmitTick = 0L;
 
         // Entity reference for client-side interpolation
         private int entityId;
@@ -393,145 +485,10 @@ public final class AuraEmitters {
         float velVisX = 0f, velVisY = 0f, velVisZ = 0f;
         float speedVis = 0f;
 
-        private static final class TrailNode {
-            final double x, y, z;
-            final float height;
-            final float startRadius;
-            final long spawnTick;
-            final float baseFade;
-
-            TrailNode(double x, double y, double z, float height, float startRadius, long spawnTick, float baseFade) {
-                this.x = x;
-                this.y = y;
-                this.z = z;
-                this.height = height;
-                this.startRadius = startRadius;
-                this.spawnTick = spawnTick;
-                this.baseFade = baseFade;
-            }
-        }
-
-        // Accumulation texture state (per-instance)
-        transient TrailAccum _trailAccum = null;
-        transient long _lastTrailUpdateTick = -1L;
-        transient boolean _hasTrailWorldPos = false;
-        transient double _lastTrailWorldX = 0, _lastTrailWorldY = 0, _lastTrailWorldZ = 0;
-
-        static final class TrailAccum {
-            final int w, h;
-            final java.nio.ByteBuffer pixels; // RGBA
-            int textureId = 0;
-
-            TrailAccum(int w, int h) {
-                this.w = Math.max(8, w);
-                this.h = Math.max(8, h);
-                this.pixels = java.nio.ByteBuffer.allocateDirect(this.w * this.h * 4);
-                for (int i = 0; i < this.w * this.h; i++) {
-                    pixels.put((byte) 0);
-                    pixels.put((byte) 0);
-                    pixels.put((byte) 0);
-                    pixels.put((byte) 0);
-                }
-                this.pixels.flip();
-                textureId = GL11.glGenTextures();
-                GL11.glBindTexture(GL11.GL_TEXTURE_2D, textureId);
-                GL11.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA8, this.w, this.h, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, this.pixels);
-                GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_LINEAR);
-                GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_LINEAR);
-                GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S, GL11.GL_CLAMP);
-                GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_T, GL11.GL_CLAMP);
-                GL11.glBindTexture(GL11.GL_TEXTURE_2D, 0);
-            }
-
-            void clear() {
-                pixels.clear();
-                for (int i = 0; i < w * h; i++) {
-                    pixels.put((byte) 0);
-                    pixels.put((byte) 0);
-                    pixels.put((byte) 0);
-                    pixels.put((byte) 0);
-                }
-                pixels.flip();
-            }
-
-            void decay(float keepFactor) {
-                keepFactor = Math.max(0f, Math.min(1f, keepFactor));
-                int cap = w * h * 4;
-                for (int i = 3; i < cap; i += 4) {
-                    int a = pixels.get(i) & 0xFF;
-                    int na = Math.max(0, Math.min(255, (int) (a * keepFactor)));
-                    pixels.put(i, (byte) (na & 0xFF));
-                }
-            }
-
-            void drawLine(float u0, float v0, float u1, float v1, float widthPx, float intensity) {
-                int x0 = Math.round(u0 * (w - 1));
-                int y0 = Math.round(v0 * (h - 1));
-                int x1 = Math.round(u1 * (w - 1));
-                int y1 = Math.round(v1 * (h - 1));
-                int rx0 = Math.min(Math.max(Math.min(x0, x1) - (int) widthPx - 2, 0), w - 1);
-                int ry0 = Math.min(Math.max(Math.min(y0, y1) - (int) widthPx - 2, 0), h - 1);
-                int rx1 = Math.max(Math.min(Math.max(x0, x1) + (int) widthPx + 2, w - 1), 0);
-                int ry1 = Math.max(Math.min(Math.max(y0, y1) + (int) widthPx + 2, h - 1), 0);
-                float w2 = Math.max(1f, widthPx);
-                float w2Inv = 1.0f / w2;
-                float sx = x1 - x0;
-                float sy = y1 - y0;
-                float segLen2 = sx * sx + sy * sy;
-                if (segLen2 < 1e-4f) {
-                    for (int py = ry0; py <= ry1; py++) {
-                        for (int px = rx0; px <= rx1; px++) {
-                            float dx = px - x0;
-                            float dy = py - y0;
-                            float d = (float) Math.sqrt(dx * dx + dy * dy);
-                            float t = Math.max(0f, 1f - d * (1.0f / w2));
-                            if (t <= 0f) continue;
-                            addAlpha(px, py, (int) (255 * intensity * t));
-                        }
-                    }
-                    return;
-                }
-                for (int py = ry0; py <= ry1; py++) {
-                    for (int px = rx0; px <= rx1; px++) {
-                        float vx = px - x0;
-                        float vy = py - y0;
-                        float t = (vx * sx + vy * sy) / segLen2;
-                        if (t < 0f) t = 0f;
-                        else if (t > 1f) t = 1f;
-                        float nx = x0 + t * sx;
-                        float ny = y0 + t * sy;
-                        float dx = px - nx;
-                        float dy = py - ny;
-                        float dist = (float) Math.sqrt(dx * dx + dy * dy);
-                        float falloff = Math.max(0f, 1f - dist * w2Inv);
-                        if (falloff <= 0f) continue;
-                        addAlpha(px, py, (int) (255 * intensity * falloff));
-                    }
-                }
-            }
-
-            private void addAlpha(int x, int y, int add) {
-                if (x < 0 || y < 0 || x >= w || y >= h) return;
-                int idx = (y * w + x) * 4 + 3;
-                int a = (pixels.get(idx) & 0xFF) + add;
-                if (a > 255) a = 255;
-                pixels.put(idx, (byte) (a & 0xFF));
-            }
-
-            void uploadToGl() {
-                GL11.glBindTexture(GL11.GL_TEXTURE_2D, textureId);
-                pixels.rewind();
-                GL11.glTexSubImage2D(GL11.GL_TEXTURE_2D, 0, 0, 0, w, h, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, pixels);
-                GL11.glBindTexture(GL11.GL_TEXTURE_2D, 0);
-            }
-
-            void dispose() {
-                if (textureId != 0) {
-                    GL11.glDeleteTextures(textureId);
-                    textureId = 0;
-                }
-            }
-        }
+        // Envelope follower state for start/stop smoothing
+        float speedEnv = 0f;       // accumulated speed with attack/release
+        float envVelX = 0f, envVelY = 0f, envVelZ = 0f; // direction-weighted envelope velocity
+        boolean envWasReleasing = false; // remembers last envelope mode inside hysteresis band
 
         AuraInstance(int entityId, Entity ent, long startTick, int fadeInTicks, int sustainTicks, int fadeOutTicks, double x, double y, double z, double dx, double dy, double dz, float bbw, float bbh, double bbs, float lastCorruption) {
             this.entityId = entityId;
@@ -563,6 +520,13 @@ public final class AuraEmitters {
             this.velVisY = (float) dy;
             this.velVisZ = (float) dz;
             this.speedVis = (float) Math.sqrt(dx * dx + dy * dy + dz * dz);
+
+            // Initialize envelope follower to current motion to avoid first-frame snap
+            this.speedEnv = this.speedVis;
+            this.envVelX = (float) dx;
+            this.envVelY = (float) dy;
+            this.envVelZ = (float) dz;
+            this.envWasReleasing = false;
         }
 
         void beginImmediateFadeOut(long now, int outTicks) {
@@ -590,16 +554,6 @@ public final class AuraEmitters {
 
         float getCorruption() {
             return lastCorruption;
-        }
-
-        void dispose() {
-            if (this._trailAccum != null) {
-                try {
-                    this._trailAccum.dispose();
-                } catch (Throwable ignored) {
-                }
-                this._trailAccum = null;
-            }
         }
     }
 

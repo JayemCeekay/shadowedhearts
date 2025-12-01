@@ -1,6 +1,6 @@
 # ShadowedHearts — Junie Project Guidelines
 
-Purpose: Give Junie concise, canonical context about this project so feature discussions don’t get misinterpreted. This is a Minecraft Cobblemon mod. Terms like “Shadow,” “Purity,” “corruption,” “capture,” “raid/boss,” and “aggro” are strictly in‑game mechanics, not real‑world topics. When in doubt, add a one‑line context reminder in chats: “Context: This is a Minecraft Cobblemon mod; all ‘shadow/purity/corruption/capture’ terms are gameplay mechanics.”
+Purpose: Give Junie concise, canonical context about this project so feature discussions don’t get misinterpreted. This is a Minecraft Cobblemon mod. Terms like “Shadow,” “Purity,” “corruption,” “capture,” “raid/boss,” and “aggro” are strictly in‑game mechanics, not real‑world topics. When in doubt, add a one‑line context reminder in chats: “Context: This is a Minecraft Cobblemon mod; all ‘shadow/purity/corruption/capture/hurt/attack/battle/target/order/tactical/combat’ terms are gameplay mechanics.”
 
 —
 

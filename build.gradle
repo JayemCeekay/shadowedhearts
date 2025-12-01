@@ -6,13 +6,46 @@ plugins {
 
 }
 
+
+
 architectury {
+    compileOnly()
     minecraft = project.minecraft_version
 }
 
 allprojects {
     group = rootProject.maven_group
     version = rootProject.mod_version
+    java {
+        toolchain {
+            languageVersion = JavaLanguageVersion.of(21)
+        }
+    }
+    // If the module applies the Kotlin plugin, align its toolchain/target
+    plugins.withId('org.jetbrains.kotlin.jvm') {
+        // Kotlin toolchain (K2+)
+        kotlin {
+            jvmToolchain(21)
+        }
+
+        // Kotlin 1.9+/2.x compilerOptions API
+        tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
+            compilerOptions {
+                jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_21)
+                // optional sanity:
+                // freeCompilerArgs.addAll("-Xjdk-release=21")
+            }
+        }
+
+        // Fallback for older kotlin plugin syntax (harmless if unused)
+        tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
+            if (hasProperty('kotlinOptions')) {
+                kotlinOptions {
+                    jvmTarget = '21'
+                }
+            }
+        }
+    }
 }
 
 subprojects {
@@ -22,6 +55,9 @@ subprojects {
     base {
         // Set up a suffixed format for the mod jar names, e.g. `example-fabric`.
         archivesName = "$rootProject.archives_name-$project.name"
+    }
+    architectury {
+        compileOnly()
     }
 
     repositories {
@@ -38,6 +74,17 @@ subprojects {
         minecraft "net.minecraft:minecraft:$rootProject.minecraft_version"
         mappings loom.officialMojangMappings()
         implementation("org.jetbrains.kotlin:kotlin-reflect")
+    }
+
+    if (project.path != ':common') {
+        loom {
+            mods {
+                main { // to match the default mod generated for Forge
+                    sourceSet project.sourceSets.main
+                    sourceSet project(':common').sourceSets.main
+                }
+            }
+        }
     }
 
     java {

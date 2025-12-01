@@ -18,8 +18,6 @@ public final class ModShaders {
     private ModShaders() {}
 
     /** Called from each platform's client init to trigger shader registration. */
-    public static void initClient() {
-        ModShadersPlatform.registerShaders();
-    }
+    public static void initClient() {}
 
 }

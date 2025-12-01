@@ -177,7 +177,7 @@ public final class ModNetworking {
             var pkt = new AuraStateS2C(
                     entity.getId(),
                     entity.getX(), entity.getY(), entity.getZ(),
-                    entity.getDeltaMovement().x, entity.getDeltaMovement().y, entity.getDeltaMovement().z,
+                    entity.getKnownMovement().x, entity.getKnownMovement().y, entity.getKnownMovement().z,
                     entity.getBbWidth(), entity.getBbHeight(), entity.getBoundingBox().getSize(),
                     tick,
                     PokemonAspectUtil.getCorruption(pokemonEntity.getPokemon())
@@ -195,7 +195,7 @@ public final class ModNetworking {
         if (entity instanceof PokemonEntity pokemonEntity) {
             var pkt = new AuraLifecycleS2C(entity.getId(), AuraLifecycleS2C.Action.START, 0,
                     entity.getX(), entity.getY(), entity.getZ(),
-                    entity.getDeltaMovement().x, entity.getDeltaMovement().y, entity.getDeltaMovement().z,
+                    entity.getKnownMovement().x, entity.getKnownMovement().y, entity.getKnownMovement().z,
                     entity.getBbWidth(), entity.getBbHeight(), entity.getBoundingBox().getSize(),
                     PokemonAspectUtil.getCorruption(pokemonEntity.getPokemon()));
             if (entity.level() instanceof ServerLevel level) {
@@ -212,7 +212,7 @@ public final class ModNetworking {
         if (entity instanceof PokemonEntity pokemonEntity) {
             var pkt = new AuraLifecycleS2C(entity.getId(), AuraLifecycleS2C.Action.FADE_OUT, Math.max(1, outTicks),
                     entity.getX(), entity.getY(), entity.getZ(),
-                    entity.getDeltaMovement().x, entity.getDeltaMovement().y, entity.getDeltaMovement().z,
+                    entity.getKnownMovement().x, entity.getKnownMovement().y, entity.getKnownMovement().z,
                     entity.getBbWidth(), entity.getBbHeight(), entity.getBoundingBox().getSize(),
                     PokemonAspectUtil.getCorruption(pokemonEntity.getPokemon()));
             if (entity.level() instanceof ServerLevel level) {

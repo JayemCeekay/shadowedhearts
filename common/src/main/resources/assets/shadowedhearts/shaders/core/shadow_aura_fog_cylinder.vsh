@@ -9,6 +9,7 @@ uniform mat4 uModel;        // object -> world
 uniform mat4 uView;         // world -> view
 uniform mat4 uProj;         // view  -> clip
 uniform vec3 uCameraPosWS;  // camera/world eye position
+uniform vec3 uEntityPosWS;  // entity world position
 
 // Optional: expand the proxy 1–2% to close 1px gaps at the silhouette
 uniform float uExpand;      // default 1.0, try 1.01–1.02 if needed

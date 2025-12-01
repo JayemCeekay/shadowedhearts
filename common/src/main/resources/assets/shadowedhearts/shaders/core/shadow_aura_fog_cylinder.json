@@ -49,7 +49,7 @@
 
     { "name": "uDensity",         "type": "float", "count": 1, "values": [1.2] },
     { "name": "uAbsorption",      "type": "float", "count": 1, "values": [0.15] },
-    { "name": "uRimStrength",     "type": "float", "count": 1, "values": [0.0] },
+    { "name": "uRimStrength",     "type": "float", "count": 1, "values": [0.8] },
     { "name": "uRimPower",        "type": "float", "count": 1, "values": [2.0] },
 
     { "name": "uMaxThickness",     "type": "float", "count": 1, "values": [0.0] },
@@ -65,7 +65,7 @@
     { "name": "uLimbSoft",     "type": "float", "count": 1, "values": [0.22] },
     { "name": "uLimbHardness", "type": "float", "count": 1, "values": [2.25] },
     { "name": "uMinPathNorm",  "type": "float", "count": 1, "values": [0.18] },
-    { "name": "uGlowGamma",    "type": "float", "count": 1, "values": [2.5] },
+    { "name": "uGlowGamma",    "type": "float", "count": 1, "values": [1.0] },
     { "name": "uBlackPoint",   "type": "float", "count": 1, "values": [0.0] },
 
     { "name": "uNoiseScaleRel", "type": "float", "count": 1, "values": [5.0] },
@@ -79,7 +79,12 @@
     { "name": "uPatchStrengthTop",  "type":"float","count":1,"values":[1.85] },
 
     { "name": "uHeightFadeMin",     "type":"float","count":1,"values":[0.20] },
-    { "name": "uHeightFadePow",     "type":"float","count":1,"values":[1.6] }
+    { "name": "uHeightFadePow",     "type":"float","count":1,"values":[1.6] },
+    { "name": "uCorePow",     "type":"float","count":1,"values":[1.15] },
+    { "name": "uShadowMix",   "type":"float","count":1,"values":[0.85] },
+    { "name": "uShadowKnee",  "type":"float","count":1,"values":[0.15] },
+    { "name": "uShadowGamma", "type":"float","count":1,"values":[1.40] },
+    { "name": "uShadowDesat", "type":"float","count":1,"values":[0.25] }
 
   ]
 }

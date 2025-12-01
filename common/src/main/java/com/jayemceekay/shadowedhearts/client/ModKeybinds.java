@@ -25,7 +25,7 @@ public final class ModKeybinds {
                     CAT
             );
         }
-        ModKeybindsPlatform.register(ORDER_WHEEL);
+
 
     }
 

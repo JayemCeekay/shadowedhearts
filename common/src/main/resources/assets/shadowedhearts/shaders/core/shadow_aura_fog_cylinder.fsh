@@ -46,7 +46,7 @@ uniform float uAbsorption;// Beer extinction along inDist
 
 // Rim (subtle)
 uniform float uRimStrength;// 0..1
-uniform float uRimPower; // 1..4
+uniform float uRimPower;// 1..4
 
 // Thickness / edges (ABSOLUTE units; keep your radius scaling in Java)
 uniform float uMaxThickness;// skin thickness under surface
@@ -75,25 +75,33 @@ uniform float uPosterizeSteps;// 0=off. Try 4.0 (3–6 works well)
 uniform float uDitherAmount;// 0..1. Try 0.6–0.8
 
 // Patchiness controls (relative units)
-uniform float uPatchScaleRel;     // low-frequency mask scale (per radius)
-uniform float uPatchThreshBase;   // threshold at base (0..1)
-uniform float uPatchThreshTop;    // threshold at top (0..1)
-uniform float uPatchSharpness;    // smoothstep half-width
-uniform float uPatchGamma;        // height ramp exponent for patch strength
-uniform float uPatchStrengthTop;  // max patch strength at top (0..1)
+uniform float uPatchScaleRel;// low-frequency mask scale (per radius)
+uniform float uPatchThreshBase;// threshold at base (0..1)
+uniform float uPatchThreshTop;// threshold at top (0..1)
+uniform float uPatchSharpness;// smoothstep half-width
+uniform float uPatchGamma;// height ramp exponent for patch strength
+uniform float uPatchStrengthTop;// max patch strength at top (0..1)
 
 // Height fade controls
-uniform float uHeightFadeMin;     // residual density at top (0..1)
-uniform float uHeightFadePow;     // exponent for height fade
+uniform float uHeightFadeMin;// residual density at top (0..1)
+uniform float uHeightFadePow;// exponent for height fade
 
-// --- Inertial tail helpers (02 §5 Mission Entrance flow) ---
+// --- Inertial tail helpers ---
 // Uniforms for lagged advection and sampling-space shear
-uniform vec3  uVelLagWS;    // lagged world-space velocity
-uniform float uFieldFreq;   // advection field frequency (relative)
-uniform float uShearK;      // crown lean amount
-uniform float uLagGamma;    // height ramp for lag
-uniform float uBaseAdv;     // base advection magnitude
+uniform vec3  uVelLagWS;// lagged world-space velocity
+uniform float uFieldFreq;// advection field frequency (relative)
+uniform float uShearK;// crown lean amount
+uniform float uLagGamma;// height ramp for lag
+uniform float uBaseAdv;// base advection magnitude
 uniform float uVelInfluence;// velocity influence on magnitude
+
+uniform float uCorePow;
+
+// Density-weighted black mix controls (uniforms for fast prototyping)
+uniform float uShadowMix;   // 0..1, max strength of density-driven mix toward black
+uniform float uShadowKnee;  // 0..1, density level where black mix starts
+uniform float uShadowGamma; // ~1.0..2.0, response curve for density → black mix
+uniform float uShadowDesat; // 0..1, desaturate fraction for very dark regions
 
 out vec4 FragColor;
 
@@ -153,7 +161,7 @@ vec3 curl(vec3 p){
     return normalize(c + 1e-6);
 }
 
-vec3 getUpOS(mat4 invM){ return normalize((invM * vec4(0,1,0,0)).xyz); }
+vec3 getUpOS(mat4 invM){ return normalize((invM * vec4(0, 1, 0, 0)).xyz); }
 
 vec3 rotateAroundAxis(vec3 v, vec3 axis, float angle){
     axis = normalize(axis);
@@ -174,7 +182,7 @@ vec3 computeAdvectionLagged(vec3 pPixRel, float t){
 
     // Current & lagged velocities in object space, strip vertical so buoyancy stays in charge
     vec3 vNowOS   = (uInvModel * vec4(uEntityVelWS, 0.0)).xyz;
-    vec3 vLagOS   = (uInvModel * vec4(uVelLagWS,    0.0)).xyz;
+    vec3 vLagOS   = (uInvModel * vec4(uVelLagWS, 0.0)).xyz;
     vec3 vNowLat  = vNowOS - dot(vNowOS, upOS) * upOS;
     vec3 vLagLat  = vLagOS - dot(vLagOS, upOS) * upOS;
 
@@ -196,7 +204,7 @@ vec3 computeAdvectionLagged(vec3 pPixRel, float t){
     vec3 swirl   = normalize(curl(pField));
 
     // Base flow: buoyancy up + wind if present handled outside; here up + vel + swirl
-    vec3 flowDir = normalize( 1.0*dirVel + 0.9*swirl + 1.0*upOS );
+    vec3 flowDir = normalize(1.0*dirVel + 0.9*swirl + 1.0*upOS);
 
     // Speed response controls “energy” (how much it stretches)
     float speed   = length(vNowLat);
@@ -209,39 +217,122 @@ vec3 computeAdvectionLagged(vec3 pPixRel, float t){
     // Optional: small bending of flow like a flame
     flowDir = bendFlow(flowDir, upOS, vNowLat, h, speed01);
 
-    return flowDir * advMag * heightTaper; // relative units/sec
+    return flowDir * advMag * heightTaper;// relative units/sec
 }
 
-// SDFs (cylinder variant)
-// Finite-height (capped) cylinder around Y with radius r and half-height h.
-float sdCappedCylinderY(vec3 p, float r, float h){
-    // Standard capped-cylinder SDF: d = min(max(d.x,d.y),0) + length(max(d,0))
-    // where d = abs(vec2(radial, y)) - vec2(r, h)
-    vec2 d = abs(vec2(length(p.xz), p.y)) - vec2(r, h);
-    return min(max(d.x, d.y), 0.0) + length(max(d, 0.0));
+// SDFs (capsule variant)
+// Dome-capped cylinder (capsule) around Y with radius r and apex half-extent H.
+// H is the total half-extent to the dome apex (matches geometry); the internal
+// cylinder segment half-length is hSeg = max(H - r, 0).
+float sdCappedCylinderY(vec3 p, float r, float H) {
+    vec2 d = vec2(length(p.xz)-2.0*r+1.0, abs(p.y)-H);
+    return min(max(d.x,d.y),0.0) + length(max(d,0.0)) - 1.0;
 }
 
-// Numerical SDF normal for capped cylinder (only if rim enabled)
-vec3 sdfNormalCylinderY(vec3 p, float r, float h){
+float sdVerticalCapsule(vec3 p, float h, float r) {
+    p.y -= clamp(p.y, 0.0, h);
+    return length(p)-r;
+}
+
+float sdVerticalCappedCylinder(vec3 p, float h, float r) {
+    vec2 d = abs(vec2(length(p.xz), p.y)) - vec2(r,h);
+    return min(max(d.x,d.y), 0.0) + length(max(d, 0.0));
+}
+
+// Numerical SDF normal for capsule (only if rim enabled)
+vec3 sdfNormalCylinderY(vec3 p, float r, float H){
     const float e = 0.0025;
-    float dx = sdCappedCylinderY(p+vec3(e, 0, 0), r, h) - sdCappedCylinderY(p-vec3(e, 0, 0), r, h);
-    float dy = sdCappedCylinderY(p+vec3(0, e, 0), r, h) - sdCappedCylinderY(p-vec3(0, e, 0), r, h);
-    float dz = sdCappedCylinderY(p+vec3(0, 0, e), r, h) - sdCappedCylinderY(p-vec3(0, 0, e), r, h);
+    float dx = sdVerticalCapsule(p+vec3(e, 0, 0), r, H) - sdVerticalCapsule(p-vec3(e, 0, 0), r, H);
+    float dy = sdVerticalCapsule(p+vec3(0, e, 0), r, H) - sdVerticalCapsule(p-vec3(0, 0, 0), r, H);
+    float dz = sdVerticalCapsule(p+vec3(0, 0, e), r, H) - sdVerticalCapsule(p-vec3(0, 0, 0), r, H);
     return normalize(vec3(dx, dy, dz));
 }
 
-// Ray-infinite-cylinder around Y (object space)
-bool intersectCylinderInfY(vec3 ro, vec3 rd, float r, out float t0, out float t1){
-    float a = rd.x*rd.x + rd.z*rd.z;
-    float b = ro.x*rd.x + ro.z*rd.z;
-    float c = ro.x*ro.x + ro.z*ro.z - r*r;
-    if (a <= 1e-8) return false;
-    float disc = b*b - a*c;
-    if (disc < 0.0) return false;
-    float h = sqrt(disc);
-    t0 = (-b - h) / a;
-    t1 = (-b + h) / a;
-    return t1 > 0.0;
+// Ray–sphere intersection helper.
+// Returns nearest positive t, or -1.0 if no hit.
+float intersectSphere(vec3 ro, vec3 rd, vec3 center, float radius) {
+    vec3 oc = ro - center;
+    float a = dot(rd, rd);
+    float b = 2.0 * dot(oc, rd);
+    float c = dot(oc, oc) - radius * radius;
+
+    float disc = b * b - 4.0 * a * c;
+    if (disc < 0.0) return -1.0;
+
+    float sdisc = sqrt(disc);
+    float inv2a = 0.5 / a;
+
+    float t0 = (-b - sdisc) * inv2a;
+    float t1 = (-b + sdisc) * inv2a;
+
+    float t = 1e30;
+    if (t0 > 0.0) t = t0;
+    if (t1 > 0.0 && t1 < t) t = t1;
+
+    if (t == 1e30) return -1.0;
+    return t;
+}
+
+// Intersect ray with vertical capsule:
+//   axis: (0,0,0) -> (0,h,0)
+//   radius: r
+// Returns true if hit, and nearest positive t in tHit.
+bool intersectVerticalCapsule(vec3 ro, vec3 rd, float h, float r, out float tHit) {
+    tHit = 1e30;
+    bool hit = false;
+
+    // --- 1. Cylinder body (infinite in Y, then clipped to [0, h]) ---
+    vec2 roXZ = ro.xz;
+    vec2 rdXZ = rd.xz;
+
+    float A = dot(rdXZ, rdXZ);
+    float B = 2.0 * dot(roXZ, rdXZ);
+    float C = dot(roXZ, roXZ) - r * r;
+
+    if (A > 0.0) { // ray not parallel to Y axis
+        float disc = B * B - 4.0 * A * C;
+        if (disc >= 0.0) {
+            float sdisc = sqrt(disc);
+            float inv2A = 0.5 / A;
+
+            float t0 = (-B - sdisc) * inv2A;
+            float t1 = (-B + sdisc) * inv2A;
+
+            // Try near root
+            if (t0 > 0.0) {
+                float y0 = ro.y + rd.y * t0;
+                if (y0 >= 0.0 && y0 <= h) {
+                    tHit = t0;
+                    hit = true;
+                }
+            }
+
+            // Try far root if we didn't get a valid one yet
+            if (!hit && t1 > 0.0) {
+                float y1 = ro.y + rd.y * t1;
+                if (y1 >= 0.0 && y1 <= h) {
+                    tHit = t1;
+                    hit = true;
+                }
+            }
+        }
+    }
+
+    // --- 2. Bottom hemisphere (center at (0, 0, 0)) ---
+    float tSphere = intersectSphere(ro, rd, vec3(0.0, 0.0, 0.0), r);
+    if (tSphere > 0.0 && tSphere < tHit) {
+        tHit = tSphere;
+        hit = true;
+    }
+
+    // --- 3. Top hemisphere (center at (0, h, 0)) ---
+    tSphere = intersectSphere(ro, rd, vec3(0.0, h, 0.0), r);
+    if (tSphere > 0.0 && tSphere < tHit) {
+        tHit = tSphere;
+        hit = true;
+    }
+
+    return hit;
 }
 
 float bayer4x4(vec2 frag) {
@@ -269,51 +360,14 @@ float posterize01(float v, float steps, float ditherAmt) {
     return floor(v * steps + t) / steps;
 }
 
-// Height-aware teardrop deformation (relative OS)
-vec3 teardropDeformRel(vec3 pRel, mat4 uInvModel, vec3 uEntityVelWS){
-    // Up and lateral velocity in object space
-    vec3 upOS    = normalize((uInvModel * vec4(0,1,0,0)).xyz);
-    vec3 vNowOS  = (uInvModel * vec4(uEntityVelWS, 0.0)).xyz;
-    vec3 vLatOS  = vNowOS - dot(vNowOS, upOS) * upOS; // lateral only
-
-    // Height 0..1 through the proxy radius
-    float h = clamp(pRel.y * 0.5 + 0.5, 0.0, 1.0);
-
-    // 1) Vertical stretch (taller toward the top)
-    float stretchY = mix(1.0, 1.25, pow(h, 1.1));
-
-    // 2) XZ taper (narrower crown, fuller base)
-    float baseScale = 1.05;  // slight bulge near base
-    float topScale  = 0.70;  // pinched crown
-    float taperXZ   = mix(baseScale, topScale, pow(h, 1.2));
-
-    // Apply anisotropic scaling in a frame aligned with upOS
-    vec3 w = upOS;
-    vec3 u = normalize(abs(w.y) < 0.99 ? cross(w, vec3(0,1,0)) : cross(w, vec3(1,0,0)));
-    vec3 v = cross(w, u);
-    mat3 B = mat3(u, v, w);       // columns are basis vectors
-    mat3 BT = transpose(B);
-
-    // Transform pRel into that basis, scale, and back
-    vec3 q = BT * pRel;
-    q.xy *= taperXZ;     // taper in plane perpendicular to up
-    q.z  *= stretchY;    // stretch along up
-    vec3 pTaper = B * q;
-
-    // 3) Optional bend opposite current motion (small angle increasing with height)
-    float speedLat = length(vLatOS);
-    float speed01  = clamp(speedLat * 0.08, 0.0, 1.0);
-    vec3 axis      = normalize(cross(upOS, vLatOS) + 1e-5);
-    float maxAngle = radians(18.0);
-    float angle    = maxAngle * pow(h, 1.2) * speed01; // more bend near crown and when moving
-    vec3 pBend     = rotateAroundAxis(pTaper, axis, angle);
-
-    return pBend;
+float onion( in float d, in float h )
+{
+    return abs(d)-h;
 }
 
-void main(){
-    float fade = saturate(uAuraFade);
-    if (fade <= 0.0001){ discard; return; }
+void main() {
+    float fade = clamp(uAuraFade, 0.0, 1.0); // saturate in GLSL 150
+    if (fade <= 0.0001) { discard; return; }
 
     // Build ray in object space
     vec3 roWS = uCameraPosWS;
@@ -321,14 +375,33 @@ void main(){
     vec3 ro   = (uInvModel * vec4(roWS, 1.0)).xyz;
     vec3 rd   = normalize((uInvModel * vec4(rdWS, 0.0)).xyz);
 
-    // Bounding cylinder (infinite along Y)
-    float R = max(uProxyRadius, 1e-6);
-    float t0, t1;
-    if (!intersectCylinderInfY(ro, rd, R, t0, t1)){ discard; }
-    t0 = max(t0, 0.0);
+    // Capsule proxy params
+    float R = max(uProxyRadius,     1e-6); // radius
+    float H = max(uProxyHalfHeight, 1e-6); // half-height around origin
+
+    // Our analytic capsule helper is defined on [0, h] along +Y,
+    // so we shift the ray so that:
+    //   bottom cap is at y = 0
+    //   top    cap is at y = 2H
+    vec3 roCaps = ro;
+    roCaps.y += H;
+
+    float tHit;
+    if (!intersectVerticalCapsule(roCaps, rd, H, R, tHit)) {
+        discard;
+    }
+
+    // Entry distance along the ray
+    float tEnter = max(tHit, 0.0);
+
+    // We still need an exit bound for the volume march.
+    // Use a conservative bound based on capsule thickness,
+    // clamped by your global max distance.
+    // (For aura fog this is usually fine.)
+    float tExit = min(tEnter + 4.0 * R, 32.0);
 
     // March setup + limb fade
-    float rawPath = max(t1 - t0, 1e-4);
+    float rawPath = max(tExit - tEnter, 1e-4);
     float stepLen = rawPath / float(N_STEPS);
 
     // Use the cylinder diameter as normalization baseline similar to sphere case
@@ -343,9 +416,10 @@ void main(){
 
     float jitter = hash31(vec3(gl_FragCoord.xy, uTime)) - 0.5;
 
+    //MARCH
     for (int i=0;i<N_STEPS;++i){
-        float ti = t0 + ((float(i) + 0.5 + jitter) * stepLen);
-        if (ti > t1) break;
+        float ti = tEnter + ((float(i) + 0.5 + jitter) * stepLen);
+        if (ti > tExit) break;
 
         vec3 p = ro + rd * ti;// object space sample
 
@@ -363,16 +437,14 @@ void main(){
         vec3 upRel = normalize(upOS / R);
 
         // SDF distance (negative inside) using finite-height cylinder SDF
-        float H = max(uProxyHalfHeight, 1e-6);
-        float d = sdCappedCylinderY(p, R, H);
+        float d = sdVerticalCapsule(p, H, R);
         if (d > 0.0) continue;
 
         float inDist = -d;
 
-        // Erase very near the geometric surface (avoid visible rim)
-        float nearFade = smoothstep(uThicknessFeather, uEdgeKill, inDist);
-        float farFade = 1.0 - smoothstep(uMaxThickness - uEdgeKill, uMaxThickness, inDist);
-        float cavity = nearFade * farFade;
+        //volumetric SDF profile
+        float core01 = saturate(inDist/max(uMaxThickness, 1e-4));
+        core01 = pow(core01, uCorePow);
 
         // pixelate the coordinate in RELATIVE object space (size-invariant)
         vec3 pPix = quantize3D(pRel, uPixelsPerRadius);
@@ -410,7 +482,7 @@ void main(){
         bright = pow(bright, uGlowGamma);
 
         // Base mask * NOISE ONLY
-        float densitySample = bright * cavity;
+        float densitySample = bright;
 
         // Height-dependent fade so fog dissipates toward the top
         float heightFade = mix(1.0, uHeightFadeMin, pow(y01, max(uHeightFadePow, 0.0001)));
@@ -419,6 +491,9 @@ void main(){
         // Apply patchiness mask (stronger at the crown)
         densitySample *= patchMix;
 
+        //apply volumetric SDF shaping
+        densitySample *= core01;
+
         // Subtle rim enhancement (optional)
         if (uRimStrength > 0.0){
             vec3 nrm = sdfNormalCylinderY(p, R, H);
@@ -426,15 +501,33 @@ void main(){
             densitySample *= (1.0 + rim * uRimStrength);
         }
 
-        //densitySample *= limb; // optional limb fade
-
         // Per-step alpha (cap to avoid solid fill)
         float a = 1.0 - exp(-densNorm * max(densitySample, 0.0));
-        a *= limb * cavity;
+        a *= limb;
 
         // Emissive color follows noise; absorb with depth inside
         vec3 col = uColorB * bright;
         col *= exp(-uAbsorption * inDist);
+
+        // Core darkening + rim preservation (RGB only)
+        // Use SDF thickness to darken the core while keeping the rim bright.
+        // core01: 0 at surface, 1 deep inside. Build a rim weight and shade accordingly.
+        float rimW = pow(saturate(1.0 - core01), 1.75);
+        float coreShade = mix(0.55, 1.0, rimW); // down to ~55% in the core, full brightness at rim
+        col *= coreShade;
+        // Subtle rim boost to keep the silhouette lively without affecting alpha
+        col *= (1.0 + 0.06 * rimW);
+
+        // Density-weighted black mix (inkier voids where fog is dense)
+        // Build a mask from the current density sample (0..1), starting at uShadowKnee
+        float dMask = saturate((densitySample - uShadowKnee) / max(1e-5, 1.0 - uShadowKnee));
+        dMask = pow(dMask, uShadowGamma);
+        // Mix RGB toward black based on mask and strength
+        col = mix(col, vec3(0.0), dMask * uShadowMix);
+        // Optional: desaturate only very dark results to avoid purple-gray glow
+        float L = dot(col, vec3(0.2126, 0.7152, 0.0722));
+        float darkAmt = smoothstep(0.0, 0.25, 0.25 - L);
+        col = mix(col, vec3(L), darkAmt * uShadowDesat);
 
         // Front-to-back premultiplied accumulate
         float premul = a * (1.0 - accumA);

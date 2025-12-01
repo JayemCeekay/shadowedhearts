@@ -374,6 +374,67 @@ public final class CylinderBuffers {
             vc.addVertex(mat, cx, cy, cz).setUv(cu, cv).setColor(r,g,b,a).setLight(LightTexture.FULL_BRIGHT);
         }
     }
+    
+    /** Draws a unit cylinder with both top and bottom flat caps. **/
+    public static void drawCylinderFlatCaps(VertexConsumer vc, Matrix4f mat, float r, float g, float b, float a, int lod) {
+        drawUnitCylinderFlatCaps(vc, mat, r, g, b, a, lod);
+    }
+
+    private static void drawUnitCylinderFlatCaps(VertexConsumer vc, Matrix4f scaled, float r, float g, float b, float a, int lod) {
+        // Sides
+        drawUnitCylinderLod(vc, scaled, r, g, b, a, lod);
+
+        // Get mesh for specified LOD
+        Mesh m = meshForLod(lod);
+        int segments = LOD_SEGMENTS[Math.max(0, Math.min(3, lod))];
+
+        // Draw top cap
+        for (int i = 0; i <= segments - 1; i++) {
+            // Center vertex
+            vc.addVertex(scaled, 0, 1, 0)
+                    .setUv(0.5f, 1.0f)
+                    .setColor(r, g, b, a)
+                    .setLight(LightTexture.FULL_BRIGHT);
+
+            // Edge vertices
+            float angle1 = (float) (i * Math.PI * 2 / segments);
+            float angle2 = (float) ((i + 1) * Math.PI * 2 / segments);
+
+            vc.addVertex(scaled, (float) Math.cos(angle1), 1, (float) Math.sin(angle1))
+                    .setUv(0.5f + 0.5f * (float) Math.cos(angle1), 1.0f)
+                    .setColor(r, g, b, a)
+                    .setLight(LightTexture.FULL_BRIGHT);
+
+            vc.addVertex(scaled, (float) Math.cos(angle2), 1, (float) Math.sin(angle2))
+                    .setUv(0.5f + 0.5f * (float) Math.cos(angle2), 1.0f)
+                    .setColor(r, g, b, a)
+                    .setLight(LightTexture.FULL_BRIGHT);
+        }
+
+        // Draw bottom cap
+        for (int i = 0; i <= segments - 1; i++) {
+            // Center vertex  
+            vc.addVertex(scaled, 0, -1, 0)
+                    .setUv(0.5f, 0.0f)
+                    .setColor(r, g, b, a)
+                    .setLight(LightTexture.FULL_BRIGHT);
+
+            // Edge vertices
+            float angle1 = (float) (i * Math.PI * 2 / segments);
+            float angle2 = (float) ((i + 1) * Math.PI * 2 / segments);
+
+            vc.addVertex(scaled, (float) Math.cos(angle2), -1, (float) Math.sin(angle2))
+                    .setUv(0.5f + 0.5f * (float) Math.cos(angle2), 0.0f)
+                    .setColor(r, g, b, a)
+                    .setLight(LightTexture.FULL_BRIGHT);
+
+            vc.addVertex(scaled, (float) Math.cos(angle1), -1, (float) Math.sin(angle1))
+              .setUv(0.5f + 0.5f * (float)Math.cos(angle1), 0.0f) 
+              .setColor(r, g, b, a)
+              .setLight(LightTexture.FULL_BRIGHT);
+        }
+    }
+
 
     /** Draws a cylinder scaled to height with top and bottom domes (capsule). */
     public static void drawCylinderWithDomesLod(VertexConsumer vc, Matrix4f mat, float height, float r, float g, float b, float a, int lod) {

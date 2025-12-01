@@ -22,9 +22,10 @@ public final class ShadowedheartsFabricClient implements ClientModInitializer {
         AuraEmitters.init();
         //DepthCapture.init();
         ModShaders.initClient();
+        ModShadersPlatformImpl.registerShaders();
         // Register keybinds
         ModKeybinds.init();
-
+        ModKeybindsPlatformImpl.register(ModKeybinds.ORDER_WHEEL);
         // Particle factory for luminous motes
         ParticleFactoryRegistry.getInstance().register(
                 ModParticleTypes.LUMINOUS_MOTE.get(),

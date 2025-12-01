@@ -1,6 +1,7 @@
 package com.jayemceekay.shadowedhearts.client.neoforge;
 
 import com.jayemceekay.shadowedhearts.Shadowedhearts;
+import com.jayemceekay.shadowedhearts.client.ModKeybinds;
 import com.jayemceekay.shadowedhearts.client.ModShaders;
 import com.jayemceekay.shadowedhearts.client.render.DepthCapture;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -21,7 +22,9 @@ public final class ClientSetupSubscriber {
         // Client-side common init
         DepthCapture.init();
         ModShaders.initClient();
+        ModShadersPlatformImpl.registerShaders();
         // Register keybinds
         com.jayemceekay.shadowedhearts.client.ModKeybinds.init();
+        ModKeybindsPlatformImpl.register(ModKeybinds.ORDER_WHEEL);
     }
 }
