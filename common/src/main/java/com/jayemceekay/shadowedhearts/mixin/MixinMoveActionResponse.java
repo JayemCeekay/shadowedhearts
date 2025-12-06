@@ -1,0 +1,32 @@
+package com.jayemceekay.shadowedhearts.mixin;
+
+import com.cobblemon.mod.common.battles.ActiveBattlePokemon;
+import com.cobblemon.mod.common.battles.MoveActionResponse;
+import com.cobblemon.mod.common.battles.ShowdownMoveset;
+import com.jayemceekay.shadowedhearts.ShadowGate;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
+
+@Mixin(value = MoveActionResponse.class, remap = false)
+public class MixinMoveActionResponse {
+    @Inject(method = "isValid", at = @At("HEAD"), cancellable = true)
+    private void shadowedhearts$blockNonShadowMoves(
+            ActiveBattlePokemon activeBattlePokemon, ShowdownMoveset showdownMoveSet, boolean forceSwitch, CallbackInfoReturnable<Boolean> cir
+    ) {
+        if (forceSwitch || showdownMoveSet == null) return;
+
+        var bp = activeBattlePokemon;
+        var pokemon = bp == null ? null : bp.getBattlePokemon().getEffectedPokemon();
+        if (pokemon == null) return;
+
+        if (ShadowGate.isShadowLocked(pokemon)) {
+            // this.moveName is a field in MoveActionResponse; expose via an accessor mixin if needed
+            String moveId = ((AccessorMoveActionResponse) this).shadowedhearts$getMoveName();
+            if (!ShadowGate.isShadowMoveId(moveId)) {
+                cir.setReturnValue(false);
+            }
+        }
+    }
+}

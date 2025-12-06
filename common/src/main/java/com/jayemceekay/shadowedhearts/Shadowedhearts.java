@@ -8,6 +8,7 @@ import com.jayemceekay.shadowedhearts.core.*;
 import com.jayemceekay.shadowedhearts.network.ModNetworking;
 import com.jayemceekay.shadowedhearts.properties.ShadowPropertyRegistration;
 import com.jayemceekay.shadowedhearts.server.AuraServerSync;
+import com.jayemceekay.shadowedhearts.server.ShadowProgressionManager;
 import com.jayemceekay.shadowedhearts.showdown.ShowdownRuntimePatcher;
 import com.jayemceekay.shadowedhearts.snag.SnagEvents;
 import com.jayemceekay.shadowedhearts.world.WorldspaceManager;
@@ -35,20 +36,27 @@ public final class Shadowedhearts {
         // Ensure particle types are registered cross-platform
         ModParticleTypes.register();
         ShadowPropertyRegistration.register();
+        ShadowProgressionManager.init();
 
         WORLDSPACE_MANAGER = new WorldspaceManager();
 
         ElementalTypes.INSTANCE.register(new ElementalType(
                 "shadow", Component.literal("Shadow"),
                 0x604E82, 19, ResourceLocation.fromNamespaceAndPath(Cobblemon.MODID, "textures/gui/types.png"),
-                "shadow"
+                "Shadow"
         ));
+
+        ElementalTypes.INSTANCE.register(new ElementalType("shadow-locked", Component.literal("Locked"), 0x1F1F1F, 20, ResourceLocation.fromNamespaceAndPath(Cobblemon.MODID, "textures/gui/types.png"), "shadow-locked"));
+
 
         // Patch Showdown files at runtime once per run directory
         if (!ModConfig.get().showdownPatched) {
-            ShowdownRuntimePatcher.applyPatches();
-            ModConfig.get().showdownPatched = true;
-            ModConfig.save();
+            com.cobblemon.mod.common.Cobblemon.INSTANCE.getShowdownThread().queue(service -> {
+                ShowdownRuntimePatcher.applyPatches();
+                ModConfig.get().showdownPatched = true;
+                ModConfig.save();
+                return kotlin.Unit.INSTANCE; // Kotlin interop: Function1 requires a Unit return
+            });
         }
 
         /*CobblemonEvents.POKEMON_RECALL_PRE.subscribe(Priority.NORMAL, post -> {

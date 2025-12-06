@@ -14,24 +14,24 @@ public class ShadowPokemonData implements ShadowFlag {
     /** Synced boolean: whether the PokemonEntity is a shadow. */
     public static final EntityDataAccessor<Boolean> SHADOW = SynchedEntityData.defineId(PokemonEntity.class, EntityDataSerializers.BOOLEAN);
     /** Synced float [0..1]: corruption intensity for visual/behavioral effects. */
-    public static final EntityDataAccessor<Float>   CORRUPTION = SynchedEntityData.defineId(PokemonEntity.class, EntityDataSerializers.FLOAT);
+    public static final EntityDataAccessor<Float> HEART_GAUGE = SynchedEntityData.defineId(PokemonEntity.class, EntityDataSerializers.FLOAT);
 
     /** Define default values into the entity's data container. Called from mixin. */
     public static void define(SynchedEntityData.Builder builder) {
         builder.define(SHADOW, false);
-        builder.define(CORRUPTION, 0f);
+        builder.define(HEART_GAUGE, 0f);
     }
 
     /** Update both flags on a live PokemonEntity (values are clamped appropriately). */
     public static void set(PokemonEntity e, boolean shadow, float corruption) {
         e.getEntityData().set(SHADOW, shadow);
-        e.getEntityData().set(CORRUPTION, Mth.clamp(corruption, 0f, 1f));
+        e.getEntityData().set(HEART_GAUGE, Mth.clamp(corruption, 0f, 20000f));
     }
 
     public static void bootstrap() { /* no-op */ }
 
     public static boolean isShadow(PokemonEntity e) { return e.getEntityData().get(SHADOW); }
-    public static float getCorruption(PokemonEntity e) { return e.getEntityData().get(CORRUPTION); }
+    public static float getHeartGauge(PokemonEntity e) { return e.getEntityData().get(HEART_GAUGE); }
 
     @Override
     public boolean shadowedHearts$isShadow() {
@@ -40,6 +40,6 @@ public class ShadowPokemonData implements ShadowFlag {
 
     @Override
     public float shadowedHearts$getCorruption() {
-        return getCorruption((PokemonEntity) (Object) this);
+        return getHeartGauge((PokemonEntity) (Object) this);
     }
 }

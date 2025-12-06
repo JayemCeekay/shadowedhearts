@@ -38,7 +38,31 @@
   "command.shadowedhearts.shadowmission.seed.usage": "/shadowmission seed <runId>",
   "command.shadowedhearts.shadowmission.abort.usage": "/shadowmission abort <runId>",
 
-  "cobblemon.move.shadowblitz": "Shadow Blitz",
+  "shadowedhearts.ui.stats.heart_gauge": "Heart Gauge",
+
   "cobblemon.move.shadowblast": "Shadow Blast",
-  "cobblemon.move.shadowbolt": "Shadow Bolt"
+  "cobblemon.move.shadowblitz": "Shadow Blitz",
+  "cobblemon.move.shadowbolt": "Shadow Bolt",
+  "cobblemon.move.shadowbreak": "Shadow Break",
+  "cobblemon.move.shadowchill": "Shadow Chill",
+  "cobblemon.move.shadowdown": "Shadow Down",
+  "cobblemon.move.shadowend": "Shadow End",
+  "cobblemon.move.shadowfire": "Shadow Fire",
+  "cobblemon.move.shadowhalf": "Shadow Half",
+  "cobblemon.move.shadowhold": "Shadow Hold",
+  "cobblemon.move.shadowmist": "Shadow Mist",
+  "cobblemon.move.shadowpanic": "Shadow Panic",
+  "cobblemon.move.shadowrave": "Shadow Rave",
+  "cobblemon.move.shadowrush": "Shadow Rush",
+  "cobblemon.move.shadowshed": "Shadow Shed",
+  "cobblemon.move.shadowsky": "Shadow Sky",
+  "cobblemon.move.shadowstorm": "Shadow Storm",
+  "cobblemon.move.shadowwave": "Shadow Wave",
+
+  "cobblemon.battle.weather.shadowyaura.start": "A shadowy aura filled the sky!",
+  "cobblemon.battle.weather.shadowyaura.end": "The shadowy aura faded away!",
+  "cobblemon.battle.weather.shadowyaura.upkeep": "Bursts of light showered from the shadowy aura!",
+  "cobblemon.battle.damage.shadowyaura": "The flashing light strikes %1$s!"
+
+
 }

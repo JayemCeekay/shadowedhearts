@@ -21,6 +21,7 @@ public final class ShowdownRuntimePatcher {
     private ShowdownRuntimePatcher() {}
 
     public static void applyPatches() {
+        System.out.println("Applying Showdown runtime patches...");
         for (Path showdown : locateShowdownDirs()) {
             try {
                 patchTypechart(showdown.resolve("data").resolve("typechart.js"));
@@ -38,6 +39,11 @@ public final class ShowdownRuntimePatcher {
                 log("Failed to patch teams.js at " + showdown + ": " + e.getMessage());
             }
             try {
+                patchConditions(showdown.resolve("data").resolve("conditions.js"));
+            } catch (Exception e) {
+                log("Failed to patch conditions.js at " + showdown + ": " + e.getMessage());
+            }
+            /*try {
                 patchMicroScripts(showdown.resolve("data").resolve("mods").resolve("micro").resolve("scripts.js"));
             } catch (Exception e) {
                 log("Failed to patch micro scripts.js at " + showdown + ": " + e.getMessage());
@@ -46,7 +52,7 @@ public final class ShowdownRuntimePatcher {
                 patchCustomFormats(showdown.resolve("config").resolve("custom-formats.js"));
             } catch (Exception e) {
                 log("Failed to patch custom-formats.js at " + showdown + ": " + e.getMessage());
-            }
+            }*/
         }
     }
 
@@ -58,6 +64,7 @@ public final class ShowdownRuntimePatcher {
         // Generic runtime paths
         addIfDir(result, Paths.get("run", "showdown"));
         addIfDir(result, Paths.get("showdown"));
+        System.out.println("Found Showdown directories: " + result.size());
         return result;
     }
 
@@ -67,7 +74,122 @@ public final class ShowdownRuntimePatcher {
         } catch (IOException ignored) {}
     }
 
+    private static void patchConditions(Path conditionsPath) throws IOException {
+        if (!Files.isRegularFile(conditionsPath)) return;
+        String content = Files.readString(conditionsPath, StandardCharsets.UTF_8);
+
+        // Idempotency: if our condition already exists with weather tick, skip.
+        // If an older insertion exists without onWeather, we will append an updated block so the latest wins.
+        boolean hasShadowyAura = content.contains("\n  shadowyaura:");
+        boolean hasShadowyAuraWeatherTick = content.contains("shadowyaura") && content.contains("onWeather(");
+        if (hasShadowyAura && hasShadowyAuraWeatherTick) {
+            log("conditions.js already contains shadowyaura weather with chip: " + conditionsPath);
+            return;
+        }
+
+        // Find end of the exported Conditions object. We insert just before the closing "};"
+        int endIndex = content.lastIndexOf("};");
+        if (endIndex < 0) {
+            log("Could not find end of Conditions object in conditions.js: " + conditionsPath);
+            return;
+        }
+
+        // Determine if there is already a trailing comma before the close
+        int j = endIndex - 1;
+        while (j >= 0 && Character.isWhitespace(content.charAt(j))) j--;
+        boolean hasTrailingComma = j >= 0 && content.charAt(j) == ',';
+
+        // Load our Shadowy Aura WEATHER block (no leading/trailing comma) from an external JS resource.
+        // This makes it easier to edit without rebuilding Java strings.
+        String block = readResourceText("/data/shadowedhearts/showdown/conditions/shadowyaura.js");
+        block = extractExportedTemplate(block);
+        if (block == null || block.isBlank()) {
+            // Fallback to the previous inlined default if resource missing
+            block =
+                "  shadowyaura: {\n" +
+                "    name: \"Shadowy Aura\",\n" +
+                "    effectType: \"Weather\",\n" +
+                "    duration: 5,\n" +
+                "    onFieldStart(field, source, effect) {\n" +
+                "      this.add(\"-weather\", \"Shadowy Aura\");\n" +
+                "    },\n" +
+                "    // Showdown weathers call Weather each residual tick via onFieldResidual\n" +
+                "    onFieldResidualOrder: 1,\n" +
+                "    onFieldResidual() {\n" +
+                "      this.add(\"-weather\", \"Shadowy Aura\", \"[upkeep]\");\n" +
+                "      // After-turn flavor line for Shadowy Aura\n" +
+                "      if (this.field.isWeather(\"shadowyaura\")) this.eachEvent(\"Weather\");\n" +
+                "    },\n" +
+                "    // End-of-turn damage to all non-Shadow Pokémon (1/16 max HP)\n" +
+                "    onWeather(target) {\n" +
+                "      if (target.set.isShadow) return;\n" +
+                "      this.damage(target.baseMaxhp / 16);\n" +
+                "    },\n" +
+                "    // Boost Shadow-type moves while the weather is active\n" +
+                "    onBasePower(basePower, attacker, defender, move) {\n" +
+                "      // Optional: uncomment to have Utility Umbrella negate this boost vs/used by holder\n" +
+                "      // if (attacker.hasItem(\"utilityumbrella\") || defender.hasItem(\"utilityumbrella\")) return;\n" +
+                "      if (move?.type === \"Shadow\") {\n" +
+                "        return this.chainModify(1.5);\n" +
+                "      }\n" +
+                "    },\n" +
+                "    // Shadow move effectiveness tweak: super-effective vs non-Shadow, resisted vs Shadow\n" +
+                "    onEffectiveness(typeMod, target, type, move) {\n" +
+                "      if (!move || move.type !== \"Shadow\") return;\n" +
+                "      const isShadowTarget = !!(target?.set?.isShadow);\n" +
+                "      return isShadowTarget ? -1 : 1;\n" +
+                "    },\n" +
+                "    // Optional Weather Ball handling (only if your mod defines the Shadow type)\n" +
+                "    onModifyType(move) {\n" +
+                "      if (move?.id === \"weatherball\") move.type = \"Shadow\";\n" +
+                "    },\n" +
+                "    onFieldEnd() {\n" +
+                "      this.add(\"-weather\", \"none\");\n" +
+                "      this.add(\"-message\", \"The shadowy aura faded away!\");\n" +
+                "    }\n" +
+                "  }\n";
+        }
+
+        String insertionPrefix = hasTrailingComma ? "\n" : ",\n";
+        String patched = content.substring(0, endIndex) + insertionPrefix + block + content.substring(endIndex);
+        Files.writeString(conditionsPath, patched, StandardCharsets.UTF_8);
+        if (hasShadowyAura && !hasShadowyAuraWeatherTick) {
+            log("Upgraded existing shadowyaura weather to include chip in conditions.js: " + conditionsPath);
+        } else {
+            log("Inserted shadowyaura weather into conditions.js: " + conditionsPath);
+        }
+    }
+
+    private static String readResourceText(String resourcePath) {
+        try {
+            var in = ShowdownRuntimePatcher.class.getResourceAsStream(resourcePath);
+            if (in == null) return null;
+            try (in) {
+                return new String(in.readAllBytes(), StandardCharsets.UTF_8);
+            }
+        } catch (IOException e) {
+            return null;
+        }
+    }
+
+    /**
+     * Allows JS snippet files to export a template string (module.exports = `...`).
+     * If the provided content appears to be a Node-style module with backticks,
+     * this extracts the inner template; otherwise returns the original string.
+     */
+    private static String extractExportedTemplate(String raw) {
+        if (raw == null) return null;
+        String s = raw.trim();
+        int firstTick = s.indexOf('`');
+        int lastTick = s.lastIndexOf('`');
+        if ((s.startsWith("module.exports") || s.contains("module.exports")) && firstTick >= 0 && lastTick > firstTick) {
+            return s.substring(firstTick + 1, lastTick);
+        }
+        return raw;
+    }
+
     private static void patchTypechart(Path typechartPath) throws IOException {
+        System.out.println(typechartPath);
         if (!Files.isRegularFile(typechartPath)) return;
         String content = Files.readString(typechartPath, StandardCharsets.UTF_8);
 

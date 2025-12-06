@@ -119,7 +119,7 @@ public final class TossOrderActivity {
             brain.eraseMemory(MemoryModuleType.ATTACK_TARGET);
             brain.eraseMemory(MemoryModuleType.LOOK_TARGET);
             // Also clear Cobblemon's extra attack metadata
-            brain.eraseMemory(CobblemonMemories.INSTANCE.getATTACK_TARGET_DATA());
+            brain.eraseMemory(CobblemonMemories.ATTACK_TARGET_DATA);
             mob.getNavigation().stop();
         }
 
@@ -139,7 +139,7 @@ public final class TossOrderActivity {
                     brain.eraseMemory(MemoryModuleType.WALK_TARGET);
                     brain.eraseMemory(MemoryModuleType.ATTACK_TARGET);
                     brain.eraseMemory(MemoryModuleType.LOOK_TARGET);
-                    brain.eraseMemory(CobblemonMemories.INSTANCE.getATTACK_TARGET_DATA());
+                    brain.eraseMemory(CobblemonMemories.ATTACK_TARGET_DATA);
                     mob.getNavigation().stop();
                     // Clear the order so CORE controller stops running next tick
                     com.jayemceekay.shadowedhearts.poketoss.PokeToss.clearOrder(mob);
@@ -163,7 +163,7 @@ public final class TossOrderActivity {
                 LivingEntity target = resolveAttackTarget(level, mob, order);
                 if (target == null) {
                     mob.getBrain().eraseMemory(MemoryModuleType.ATTACK_TARGET);
-                    mob.getBrain().eraseMemory(CobblemonMemories.INSTANCE.getATTACK_TARGET_DATA());
+                    mob.getBrain().eraseMemory(CobblemonMemories.ATTACK_TARGET_DATA);
                     return;
                 }
 
@@ -174,7 +174,7 @@ public final class TossOrderActivity {
 
                 brain.setMemory(MemoryModuleType.ATTACK_TARGET, target);
                 // Provide Cobblemon-specific context for the fight tasks
-                brain.setMemory(CobblemonMemories.INSTANCE.getATTACK_TARGET_DATA(), new CobblemonAttackTargetData());
+                brain.setMemory(CobblemonMemories.ATTACK_TARGET_DATA, new CobblemonAttackTargetData());
             }
         }
 

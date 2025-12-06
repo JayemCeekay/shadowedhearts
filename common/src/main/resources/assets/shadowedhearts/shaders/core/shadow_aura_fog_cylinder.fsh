@@ -242,9 +242,11 @@ float sdVerticalCappedCylinder(vec3 p, float h, float r) {
 // Numerical SDF normal for capsule (only if rim enabled)
 vec3 sdfNormalCylinderY(vec3 p, float r, float H){
     const float e = 0.0025;
-    float dx = sdVerticalCapsule(p+vec3(e, 0, 0), r, H) - sdVerticalCapsule(p-vec3(e, 0, 0), r, H);
-    float dy = sdVerticalCapsule(p+vec3(0, e, 0), r, H) - sdVerticalCapsule(p-vec3(0, 0, 0), r, H);
-    float dz = sdVerticalCapsule(p+vec3(0, 0, e), r, H) - sdVerticalCapsule(p-vec3(0, 0, 0), r, H);
+    // sdVerticalCapsule signature is (p, h, r). The previous call swapped h/r causing
+    // incorrect normals near the silhouette which could also amplify vanishing.
+    float dx = sdVerticalCapsule(p+vec3(e, 0, 0), H, r) - sdVerticalCapsule(p-vec3(e, 0, 0), H, r);
+    float dy = sdVerticalCapsule(p+vec3(0, e, 0), H, r) - sdVerticalCapsule(p-vec3(0, e, 0), H, r);
+    float dz = sdVerticalCapsule(p+vec3(0, 0, e), H, r) - sdVerticalCapsule(p-vec3(0, 0, e), H, r);
     return normalize(vec3(dx, dy, dz));
 }
 
@@ -387,18 +389,33 @@ void main() {
     roCaps.y += H;
 
     float tHit;
-    if (!intersectVerticalCapsule(roCaps, rd, H, R, tHit)) {
+    bool hit = intersectVerticalCapsule(roCaps, rd, H, R, tHit);
+
+    // Detect if the camera (ray origin) starts inside the volume using the same SDF
+    // used for sampling. When inside, we should march from the camera out to the
+    // first surface (exit). When outside, we march a thin shell past the entry.
+    float dCam = sdVerticalCapsule(ro, H, R);
+    bool cameraInside = (dCam < 0.0);
+
+    if (!hit && !cameraInside) {
+        // No intersection and not inside — nothing to render for this fragment.
         discard;
     }
 
-    // Entry distance along the ray
-    float tEnter = max(tHit, 0.0);
+    float tEnter;
+    float tExit;
+    if (cameraInside) {
+        // Start just in front of the camera to avoid self-shadow artifacts.
+        tEnter = 1e-3;
+        // If we found an intersection, that is our exit; otherwise fall back to a safe bound.
+        tExit  = hit ? max(tHit, tEnter + 1e-3) : 2.0 * R;
+    } else {
+        // Outside: begin at the first surface hit and sample a bounded thickness.
+        tEnter = max(tHit, 0.0);
+        tExit  = min(tEnter + 4.0 * R, 32.0);
+    }
 
-    // We still need an exit bound for the volume march.
-    // Use a conservative bound based on capsule thickness,
-    // clamped by your global max distance.
-    // (For aura fog this is usually fine.)
-    float tExit = min(tEnter + 4.0 * R, 32.0);
+    if (tExit <= tEnter) { discard; }
 
     // March setup + limb fade
     float rawPath = max(tExit - tEnter, 1e-4);

@@ -58,7 +58,7 @@ public class ShadowCommands {
                                             }
                                             Pokemon pk = pe.getPokemon();
                                             int v = IntegerArgumentType.getInteger(ctx, "value");
-                                            ShadowService.setCorruptionMeter(pk, pe, v);
+                                            ShadowService.setHeartGauge(pk, pe, v);
                                             ctx.getSource().sendSuccess(() -> Component.literal("Corruption meter set to " + v), true);
                                             return 1;
                                         }))))

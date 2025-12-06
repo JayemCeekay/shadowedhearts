@@ -180,7 +180,7 @@ public final class ModNetworking {
                     entity.getKnownMovement().x, entity.getKnownMovement().y, entity.getKnownMovement().z,
                     entity.getBbWidth(), entity.getBbHeight(), entity.getBoundingBox().getSize(),
                     tick,
-                    PokemonAspectUtil.getCorruption(pokemonEntity.getPokemon())
+                    PokemonAspectUtil.getHeartGauge(pokemonEntity.getPokemon())
             );
             ServerLevel level = (ServerLevel) entity.level();
             for (ServerPlayer sp : level.players()) {
@@ -197,7 +197,7 @@ public final class ModNetworking {
                     entity.getX(), entity.getY(), entity.getZ(),
                     entity.getKnownMovement().x, entity.getKnownMovement().y, entity.getKnownMovement().z,
                     entity.getBbWidth(), entity.getBbHeight(), entity.getBoundingBox().getSize(),
-                    PokemonAspectUtil.getCorruption(pokemonEntity.getPokemon()));
+                    PokemonAspectUtil.getHeartGauge(pokemonEntity.getPokemon()));
             if (entity.level() instanceof ServerLevel level) {
                 for (ServerPlayer sp : level.players()) {
                     var buf = new RegistryFriendlyByteBuf(Unpooled.buffer(), level.registryAccess());
@@ -214,7 +214,7 @@ public final class ModNetworking {
                     entity.getX(), entity.getY(), entity.getZ(),
                     entity.getKnownMovement().x, entity.getKnownMovement().y, entity.getKnownMovement().z,
                     entity.getBbWidth(), entity.getBbHeight(), entity.getBoundingBox().getSize(),
-                    PokemonAspectUtil.getCorruption(pokemonEntity.getPokemon()));
+                    PokemonAspectUtil.getHeartGauge(pokemonEntity.getPokemon()));
             if (entity.level() instanceof ServerLevel level) {
                 for (ServerPlayer sp : level.players()) {
                     var buf = new RegistryFriendlyByteBuf(Unpooled.buffer(), level.registryAccess());

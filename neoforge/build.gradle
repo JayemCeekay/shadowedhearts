@@ -56,8 +56,6 @@ dependencies {
     modRuntimeOnly("maven.modrinth:sk9rgfiA:J7b96IEd")
     //concentration
     modRuntimeOnly("maven.modrinth:QyvWSZ5S:E7K9ZMD2")
-
-
 }
 
 processResources {

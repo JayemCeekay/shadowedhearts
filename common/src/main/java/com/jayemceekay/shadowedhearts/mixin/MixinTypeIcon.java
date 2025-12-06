@@ -40,13 +40,30 @@ public class MixinTypeIcon {
         if(type == ElementalTypes.INSTANCE.get("shadow")) {
             int diameter = this.small ? 36 / 2 : 36;
             int offsetX = this.centeredX ? diameter / 2 : 0;
-            var texture = ResourceLocation.fromNamespaceAndPath(Shadowedhearts.MOD_ID, "textures/gui/shadow_type.png");
+            // Use small icon asset when the TypeIcon is flagged as small
+            var texture = ResourceLocation.fromNamespaceAndPath(
+                    Shadowedhearts.MOD_ID,
+                    this.small ? "textures/gui/shadow_type_small.png" : "textures/gui/shadow_type.png"
+            );
             var textureWidth = diameter;
             float alpha = this.opacity;
             int x = ((TypeIcon)(Object)this).getX().intValue();
             int y = ((TypeIcon)(Object)this).getY().intValue();
             blitk(context.pose(), texture, (x - offsetX) / SCALE, y / SCALE, diameter, diameter, 0, 0,  textureWidth, textureWidth,0,1,1,1, alpha,true, SCALE);
-        } else {
+        } else if (type == ElementalTypes.INSTANCE.get("shadow-locked")){
+            int diameter = this.small ? 36 / 2 : 36;
+            int offsetX = this.centeredX ? diameter / 2 : 0;
+            // Use the small disabled icon when TypeIcon is small
+            var texture = ResourceLocation.fromNamespaceAndPath(
+                    Shadowedhearts.MOD_ID,
+                    this.small ? "textures/gui/disabled_move_small.png" : "textures/gui/disabled_move.png"
+            );
+            var textureWidth = diameter;
+            float alpha = this.opacity;
+            int x = ((TypeIcon)(Object)this).getX().intValue();
+            int y = ((TypeIcon)(Object)this).getY().intValue();
+            blitk(context.pose(), texture, (x - offsetX) / SCALE, y / SCALE, diameter, diameter, 0, 0,  textureWidth, textureWidth,0,1,1,1, alpha,true, SCALE);
+        }else {
             original.call(context);
         }
     }

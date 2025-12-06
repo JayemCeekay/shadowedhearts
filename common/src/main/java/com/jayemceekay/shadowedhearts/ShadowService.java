@@ -19,28 +19,28 @@ public final class ShadowService {
     public static void setShadow(Pokemon pokemon, @Nullable PokemonEntity live, boolean shadow) {
         PokemonAspectUtil.setShadowAspect(pokemon, shadow);
         if (live != null) {
-            ShadowPokemonData.set(live, shadow, PokemonAspectUtil.getCorruption(pokemon));
+            ShadowPokemonData.set(live, shadow, PokemonAspectUtil.getHeartGauge(pokemon));
         }
         // If live == null but is in world somewhere, optionally locate it to sync.
     }
 
-    /** Set corruption-purity meter [0..100]. */
-    public static void setCorruptionMeter(Pokemon pokemon, @Nullable PokemonEntity live, int meter) {
-        int clamped = Math.max(0, Math.min(100, meter));
-        float scalar = clamped / 100f;
-        PokemonAspectUtil.setCorruptionMeter(pokemon, clamped);
-        if (live != null) ShadowPokemonData.set(live, ShadowPokemonData.isShadow(live), scalar);
+    /** Set corruption-purity meter [0..20000]. */
+    public static void setHeartGauge(Pokemon pokemon, @Nullable PokemonEntity live, int meter) {
+        int clamped = Math.max(0, Math.min(20000, meter));
+        float scalar = clamped / 20000f;
+        PokemonAspectUtil.setHeartGaugeValue(pokemon, clamped);
+        if (live != null) ShadowPokemonData.set(live, ShadowPokemonData.isShadow(live), clamped);
     }
 
     /** Convenience: fully purified (0) and not shadow. */
     public static void fullyPurify(Pokemon pokemon, @Nullable PokemonEntity live) {
         setShadow(pokemon, live, false);
-        setCorruptionMeter(pokemon, live, 0);
+        setHeartGauge(pokemon, live, 0);
     }
 
-    /** Convenience: fully corrupted (100) and shadow. */
+    /** Convenience: fully corrupted (20000) and shadow. */
     public static void fullyCorrupt(Pokemon pokemon, @Nullable PokemonEntity live) {
         setShadow(pokemon, live, true);
-        setCorruptionMeter(pokemon, live, 100);
+        setHeartGauge(pokemon, live, 20000);
     }
 }

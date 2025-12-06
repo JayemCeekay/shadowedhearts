@@ -44,8 +44,8 @@ public final class AuraRenderTypes {
                 .setTextureState(RenderStateShard.NO_TEXTURE)
                 .setTransparencyState(RenderStateShard.TRANSLUCENT_TRANSPARENCY)
                 .setWriteMaskState(RenderStateShard.COLOR_WRITE)
-                .setDepthTestState(RenderStateShard.NO_DEPTH_TEST)
-                .setCullState(RenderStateShard.NO_CULL)
+                .setDepthTestState(RenderStateShard.LEQUAL_DEPTH_TEST)
+                .setCullState(RenderStateShard.CULL)
                 .setLightmapState(RenderStateShard.LIGHTMAP)
                 .setLayeringState(RenderStateShard.VIEW_OFFSET_Z_LAYERING)
                 .createCompositeState(true);

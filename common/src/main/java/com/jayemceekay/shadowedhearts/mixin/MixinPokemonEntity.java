@@ -30,6 +30,6 @@ public abstract class MixinPokemonEntity implements ShadowFlag {
 
     @Override
     public float shadowedHearts$getCorruption() {
-        return ((PokemonEntity)(Object)this).getEntityData().get(ShadowPokemonData.CORRUPTION);
+        return ((PokemonEntity)(Object)this).getEntityData().get(ShadowPokemonData.HEART_GAUGE);
     }
 }

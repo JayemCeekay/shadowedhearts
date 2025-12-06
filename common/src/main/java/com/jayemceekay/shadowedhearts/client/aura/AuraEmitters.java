@@ -1,5 +1,8 @@
 package com.jayemceekay.shadowedhearts.client.aura;
 
+import com.cobblemon.mod.common.client.gui.summary.widgets.ModelWidget;
+import com.cobblemon.mod.common.client.render.models.blockbench.repository.VaryingModelRepository;
+import com.cobblemon.mod.common.pokemon.RenderablePokemon;
 import com.jayemceekay.shadowedhearts.client.ModShaders;
 import com.jayemceekay.shadowedhearts.client.render.AuraRenderTypes;
 import com.jayemceekay.shadowedhearts.client.render.DepthCapture;
@@ -9,14 +12,19 @@ import com.jayemceekay.shadowedhearts.network.payload.AuraStateS2C;
 import com.mojang.blaze3d.shaders.Uniform;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.ByteBufferBuilder;
+import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.ShaderInstance;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.phys.Vec3;
 import org.joml.Matrix4f;
+import org.joml.Quaternionf;
 
 import java.lang.ref.WeakReference;
 import java.util.Map;
@@ -141,7 +149,7 @@ public final class AuraEmitters {
 
     // Timings (ticks): ~0.25s fade-in, ~5s sustain, ~0.5s fade-out
     private static final int FADE_IN = 10;
-    private static final int SUSTAIN = 6800; // can be tuned; original recent value ~90-100
+    private static final int SUSTAIN = 6000; // can be tuned; original recent value ~90-100
     private static final int FADE_OUT = 10;
     // If a position update jumps farther than this squared distance, snap to avoid long lerp streaks
     private static final double TELEPORT_SNAP_DIST2 = 36.0; // 6 blocks squared
@@ -158,6 +166,310 @@ public final class AuraEmitters {
             inst.beginImmediateFadeOut(now, 10);
             return inst;
         });
+    }
+
+    /**
+     * Lightweight GUI render path for preview models (Summary screen).
+     * Renders a cylinder aura using the current GUI matrices without relying on world depth.
+     * This does not use entity/world velocity; visuals are static/ambient for UI.
+     */
+    public static void renderInSummaryGUI(GuiGraphics context,
+                                          MultiBufferSource bufferSource,
+                                          float corruption,
+                                          float partialTicks,
+                                          RenderablePokemon pokemon,
+                                          ModelWidget widget) {
+        PoseStack matrices = context.pose();
+        matrices.pushPose();
+
+        var pkmnModel = VaryingModelRepository.INSTANCE.getPoser(pokemon.getSpecies().resourceIdentifier, widget.getState());
+
+        float radius = Math.max(pokemon.getForm().getHitbox().width(), pokemon.getForm().getHitbox().height());
+        float halfHeight = (float) pokemon.getForm().getHitbox().makeBoundingBox(new Vec3(0.0, 0.0, 0.0)).getYsize();
+
+        matrices.mulPose(new Quaternionf().rotateLocalZ(Mth.PI));
+
+        matrices.translate(0f, halfHeight * 0.5f, 0f);
+        var shader = ModShaders.SHADOW_AURA_FOG_CYLINDER;
+        if (shader == null) return;
+
+        // Pull the active GUI matrices and build model-related matrices from the current pose.
+        Matrix4f view = RenderSystem.getModelViewMatrix();
+        Matrix4f proj = RenderSystem.getProjectionMatrix();
+        Matrix4f model = new Matrix4f(matrices.last().pose());
+        Matrix4f invModel = new Matrix4f(model).invert();
+        Matrix4f mvp = new Matrix4f(proj).mul(view).mul(model);
+
+        float timeVal = (Minecraft.getInstance() != null)
+                ? (((Minecraft.getInstance().level != null)
+                ? (Minecraft.getInstance().level.getGameTime() + partialTicks)
+                : (Minecraft.getInstance().gui.getGuiTicks() + partialTicks)) * 0.05f)
+                : 0f;
+
+        var uu = ModShaders.SHADOW_AURA_FOG_CYLINDER_UNIFORMS;
+        if (uu != null) {
+            if (uu.uView() != null) uu.uView().set(view);
+            if (uu.uProj() != null) uu.uProj().set(proj);
+            if (uu.uModel() != null) uu.uModel().set(model);
+            if (uu.uInvModel() != null) uu.uInvModel().set(invModel);
+            if (uu.uMVP() != null) uu.uMVP().set(mvp);
+
+            // do not ask why its 100f, 100f, 0f cameraPosWS....it kinda works and i'm too lazy to fix it
+            //if (uu.uCameraPosWS() != null) uu.uCameraPosWS().set(0f,0f, 0f);
+            if (uu.uCameraPosWS() != null) uu.uCameraPosWS().set(widget.getX() + widget.getWidth()/2.0f, Minecraft.getInstance().getWindow().getGuiScaledHeight()/2.0f, 0f);
+            if (uu.uEntityPosWS() != null)
+                uu.uEntityPosWS().set((float) (0f), (float) (0f), (float) (0f));
+            if (uu.uEntityVelWS() != null) uu.uEntityVelWS().set(0f, 0f, 0f);
+            if (uu.uVelLagWS() != null) uu.uVelLagWS().set(0f, 0f, 0f);
+            if (uu.uSpeed() != null) uu.uSpeed().set(0f);
+
+            if (uu.uExpand() != null)
+                uu.uExpand().set(1f);
+            if (uu.uProxyRadius() != null)
+                uu.uProxyRadius().set(radius);
+            if (uu.uProxyHalfHeight() != null)
+                uu.uProxyHalfHeight().set(halfHeight);
+            if (uu.uAuraFade() != null)
+                uu.uAuraFade().set(0.8f * corruption);
+            if (uu.uDensity() != null)
+                uu.uDensity().set(radius);
+            if (uu.uMaxThickness() != null)
+                uu.uMaxThickness().set(radius * 0.65f);
+            if (uu.uThicknessFeather() != null)
+                uu.uThicknessFeather().set(radius * 0f);
+            if (uu.uEdgeKill() != null)
+                uu.uEdgeKill().set(0.0f);
+            if (uu.uLimbSoft() != null) uu.uLimbSoft().set(0.22f);
+            if (uu.uLimbHardness() != null)
+                uu.uLimbHardness().set(2.25f);
+            if (uu.uMinPathNorm() != null) uu.uMinPathNorm().set(.15f);
+            if (uu.uHeightFadePow() != null)
+                uu.uHeightFadePow().set(0.20f);
+            if (uu.uHeightFadeMin() != null)
+                uu.uHeightFadeMin().set(0.60f);
+            if (uu.uCorePow() != null) uu.uCorePow().set(4f);
+            if (uu.uGlowGamma() != null) uu.uGlowGamma().set(0.5f);
+            if (uu.uRimPower() != null) uu.uRimPower().set(0.05f);
+            if (uu.uRimStrength() != null) uu.uRimStrength().set(5.5f);
+            if (uu.uHeightFadePow() != null)
+                uu.uHeightFadePow().set(1.250f);
+            if (uu.uHeightFadeMin() != null)
+                uu.uHeightFadeMin().set(-0.25f);
+            if (uu.uPixelsPerRadius() != null)
+                uu.uPixelsPerRadius().set(20.0f);
+            if (uu.uPosterizeSteps() != null)
+                uu.uPosterizeSteps().set(3.0f);
+            if (uu.uPatchSharpness() != null)
+                uu.uPatchSharpness().set(0.25f);
+            if (uu.uPatchGamma() != null) uu.uPatchGamma().set(0.65f);
+            if (uu.uPatchThreshTop() != null)
+                uu.uPatchThreshTop().set(0.80f);
+            if (uu.uPatchThreshBase() != null)
+                uu.uPatchThreshBase().set(0.30f);
+            if (uu.uScrollSpeedRel() != null)
+                uu.uScrollSpeedRel().set(-1.0f);
+
+            // Noise parameters are not exposed in the cached uniform set for the cylinder variant
+            if (uu.uTime() != null) uu.uTime().set(timeVal);
+        } else {
+            // Fallback path without uniform cache
+            setMat4(shader, "uView", view);
+            setMat4(shader, "uProj", proj);
+            setMat4(shader, "uModel", model);
+            setMat4(shader, "uInvModel", invModel);
+            shader.safeGetUniform("uMVP").set(mvp);
+            setVec3(shader, "uCameraPosWS", 0f, 0f, 0f);
+            setVec3(shader, "uEntityPosWS", 0f, 0f, 0f);
+            setVec3(shader, "uEntityVelWS", 0f, 0f, 0f);
+            setVec3(shader, "uVelLagWS", 0f, 0f, 0f);
+            set1f(shader, "uSpeed", 0f);
+            set1f(shader, "uProxyRadius", radius);
+            set1f(shader, "uProxyHalfHeight", halfHeight);
+            set1f(shader, "uAuraFade", Math.max(0f, Math.min(1f, corruption)) * 0.8f);
+            set1f(shader, "uDensity", radius);
+            set1f(shader, "uMaxThickness", radius * 0.65f);
+            set1f(shader, "uThicknessFeather", 0f);
+            set1f(shader, "uEdgeKill", 0f);
+            set1f(shader, "uLimbSoft", 0.22f);
+            set1f(shader, "uLimbHardness", 2.25f);
+            set1f(shader, "uMinPathNorm", 0.15f);
+            set1f(shader, "uHeightFadePow", 1.25f);
+            set1f(shader, "uHeightFadeMin", -0.25f);
+            set1f(shader, "uPixelsPerRadius", 20f);
+            set1f(shader, "uPosterizeSteps", 3f);
+            set1f(shader, "uPatchSharpness", 0.6f);
+            // Noise parameters not available in this path
+            set1f(shader, "uTime", timeVal);
+        }
+
+        VertexConsumer vc = buffers.getBuffer(AuraRenderTypes.shadow_fog());
+        // Build a scaled model matrix for the unit cylinder and render with low LOD for UI
+        Matrix4f mat = new Matrix4f();
+        mat.scale(radius, halfHeight*2.5f, radius);
+        //mat.rotate(new Quaternionf().rotateX(Mth.PI));
+        CylinderBuffers.drawCylinderWithDomesLod(vc, mat, 1f, 0f, 0f, 0f, 0f, 0);
+        //drawAxes(matrices, buffers, Math.max(0.05f, radius), 220);
+        buffers.endLastBatch();
+        matrices.popPose();
+    }
+
+    public static void renderInPcGUI(GuiGraphics context,
+                                          MultiBufferSource bufferSource,
+                                          float corruption,
+                                          float partialTicks,
+                                          RenderablePokemon pokemon,
+                                          ModelWidget widget) {
+        PoseStack matrices = context.pose();
+        matrices.pushPose();
+
+        var pkmnModel = VaryingModelRepository.INSTANCE.getPoser(pokemon.getSpecies().resourceIdentifier, widget.getState());
+
+        float radius = Math.max(pokemon.getForm().getHitbox().width(), pokemon.getForm().getHitbox().height());
+        float halfHeight = (float) pokemon.getForm().getHitbox().makeBoundingBox(new Vec3(0.0, 0.0, 0.0)).getYsize();
+
+        matrices.mulPose(new Quaternionf().rotateLocalZ(Mth.PI));
+
+        matrices.translate(0f, halfHeight * 0.5f, 0f);
+        var shader = ModShaders.SHADOW_AURA_FOG_CYLINDER;
+        if (shader == null) return;
+
+        // Pull the active GUI matrices and build model-related matrices from the current pose.
+        Matrix4f view = RenderSystem.getModelViewMatrix();
+        Matrix4f proj = RenderSystem.getProjectionMatrix();
+        Matrix4f model = new Matrix4f(matrices.last().pose());
+        Matrix4f invModel = new Matrix4f(model).invert();
+        Matrix4f mvp = new Matrix4f(proj).mul(view).mul(model);
+
+        float timeVal = (Minecraft.getInstance() != null)
+                ? (((Minecraft.getInstance().level != null)
+                ? (Minecraft.getInstance().level.getGameTime() + partialTicks)
+                : (Minecraft.getInstance().gui.getGuiTicks() + partialTicks)) * 0.05f)
+                : 0f;
+
+        var uu = ModShaders.SHADOW_AURA_FOG_CYLINDER_UNIFORMS;
+        if (uu != null) {
+            if (uu.uView() != null) uu.uView().set(view);
+            if (uu.uProj() != null) uu.uProj().set(proj);
+            if (uu.uModel() != null) uu.uModel().set(model);
+            if (uu.uInvModel() != null) uu.uInvModel().set(invModel);
+            if (uu.uMVP() != null) uu.uMVP().set(mvp);
+
+            // do not ask why its 100f, 100f, 0f cameraPosWS....it kinda works and i'm too lazy to fix it
+            if (uu.uCameraPosWS() != null) uu.uCameraPosWS().set(widget.getX() + widget.getWidth()/2.0f, widget.getY() + widget.getHeight()/2.0f, 0f);
+            if (uu.uEntityPosWS() != null)
+                uu.uEntityPosWS().set((float) (0f), (float) (0f), (float) (0f));
+            if (uu.uEntityVelWS() != null) uu.uEntityVelWS().set(0f, 0f, 0f);
+            if (uu.uVelLagWS() != null) uu.uVelLagWS().set(0f, 0f, 0f);
+            if (uu.uSpeed() != null) uu.uSpeed().set(0f);
+
+            if (uu.uExpand() != null)
+                uu.uExpand().set(1f);
+            if (uu.uProxyRadius() != null)
+                uu.uProxyRadius().set(radius);
+            if (uu.uProxyHalfHeight() != null)
+                uu.uProxyHalfHeight().set(halfHeight*0.5f);
+            if (uu.uAuraFade() != null)
+                uu.uAuraFade().set(0.8f * corruption);
+            if (uu.uDensity() != null)
+                uu.uDensity().set(radius);
+            if (uu.uMaxThickness() != null)
+                uu.uMaxThickness().set(radius * 0.65f);
+            if (uu.uThicknessFeather() != null)
+                uu.uThicknessFeather().set(radius * 0f);
+            if (uu.uEdgeKill() != null)
+                uu.uEdgeKill().set(0.0f);
+            if (uu.uLimbSoft() != null) uu.uLimbSoft().set(0.22f);
+            if (uu.uLimbHardness() != null)
+                uu.uLimbHardness().set(2.25f);
+            if (uu.uMinPathNorm() != null) uu.uMinPathNorm().set(.15f);
+            if (uu.uHeightFadePow() != null)
+                uu.uHeightFadePow().set(0.20f);
+            if (uu.uHeightFadeMin() != null)
+                uu.uHeightFadeMin().set(0.60f);
+            if (uu.uCorePow() != null) uu.uCorePow().set(4f);
+            if (uu.uGlowGamma() != null) uu.uGlowGamma().set(0.5f);
+            if (uu.uRimPower() != null) uu.uRimPower().set(0.05f);
+            if (uu.uRimStrength() != null) uu.uRimStrength().set(5.5f);
+            if (uu.uHeightFadePow() != null)
+                uu.uHeightFadePow().set(1.250f);
+            if (uu.uHeightFadeMin() != null)
+                uu.uHeightFadeMin().set(-0.25f);
+            if (uu.uPixelsPerRadius() != null)
+                uu.uPixelsPerRadius().set(20.0f);
+            if (uu.uPosterizeSteps() != null)
+                uu.uPosterizeSteps().set(3.0f);
+            if (uu.uPatchSharpness() != null)
+                uu.uPatchSharpness().set(0.25f);
+            if (uu.uPatchGamma() != null) uu.uPatchGamma().set(0.65f);
+            if (uu.uPatchThreshTop() != null)
+                uu.uPatchThreshTop().set(0.80f);
+            if (uu.uPatchThreshBase() != null)
+                uu.uPatchThreshBase().set(0.30f);
+            if (uu.uScrollSpeedRel() != null)
+                uu.uScrollSpeedRel().set(-1.0f);
+
+            // Noise parameters are not exposed in the cached uniform set for the cylinder variant
+            if (uu.uTime() != null) uu.uTime().set(timeVal);
+        } else {
+            // Fallback path without uniform cache
+            setMat4(shader, "uView", view);
+            setMat4(shader, "uProj", proj);
+            setMat4(shader, "uModel", model);
+            setMat4(shader, "uInvModel", invModel);
+            shader.safeGetUniform("uMVP").set(mvp);
+            setVec3(shader, "uCameraPosWS", 0f, 0f, 0f);
+            setVec3(shader, "uEntityPosWS", 0f, 0f, 0f);
+            setVec3(shader, "uEntityVelWS", 0f, 0f, 0f);
+            setVec3(shader, "uVelLagWS", 0f, 0f, 0f);
+            set1f(shader, "uSpeed", 0f);
+            set1f(shader, "uProxyRadius", radius);
+            set1f(shader, "uProxyHalfHeight", halfHeight);
+            set1f(shader, "uAuraFade", Math.max(0f, Math.min(1f, corruption)) * 0.8f);
+            set1f(shader, "uDensity", radius);
+            set1f(shader, "uMaxThickness", radius * 0.65f);
+            set1f(shader, "uThicknessFeather", 0f);
+            set1f(shader, "uEdgeKill", 0f);
+            set1f(shader, "uLimbSoft", 0.22f);
+            set1f(shader, "uLimbHardness", 2.25f);
+            set1f(shader, "uMinPathNorm", 0.15f);
+            set1f(shader, "uHeightFadePow", 1.25f);
+            set1f(shader, "uHeightFadeMin", -0.25f);
+            set1f(shader, "uPixelsPerRadius", 20f);
+            set1f(shader, "uPosterizeSteps", 3f);
+            set1f(shader, "uPatchSharpness", 0.6f);
+            // Noise parameters not available in this path
+            set1f(shader, "uTime", timeVal);
+        }
+
+        VertexConsumer vc = buffers.getBuffer(AuraRenderTypes.shadow_fog());
+        // Build a scaled model matrix for the unit cylinder and render with low LOD for UI
+        Matrix4f mat = new Matrix4f();
+        mat.scale(radius, halfHeight*2.5f, radius);
+        CylinderBuffers.drawCylinderWithDomesLod(vc, mat, 1f, 0f, 0f, 0f, 0f, 0);
+        //drawAxes(matrices, buffers, Math.max(0.05f, radius), 220);
+        buffers.endLastBatch();
+        matrices.popPose();
+    }
+
+    /**
+     * Debug-only: draws RGB axes that reflect the current PoseStack for the Summary/PC model widget.
+     * No aura, no shader uniforms — just lines so you can see X/Y/Z after all widget transforms.
+     */
+    public static void renderAxesInGui(PoseStack matrices,
+                                       MultiBufferSource bufferSource,
+                                       RenderablePokemon pokemon,
+                                       ModelWidget widget) {
+        if (matrices == null || bufferSource == null || pokemon == null || widget == null) return;
+        matrices.pushPose();
+        // Mirror the portrait transforms so axes align with the model
+        matrices.scale(20f, 20f, -20f);
+        var pkmnModel = VaryingModelRepository.INSTANCE.getPoser(pokemon.getSpecies().resourceIdentifier, widget.getState());
+        matrices.translate(pkmnModel.getProfileTranslation().x, pkmnModel.getProfileTranslation().y + 1.0 * pkmnModel.getProfileScale(), pkmnModel.getProfileTranslation().z - 4.0);
+        matrices.scale(pkmnModel.getProfileScale(), pkmnModel.getProfileScale(), 1f / pkmnModel.getProfileScale());
+
+        float radius = (float) (pokemon.getForm().getHitbox().scale(pkmnModel.getPortraitScale()).makeBoundingBox(new Vec3(0.0, 0.0, 0.0)).getSize());
+        drawAxes(matrices, bufferSource, Math.max(0.05f, radius), 220);
+        matrices.popPose();
     }
 
     public static void onRender(Camera camera, float partialTicks) {
@@ -415,14 +727,14 @@ public final class AuraEmitters {
                         uu.uHeightFadePow().set(0.20f);
                     if (uu.uHeightFadeMin() != null)
                         uu.uHeightFadeMin().set(0.60f);
-                    if (uu.uCorePow() != null) uu.uCorePow().set(3.5f);
+                    if (uu.uCorePow() != null) uu.uCorePow().set(4f);
                     if (uu.uGlowGamma() != null) uu.uGlowGamma().set(0.5f);
                     if (uu.uRimPower() != null) uu.uRimPower().set(0.05f);
                     if (uu.uRimStrength() != null) uu.uRimStrength().set(5.5f);
                     if (uu.uHeightFadePow() != null)
-                        uu.uHeightFadePow().set(1.60f);
+                        uu.uHeightFadePow().set(1.250f);
                     if (uu.uHeightFadeMin() != null)
-                        uu.uHeightFadeMin().set(-0.15f);
+                        uu.uHeightFadeMin().set(-0.25f);
                     if (uu.uPixelsPerRadius() != null)
                         uu.uPixelsPerRadius().set(20.0f);
                     if (uu.uPosterizeSteps() != null)
@@ -434,6 +746,8 @@ public final class AuraEmitters {
                         uu.uPatchThreshTop().set(0.80f);
                     if (uu.uPatchThreshBase() != null)
                         uu.uPatchThreshBase().set(0.30f);
+                    if (uu.uScrollSpeedRel() != null)
+                        uu.uScrollSpeedRel().set(1.0f);
                 } else {
                     set1f(sh, "uExpand", 1f);
                     set1f(sh, "uProxyRadius", radius);
@@ -571,5 +885,39 @@ public final class AuraEmitters {
     private static void setMat4(ShaderInstance sh, String name, Matrix4f m) {
         final Uniform u = sh.getUniform(name);
         if (u != null) u.set(m);
+    }
+
+    // --- Debug helpers ---
+    private static void drawAxes(PoseStack matrices, MultiBufferSource buffers, float len, int alpha255) {
+        // RenderType.lines requires normals; provide axis direction as normal for each segment
+        VertexConsumer line = buffers.getBuffer(RenderType.lines());
+        PoseStack.Pose entry = matrices.last();
+        Matrix4f mat = entry.pose();
+
+        float a = alpha255 / 255f;
+
+        // +X (red) — normal along +X
+        line.addVertex(mat, 0f, 0f, 0f)
+            .setColor(1f, 0.25f, 0.25f, a)
+            .setNormal(entry, 1f, 0f, 0f);
+        line.addVertex(mat, len, 0f, 0f)
+            .setColor(1f, 0.25f, 0.25f, a)
+            .setNormal(entry, 1f, 0f, 0f);
+
+        // +Y (green) — normal along +Y
+        line.addVertex(mat, 0f, 0f, 0f)
+            .setColor(0.25f, 1f, 0.25f, a)
+            .setNormal(entry, 0f, 1f, 0f);
+        line.addVertex(mat, 0f, len, 0f)
+            .setColor(0.25f, 1f, 0.25f, a)
+            .setNormal(entry, 0f, 1f, 0f);
+
+        // +Z (blue) — normal along +Z
+        line.addVertex(mat, 0f, 0f, 0f)
+            .setColor(0.31f, 0.55f, 1f, a)
+            .setNormal(entry, 0f, 0f, 1f);
+        line.addVertex(mat, 0f, 0f, len)
+            .setColor(0.31f, 0.55f, 1f, a)
+            .setNormal(entry, 0f, 0f, 1f);
     }
 }
