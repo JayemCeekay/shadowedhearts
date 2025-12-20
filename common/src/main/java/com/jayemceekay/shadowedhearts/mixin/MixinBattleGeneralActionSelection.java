@@ -1,6 +1,7 @@
 package com.jayemceekay.shadowedhearts.mixin;
 
 import com.cobblemon.mod.common.client.gui.battle.subscreen.BattleGeneralActionSelection;
+import com.jayemceekay.shadowedhearts.network.payload.SnagArmC2S;
 import dev.architectury.networking.NetworkManager;
 import kotlin.Unit;
 import kotlin.jvm.functions.Function0;
@@ -39,12 +40,13 @@ public abstract class MixinBattleGeneralActionSelection {
     private void shadowedhearts$redirectForfeitAddOption(BattleGeneralActionSelection instance, int rank, MutableComponent text, ResourceLocation texture, Function0<Unit> onClick) {
         var mc = Minecraft.getInstance();
         var player = mc.player;
-        if (player != null && com.jayemceekay.shadowedhearts.snag.SnagCaps.hasMachineInOffhand(player)) {
+        // Only show the Snag option when it is actually usable per our rules
+        if (player != null && com.jayemceekay.shadowedhearts.snag.SnagBattleUtil.canShowSnagButton(player)) {
             MutableComponent snagText = Component.literal("Snag");
             ResourceLocation snagIcon = ResourceLocation.fromNamespaceAndPath("cobblemon", "textures/gui/battle/battle_menu_switch.png");
             Function0<Unit> snagClick = () -> {
               NetworkManager.sendToServer(
-                        new com.jayemceekay.shadowedhearts.network.payload.SnagArmC2S(true)
+                        new SnagArmC2S(true)
                 );
                 playDownSound(mc.getSoundManager());
                 return Unit.INSTANCE;

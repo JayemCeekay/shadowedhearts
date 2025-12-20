@@ -11,5 +11,7 @@ public interface PlayerSnagData {
     int cooldown();
     void setArmed(boolean v);
     void consumeEnergy(int amt);
+    /** Adds energy up to the device's capacity. Negative values are ignored. */
+    void addEnergy(int amt);
     void setCooldown(int ticks);
 }

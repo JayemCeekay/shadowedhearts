@@ -29,10 +29,26 @@ public final class ModShadersPlatformImpl {
                         DefaultVertexFormat.PARTICLE,
                         program -> ModShaders.SHADOW_POOL = program
                 );
+
+                // Purification Chamber background (screen-space quad)
                 registrationContext.register(
-                        ResourceLocation.parse("shadowedhearts:whistle_ground_overlay"),
-                        DefaultVertexFormat.PARTICLE,
-                        program -> ModShaders.WHISTLE_GROUND_OVERLAY = program
+                        ResourceLocation.parse("shadowedhearts:purification_chamber_background"),
+                        DefaultVertexFormat.POSITION_TEX,
+                        program -> ModShaders.PURIFICATION_CHAMBER_BACKGROUND = program
+                );
+
+                // Poké Ball glow overlay (additive + fullbright)
+                registrationContext.register(
+                        ResourceLocation.parse("shadowedhearts:ball_glow"),
+                        DefaultVertexFormat.NEW_ENTITY,
+                        program -> ModShaders.BALL_GLOW = program
+                );
+
+                // Ball trail ribbon
+                registrationContext.register(
+                        ResourceLocation.parse("shadowedhearts:ball_trail"),
+                        DefaultVertexFormat.NEW_ENTITY,
+                        program -> ModShaders.BALL_TRAIL = program
                 );
             } catch (Exception e) {
                 throw new RuntimeException("Failed to load shaders (Fabric)", e);

@@ -26,7 +26,8 @@ public abstract class MixinShowdownActionRequest {
             if (bp == null) {
                 continue;
             }
-            if (!ShadowGate.isShadowLocked(bp.getEffectedPokemon())) continue;
+            var effected = bp.getEffectedPokemon();
+            if (!ShadowGate.isShadowLocked(effected) ) continue;
 
             var moveset = reqMovesets.get(i);
             if (moveset == null || moveset.getMoves() == null) continue;

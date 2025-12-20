@@ -39,8 +39,17 @@ public class ModShadersPlatformImpl {
             evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:shadow_pool", DefaultVertexFormat.PARTICLE),
                     shader -> ModShaders.SHADOW_POOL = shader);
 
-            evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:whistle_ground_overlay", DefaultVertexFormat.PARTICLE),
-                    shader -> ModShaders.WHISTLE_GROUND_OVERLAY = shader);
+            // Purification Chamber background
+            evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:purification_chamber_background", DefaultVertexFormat.POSITION_TEX),
+                    shader -> ModShaders.PURIFICATION_CHAMBER_BACKGROUND = shader);
+
+            // Poké Ball glow overlay (additive + fullbright)
+            evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:ball_glow", DefaultVertexFormat.NEW_ENTITY),
+                    shader -> ModShaders.BALL_GLOW = shader);
+
+            // Ball trail ribbon
+            evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:ball_trail", DefaultVertexFormat.NEW_ENTITY),
+                    shader -> ModShaders.BALL_TRAIL = shader);
 
         } catch (IOException e) {
             throw new RuntimeException("Failed to load shaders", e);

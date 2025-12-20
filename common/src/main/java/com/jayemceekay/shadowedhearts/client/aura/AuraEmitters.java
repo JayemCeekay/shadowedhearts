@@ -2,11 +2,14 @@ package com.jayemceekay.shadowedhearts.client.aura;
 
 import com.cobblemon.mod.common.client.gui.summary.widgets.ModelWidget;
 import com.cobblemon.mod.common.client.render.models.blockbench.repository.VaryingModelRepository;
+import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
 import com.cobblemon.mod.common.pokemon.RenderablePokemon;
+import com.jayemceekay.shadowedhearts.SHAspects;
 import com.jayemceekay.shadowedhearts.client.ModShaders;
 import com.jayemceekay.shadowedhearts.client.render.AuraRenderTypes;
 import com.jayemceekay.shadowedhearts.client.render.DepthCapture;
 import com.jayemceekay.shadowedhearts.client.render.geom.CylinderBuffers;
+import com.jayemceekay.shadowedhearts.config.ClientConfig;
 import com.jayemceekay.shadowedhearts.network.payload.AuraLifecycleS2C;
 import com.jayemceekay.shadowedhearts.network.payload.AuraStateS2C;
 import com.mojang.blaze3d.shaders.Uniform;
@@ -63,6 +66,7 @@ public final class AuraEmitters {
      * Called by a networking handler when a state update arrives.
      */
     public static void receiveState(AuraStateS2C pkt) {
+        if (!ClientConfig.get().enableShadowAura) return;
         var mc = Minecraft.getInstance();
         if (mc == null || mc.level == null) return;
         AuraInstance inst = ACTIVE.getOrDefault(pkt.entityId(), null);
@@ -116,6 +120,7 @@ public final class AuraEmitters {
      * Called by networking handler when a lifecycle update arrives.
      */
     public static void receiveLifecycle(AuraLifecycleS2C pkt) {
+        if (!ClientConfig.get().enableShadowAura) return;
         var mc = Minecraft.getInstance();
         if (mc == null || mc.level == null) return;
         long now = mc.level.getGameTime();
@@ -124,7 +129,6 @@ public final class AuraEmitters {
                 // Replace any existing instance for this entity ID (handles rapid entity ID reuse on recall/swap)
                 Entity ent = mc.level.getEntity(pkt.entityId());
                 UUID newUuid = (ent != null) ? ent.getUUID() : null;
-                System.out.println(ent.getStringUUID());
                 if (newUuid != null) {
                     for (Map.Entry<Integer, AuraInstance> e : ACTIVE.entrySet()) {
                         AuraInstance ai = e.getValue();
@@ -269,6 +273,14 @@ public final class AuraEmitters {
             if (uu.uScrollSpeedRel() != null)
                 uu.uScrollSpeedRel().set(-1.0f);
 
+            // If this Pokémon is in Hyper Mode, shift the aura highlight color to magenta.
+            boolean isHyper = pokemon != null && pokemon.getAspects() != null && pokemon.getAspects().contains(SHAspects.HYPER_MODE);
+            if (isHyper) {
+                if (uu.uColorB() != null) uu.uColorB().set(1.30f, 0.30f, 0.85f);
+            } else {
+                if (uu.uColorB() != null) uu.uColorB().set(0.85f, 0.30f, 1.30f);
+            }
+
             // Noise parameters are not exposed in the cached uniform set for the cylinder variant
             if (uu.uTime() != null) uu.uTime().set(timeVal);
         } else {
@@ -300,6 +312,12 @@ public final class AuraEmitters {
             set1f(shader, "uPatchSharpness", 0.6f);
             // Noise parameters not available in this path
             set1f(shader, "uTime", timeVal);
+
+            // Hyper Mode highlight color override
+            boolean isHyper = pokemon != null && pokemon.getAspects() != null && pokemon.getAspects().contains(SHAspects.HYPER_MODE);
+            if (isHyper) {
+                setVec3(shader, "uColorB", 0.85f, 0.30f, 1.30f);
+            }
         }
 
         VertexConsumer vc = buffers.getBuffer(AuraRenderTypes.shadow_fog());
@@ -408,6 +426,14 @@ public final class AuraEmitters {
             if (uu.uScrollSpeedRel() != null)
                 uu.uScrollSpeedRel().set(-1.0f);
 
+            // If this Pokémon is in Hyper Mode, shift the aura highlight color to magenta.
+            boolean isHyper = pokemon != null && pokemon.getAspects() != null && pokemon.getAspects().contains(SHAspects.HYPER_MODE);
+            if (isHyper) {
+                if (uu.uColorB() != null) uu.uColorB().set(1.30f, 0.30f, 0.85f);
+            } else {
+                if (uu.uColorB() != null) uu.uColorB().set(0.85f, 0.30f, 1.30f);
+            }
+
             // Noise parameters are not exposed in the cached uniform set for the cylinder variant
             if (uu.uTime() != null) uu.uTime().set(timeVal);
         } else {
@@ -439,6 +465,12 @@ public final class AuraEmitters {
             set1f(shader, "uPatchSharpness", 0.6f);
             // Noise parameters not available in this path
             set1f(shader, "uTime", timeVal);
+
+            // Hyper Mode highlight color override
+            boolean isHyper = pokemon != null && pokemon.getAspects() != null && pokemon.getAspects().contains(SHAspects.HYPER_MODE);
+            if (isHyper) {
+                setVec3(shader, "uColorB", 0.85f, 0.30f, 1.30f);
+            }
         }
 
         VertexConsumer vc = buffers.getBuffer(AuraRenderTypes.shadow_fog());
@@ -592,6 +624,18 @@ public final class AuraEmitters {
                         uu.uCameraPosWS().set((float) 0f, (float) 0f, (float) 0f);
                     if (uu.uEntityPosWS() != null)
                         uu.uEntityPosWS().set((float) ix, (float) iy, (float) iz);
+
+                    // If this entity is a Pokémon in Hyper Mode, shift the aura highlight color to magenta.
+                    boolean isHyper = false;
+                    if (useEnt && ent instanceof PokemonEntity pe) {
+                        var aspects = pe.getAspects();
+                        isHyper = aspects != null && aspects.contains(SHAspects.HYPER_MODE);
+                    }
+                    if (isHyper && uu.uColorB() != null) {
+                        uu.uColorB().set(1.30f, 0.30f, 0.85f);
+                    } else {
+                        if (uu.uColorB() != null) uu.uColorB().set(0.85f, 0.30f, 1.30f);
+                    }
                 } else {
                     // Fallback if caching not initialized yet
                     setMat4(sh, "uModel", model);
@@ -599,6 +643,16 @@ public final class AuraEmitters {
                     sh.safeGetUniform("uMVP").set(mvp);
                     setVec3(sh, "uCameraPosWS", 0f, 0f, 0f);
                     setVec3(sh, "uEntityPosWS", (float) x, (float) y, (float) z);
+
+                    // Hyper Mode highlight color override
+                    boolean isHyper = false;
+                    if (useEnt && ent instanceof PokemonEntity pe) {
+                        var aspects = pe.getAspects();
+                        isHyper = aspects != null && aspects.contains(SHAspects.HYPER_MODE);
+                    }
+                    if (isHyper) {
+                        setVec3(sh, "uColorB", 1.0f, 0.30f, 1.30f);
+                    }
                 }
 
                 {

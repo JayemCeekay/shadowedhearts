@@ -26,5 +26,12 @@ public final class ClientSetupSubscriber {
         // Register keybinds
         com.jayemceekay.shadowedhearts.client.ModKeybinds.init();
         ModKeybindsPlatformImpl.register(ModKeybinds.ORDER_WHEEL);
+
+        // Register Snag Machine accessory renderer
+        if (dev.architectury.platform.Platform.isModLoaded("accessories")) {
+            try {
+                com.jayemceekay.shadowedhearts.client.neoforge.AccessoriesRendererBridge.registerRenderers();
+            } catch (Throwable ignored) {}
+        }
     }
 }

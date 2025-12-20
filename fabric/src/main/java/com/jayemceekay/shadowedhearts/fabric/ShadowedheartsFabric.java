@@ -2,10 +2,8 @@ package com.jayemceekay.shadowedhearts.fabric;
 
 import com.jayemceekay.shadowedhearts.ShadowPokemonData;
 import com.jayemceekay.shadowedhearts.Shadowedhearts;
-import com.jayemceekay.shadowedhearts.world.WorldspaceManager;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
-import net.minecraft.server.level.ServerLevel;
 
 public final class ShadowedheartsFabric implements ModInitializer {
     @Override
@@ -16,18 +14,12 @@ public final class ShadowedheartsFabric implements ModInitializer {
 
         // Run our common setup.
         Shadowedhearts.init();
+        // Register S2C network payloads and client handlers using Cobblemon's system
+        com.jayemceekay.shadowedhearts.fabric.net.ShadowedHeartsFabricNetworkManager.registerMessages();
+        // Register C2S codecs and server handlers
+        com.jayemceekay.shadowedhearts.fabric.net.ShadowedHeartsFabricNetworkManager.registerServerHandlers();
         ServerLifecycleEvents.SERVER_STARTING.register((server) -> {
             ShadowPokemonData.bootstrap();
-        });
-        // When the dedicated/integrated server finishes starting, check for our Missions dimension
-        ServerLifecycleEvents.SERVER_STARTED.register(server -> {
-            ServerLevel level = server.getLevel(WorldspaceManager.MISSIONS_LEVEL_KEY);
-            if (level != null) {
-                WorldspaceManager.onMissionsLevelLoaded(level);
-                System.out.println("[ShadowedHearts] Missions dimension loaded: " + level.dimension().location());
-            } else {
-                System.out.println("[ShadowedHearts] WARNING: Missions dimension 'shadowedhearts:missions' not found. Ensure the datapack is enabled.");
-            }
         });
     }
 }

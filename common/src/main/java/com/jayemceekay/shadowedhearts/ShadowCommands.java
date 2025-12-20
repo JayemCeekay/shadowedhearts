@@ -2,21 +2,25 @@ package com.jayemceekay.shadowedhearts;
 // /shadow set <pokemonEntity> <true|false>
 // /shadow corr <pokemonEntity> <0..100>
 
+import com.cobblemon.mod.common.Cobblemon;
+import com.cobblemon.mod.common.entity.npc.NPCEntity;
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
 import com.cobblemon.mod.common.pokemon.Pokemon;
-import com.jayemceekay.shadowedhearts.runs.MIssionCommands.MissionCommands;
+import com.jayemceekay.shadowedhearts.heart.HeartGaugeEvents;
+import com.jayemceekay.shadowedhearts.storage.purification.PurificationChamberStore;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.BoolArgumentType;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
-import com.mojang.brigadier.arguments.LongArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.EntityArgument;
-import net.minecraft.commands.arguments.ResourceLocationArgument;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.level.block.Rotation;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class ShadowCommands {
     /**
@@ -24,6 +28,73 @@ public class ShadowCommands {
      */
     public static void register(CommandDispatcher<CommandSourceStack> d) {
         d.register(Commands.literal("shadow").requires(src -> src.hasPermission(2))
+                // Debug: advance the caller's Purification Chamber by a number of walking steps
+                // Usage: /shadow steps <count>
+                .then(Commands.literal("steps")
+                        .then(Commands.argument("count", IntegerArgumentType.integer(1))
+                                .executes(ctx -> {
+                                    ServerPlayer player;
+                                    try {
+                                        player = ctx.getSource().getPlayerOrException();
+                                    } catch (Exception ex) {
+                                        ctx.getSource().sendFailure(Component.literal("Must be a player to use this command"));
+                                        return 0;
+                                    }
+
+                                    int count = IntegerArgumentType.getInteger(ctx, "count");
+                                    var reg = player.registryAccess();
+                                    PurificationChamberStore store = Cobblemon.INSTANCE.getStorage().getCustomStore(PurificationChamberStore.class, player.getUUID(), reg);
+                                    if (store == null) {
+                                        ctx.getSource().sendFailure(Component.literal("Purification Chamber store not available for this player"));
+                                        return 0;
+                                    }
+                                    store.advanceSteps(count);
+                                    ctx.getSource().sendSuccess(() -> Component.literal("Purification Chamber advanced by " + count + " step(s)"), true);
+                                    return 1;
+                                })))
+                // Debug: simulate overworld walking steps that affect party Pokémon
+                // Usage: /shadow partysteps <count>
+                .then(Commands.literal("partysteps")
+                        .then(Commands.argument("count", IntegerArgumentType.integer(1))
+                                .executes(ctx -> {
+                                    ServerPlayer player;
+                                    try {
+                                        player = ctx.getSource().getPlayerOrException();
+                                    } catch (Exception ex) {
+                                        ctx.getSource().sendFailure(Component.literal("Must be a player to use this command"));
+                                        return 0;
+                                    }
+
+                                    int count = IntegerArgumentType.getInteger(ctx, "count");
+                                    int intervals = Math.max(0, count / 256);
+                                    if (intervals <= 0) {
+                                        ctx.getSource().sendSuccess(() -> Component.literal("No party ticks from " + count + " step(s); need at least 256 for 1 tick."), false);
+                                        return 1;
+                                    }
+
+                                    var party = Cobblemon.INSTANCE.getStorage().getParty(player);
+                                    // Take a defensive snapshot to avoid ConcurrentModificationException if any listeners
+                                    // mutate the party while we iterate (e.g., aspect application syncing storage)
+                                    List<Pokemon> snapshot = new ArrayList<>();
+                                    for (Pokemon mon : party) snapshot.add(mon);
+
+                                    int affected = 0;
+                                    for (int i = 0; i < intervals; i++) {
+                                        for (Pokemon mon : snapshot) {
+                                            if (PokemonAspectUtil.hasShadowAspect(mon)) {
+                                                HeartGaugeEvents.onPartyStep(mon, null);
+                                                affected++;
+                                            }
+                                        }
+                                    }
+                                    final int affectedFinal = affected;
+                                    final int intervalsFinal = intervals;
+                                    ctx.getSource().sendSuccess(
+                                            () -> Component.literal("Applied " + intervalsFinal + " party step tick(s) (" + affectedFinal + " applications across shadow Pokémon)."),
+                                            true
+                                    );
+                                    return 1;
+                                })))
                 .then(Commands.literal("depthdump").executes(ctx -> {
                     ctx.getSource().sendSuccess(() -> Component.literal("Use client command /sh_depthdump in chat (client only)."), false);
                     return 1;
@@ -32,6 +103,49 @@ public class ShadowCommands {
                     ctx.getSource().sendFailure(Component.literal("Battle debug dump not available in this build."));
                     return 0;
                 }))
+                // Convenience: manage NPC tags for Shadow injector
+                .then(Commands.literal("npc")
+                        .then(Commands.literal("tag")
+                                .then(Commands.literal("add")
+                                        .then(Commands.argument("targets", EntityArgument.entities())
+                                                .then(Commands.argument("tag", StringArgumentType.string())
+                                                        .executes(ctx -> {
+                                                            var entities = EntityArgument.getEntities(ctx, "targets");
+                                                            String tag = StringArgumentType.getString(ctx, "tag");
+                                                            int applied = 0;
+                                                            for (Entity e : entities) {
+                                                                if (e instanceof NPCEntity npc) {
+                                                                    if (npc.addTag(tag)) applied++;
+                                                                }
+                                                            }
+                                                            final int appliedFinal = applied;
+                                                            final String tagFinal = tag;
+                                                            ctx.getSource().sendSuccess(() -> Component.literal("Added tag '" + tagFinal + "' to " + appliedFinal + " NPC(s)."), true);
+                                                            return appliedFinal;
+                                                        }))
+                                        )
+                                )
+                                .then(Commands.literal("remove")
+                                        .then(Commands.argument("targets", EntityArgument.entities())
+                                                .then(Commands.argument("tag", StringArgumentType.string())
+                                                        .executes(ctx -> {
+                                                            var entities = EntityArgument.getEntities(ctx, "targets");
+                                                            String tag = StringArgumentType.getString(ctx, "tag");
+                                                            int removed = 0;
+                                                            for (Entity e : entities) {
+                                                                if (e instanceof NPCEntity npc) {
+                                                                    if (npc.removeTag(tag)) removed++;
+                                                                }
+                                                            }
+                                                            final int removedFinal = removed;
+                                                            final String tagFinal = tag;
+                                                            ctx.getSource().sendSuccess(() -> Component.literal("Removed tag '" + tagFinal + "' from " + removedFinal + " NPC(s)."), true);
+                                                            return removedFinal;
+                                                        }))
+                                        )
+                                )
+                        )
+                )
                 .then(Commands.literal("set")
                         .then(Commands.argument("target", EntityArgument.entity())
                                 .then(Commands.argument("value", BoolArgumentType.bool())
@@ -57,9 +171,13 @@ public class ShadowCommands {
                                                 return 0;
                                             }
                                             Pokemon pk = pe.getPokemon();
-                                            int v = IntegerArgumentType.getInteger(ctx, "value");
-                                            ShadowService.setHeartGauge(pk, pe, v);
-                                            ctx.getSource().sendSuccess(() -> Component.literal("Corruption meter set to " + v), true);
+                                            int percent = IntegerArgumentType.getInteger(ctx, "value");
+                                            // Convert percent (0..100) to species-absolute value
+                                            int max = HeartGaugeConfig.getMax(pk);
+                                            int absolute = Math.max(0, Math.min(100, percent));
+                                            absolute = Math.round((absolute / 100.0f) * max);
+                                            ShadowService.setHeartGauge(pk, pe, absolute);
+                                            ctx.getSource().sendSuccess(() -> Component.literal("Corruption meter set to " + percent + "%"), true);
                                             return 1;
                                         }))))
                 .then(Commands.literal("setPurified")
@@ -115,78 +233,5 @@ public class ShadowCommands {
                                     return 1;
                                 })))
         );
-        d.register(Commands.literal("shadowmission").requires(src -> src.hasPermission(2))
-                .then(Commands.literal("tp")
-                        .then(Commands.argument("runId", LongArgumentType.longArg(1))
-                                .executes(ctx -> MissionCommands.tpToMissions(ctx, LongArgumentType.getLong(ctx, "runId")))))
-                .then(Commands.literal("gen")
-                        .then(Commands.literal("place")
-                                .then(Commands.argument("runId", LongArgumentType.longArg(1))
-                                        .then(Commands.argument("structureId", ResourceLocationArgument.id())
-                                                .executes(ctx -> MissionCommands.genPlaceStructure(
-                                                        ctx,
-                                                        LongArgumentType.getLong(ctx, "runId"),
-                                                        ResourceLocationArgument.getId(ctx, "structureId"),
-                                                        Rotation.NONE
-                                                ))
-                                                .then(Commands.argument("rotation", StringArgumentType.word())
-                                                        .executes(ctx -> MissionCommands.genPlaceStructure(
-                                                                ctx,
-                                                                LongArgumentType.getLong(ctx, "runId"),
-                                                                ResourceLocationArgument.getId(ctx, "structureId"),
-                                                                MissionCommands.parseRotation(StringArgumentType.getString(ctx, "rotation"))
-                                                        ))))))
-                        .then(Commands.literal("demo")
-                                .then(Commands.argument("runId", LongArgumentType.longArg(1))
-                                        .executes(ctx -> MissionCommands.genDemo(ctx, LongArgumentType.getLong(ctx, "runId"))))))
-                .then(Commands.literal("give_fragment")
-                        .then(Commands.argument("type", StringArgumentType.word())
-                                .then(Commands.argument("value", StringArgumentType.word())
-                                        .executes(ctx -> MissionCommands.giveFragment(
-                                                ctx,
-                                                StringArgumentType.getString(ctx, "type"),
-                                                StringArgumentType.getString(ctx, "value")
-                                        )))))
-                .then(Commands.literal("give_signal")
-                        .then(Commands.argument("theme", StringArgumentType.word())
-                                .then(Commands.argument("tier", IntegerArgumentType.integer(1))
-                                        .executes(ctx -> MissionCommands.giveSignal(
-                                                ctx,
-                                                StringArgumentType.getString(ctx, "theme"),
-                                                IntegerArgumentType.getInteger(ctx, "tier"),
-                                                null
-                                        ))
-                                        .then(Commands.argument("affixes", StringArgumentType.greedyString())
-                                                .executes(ctx -> MissionCommands.giveSignal(
-                                                        ctx,
-                                                        StringArgumentType.getString(ctx, "theme"),
-                                                        IntegerArgumentType.getInteger(ctx, "tier"),
-                                                        StringArgumentType.getString(ctx, "affixes")
-                                                ))))))
-                .then(Commands.literal("start")
-                        .executes(ctx -> MissionCommands.startRun(ctx, false))
-                        .then(Commands.literal("demo").executes(ctx -> MissionCommands.startRun(ctx, true))))
-                .then(Commands.literal("seed")
-                        .then(Commands.argument("runId", LongArgumentType.longArg(1))
-                                .executes(ctx -> MissionCommands.seedStub(ctx, LongArgumentType.getLong(ctx, "runId")))))
-                .then(Commands.literal("abort")
-                        .then(Commands.argument("runId", LongArgumentType.longArg(1))
-                                .executes(ctx -> MissionCommands.abortStub(ctx, LongArgumentType.getLong(ctx, "runId")))))
-        );
-        d.register(Commands.literal("poketoss")
-                .then(Commands.literal("order")
-                        .then(Commands.literal("follow")
-                                .executes(ctx -> PokeTossCommands.follow(ctx, null))
-                                .then(Commands.argument("target", EntityArgument.entity())
-                                        .executes(ctx -> PokeTossCommands.follow(ctx, EntityArgument.getEntity(ctx, "target")))))
-                        .then(Commands.literal("regroup")
-                                .executes(ctx -> PokeTossCommands.regroup(ctx, null))
-                                .then(Commands.argument("target", EntityArgument.entity())
-                                        .executes(ctx -> PokeTossCommands.regroup(ctx, EntityArgument.getEntity(ctx, "target"))))))
-                .then(Commands.literal("clear")
-                        .then(Commands.argument("target", EntityArgument.entity())
-                                .executes(ctx -> PokeTossCommands.clear(ctx, EntityArgument.getEntity(ctx, "target")))))
-        );
-
     }
 }

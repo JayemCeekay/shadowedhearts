@@ -6,12 +6,12 @@ license = "All Rights Reserved"
 [[mods]]
 modId = "shadowedhearts"
 version = "${version}"
-displayName = "ShadowedHearts"
+displayName = "Cobblemon: Shadowed Hearts"
 authors = "JayemCeekay"
 description = '''
 
 '''
-logoFile = "assets/shadowedhearts/textures/gui/shadow_type.png"
+logoFile = "assets/shadowedhearts/icon.png"
 
 [[dependencies.shadowedhearts]]
 modId = "neoforge"
@@ -39,6 +39,12 @@ modId = "cobblemon"
 type = "required"
 versionRange = "[1.7.0,)"
 ordering = "AFTER"
+side = "BOTH"
+
+[[dependencies.shadowedhearts]]
+modId = "rctapi"
+type = "optional"
+versionRange = "[0.14.4-beta,)"
 side = "BOTH"
 
 [[mixins]]

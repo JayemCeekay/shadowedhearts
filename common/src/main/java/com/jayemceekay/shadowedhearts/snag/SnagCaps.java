@@ -1,6 +1,5 @@
 package com.jayemceekay.shadowedhearts.snag;
 
-import com.jayemceekay.shadowedhearts.core.ModItems;
 import net.minecraft.world.entity.player.Player;
 
 /**
@@ -14,15 +13,21 @@ public final class SnagCaps {
         return new SimplePlayerSnagData(player);
     }
 
-    /** True if the player is currently holding the Snag Machine in their offhand. */
-    public static boolean hasMachineInOffhand(Player player) {
-        return player != null && !player.getOffhandItem().isEmpty() && player.getOffhandItem().is(ModItems.SNAG_MACHINE.get());
+    /** True if the player has any Snag Machine available (equipped accessory, offhand, or mainhand). */
+    public static boolean hasMachineAvailable(Player player) {
+        if (player == null) return false;
+        return get(player).hasSnagMachine();
     }
 
-    /** Placeholder rule: treat throws as Snag if offhand has the machine and the device is armed. */
+    /**
+     * Treat throws as Snag only if: player has machine in offhand, device is armed, and the player is in a trainer battle.
+     * Energy is no longer consumed at throw time (moved to arming in-battle).
+     */
     public static boolean shouldTreatThrowsAsSnag(Player player) {
         if (player == null) return false;
-        if (!hasMachineInOffhand(player)) return false;
-        return get(player).isArmed();
+        if (!hasMachineAvailable(player)) return false;
+        if (!get(player).isArmed()) return false;
+        // require trainer battle context
+        return SnagBattleUtil.isInTrainerBattle(player);
     }
 }

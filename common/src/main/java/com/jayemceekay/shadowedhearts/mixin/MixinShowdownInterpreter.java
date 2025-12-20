@@ -6,7 +6,8 @@ import com.cobblemon.mod.common.battles.ShowdownInterpreter;
 import com.cobblemon.mod.common.battles.dispatch.InstructionSet;
 import com.cobblemon.mod.common.battles.dispatch.InterpreterInstruction;
 import com.jayemceekay.shadowedhearts.cobblemon.instructions.CaptureInstruction;
-import com.jayemceekay.shadowedhearts.showdown.AutoBattleController;
+import com.jayemceekay.shadowedhearts.cobblemon.instructions.HyperInstruction;
+import com.jayemceekay.shadowedhearts.cobblemon.instructions.NoOpInstruction;
 import kotlin.jvm.functions.Function4;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
@@ -38,6 +39,14 @@ public abstract class MixinShowdownInterpreter {
         updateInstructionParser.put("capture",
                 (battle, instructionSet, message, ignored) -> new CaptureInstruction(message)
         );
+        updateInstructionParser.put("hyper",
+                (battle, instructionSet, message, ignored) -> new HyperInstruction(message)
+        );
+        // Consume custom debug token emitted by our Showdown patches (conditions.js)
+        // This prevents it from being treated as an unknown token and keeps logs clean.
+        updateInstructionParser.put("shdebug",
+                (battle, instructionSet, message, ignored) -> new NoOpInstruction(message)
+        );
     }
 
     @Inject(method = "interpret", at = @At("HEAD"), remap = false)
@@ -45,7 +54,11 @@ public abstract class MixinShowdownInterpreter {
         if (battle == null) return;
         java.util.UUID battleId = battle.getBattleId();
         if (rawMessage == null) return;
-        boolean __sh_isOneTurn = AutoBattleController.isOneTurn(battleId);
+        // Surface Showdown-side debug messages to the server console so they are visible during testing.
+        // This helps when '-message' lines are not rendered in the current UI/log sink.
+        if (rawMessage.contains("[SH DEBUG]")) {
+            System.out.println("[ShadowedHearts][Showdown DEBUG] " + rawMessage);
+        }
         // First sign that turn 1 has fully resolved is the start of turn 2 (only for one-turn battles)
         /*if (__sh_isOneTurn && rawMessage.contains("|turn|2") && OneTurnMicroController.tryMarkClosed(battleId)) {
             try {

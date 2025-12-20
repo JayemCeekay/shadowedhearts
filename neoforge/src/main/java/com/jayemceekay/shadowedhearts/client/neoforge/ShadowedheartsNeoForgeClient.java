@@ -1,16 +1,15 @@
 package com.jayemceekay.shadowedhearts.client.neoforge;
 
 
+import com.cobblemon.mod.common.entity.pokeball.EmptyPokeBallEntity;
 import com.jayemceekay.shadowedhearts.Shadowedhearts;
 import com.jayemceekay.shadowedhearts.client.aura.AuraEmitters;
-import com.jayemceekay.shadowedhearts.poketoss.client.WhistleSelectionClient;
+import com.jayemceekay.shadowedhearts.client.ball.BallEmitters;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
-import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
-import net.neoforged.neoforge.client.event.RenderGuiEvent;
 import net.neoforged.neoforge.event.entity.EntityLeaveLevelEvent;
 
 @EventBusSubscriber(modid = Shadowedhearts.MOD_ID, value = net.neoforged.api.distmarker.Dist.CLIENT)
@@ -31,26 +30,25 @@ public final class ShadowedheartsNeoForgeClient {
         if (e.getStage() == RenderLevelStageEvent.Stage.AFTER_TRANSLUCENT_BLOCKS) {
             var cam = e.getCamera();
             AuraEmitters.onRender(cam, cam.getPartialTickTime());
-            WhistleSelectionClient.onRender();
+            BallEmitters.onRender(cam, cam.getPartialTickTime());
         }
     }
 
-    @SubscribeEvent
-    public static void onClientTick(ClientTickEvent.Post e) {
-        com.jayemceekay.shadowedhearts.poketoss.client.WhistleSelectionClient.onTick();
-        com.jayemceekay.shadowedhearts.poketoss.client.TargetSelectionClient.onTick();
-        com.jayemceekay.shadowedhearts.poketoss.client.PositionSelectionClient.onTick();
-    }
 
     @SubscribeEvent
     public static void onEntityLeave(EntityLeaveLevelEvent e) {
         if (e.getLevel().isClientSide()) {
             AuraEmitters.onPokemonDespawn(e.getEntity().getId());
+            if (e.getEntity() instanceof EmptyPokeBallEntity) {
+                BallEmitters.onEntityDespawn(e.getEntity().getId());
+            }
         }
     }
 
-    @SubscribeEvent
-    public static void onGuiRender(RenderGuiEvent.Post e) {
-        com.jayemceekay.shadowedhearts.poketoss.client.WhistleSelectionClient.onHudRender(e.getGuiGraphics(), e.getPartialTick().getGameTimeDeltaTicks());
+    @net.neoforged.bus.api.SubscribeEvent
+    public static void onEntityJoin(net.neoforged.neoforge.event.entity.EntityJoinLevelEvent e) {
+        if (e.getLevel().isClientSide() && e.getEntity() instanceof EmptyPokeBallEntity ball) {
+            BallEmitters.startForEntity(ball);
+        }
     }
 }

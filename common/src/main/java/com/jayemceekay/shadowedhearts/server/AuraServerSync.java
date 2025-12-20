@@ -5,12 +5,13 @@ import com.cobblemon.mod.common.api.events.CobblemonEvents;
 import com.cobblemon.mod.common.api.events.pokemon.PokemonRecallEvent;
 import com.cobblemon.mod.common.api.events.pokemon.PokemonSentEvent;
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
+import com.cobblemon.mod.common.pokemon.Pokemon;
 import com.jayemceekay.shadowedhearts.PokemonAspectUtil;
 import com.jayemceekay.shadowedhearts.network.ModNetworking;
 import dev.architectury.event.events.common.TickEvent;
 import kotlin.Unit;
-import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerLevel;
 
 import java.lang.ref.WeakReference;
 import java.util.Iterator;
@@ -22,18 +23,25 @@ import java.util.concurrent.ConcurrentHashMap;
  * Uses Architectury events to remain platform-agnostic.
  */
 public final class AuraServerSync {
-    private AuraServerSync() {}
+    private AuraServerSync() {
+    }
 
     private static final Map<Integer, WeakReference<PokemonEntity>> TRACKING = new ConcurrentHashMap<>();
 
-    /** Call once during common init on both platforms. */
+    /**
+     * Call once during common init on both platforms.
+     */
     public static void init() {
         // Track lifecycle via Cobblemon events (platform-agnostic)
         CobblemonEvents.POKEMON_SENT_POST.subscribe(Priority.NORMAL, (PokemonSentEvent.Post e) -> {
             var pe = e.getPokemonEntity();
             if (pe == null || pe.level().isClientSide()) return Unit.INSTANCE;
             try {
-                if (!PokemonAspectUtil.hasShadowAspect(pe.getPokemon())) return Unit.INSTANCE;
+                Pokemon p = pe.getPokemon();
+                // Run occasional validation when sent out
+                PokemonAspectUtil.ensureRequiredShadowAspects(p);
+                if (!PokemonAspectUtil.hasShadowAspect(p))
+                    return Unit.INSTANCE;
             } catch (Exception ex) {
                 return Unit.INSTANCE;
             }

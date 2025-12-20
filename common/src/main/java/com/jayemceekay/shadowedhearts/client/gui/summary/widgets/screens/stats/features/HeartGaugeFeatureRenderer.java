@@ -45,9 +45,10 @@ public class HeartGaugeFeatureRenderer extends BarSummarySpeciesFeatureRenderer 
 
     @Override
     public boolean render(GuiGraphics guiGraphics, float x, float y, Pokemon pokemon) {
-        // Ensure we render the element every frame; parent handles bar math and textures.
-        //int meter = Math.max(0, PokemonAspectUtil.getHeartGaugeValue(pokemon));
-        renderElement(guiGraphics, x, y, pokemon, getValue());
+        // Recompute the current heart gauge value every frame so the bar updates live
+        // when server-side events (e.g., /shadow partysteps) modify the meter.
+        int current = Math.max(0, PokemonAspectUtil.getHeartGaugeValue(pokemon));
+        super.renderElement(guiGraphics, x, y, pokemon, current);
         return true;
     }
 

@@ -6,6 +6,7 @@ import com.cobblemon.mod.common.api.types.ElementalTypes;
 import com.cobblemon.mod.common.client.gui.summary.Summary;
 import com.cobblemon.mod.common.client.gui.summary.widgets.screens.moves.MoveSwapScreen;
 import com.cobblemon.mod.common.client.gui.summary.widgets.screens.moves.MovesWidget;
+import com.jayemceekay.shadowedhearts.PokemonAspectUtil;
 import com.jayemceekay.shadowedhearts.ShadowGate;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
@@ -13,6 +14,7 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.ResourceLocation;
+import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
@@ -28,16 +30,32 @@ public abstract class MixinMoveSwapScreenMoveSlot {
 
     @Shadow public abstract MoveSwapScreen getPane();
 
+    @Final
     @Shadow private MoveTemplate move;
 
+
     private boolean shadowedhearts$shouldMask() {
-        // Only mask when there is a real move template and the selected Pokemon is Shadow-locked
         if (move == null) return false;
         MoveSwapScreen pane = getPane();
         MovesWidget mw = pane.getMovesWidget();
         Summary summary = mw.getSummary();
         var pokemon = summary.getSelectedPokemon$common();
-        return pokemon != null && ShadowGate.isShadowLockedClient(pokemon) && !ShadowGate.isShadowMoveId(move.getName());
+        if (pokemon == null) return false;
+        String current = move.getName();
+        if (ShadowGate.isShadowMoveId(current)) return false;
+
+        int allowed = PokemonAspectUtil.getAllowedVisibleNonShadowMoves(pokemon);
+        int nonShadowIndex = 0;
+        for (var mv : pokemon.getAllAccessibleMoves()) {
+            if (mv == null) continue;
+            String id = mv.getName();
+            if (ShadowGate.isShadowMoveId(id)) continue;
+            if (id.equalsIgnoreCase(current)) {
+                return nonShadowIndex >= allowed;
+            }
+            nonShadowIndex++;
+        }
+        return false;
     }
 
     // Mask move name (ordinal 0)
@@ -52,6 +70,7 @@ public abstract class MixinMoveSwapScreenMoveSlot {
     )
     private MutableComponent shadowedhearts$maskName(MutableComponent original) {
         if (shadowedhearts$shouldMask()) {
+
             return Component.literal("????");
         }
         return original;

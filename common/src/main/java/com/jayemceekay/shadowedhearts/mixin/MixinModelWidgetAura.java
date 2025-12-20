@@ -6,6 +6,7 @@ import com.cobblemon.mod.common.client.gui.summary.widgets.ModelWidget;
 import com.cobblemon.mod.common.pokemon.RenderablePokemon;
 import com.jayemceekay.shadowedhearts.SHAspects;
 import com.jayemceekay.shadowedhearts.client.aura.AuraEmitters;
+import com.jayemceekay.shadowedhearts.config.ClientConfig;
 import com.llamalad7.mixinextras.sugar.Local;
 import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.Minecraft;
@@ -35,25 +36,10 @@ public abstract class MixinModelWidgetAura {
         return rp != null && rp.getAspects().contains(SHAspects.SHADOW);
     }
 
-   /* @Inject(method = "renderPKM", at = @At(value = "INVOKE", target = "Lcom/mojang/blaze3d/vertex/PoseStack;pushPose()V", ordinal = 0))
-    public void shadowedhearts$setBaseScale(GuiGraphics context, float partialTicks, int mouseX, int mouseY, CallbackInfo ci) {
-        try {
-            System.out.println(((ModelWidget) (Object) this).getPokemon());
-            System.out.println(((ModelWidget) (Object) this).getBaseScale());
-            System.out.println(((ModelWidget) (Object) this).getX());
-            System.out.println(((ModelWidget) (Object) this).getY());
-            System.out.println(((ModelWidget) (Object) this).getWidth());
-            System.out.println(((ModelWidget) (Object) this).getHeight());
-            System.out.println(((ModelWidget) (Object) this).getOffsetY());
-        } catch (Throwable ignored) {}
-    }*/
-
     @Inject(method = "renderPKM", at = @At(value = "INVOKE", target = "Lcom/cobblemon/mod/common/client/gui/PokemonGuiUtilsKt;drawProfilePokemon$default(Lcom/cobblemon/mod/common/pokemon/RenderablePokemon;Lcom/mojang/blaze3d/vertex/PoseStack;Lorg/joml/Quaternionf;Lcom/cobblemon/mod/common/entity/PoseType;Lcom/cobblemon/mod/common/client/render/models/blockbench/PosableState;FFZZFFFFFFILjava/lang/Object;)V", ordinal = 0, shift = At.Shift.AFTER))
     private void shadowedhearts$renderAuraAndAxes(GuiGraphics context, float partialTicks, int mouseX, int mouseY, CallbackInfo ci, @Local(name = "matrices") PoseStack matrices) {
         if (this.pokemon == null) return;
-
-        // Always render debug axes to visualize the current PoseStack orientation in Summary/PC screens.
-        //AuraEmitters.renderAxesInGui(matrices, context.bufferSource(), this.pokemon, ((ModelWidget) (Object) this));
+        if (!ClientConfig.get().enableShadowAura) return;
 
         // Render the Shadow aura only for Shadow-aspected Pokémon.
         if (!shadowedhearts$isShadow(this.pokemon)) return;

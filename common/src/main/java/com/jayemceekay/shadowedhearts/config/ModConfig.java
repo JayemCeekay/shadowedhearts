@@ -1,29 +1,39 @@
 package com.jayemceekay.shadowedhearts.config;
 
+import com.google.gson.*;
+
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Properties;
+import java.util.*;
 
 /**
  * Minimal config system for Shadowed Hearts.
- * Stores a small set of key/value pairs in config/shadowedhearts.properties
- * across all loaders (Fabric/NeoForge) using the current run directory.
+ * Now stored as JSON in config/shadowedhearts-common.json (common) and a separate client file.
+ * Common also centralizes ShadowSpawnConfig settings. See 02 §5 Mission Entrance flow.
  */
 public final class ModConfig {
     private ModConfig() {}
 
-    private static final String FILE_NAME = "shadowedhearts.properties";
-    private static final String KEY_SHOWDOWN_PATCHED = "showdownPatched";
-    private static final String KEY_TOSS_ORDER_BAR_UI = "tossOrderBarUI";
+    private static final String COMMON_FILE = "shadowedhearts-common.json";
+    private static final String LEGACY_PROPS_FILE = "shadowedhearts.properties";
 
     public static final class Data {
         public boolean showdownPatched = false;
         /** If true, use the alternate bottom-bar Toss Order UI instead of the radial wheel. */
         public boolean tossOrderBarUI = true;
+
+        // Shadow spawn block (moved from ShadowSpawnConfig)
+        public double shadowSpawnChancePercent = 0.78125; // default 1/256
+        public final Set<String> shadowSpawnBlacklist = new HashSet<>();
+
+        // Mod Integrations
+        public final RCTIntegrationConfig rctIntegration = new RCTIntegrationConfig();
     }
 
     private static final Data DATA = new Data();
@@ -32,33 +42,193 @@ public final class ModConfig {
         return DATA;
     }
 
+    public static double getShadowSpawnChancePercent() { return DATA.shadowSpawnChancePercent; }
+    public static Set<String> getShadowSpawnBlacklist() { return Collections.unmodifiableSet(DATA.shadowSpawnBlacklist); }
+
     public static void load() {
         Path configDir = Paths.get("config");
-        Path file = configDir.resolve(FILE_NAME);
-        if (!Files.isRegularFile(file)) return; // defaults
-        Properties props = new Properties();
-        try (InputStream in = Files.newInputStream(file)) {
-            props.load(in);
-            DATA.showdownPatched = Boolean.parseBoolean(props.getProperty(KEY_SHOWDOWN_PATCHED, Boolean.toString(DATA.showdownPatched)));
-            DATA.tossOrderBarUI = Boolean.parseBoolean(props.getProperty(KEY_TOSS_ORDER_BAR_UI, Boolean.toString(DATA.tossOrderBarUI)));
-        } catch (IOException ignored) {
+        Path jsonFile = configDir.resolve(COMMON_FILE);
+
+        // One-time migration from legacy properties if present and JSON missing
+        if (!Files.isRegularFile(jsonFile)) {
+            Path legacy = configDir.resolve(LEGACY_PROPS_FILE);
+            if (Files.isRegularFile(legacy)) {
+                // Load legacy .properties into DATA then persist JSON
+                var props = new Properties();
+                try (InputStream in = Files.newInputStream(legacy)) {
+                    props.load(in);
+                    DATA.showdownPatched = Boolean.parseBoolean(props.getProperty("showdownPatched", Boolean.toString(DATA.showdownPatched)));
+                    DATA.tossOrderBarUI = Boolean.parseBoolean(props.getProperty("tossOrderBarUI", Boolean.toString(DATA.tossOrderBarUI)));
+                } catch (IOException ignored) {}
+                save();
+            }
         }
+
+        if (!Files.isRegularFile(jsonFile)) return; // keep defaults if nothing exists
+
+        try (BufferedReader reader = Files.newBufferedReader(jsonFile, StandardCharsets.UTF_8)) {
+            JsonElement el = JsonParser.parseReader(reader);
+            if (el != null && el.isJsonObject()) {
+                JsonObject root = el.getAsJsonObject();
+                DATA.showdownPatched = optBool(root, "showdownPatched", DATA.showdownPatched);
+                DATA.tossOrderBarUI = optBool(root, "tossOrderBarUI", DATA.tossOrderBarUI);
+
+                if (root.has("shadowSpawn") && root.get("shadowSpawn").isJsonObject()) {
+                    JsonObject ss = root.getAsJsonObject("shadowSpawn");
+                    double p = optDouble(ss, "chancePercent", DATA.shadowSpawnChancePercent);
+                    if (p < 0) p = 0; if (p > 100) p = 100;
+                    DATA.shadowSpawnChancePercent = p;
+                    DATA.shadowSpawnBlacklist.clear();
+                    if (ss.has("blacklist") && ss.get("blacklist").isJsonArray()) {
+                        for (JsonElement bl : ss.getAsJsonArray("blacklist")) {
+                            try {
+                                String s = bl.getAsString();
+                                if (s != null && !s.isBlank()) DATA.shadowSpawnBlacklist.add(s.toLowerCase(Locale.ROOT).trim());
+                            } catch (Exception ignored) {}
+                        }
+                    }
+                }
+
+                // Mod Integrations → RCTMod
+                if (root.has("modIntegrations") && root.get("modIntegrations").isJsonObject()) {
+                    JsonObject mi = root.getAsJsonObject("modIntegrations");
+                    // Accept keys: "rctmod", "Radical Cobblemon Trainers" (user-friendly)
+                    JsonObject rct = null;
+                    if (mi.has("rctmod") && mi.get("rctmod").isJsonObject()) rct = mi.getAsJsonObject("rctmod");
+                    else if (mi.has("Radical Cobblemon Trainers") && mi.get("Radical Cobblemon Trainers").isJsonObject()) rct = mi.getAsJsonObject("Radical Cobblemon Trainers");
+                    if (rct != null) {
+                        readRCTIntegration(rct, DATA.rctIntegration);
+                    }
+                }
+            }
+        } catch (IOException ignored) {}
     }
 
     public static void save() {
         Path configDir = Paths.get("config");
-        Path file = configDir.resolve(FILE_NAME);
+        Path jsonFile = configDir.resolve(COMMON_FILE);
         try {
-            if (!Files.isDirectory(configDir)) {
-                Files.createDirectories(configDir);
+            if (!Files.isDirectory(configDir)) Files.createDirectories(configDir);
+            JsonObject root = new JsonObject();
+            root.addProperty("showdownPatched", DATA.showdownPatched);
+            root.addProperty("tossOrderBarUI", DATA.tossOrderBarUI);
+            JsonObject ss = new JsonObject();
+            ss.addProperty("chancePercent", DATA.shadowSpawnChancePercent);
+            JsonArray arr = new JsonArray();
+            for (String s : DATA.shadowSpawnBlacklist) arr.add(s);
+            ss.add("blacklist", arr);
+            root.add("shadowSpawn", ss);
+
+            // Persist minimal RCT integration block (only if enabled to avoid noise)
+            JsonObject mi = new JsonObject();
+            JsonObject rct = new JsonObject();
+            rct.addProperty("enabled", DATA.rctIntegration.enabled);
+            rct.add("append", writeRCTSection(DATA.rctIntegration.append));
+            rct.add("convert", writeRCTSection(DATA.rctIntegration.convert));
+            rct.add("replace", writeRCTSection(DATA.rctIntegration.replace));
+            mi.add("rctmod", rct);
+            root.add("modIntegrations", mi);
+
+            try (BufferedWriter w = Files.newBufferedWriter(jsonFile, StandardCharsets.UTF_8)) {
+                new GsonBuilder().setPrettyPrinting().create().toJson(root, w);
             }
-            Properties props = new Properties();
-            props.setProperty(KEY_SHOWDOWN_PATCHED, Boolean.toString(DATA.showdownPatched));
-            props.setProperty(KEY_TOSS_ORDER_BAR_UI, Boolean.toString(DATA.tossOrderBarUI));
-            try (OutputStream out = Files.newOutputStream(file)) {
-                props.store(out, "Shadowed Hearts configuration");
+        } catch (IOException ignored) {}
+    }
+
+    private static boolean optBool(JsonObject o, String key, boolean def) {
+        try { return o.has(key) ? o.get(key).getAsBoolean() : def; } catch (Exception e) { return def; }
+    }
+    private static int optInt(JsonObject o, String key, int def) {
+        try { return o.has(key) ? o.get(key).getAsInt() : def; } catch (Exception e) { return def; }
+    }
+
+    private static double optDouble(JsonObject o, String key, double def) {
+        try { return o.has(key) ? o.get(key).getAsDouble() : def; } catch (Exception e) { return def; }
+    }
+
+    // ===== RCT Integration config types and (de)serialization =====
+    public static final class RCTIntegrationConfig {
+        public boolean enabled = false;
+        public final RCTSection append = new RCTSection("append");
+        public final RCTSection convert = new RCTSection("convert");
+        public final RCTSection replace = new RCTSection("replace");
+    }
+
+    public static final class RCTTrainerConfig {
+        public String id = ""; // exact trainer id (implementation-defined from RCT)
+        public final List<String> tags = new ArrayList<>(); // NPCShadowInjector tags to add
+        public String preset = ""; // optional: Shadow aspect preset key
+    }
+
+    public static final class RCTSection {
+        public final String name; // for debugging/logging only
+        public final List<String> trainerTypes = new ArrayList<>();
+        public final List<String> trainerBlacklist = new ArrayList<>();
+        public final List<RCTTrainerConfig> trainers = new ArrayList<>();
+        RCTSection(String n) { this.name = n; }
+    }
+
+    private static void readRCTIntegration(JsonObject obj, RCTIntegrationConfig out) {
+        out.enabled = optBool(obj, "enabled", out.enabled);
+        if (obj.has("append") && obj.get("append").isJsonObject()) readRCTSection(obj.getAsJsonObject("append"), out.append);
+        if (obj.has("convert") && obj.get("convert").isJsonObject()) readRCTSection(obj.getAsJsonObject("convert"), out.convert);
+        if (obj.has("replace") && obj.get("replace").isJsonObject()) readRCTSection(obj.getAsJsonObject("replace"), out.replace);
+    }
+
+    private static void readRCTSection(JsonObject obj, RCTSection out) {
+        out.trainerTypes.clear();
+        out.trainerBlacklist.clear();
+        out.trainers.clear();
+        // Allow either keys: trainer_types / trainerTypes (be lenient)
+        readStringArrayInto(obj, out.trainerTypes, obj.has("trainer_types") ? "trainer_types" : "trainerTypes");
+        readStringArrayInto(obj, out.trainerBlacklist, obj.has("trainer_blacklist") ? "trainer_blacklist" : "trainerBlacklist");
+        if (obj.has("trainers") && obj.get("trainers").isJsonArray()) {
+            for (JsonElement el : obj.getAsJsonArray("trainers")) {
+                if (!el.isJsonObject()) continue;
+                JsonObject to = el.getAsJsonObject();
+                RCTTrainerConfig t = new RCTTrainerConfig();
+                try { if (to.has("id")) t.id = to.get("id").getAsString(); } catch (Exception ignored) {}
+                readStringArrayInto(to, t.tags, "tags");
+                try { if (to.has("preset")) t.preset = to.get("preset").getAsString(); } catch (Exception ignored) {}
+                if (t.id != null && !t.id.isBlank()) out.trainers.add(t);
             }
-        } catch (IOException ignored) {
         }
+        // Normalize to lowercase for type/blacklist ids
+        for (int i = 0; i < out.trainerTypes.size(); i++) out.trainerTypes.set(i, safeLower(out.trainerTypes.get(i)));
+        for (int i = 0; i < out.trainerBlacklist.size(); i++) out.trainerBlacklist.set(i, safeLower(out.trainerBlacklist.get(i)));
+    }
+
+    private static void readStringArrayInto(JsonObject obj, List<String> out, String key) {
+        if (!obj.has(key) || !obj.get(key).isJsonArray()) return;
+        for (JsonElement el : obj.getAsJsonArray(key)) {
+            try {
+                String s = el.getAsString();
+                if (s != null && !s.isBlank()) out.add(s);
+            } catch (Exception ignored) {}
+        }
+    }
+
+    private static String safeLower(String s) { return s == null ? null : s.toLowerCase(Locale.ROOT); }
+
+    private static JsonObject writeRCTSection(RCTSection sec) {
+        JsonObject o = new JsonObject();
+        JsonArray types = new JsonArray();
+        for (String s : sec.trainerTypes) types.add(s);
+        o.add("trainer_types", types);
+        JsonArray bl = new JsonArray();
+        for (String s : sec.trainerBlacklist) bl.add(s);
+        o.add("trainer_blacklist", bl);
+        JsonArray trs = new JsonArray();
+        for (RCTTrainerConfig t : sec.trainers) {
+            JsonObject to = new JsonObject();
+            to.addProperty("id", t.id);
+            if (!t.preset.isBlank()) to.addProperty("preset", t.preset);
+            JsonArray tags = new JsonArray();
+            for (String tg : t.tags) tags.add(tg);
+            to.add("tags", tags);
+            trs.add(to);
+        }
+        o.add("trainers", trs);
+        return o;
     }
 }

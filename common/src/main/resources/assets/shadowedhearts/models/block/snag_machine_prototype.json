@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:block/cube_all",
+  "textures": {
+    "all": "shadowedhearts:block/snag_machine_prototype"
+  }
+}

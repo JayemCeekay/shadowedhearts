@@ -25,7 +25,8 @@ public class ShadowPokemonData implements ShadowFlag {
     /** Update both flags on a live PokemonEntity (values are clamped appropriately). */
     public static void set(PokemonEntity e, boolean shadow, float corruption) {
         e.getEntityData().set(SHADOW, shadow);
-        e.getEntityData().set(HEART_GAUGE, Mth.clamp(corruption, 0f, 20000f));
+        // corruption is expected as 0..1 scalar for visuals
+        e.getEntityData().set(HEART_GAUGE, Mth.clamp(corruption, 0f, 1f));
     }
 
     public static void bootstrap() { /* no-op */ }

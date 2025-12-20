@@ -3,15 +3,12 @@ package com.jayemceekay.shadowedhearts.network;
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
 import com.jayemceekay.shadowedhearts.PokemonAspectUtil;
 import com.jayemceekay.shadowedhearts.client.aura.AuraEmitters;
-import com.jayemceekay.shadowedhearts.core.ModItems;
 import com.jayemceekay.shadowedhearts.network.payload.*;
-import com.jayemceekay.shadowedhearts.poketoss.PokeToss;
-import com.jayemceekay.shadowedhearts.poketoss.TacticalOrder;
-import com.jayemceekay.shadowedhearts.snag.SnagCaps;
-import com.jayemceekay.shadowedhearts.snag.SnagConfig;
+import com.jayemceekay.shadowedhearts.snag.*;
 import dev.architectury.networking.NetworkManager;
 import io.netty.buffer.Unpooled;
 import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
@@ -38,8 +35,11 @@ public final class ModNetworking {
             ctx.queue(() -> AuraEmitters.receiveLifecycle(pkt));
         });
         NetworkManager.registerReceiver(NetworkManager.Side.S2C, SnagArmedS2C.TYPE.id(), (buf, ctx) -> {
-            // currently no-op on client; decode to keep stream aligned
-            SnagArmedS2C.STREAM_CODEC.decode(buf);
+            var pkt = SnagArmedS2C.STREAM_CODEC.decode(buf);
+            ctx.queue(() -> {
+                // Update local client flag for snag-armed visual feedback
+                com.jayemceekay.shadowedhearts.client.snag.ClientSnagState.setArmed(pkt.armed());
+            });
         });
         NetworkManager.registerReceiver(NetworkManager.Side.S2C, SnagResultS2C.TYPE.id(), (buf, ctx) -> {
             // currently no-op on client; decode to keep stream aligned
@@ -52,123 +52,58 @@ public final class ModNetworking {
             ctx.queue(() -> {
                 if (!(ctx.getPlayer() instanceof ServerPlayer sp)) return;
                 var cap = SnagCaps.get(sp);
-                // must be holding the Snag Machine in offhand
-                if (!sp.getOffhandItem().is(ModItems.SNAG_MACHINE.get())) return;
+                // must be holding a Snag Machine or have it equipped as an accessory
+                if (!cap.hasSnagMachine())
+                    return;
                 if (cap.cooldown() > 0) return;
-                boolean newVal = pkt.armed();
-                cap.setArmed(newVal);
-                cap.setCooldown(SnagConfig.TOGGLE_COOLDOWN_TICKS);
-                var out = new RegistryFriendlyByteBuf(Unpooled.buffer(), sp.registryAccess());
-                SnagArmedS2C.STREAM_CODEC.encode(out, new SnagArmedS2C(newVal));
-                NetworkManager.sendToPlayer(sp, SnagArmedS2C.TYPE.id(), out);
-            });
-        });
 
-        // Whistle selection brush: client -> server selection results
-        NetworkManager.registerReceiver(NetworkManager.Side.C2S, WhistleSelectionC2S.TYPE.id(), (buf, ctx) -> {
-            var pkt = WhistleSelectionC2S.STREAM_CODEC.decode(buf);
-            ctx.queue(() -> {
-                if (!(ctx.getPlayer() instanceof ServerPlayer sp)) return;
-                if (!(sp.level() instanceof ServerLevel level)) return;
-                java.util.Set<java.util.UUID> sel = new java.util.HashSet<>();
-                for (int id : pkt.entityIds()) {
-                    Entity e = level.getEntity(id);
-                    if (e instanceof PokemonEntity pe) {
-                        // Basic sanity: within 32 blocks of player
-                        if (sp.distanceToSqr(e) <= (32.0 * 32.0)) {
-                            sel.add(pe.getUUID());
+                boolean requestArmed = pkt.armed();
+
+                // Debug: gating info
+                // Note: minimal debug; consider guarding by config if needed
+                // sp.sendSystemMessage(Component.literal("[Snag] Arm request=" + requestArmed));
+
+                if (requestArmed) {
+                    // Only arm inside trainer battle with eligible shadow target
+                    if (!SnagBattleUtil.isInTrainerBattle(sp) || !SnagBattleUtil.hasEligibleShadowOpponent(sp)) {
+                        return; // silently ignore invalid arm
+                    }
+                    var machineStack = cap instanceof com.jayemceekay.shadowedhearts.snag.SimplePlayerSnagData sd ? 
+                            sd.getMachineStack() : net.minecraft.world.item.ItemStack.EMPTY;
+
+                    if (!machineStack.isEmpty() && machineStack.getItem() instanceof SnagMachineItem sm) {
+                        // Initialize energy store but do NOT consume on arm; consumption happens on throw
+                        SnagEnergy.ensureInitialized(machineStack, sm.capacity());
+
+                        // Prevent arming if there isn't enough energy for an attempt
+                        int currentEnergy = SnagCaps.get(sp).energy();
+                        int required = SnagConfig.ENERGY_PER_ATTEMPT;
+                        if (currentEnergy < required) {
+                            cap.setCooldown(SnagConfig.TOGGLE_COOLDOWN_TICKS);
+                            sp.sendSystemMessage(Component.translatable(
+                                    "message.shadowedhearts.snag_machine.not_enough_energy",
+                                    currentEnergy, required
+                            ));
+                            return;
                         }
-                    }
-                }
-                com.jayemceekay.shadowedhearts.poketoss.PokeToss.setSelection(sp, sel);
-                sp.displayClientMessage(net.minecraft.network.chat.Component.literal("Whistle: Selected " + sel.size() + " Pokémon."), true);
-            });
-        });
 
-        // Target order confirmation: use current selection set to issue order towards a target entity
-        NetworkManager.registerReceiver(NetworkManager.Side.C2S, com.jayemceekay.shadowedhearts.network.payload.IssueTargetOrderC2S.TYPE.id(), (buf, ctx) -> {
-            var pkt = com.jayemceekay.shadowedhearts.network.payload.IssueTargetOrderC2S.STREAM_CODEC.decode(buf);
-            ctx.queue(() -> {
-                if (!(ctx.getPlayer() instanceof ServerPlayer sp)) return;
-                if (!(sp.level() instanceof ServerLevel level)) return;
-                Entity targetEnt = level.getEntity(pkt.targetEntityId());
-                if (!(targetEnt instanceof net.minecraft.world.entity.LivingEntity targetLiving)) return;
-                // Currently only allow Pokémon targets
-                if (!(targetEnt instanceof PokemonEntity)) return;
-                java.util.Set<java.util.UUID> selection = com.jayemceekay.shadowedhearts.poketoss.PokeToss.getSelection(sp);
-                int applied = 0;
-                for (java.util.UUID selUuid : selection) {
-                    Entity allyEnt = level.getEntity(selUuid);
-                    if (allyEnt instanceof net.minecraft.world.entity.LivingEntity allyLiving) {
-                        com.jayemceekay.shadowedhearts.poketoss.TacticalOrder order;
-                        switch (pkt.orderType()) {
-                            case GUARD_TARGET -> order = com.jayemceekay.shadowedhearts.poketoss.TacticalOrder.guard(targetLiving.getUUID(), 6.0f, true);
-                            case ENGAGE_TARGET -> order = com.jayemceekay.shadowedhearts.poketoss.TacticalOrder.attack(targetLiving.getUUID());
-                            default -> order = com.jayemceekay.shadowedhearts.poketoss.TacticalOrder.attack(targetLiving.getUUID());
-                        }
-                        boolean ok = com.jayemceekay.shadowedhearts.poketoss.PokeToss.issueOrder(level, allyLiving, order, sp);
-                        if (ok) applied++;
+                        cap.setArmed(true);
+                        cap.setCooldown(SnagConfig.TOGGLE_COOLDOWN_TICKS);
+                        var out = new RegistryFriendlyByteBuf(Unpooled.buffer(), sp.registryAccess());
+                        SnagArmedS2C.STREAM_CODEC.encode(out, new SnagArmedS2C(true));
+                        NetworkManager.sendToPlayer(sp, SnagArmedS2C.TYPE.id(), out);
                     }
-                }
-                if (applied > 0) {
-                    sp.displayClientMessage(net.minecraft.network.chat.Component.literal("Orders issued to " + applied + " Pokémon."), true);
-                }
-            });
-        });
-
-        // Cancel orders for all currently selected allies
-        NetworkManager.registerReceiver(NetworkManager.Side.C2S, com.jayemceekay.shadowedhearts.network.payload.CancelOrdersC2S.TYPE.id(), (buf, ctx) -> {
-            com.jayemceekay.shadowedhearts.network.payload.CancelOrdersC2S.STREAM_CODEC.decode(buf);
-            ctx.queue(() -> {
-                if (!(ctx.getPlayer() instanceof ServerPlayer sp)) return;
-                if (!(sp.level() instanceof ServerLevel level)) return;
-                java.util.Set<java.util.UUID> selection = com.jayemceekay.shadowedhearts.poketoss.PokeToss.getSelection(sp);
-                int cleared = 0;
-                for (java.util.UUID selUuid : selection) {
-                    Entity allyEnt = level.getEntity(selUuid);
-                    if (allyEnt instanceof net.minecraft.world.entity.LivingEntity allyLiving) {
-                        TacticalOrder order = TacticalOrder.cancel();
-                        PokeToss.issueOrder(level, allyLiving, order, sp);
-                        cleared++;
-                    }
-                }
-                if (cleared > 0) {
-                    sp.displayClientMessage(net.minecraft.network.chat.Component.literal("Cleared orders for " + cleared + " Pokémon."), true);
                 } else {
-                    sp.displayClientMessage(net.minecraft.network.chat.Component.literal("No orders to clear."), true);
+                    // Disarm request — allowed anytime; no cost
+                    cap.setArmed(false);
+                    cap.setCooldown(SnagConfig.TOGGLE_COOLDOWN_TICKS);
+                    var out = new RegistryFriendlyByteBuf(Unpooled.buffer(), sp.registryAccess());
+                    SnagArmedS2C.STREAM_CODEC.encode(out, new SnagArmedS2C(false));
+                    NetworkManager.sendToPlayer(sp, SnagArmedS2C.TYPE.id(), out);
                 }
             });
         });
-
-        // Position order confirmation: use current selection set to issue a MOVE_TO or HOLD_POSITION order at a target BlockPos
-        NetworkManager.registerReceiver(NetworkManager.Side.C2S, com.jayemceekay.shadowedhearts.network.payload.IssuePosOrderC2S.TYPE.id(), (buf, ctx) -> {
-            var pkt = com.jayemceekay.shadowedhearts.network.payload.IssuePosOrderC2S.STREAM_CODEC.decode(buf);
-            ctx.queue(() -> {
-                if (!(ctx.getPlayer() instanceof ServerPlayer sp)) return;
-                if (!(sp.level() instanceof ServerLevel level)) return;
-                java.util.Set<java.util.UUID> selection = com.jayemceekay.shadowedhearts.poketoss.PokeToss.getSelection(sp);
-                int applied = 0;
-                for (java.util.UUID selUuid : selection) {
-                    Entity allyEnt = level.getEntity(selUuid);
-                    if (allyEnt instanceof net.minecraft.world.entity.LivingEntity allyLiving) {
-                        com.jayemceekay.shadowedhearts.poketoss.TacticalOrder order;
-                        switch (pkt.orderType()) {
-                            case MOVE_TO -> order = com.jayemceekay.shadowedhearts.poketoss.TacticalOrder.moveTo(pkt.pos(), pkt.radius());
-                            case HOLD_POSITION -> order = com.jayemceekay.shadowedhearts.poketoss.TacticalOrder.holdAt(pkt.pos(), pkt.radius(), pkt.persistent());
-                            default -> {
-                                // Unsupported type here; skip
-                                continue;
-                            }
-                        }
-                        boolean ok = com.jayemceekay.shadowedhearts.poketoss.PokeToss.issueOrder(level, allyLiving, order, sp);
-                        if (ok) applied++;
-                    }
-                }
-                if (applied > 0) {
-                    sp.displayClientMessage(net.minecraft.network.chat.Component.literal("Orders issued to " + applied + " Pokémon."), true);
-                }
-            });
-        });
+        
     }
 
     /** Utility: broadcast to all players tracking the entity (and the entity if it's a player). */

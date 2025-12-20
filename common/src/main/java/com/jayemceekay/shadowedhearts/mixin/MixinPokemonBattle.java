@@ -3,8 +3,6 @@ package com.jayemceekay.shadowedhearts.mixin;
 
 import com.cobblemon.mod.common.api.battles.model.PokemonBattle;
 import com.cobblemon.mod.common.battles.dispatch.DispatchResult;
-import com.cobblemon.mod.common.battles.dispatch.WaitDispatch;
-import com.jayemceekay.shadowedhearts.showdown.AutoBattleController;
 import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import kotlin.Unit;
@@ -21,13 +19,13 @@ public abstract class MixinPokemonBattle {
 
     @WrapMethod(method = "dispatchWaiting")
     public void shadowedhearts$dispatchWaiting(float delaySeconds, Function0<Unit> dispatcher, Operation<Void> original) {
-        if (AutoBattleController.isOneTurn(((PokemonBattle) (Object) this).getBattleId())) {
+        /*if (AutoBattleController.isOneTurn(((PokemonBattle) (Object) this).getBattleId())) {
             if (delaySeconds >= 1.0F) {
                 dispatcher.invoke();
                 this.dispatch(() -> new WaitDispatch(0.5F));
             }
         } else {
             original.call(delaySeconds, dispatcher);
-        }
+        }*/
     }
 }

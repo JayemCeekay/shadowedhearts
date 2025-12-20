@@ -1,0 +1,11 @@
+{
+  "shadow_spawn": {
+    "subtitle": "subtitles.shadowedhearts.shadow_spawn",
+    "sounds": [
+      {
+        "name": "shadowedhearts:shadow_spawn",
+        "volume": 1.0
+      }
+    ]
+  }
+}

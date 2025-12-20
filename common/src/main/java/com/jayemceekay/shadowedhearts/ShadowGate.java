@@ -39,7 +39,6 @@ public final class ShadowGate {
         // Prefer a persistent flag on the Pokemon itself (recommended):
         //   ShadowService.isShadow(pkmn) && ShadowService.getCorruption(pkmn) >= 1.0F
         // Fallback when in battle and you rely on the entity synched data:
-       // System.out.println("isShadowLocked: " + ShadowPokemonData.isShadow(pkmn));
         return pkmn.getAspects().contains(SHAspects.SHADOW);
     }
 

@@ -1,7 +1,9 @@
 package com.jayemceekay.shadowedhearts;
 
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
+import com.cobblemon.mod.common.net.messages.client.pokemon.update.AspectsUpdatePacket;
 import com.cobblemon.mod.common.pokemon.Pokemon;
+import kotlin.jvm.functions.Function0;
 import org.jetbrains.annotations.Nullable;
 
 
@@ -18,18 +20,40 @@ public final class ShadowService {
      */
     public static void setShadow(Pokemon pokemon, @Nullable PokemonEntity live, boolean shadow) {
         PokemonAspectUtil.setShadowAspect(pokemon, shadow);
+        // Ensure required supporting aspects exist when shadowed
+        PokemonAspectUtil.ensureRequiredShadowAspects(pokemon);
         if (live != null) {
             ShadowPokemonData.set(live, shadow, PokemonAspectUtil.getHeartGauge(pokemon));
         }
-        // If live == null but is in world somewhere, optionally locate it to sync.
+        // Proactively sync aspect changes to observing players (party/PC/chamber UI) and mark store dirty.
+        // This ensures client UIs (e.g., Summary screen) update immediately without requiring a PC swap.
+        try {
+            final Pokemon pk = pokemon;
+            Function0<Pokemon> supplier = () -> pk;
+            pokemon.onChange(new AspectsUpdatePacket(supplier, pokemon.getAspects()));
+        } catch (Throwable t) {
+            // Fallback: at least mark store changed so persistence occurs even if packet construction fails
+            pokemon.onChange(null);
+        }
+        // If live == null but is in world somewhere, optionally locate it to sync (handled by store observers above).
     }
 
-    /** Set corruption-purity meter [0..20000]. */
+    /** Set heart gauge absolute meter [0..speciesMax from config]. */
     public static void setHeartGauge(Pokemon pokemon, @Nullable PokemonEntity live, int meter) {
-        int clamped = Math.max(0, Math.min(20000, meter));
-        float scalar = clamped / 20000f;
+        int max = HeartGaugeConfig.getMax(pokemon);
+        int clamped = Math.max(0, Math.min(max, meter));
         PokemonAspectUtil.setHeartGaugeValue(pokemon, clamped);
-        if (live != null) ShadowPokemonData.set(live, ShadowPokemonData.isShadow(live), clamped);
+        // Ensure required supporting aspects exist when shadowed (no-op if not shadowed)
+        PokemonAspectUtil.ensureRequiredShadowAspects(pokemon);
+        if (live != null) ShadowPokemonData.set(live, ShadowPokemonData.isShadow(live), PokemonAspectUtil.getHeartGauge(pokemon));
+        // Proactively sync aspect changes to observing players and mark store dirty so client UI updates live.
+        try {
+            final Pokemon pk = pokemon;
+            Function0<Pokemon> supplier = () -> pk;
+            pokemon.onChange(new AspectsUpdatePacket(supplier, pokemon.getAspects()));
+        } catch (Throwable t) {
+            pokemon.onChange(null);
+        }
     }
 
     /** Convenience: fully purified (0) and not shadow. */
@@ -38,9 +62,9 @@ public final class ShadowService {
         setHeartGauge(pokemon, live, 0);
     }
 
-    /** Convenience: fully corrupted (20000) and shadow. */
+    /** Convenience: fully corrupted (speciesMax) and shadow. */
     public static void fullyCorrupt(Pokemon pokemon, @Nullable PokemonEntity live) {
         setShadow(pokemon, live, true);
-        setHeartGauge(pokemon, live, 20000);
+        setHeartGauge(pokemon, live, HeartGaugeConfig.getMax(pokemon));
     }
 }

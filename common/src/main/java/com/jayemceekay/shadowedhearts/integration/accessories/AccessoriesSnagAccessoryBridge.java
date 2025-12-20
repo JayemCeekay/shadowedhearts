@@ -1,0 +1,53 @@
+package com.jayemceekay.shadowedhearts.integration.accessories;
+
+import com.jayemceekay.shadowedhearts.core.ModItems;
+import com.jayemceekay.shadowedhearts.snag.SnagMachineItem;
+import io.wispforest.accessories.api.AccessoriesCapability;
+import io.wispforest.accessories.api.slot.SlotReference;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+
+public final class AccessoriesSnagAccessoryBridge implements SnagAccessoryBridge {
+
+    public AccessoriesSnagAccessoryBridge() {
+        register(ModItems.SNAG_MACHINE_PROTOTYPE.get());
+        register(ModItems.SNAG_MACHINE_ADVANCED.get());
+    }
+
+    private void register(net.minecraft.world.item.Item item) {
+        if (item instanceof SnagMachineItem) {
+            try {
+                io.wispforest.accessories.api.AccessoriesAPI.registerAccessory(item, new io.wispforest.accessories.api.Accessory() {
+                    @Override
+                    public void onEquip(ItemStack stack, SlotReference reference) {
+                        // Custom logic could go here
+                    }
+                });
+            } catch (Throwable ignored) {}
+        }
+    }
+
+    @Override
+    public boolean isEquipped(Player player) {
+        return !getEquippedStack(player).isEmpty();
+    }
+
+
+    @Override
+    public ItemStack getEquippedStack(Player player) {
+        try {
+            AccessoriesCapability capability = AccessoriesCapability.get(player);
+            if (capability == null) return ItemStack.EMPTY;
+
+            for (var container : capability.getContainers().values()) {
+                for (var accessory : container.getAccessories()) {
+                    if (accessory != null && accessory.getSecond().getItem() instanceof SnagMachineItem) {
+                        return accessory.getSecond();
+                    }
+                }
+            }
+        } catch (Throwable ignored) {}
+        
+        return ItemStack.EMPTY;
+    }
+}

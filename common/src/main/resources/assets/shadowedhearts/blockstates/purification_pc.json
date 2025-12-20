@@ -1,0 +1,64 @@
+{
+    "variants": {
+        "facing=south,part=top,on=false": {
+            "model": "shadowedhearts:block/purification_pc_top"
+        },
+        "facing=west,part=top,on=false": {
+            "model": "shadowedhearts:block/purification_pc_top",
+            "y": 90
+        },
+        "facing=north,part=top,on=false": {
+            "model": "shadowedhearts:block/purification_pc_top",
+            "y": 180
+        },
+        "facing=east,part=top,on=false": {
+            "model": "shadowedhearts:block/purification_pc_top",
+            "y": 270
+        },
+        "facing=south,part=top,on=true": {
+            "model": "shadowedhearts:block/purification_pc_top_on"
+        },
+        "facing=west,part=top,on=true": {
+            "model": "shadowedhearts:block/purification_pc_top_on",
+            "y": 90
+        },
+        "facing=north,part=top,on=true": {
+            "model": "shadowedhearts:block/purification_pc_top_on",
+            "y": 180
+        },
+        "facing=east,part=top,on=true": {
+            "model": "shadowedhearts:block/purification_pc_top_on",
+            "y": 270
+        },
+        "facing=south,part=bottom,on=false": {
+            "model": "shadowedhearts:block/purification_pc_bottom"
+        },
+        "facing=west,part=bottom,on=false": {
+            "model": "shadowedhearts:block/purification_pc_bottom",
+            "y": 90
+        },
+        "facing=north,part=bottom,on=false": {
+            "model": "shadowedhearts:block/purification_pc_bottom",
+            "y": 180
+        },
+        "facing=east,part=bottom,on=false": {
+            "model": "shadowedhearts:block/purification_pc_bottom",
+            "y": 270
+        },
+        "facing=south,part=bottom,on=true": {
+            "model": "shadowedhearts:block/purification_pc_bottom"
+        },
+        "facing=west,part=bottom,on=true": {
+            "model": "shadowedhearts:block/purification_pc_bottom",
+            "y": 90
+        },
+        "facing=north,part=bottom,on=true": {
+            "model": "shadowedhearts:block/purification_pc_bottom",
+            "y": 180
+        },
+        "facing=east,part=bottom,on=true": {
+            "model": "shadowedhearts:block/purification_pc_bottom",
+            "y": 270
+        }
+    }
+}

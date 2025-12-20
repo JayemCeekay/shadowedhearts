@@ -12,8 +12,22 @@ repositories {
         name = 'Modrinth'
         url = 'https://api.modrinth.com/maven'
     }
+    maven { url 'https://maven.wispforest.io/releases' }
+    maven { url 'https://maven.su5ed.dev/releases' }
+    maven { url 'https://maven.fabricmc.net' }
+    maven { url 'https://maven.shedaniel.me/' }
     flatDir {
         dirs("deps/local/com/bedrockk/molang/1.1.20")
+    }
+    exclusiveContent {
+        forRepository {
+            maven {
+                url "https://cursemaven.com"
+            }
+        }
+        filter {
+            includeGroup "curse.maven"
+        }
     }
 }
 
@@ -27,13 +41,21 @@ dependencies {
 
     modImplementation("com.cobblemon:mod:${project.property('cobblemon_version')}")
 
+
     implementation("org.graalvm.sdk:graal-sdk:22.3.0")
 
     // Test framework for common module
     testImplementation "org.junit.jupiter:junit-jupiter:5.10.2"
 
     compileOnly("name:molang-1.1.20")
-    //compileOnly("com.external.fightorflight:common:0.0.0-local")
+
+    modCompileOnlyApi("curse.maven:radical-cobblemon-trainers-api-1152792:7319958")
+
+    //rctmod
+    modCompileOnlyApi( "com.gitlab.srcmc:rctmod-common-1.21.1:0.17.4-beta")
+
+    //accessories
+    modCompileOnlyApi("io.wispforest:accessories-common:${project.accessories_version}")
 }
 
 // Default for all resource/copy tasks

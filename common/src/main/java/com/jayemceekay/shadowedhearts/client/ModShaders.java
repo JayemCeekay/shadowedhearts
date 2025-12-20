@@ -14,6 +14,13 @@ public final class ModShaders {
 
     public static ShaderInstance SHADOW_POOL;
     public static ShaderInstance WHISTLE_GROUND_OVERLAY;
+    public static ShaderInstance PURIFICATION_CHAMBER_BACKGROUND;
+
+    // New: Poké Ball glow overlay shader (additive + fullbright)
+    public static ShaderInstance BALL_GLOW;
+
+    // Trail ribbon shader (uses UV scrolling texture)
+    public static ShaderInstance BALL_TRAIL;
 
     private ModShaders() {}
 

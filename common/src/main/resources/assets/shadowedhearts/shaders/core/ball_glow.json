@@ -1,0 +1,58 @@
+{
+  "blend": {
+    "func": "add",
+    "srcrgb": "one",
+    "dstrgb": "one",
+    "srcalpha": "one",
+    "dstalpha": "one"
+  },
+  "vertex": "minecraft:rendertype_entity_translucent_emissive",
+  "fragment": "shadowedhearts:ball_glow",
+  "attributes": [
+    "Position",
+    "Color",
+    "UV0",
+    "UV1",
+    "UV2",
+    "Normal"
+  ],
+  "samplers": [
+    { "name": "Sampler0" }
+  ],
+  "uniforms": [
+    { "name": "ModelViewMat", "type": "matrix4x4", "count": 16, "values": [ 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0 ] },
+    { "name": "ProjMat", "type": "matrix4x4", "count": 16, "values": [ 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0 ] },
+    { "name": "ColorModulator", "type": "float", "count": 4, "values": [ 1.0, 1.0, 1.0, 1.0 ] },
+    { "name": "FogStart", "type": "float", "count": 1, "values": [ 0.0 ] },
+    { "name": "FogEnd", "type": "float", "count": 1, "values": [ 1.0 ] },
+    { "name": "FogColor", "type": "float", "count": 4, "values": [ 0.0, 0.0, 0.0, 0.0 ] },
+    { "name": "u_time", "type": "float", "count": 1, "values": [ 0.0 ] },
+    { "name": "u_glowTint", "type": "float", "count": 3, "values": [ 0.7, 0.2, 1.0 ] },
+    { "name": "u_rimStrength", "type": "float", "count": 1, "values": [ 0.35 ] },
+    { "name": "u_pulseSpeed", "type": "float", "count": 1, "values": [ 12.0 ] },
+    { "name": "u_useMask", "type": "float", "count": 1, "values": [ 1.0 ] },
+    { "name": "u_orbMode", "type": "float", "count": 1, "values": [ 1.0 ] },
+    { "name": "u_orbSoftness", "type": "float", "count": 1, "values": [ 0.45 ] },
+    { "name": "u_orbIntensity", "type": "float", "count": 1, "values": [ 1.6 ] },
+    { "name": "u_starStrength", "type": "float", "count": 1, "values": [ 2.0 ] },
+    { "name": "u_starSharpness", "type": "float", "count": 1, "values": [ 30.0 ] },
+    { "name": "u_starCount", "type": "float", "count": 1, "values": [ 4.0 ] },
+    { "name": "u_starFalloff", "type": "float", "count": 1, "values": [ 0.25 ] },
+    { "name": "u_starRotateSpeed", "type": "float", "count": 1, "values": [ 0.0 ] },
+    { "name": "u_starPhase", "type": "float", "count": 1, "values": [ 0.0 ] },
+    { "name": "u_glowMix", "type": "float", "count": 1, "values": [ 1.0 ] },
+    { "name": "u_paletteSpeed", "type": "float", "count": 1, "values": [ 0.20 ] },
+    { "name": "u_paletteShift", "type": "float", "count": 1, "values": [ 0.00 ] },
+    { "name": "u_paletteSaturation", "type": "float", "count": 1, "values": [ 1.0 ] },
+    { "name": "u_voxelsPerRad", "type": "float", "count": 1, "values": [ 120.0 ] },
+
+    { "name": "u_c0", "type": "float", "count": 3, "values": [ 1.00, 1.00, 1.00 ] },
+    { "name": "u_c1", "type": "float", "count": 3, "values": [ 1.00, 0.82, 0.12 ] },
+    { "name": "u_c2", "type": "float", "count": 3, "values": [ 1.00, 0.35, 0.10 ] },
+    { "name": "u_c3", "type": "float", "count": 3, "values": [ 0.45, 0.00, 0.95 ] },
+    { "name": "u_t1", "type": "float", "count": 1, "values": [ 0.20 ] },
+    { "name": "u_t2", "type": "float", "count": 1, "values": [ 0.45 ] },
+    { "name": "u_t3", "type": "float", "count": 1, "values": [ 1.00 ] },
+    { "name": "u_lumaCoeff", "type": "float", "count": 3, "values": [ 0.299, 0.587, 0.114 ] }
+  ]
+}

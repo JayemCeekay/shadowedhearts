@@ -22,7 +22,6 @@ public class MixinMoveActionResponse {
         if (pokemon == null) return;
 
         if (ShadowGate.isShadowLocked(pokemon)) {
-            // this.moveName is a field in MoveActionResponse; expose via an accessor mixin if needed
             String moveId = ((AccessorMoveActionResponse) this).shadowedhearts$getMoveName();
             if (!ShadowGate.isShadowMoveId(moveId)) {
                 cir.setReturnValue(false);

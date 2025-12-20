@@ -1,9 +1,5 @@
 package com.jayemceekay.shadowedhearts.mixin;
 
-import com.jayemceekay.shadowedhearts.config.ModConfig;
-import com.jayemceekay.shadowedhearts.poketoss.client.TossOrderBarUI;
-import com.jayemceekay.shadowedhearts.poketoss.client.TossOrderRadialWheel;
-import com.jayemceekay.shadowedhearts.poketoss.client.WhistleSelectionClient;
 import net.minecraft.client.MouseHandler;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -19,19 +15,19 @@ public abstract class MixinMouseHandler {
 
     @Inject(method = "turnPlayer", at = @At("HEAD"), cancellable = true)
     private void shadowedhearts$disableTurningWhenWheelActive(CallbackInfo ci) {
-        if (WhistleSelectionClient.isWheelActive()) {
+        /*if (WhistleSelectionClient.isWheelActive()) {
             ci.cancel();
-        }
+        }*/
     }
 
     // Forward raw scroll deltas to the TossOrderWheel so it can drive the bar UI reliably
     @Inject(method = "onScroll", at = @At("HEAD"))
     private void shadowedhearts$forwardWheelScroll(long window, double horizontal, double vertical, CallbackInfo ci) {
-        if (ModConfig.get().tossOrderBarUI) {
+        /*if (ModConfig.get().tossOrderBarUI) {
             TossOrderBarUI.onScrollDelta(vertical);
         } else {
             TossOrderRadialWheel.onScrollDelta(vertical);
-        }
+        }*/
     }
 
     @Inject(
@@ -43,10 +39,10 @@ public abstract class MixinMouseHandler {
         cancellable = true
     )
     private void shadowedhearts$lockHotbarScrollWhenWheelOpen(long window, double horizontal, double vertical, CallbackInfo ci) {
-        if (WhistleSelectionClient.isWheelActive()) {
+        /*if (WhistleSelectionClient.isWheelActive()) {
             // Cancel vanilla hotbar swapping. The accumulated scroll value remains available
             // for TossOrderWheel to read and consume via MouseHandlerAccessor.
             ci.cancel();
-        }
+        }*/
     }
 }

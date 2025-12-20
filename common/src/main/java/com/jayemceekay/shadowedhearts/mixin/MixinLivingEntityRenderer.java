@@ -2,8 +2,6 @@ package com.jayemceekay.shadowedhearts.mixin;
 
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
 import com.jayemceekay.shadowedhearts.PokemonAspectUtil;
-import com.jayemceekay.shadowedhearts.poketoss.client.TargetSelectionClient;
-import com.jayemceekay.shadowedhearts.poketoss.client.WhistleSelectionClient;
 import com.llamalad7.mixinextras.sugar.Local;
 import net.minecraft.client.renderer.entity.LivingEntityRenderer;
 import net.minecraft.world.entity.LivingEntity;
@@ -32,16 +30,16 @@ public abstract class MixinLivingEntityRenderer<T extends LivingEntity> {
         if (shadowedhearts$shouldDarken(livingEntity)) {
             color = shadowedhearts$mulRGB1(color, 0.65f); // 35% darker
         }
-        if (livingEntity instanceof PokemonEntity) {
+       /* if (livingEntity instanceof PokemonEntity) {
             // Red highlight when in target selection mode and under crosshair
-            if (TargetSelectionClient.isHighlighted(livingEntity.getId())) {
+           /* if (TargetSelectionClient.isHighlighted(livingEntity.getId())) {
                 color = shadowedhearts$mulRGB3(color, TargetSelectionClient.HIL_R, TargetSelectionClient.HIL_G, TargetSelectionClient.HIL_B);
             }
             // Green tint for whistle brush-selected allies
             if (WhistleSelectionClient.isSelected(livingEntity.getId())) {
                 color = shadowedhearts$mulRGB3(color, WhistleSelectionClient.SEL_R, WhistleSelectionClient.SEL_G, WhistleSelectionClient.SEL_B);
             }
-        }
+        }*/
         return color;
     }
 

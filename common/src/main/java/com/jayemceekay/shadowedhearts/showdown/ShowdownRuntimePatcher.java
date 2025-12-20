@@ -21,12 +21,16 @@ public final class ShowdownRuntimePatcher {
     private ShowdownRuntimePatcher() {}
 
     public static void applyPatches() {
-        System.out.println("Applying Showdown runtime patches...");
         for (Path showdown : locateShowdownDirs()) {
             try {
                 patchTypechart(showdown.resolve("data").resolve("typechart.js"));
             } catch (Exception e) {
                 log("Failed to patch typechart.js at " + showdown + ": " + e.getMessage());
+            }
+            try {
+                patchDexConditions(showdown.resolve("sim").resolve("dex-conditions.js"));
+            } catch (Exception e) {
+                log("Failed to patch dex-conditions.js at " + showdown + ": " + e.getMessage());
             }
             try {
                 patchBattleCapture(showdown.resolve("sim").resolve("battle.js"));
@@ -43,6 +47,31 @@ public final class ShowdownRuntimePatcher {
             } catch (Exception e) {
                 log("Failed to patch conditions.js at " + showdown + ": " + e.getMessage());
             }
+            try {
+                patchHyperReverseModes(showdown.resolve("data").resolve("conditions.js"));
+            } catch (Exception e) {
+                log("Failed to patch Hyper/Reverse modes in conditions.js at " + showdown + ": " + e.getMessage());
+            }
+            try {
+                patchHyperInstructionTiming(showdown.resolve("data").resolve("conditions.js"));
+            } catch (Exception e) {
+                log("Failed to patch Hyper instruction timing in conditions.js at " + showdown + ": " + e.getMessage());
+            }
+            try {
+                patchShadowEngine(showdown.resolve("data").resolve("conditions.js"));
+            } catch (Exception e) {
+                log("Failed to patch Shadow Engine in conditions.js at " + showdown + ": " + e.getMessage());
+            }
+            try {
+                patchBattleAddShadowEngine(showdown.resolve("sim").resolve("battle.js"));
+            } catch (Exception e) {
+                log("Failed to patch battle.js for Shadow Engine at " + showdown + ": " + e.getMessage());
+            }
+            try {
+                patchFieldAddPseudoWeatherDebug(showdown.resolve("sim").resolve("field.js"));
+            } catch (Exception e) {
+                log("Failed to patch field.js for Shadow Engine debug at " + showdown + ": " + e.getMessage());
+            }
             /*try {
                 patchMicroScripts(showdown.resolve("data").resolve("mods").resolve("micro").resolve("scripts.js"));
             } catch (Exception e) {
@@ -56,13 +85,41 @@ public final class ShowdownRuntimePatcher {
         }
     }
 
+    /**
+     * Guard the custom '|hyper|' token emissions so they are not sent during pre-start switch-in.
+     * Sending a custom token before turn 1 can confuse the interpreter and stall choices.
+     * We only change the 'start' emission; 'end' happens during the battle and is safe.
+     */
+    private static void patchHyperInstructionTiming(Path conditionsPath) throws IOException {
+        if (!Files.isRegularFile(conditionsPath)) return;
+        String content = Files.readString(conditionsPath, StandardCharsets.UTF_8);
+
+        String startLine = "this.add('hyper', 'start', pokemon.getDetails().split('|')[0]);";
+        if (!content.contains(startLine)) {
+            // Nothing to do or already upgraded
+            return;
+        }
+
+        String guarded =
+                "if (this.turn && this.turn >= 1) { this.add('hyper', 'start', pokemon.getDetails().split('|')[0]); } " +
+                "else { this.add('shdebug', '[SH DEBUG] (guarded) Hyper start suppressed until turn 1 for ' + pokemon.name); }";
+
+        String patched = content.replace(startLine, guarded);
+        Files.writeString(conditionsPath, patched, StandardCharsets.UTF_8);
+        log("Applied guarded emission for '|hyper start|' in conditions.js: " + conditionsPath);
+    }
+
     private static List<Path> locateShowdownDirs() {
         List<Path> result = new ArrayList<>();
         // Common dev environment paths
         addIfDir(result, Paths.get("fabric", "run", "showdown"));
         addIfDir(result, Paths.get("neoforge", "run", "showdown"));
+        // Dedicated/server run variants
+        addIfDir(result, Paths.get("fabric", "run", "server", "showdown"));
+        addIfDir(result, Paths.get("neoforge", "run", "server", "showdown"));
         // Generic runtime paths
         addIfDir(result, Paths.get("run", "showdown"));
+        addIfDir(result, Paths.get("run", "server", "showdown"));
         addIfDir(result, Paths.get("showdown"));
         System.out.println("Found Showdown directories: " + result.size());
         return result;
@@ -148,6 +205,11 @@ public final class ShowdownRuntimePatcher {
                 "      this.add(\"-message\", \"The shadowy aura faded away!\");\n" +
                 "    }\n" +
                 "  }\n";
+        } else {
+            // Ensure the block has the key if it was loaded from a resource and doesn't have it
+            if (!block.trim().startsWith("shadowyaura:")) {
+                block = "  shadowyaura: " + block.trim();
+            }
         }
 
         String insertionPrefix = hasTrailingComma ? "\n" : ",\n";
@@ -157,6 +219,232 @@ public final class ShowdownRuntimePatcher {
             log("Upgraded existing shadowyaura weather to include chip in conditions.js: " + conditionsPath);
         } else {
             log("Inserted shadowyaura weather into conditions.js: " + conditionsPath);
+        }
+    }
+
+    /**
+     * Ensure DexConditions preserves the 'Field' effectType for pseudo-weather conditions.
+     * By default, upstream code only allows ["Weather", "Status"]. We add "Field" so
+     * our injected shadowengine condition retains effectType: 'Field'.
+     */
+    private static void patchDexConditions(Path dexConditionsPath) throws IOException {
+        if (!Files.isRegularFile(dexConditionsPath)) return;
+        String content = Files.readString(dexConditionsPath, StandardCharsets.UTF_8);
+
+        // Guard: if 'Field' is already in the whitelist, skip.
+        // Look for the constructor assignment line pattern in compiled JS.
+        String whitelistPattern = "[\"Weather\", \"Status\"]";
+        String desired = "[\"Weather\", \"Status\", \"Field\"]";
+
+        if (content.contains("\"Field\"")) {
+            log("dex-conditions.js already preserves 'Field' effectType: " + dexConditionsPath);
+            return;
+        }
+
+        String needle = "this.effectType = [\"Weather\", \"Status\"].includes(data.effectType) ? data.effectType : \"Condition\";";
+        String replacement = "this.effectType = [\"Weather\", \"Status\", \"Field\"].includes(data.effectType) ? data.effectType : \"Condition\";";
+
+        if (content.contains(needle)) {
+            String patched = content.replace(needle, replacement);
+            Files.writeString(dexConditionsPath, patched, StandardCharsets.UTF_8);
+            log("Patched dex-conditions.js to allow 'Field' effectType: " + dexConditionsPath);
+            return;
+        }
+
+        // Fallback: perform a broader replacement on the whitelist array if constructed slightly differently
+        if (content.contains(whitelistPattern)) {
+            String patched = content.replace(whitelistPattern, desired);
+            Files.writeString(dexConditionsPath, patched, StandardCharsets.UTF_8);
+            log("Patched dex-conditions.js (broad replace) to allow 'Field': " + dexConditionsPath);
+            return;
+        }
+
+        // If we couldn't find the expected code, log and skip to avoid breaking the file.
+        log("Could not locate effectType whitelist in dex-conditions.js: " + dexConditionsPath);
+    }
+
+    /**
+     * Inserts custom volatile statuses for Hyper Mode and Reverse Mode into data/conditions.js.
+     * Approximates Colosseum/XD mechanics in a Showdown-friendly way:
+     * - hypermode: favors Shadow moves, may refuse non-Shadow moves, boosts Shadow move power.
+     * - reversemode: chip damage each turn to the afflicted Shadow Pokémon, may occasionally refuse non-Shadow moves.
+     */
+    private static void patchHyperReverseModes(Path conditionsPath) throws IOException {
+        if (!Files.isRegularFile(conditionsPath)) return;
+        String content = Files.readString(conditionsPath, StandardCharsets.UTF_8);
+
+        boolean hasHyper = content.contains("\n  hypermode:");
+        boolean hasReverse = content.contains("\n  reversemode:");
+        if (hasHyper && hasReverse) {
+            log("conditions.js already contains hypermode and reversemode: " + conditionsPath);
+            return;
+        }
+
+        int endIndex = content.lastIndexOf("};");
+        if (endIndex < 0) {
+            log("Could not find end of Conditions object in conditions.js for Hyper/Reverse patch: " + conditionsPath);
+            return;
+        }
+
+        int j = endIndex - 1;
+        while (j >= 0 && Character.isWhitespace(content.charAt(j))) j--;
+        boolean hasTrailingComma = j >= 0 && content.charAt(j) == ',';
+
+        String hyperBlock =
+            "  hypermode: {\n" +
+            "    name: \"Hyper Mode\",\n" +
+            "    effectType: \"VolatileStatus\",\n" +
+            "    // When a Shadow Pokémon enters Hyper Mode, it becomes erratic and favors Shadow moves.\n" +
+            "    onStart(pokemon) {\n" +
+            "      this.add('-start', pokemon, 'Hyper Mode');\n" +
+            "      this.add('-message', '[SH DEBUG] HyperMode onStart for ' + pokemon.name);\n" +
+            "      // Notify Cobblemon to persist Hyper Mode outside battle\n" +
+            "      // Custom instruction: |hyper|start|<active>\n" +
+            "      this.add('hyper', 'start', pokemon.getDetails().split('|')[0]);\n" +
+            "    },\n" +
+            "    onEnd(pokemon) {\n" +
+            "      this.add('-end', pokemon, 'Hyper Mode');\n" +
+            "      this.add('-message', '[SH DEBUG] HyperMode onEnd for ' + pokemon.name);\n" +
+            "      // Custom instruction: |hyper|end|<active>\n" +
+            "      this.add('hyper', 'end', pokemon.getDetails().split('|')[0]);\n" +
+            "    },\n" +
+            "    // Small chance to end on its own each turn (1/256).\n" +
+            "    onResidualOrder: 6,\n" +
+            "    onResidual(pokemon) {\n" +
+            "      if (this.randomChance(1, 256)) {\n" +
+            "        this.add('-message', pokemon.name + ' calmed down.');\n" +
+            "        this.add('-message', '[SH DEBUG] HyperMode onResidual ended for ' + pokemon.name);\n" +
+            "        pokemon.removeVolatile('hypermode');\n" +
+            "      }\n" +
+            "    },\n" +
+            "    // Always leave Hyper Mode on faint in battle.\n" +
+            "    onFaint(pokemon) {\n" +
+            "      if (pokemon.volatiles['hypermode']) { this.add('-message', '[SH DEBUG] HyperMode onFaint removing for ' + pokemon.name); pokemon.removeVolatile('hypermode'); }\n" +
+            "    },\n" +
+            "    // If attempting a non-Shadow move, 50% chance to instead use a Shadow move if available.\n" +
+            "    onTryMove(source, target, move) {\n" +
+            "      if (!move || move.type === 'Shadow') return;\n" +
+            "      this.add('-message', '[SH DEBUG] HyperMode onTryMove non-Shadow detected: ' + move.name + ' by ' + source.name);\n" +
+            "      if (this.randomChance(1, 2)) {\n" +
+            "        const shadowMoves = source.moveSlots.filter(m => this.dex.moves.get(m.id).type === 'Shadow');\n" +
+            "        if (shadowMoves.length) {\n" +
+            "          // Use the first Shadow move instead\n" +
+            "          const chosen = shadowMoves[0].id;\n" +
+            "          this.add('-message', source.name + ' goes into Hyper Mode and uses a Shadow move instead!');\n" +
+            "          this.add('-message', '[SH DEBUG] HyperMode onTryMove switching to Shadow move: ' + this.dex.moves.get(chosen).name);\n" +
+            "          // Replace chosen move id for this turn\n" +
+            "          move.id = chosen; move.name = this.dex.moves.get(chosen).name; move.type = 'Shadow';\n" +
+            "          return;\n" +
+            "        }\n" +
+            "        // Otherwise, pick a Hyper Mode disobedience outcome at random.\n" +
+            "        const outcomes = ['otherMove','attackAlly','selfHurt','fakeItem','yellAtTrainer','doNothing','returnBall'];\n" +
+            "        const pick = outcomes[this.random(outcomes.length)];\n" +
+            "        this.add('-message', '[SH DEBUG] HyperMode onTryMove outcome: ' + pick);\n" +
+            "        // Helper: pick another known move if any.\n" +
+            "        const otherKnown = source.moveSlots.filter(m => m.id !== move.id);\n" +
+            "        switch (pick) {\n" +
+            "          case 'otherMove': {\n" +
+            "            if (otherKnown.length) {\n" +
+            "              const chosen = otherKnown[this.random(otherKnown.length)].id;\n" +
+            "              this.add('-message', source.name + ' won\\'t obey and uses another move!');\n" +
+            "              this.add('-message', '[SH DEBUG] HyperMode onTryMove switching to other known move: ' + this.dex.moves.get(chosen).name);\n" +
+            "              move.id = chosen; move.name = this.dex.moves.get(chosen).name;\n" +
+            "              return;\n" +
+            "            }\n" +
+            "            // fallthrough to doNothing if no other move\n" +
+            "          }\n" +
+            "          case 'attackAlly': {\n" +
+            "            const ally = source.side.active[1] && !source.side.active[1].fainted ? source.side.active[1] : null;\n" +
+            "            if (ally) {\n" +
+            "              this.add('-message', source.name + ' turns on its ally in Hyper Mode!');\n" +
+            "              this.add('-message', '[SH DEBUG] HyperMode onTryMove retargeting to ally: ' + ally.name);\n" +
+            "              // Retarget the move to ally if possible\n" +
+            "              if (target && target !== ally) target = ally;\n" +
+            "              return;\n" +
+            "            }\n" +
+            "            // No ally; fall through to self-hurt\n" +
+            "          }\n" +
+            "          case 'selfHurt': {\n" +
+            "            this.add('-message', source.name + ' is thrashing about in Hyper Mode!');\n" +
+            "            this.add('-message', '[SH DEBUG] HyperMode onTryMove self-damage 1/8 max HP');\n" +
+            "            this.damage(Math.max(1, Math.floor(source.baseMaxhp / 8)), source, source);\n" +
+            "            return false;\n" +
+            "          }\n" +
+            "          case 'fakeItem': {\n" +
+            "            this.add('-message', source.name + ' fumbles with an item... but nothing happens.');\n" +
+            "            this.add('-message', '[SH DEBUG] HyperMode onTryMove fakeItem no-op');\n" +
+            "            return false;\n" +
+            "          }\n" +
+            "          case 'yellAtTrainer': {\n" +
+            "            this.add('-message', source.name + ' lashes out at its Trainer! (No effect)');\n" +
+            "            this.add('-message', '[SH DEBUG] HyperMode onTryMove yellAtTrainer no-op');\n" +
+            "            return false;\n" +
+            "          }\n" +
+            "          case 'returnBall': {\n" +
+            "            const sw = source.side.pokemon.some(p => !p.fainted && !p.active);\n" +
+            "            this.add('-message', source.name + ' tries to return to its Poké Ball!');\n" +
+            "            this.add('-message', '[SH DEBUG] HyperMode onTryMove returnBall switchAvailable=' + sw);\n" +
+            "            if (!sw) this.add('-message', 'But it can\\'t be switched out!');\n" +
+            "            return false;\n" +
+            "          }\n" +
+            "          default: {\n" +
+            "            this.add('-message', source.name + ' refuses to act!');\n" +
+            "            this.add('-message', '[SH DEBUG] HyperMode onTryMove default refuse');\n" +
+            "            return false;\n" +
+            "          }\n" +
+            "        }\n" +
+            "      }\n" +
+            "    },\n" +
+            "    // Boost power of Shadow-type moves.\n" +
+            "    onBasePower(basePower, attacker, defender, move) {\n" +
+            "      if (move?.type === 'Shadow') { this.add('-message', '[SH DEBUG] HyperMode onBasePower boost applied for ' + attacker.name + ' using ' + move.name); return this.chainModify(1.5); }\n" +
+            "    },\n" +
+            "  }\n";
+
+        String reverseBlock =
+            "  reversemode: {\n" +
+            "    name: \"Reverse Mode\",\n" +
+            "    effectType: \"VolatileStatus\",\n" +
+            "    // Reverse Mode harms the Shadow Pokémon each turn and increases disobedience.\n" +
+            "    onStart(pokemon) {\n" +
+            "      this.add('-start', pokemon, 'Reverse Mode');\n" +
+            "    },\n" +
+            "    onEnd(pokemon) {\n" +
+            "      this.add('-end', pokemon, 'Reverse Mode');\n" +
+            "    },\n" +
+            "    onResidualOrder: 5,\n" +
+            "    onResidual(pokemon) {\n" +
+            "      this.damage(pokemon.baseMaxhp / 16, pokemon, pokemon);\n" +
+            "      this.add('-message', pokemon.name + \" is hurt by Reverse Mode!\");\n" +
+            "    },\n" +
+            "    // 20% chance to refuse non-Shadow moves.\n" +
+            "    onTryMove(source, target, move) {\n" +
+            "      if (!move || move.type === 'Shadow') return;\n" +
+            "      if (this.randomChance(1, 5)) {\n" +
+            "        this.add('-message', source.name + ' is in Reverse Mode and won\\'t obey!');\n" +
+            "        return false;\n" +
+            "      }\n" +
+            "    },\n" +
+            "  }\n";
+
+        StringBuilder blocks = new StringBuilder();
+        if (!hasHyper) blocks.append(hyperBlock);
+        if (!hasReverse) {
+            if (blocks.length() > 0) blocks.append(",\n");
+            blocks.append(reverseBlock);
+        }
+
+        if (blocks.length() == 0) return; // nothing to add
+
+        String insertionPrefix = hasTrailingComma ? "\n" : ",\n";
+        String patched = content.substring(0, endIndex) + insertionPrefix + blocks + content.substring(endIndex);
+        Files.writeString(conditionsPath, patched, StandardCharsets.UTF_8);
+        if (!hasHyper && !hasReverse) {
+            log("Inserted hypermode and reversemode into conditions.js: " + conditionsPath);
+        } else if (!hasHyper) {
+            log("Inserted hypermode into conditions.js: " + conditionsPath);
+        } else {
+            log("Inserted reversemode into conditions.js: " + conditionsPath);
         }
     }
 
@@ -189,7 +477,6 @@ public final class ShowdownRuntimePatcher {
     }
 
     private static void patchTypechart(Path typechartPath) throws IOException {
-        System.out.println(typechartPath);
         if (!Files.isRegularFile(typechartPath)) return;
         String content = Files.readString(typechartPath, StandardCharsets.UTF_8);
 
@@ -322,9 +609,12 @@ public final class ShowdownRuntimePatcher {
         if (!Files.isRegularFile(teamsPath)) return;
         String content = Files.readString(teamsPath, StandardCharsets.UTF_8);
 
-        // Idempotence: if we already added the shadow token handling, skip
-        if (content.contains("set.isShadow") || content.contains("misc[6]") || content.contains(", (set.isShadow ? \"true\" : \"false\")")) {
-            log("teams.js already patched: " + teamsPath);
+        // Idempotence/upgrade:
+        // - If the file already has our newer flags (isHyper/isReverse), skip.
+        // - If it only has the older heartGaugeBars patch, proceed to upgrade to add two more fields.
+        boolean hasNewFlags = content.contains("set.isHyper") || content.contains("set.isReverse") || content.contains("misc[9]");
+        if (hasNewFlags) {
+            log("teams.js already patched with isHyper/isReverse: " + teamsPath);
             return;
         }
 
@@ -394,13 +684,16 @@ public final class ShowdownRuntimePatcher {
                 "      } else {\n" +
                 "        buf += \"|\";\n" +
                 "      }\n" +
-                "      if (set.pokeball || set.hpType || set.gigantamax || set.dynamaxLevel !== void 0 && set.dynamaxLevel !== 10 || set.teraType || set.isShadow) {\n" +
+                "      if (set.pokeball || set.hpType || set.gigantamax || set.dynamaxLevel !== void 0 && set.dynamaxLevel !== 10 || set.teraType || set.isShadow || set.heartGaugeBars !== void 0 || set.isHyper || set.isReverse) {\n" +
                 "        buf += \",\" + this.packName(set.pokeball || \"\");\n" +
                 "        buf += \",\" + (set.hpType || \"\");\n" +
                 "        buf += \",\" + (set.gigantamax ? \"G\" : \"\");\n" +
                 "        buf += \",\" + (set.dynamaxLevel !== void 0 && set.dynamaxLevel !== 10 ? set.dynamaxLevel : \"\");\n" +
                 "        buf += \",\" + (set.teraType || \"\");\n" +
                 "        buf += \",\" + (set.isShadow ? \"true\" : \"false\");\n" +
+                "        buf += \",\" + (set.heartGaugeBars !== void 0 ? set.heartGaugeBars : \"\");\n" +
+                "        buf += \",\" + (set.isHyper ? 'true' : 'false');\n" +
+                "        buf += \",\" + (set.isReverse ? 'true' : 'false');\n" +
                 "      }\n" +
                 "    }\n" +
                 "    return buf;\n" +
@@ -537,9 +830,9 @@ public final class ShowdownRuntimePatcher {
                 "        j = buf.indexOf(']', i);\n" +
                 "        let misc;\n" +
                 "        if (j < 0) {\n" +
-                "            if (i < buf.length) misc = buf.substring(i).split(',', 7);\n" +
+                "            if (i < buf.length) misc = buf.substring(i).split(',', 10);\n" +
                 "        } else {\n" +
-                "            if (i !== j) misc = buf.substring(i, j).split(',', 7);\n" +
+                "            if (i !== j) misc = buf.substring(i, j).split(',', 10);\n" +
                 "        }\n" +
                 "        if (misc) {\n" +
                 "            set.happiness = (misc[0] ? Number(misc[0]) : 255);\n" +
@@ -552,6 +845,18 @@ public final class ShowdownRuntimePatcher {
                 "            // 7th token: Shadow flag\n" +
                 "            const shadowTok = misc[6];\n" +
                 "            set.isShadow = shadowTok === 'true';\n" +
+                "            // 8th token: Heart Gauge bars (0..5)\n" +
+                "            if (misc.length > 7 && misc[7] !== undefined && misc[7] !== '') {\n" +
+                "                set.heartGaugeBars = Number(misc[7]);\n" +
+                "            }\n" +
+                "            // 9th token: Start in Hyper Mode flag\n" +
+                "            if (misc.length > 8) {\n" +
+                "                set.isHyper = misc[8] === 'true';\n" +
+                "            }\n" +
+                "            // 10th token: Start in Reverse Mode flag\n" +
+                "            if (misc.length > 9) {\n" +
+                "                set.isReverse = misc[9] === 'true';\n" +
+                "            }\n" +
                 "        }\n" +
                 "      if (j < 0)\n" +
                 "        break;\n" +
@@ -680,5 +985,160 @@ public final class ShowdownRuntimePatcher {
 
     private static void log(String msg) {
         System.out.println("[ShadowedHearts][ShowdownPatcher] " + msg);
+    }
+
+    /**
+     * Inserts a global pseudo-weather-like condition 'shadowengine' that listens to onTryMove
+     * to roll Hyper Mode entry based on Nature + Heart Gauge bars. This keeps logic local to
+     * Showdown and avoids editing many engine files.
+     */
+    private static void patchShadowEngine(Path conditionsPath) throws IOException {
+        if (!Files.isRegularFile(conditionsPath)) return;
+        String content = Files.readString(conditionsPath, StandardCharsets.UTF_8);
+
+        // Upgrade policy: if shadowengine exists and already has onSwitchIn, onFieldStart, and onFieldRestart handlers, skip.
+        // Otherwise, append a newer block so upgrades add any missing hooks.
+        boolean hasShadowEngine = content.contains("\n  shadowengine:");
+        boolean hasSwitchInHook = content.contains("shadowengine") && content.contains("onSwitchIn(pokemon)");
+        boolean hasFieldStartHook = content.contains("shadowengine") && content.contains("onFieldStart(");
+        boolean hasFieldRestartHook = content.contains("shadowengine") && content.contains("onFieldRestart(");
+        boolean hasShDebugEmits = content.contains("this.add('shdebug'") || content.contains("this.add(\"shdebug\"");
+        if (hasShadowEngine && hasSwitchInHook && hasFieldStartHook && hasFieldRestartHook && hasShDebugEmits) {
+            log("conditions.js already contains shadowengine with hooks: " + conditionsPath);
+            return;
+        }
+
+        int endIndex = content.lastIndexOf("};");
+        if (endIndex < 0) {
+            log("Could not find end of Conditions object in conditions.js for shadowengine: " + conditionsPath);
+            return;
+        }
+
+        int j = endIndex - 1;
+        while (j >= 0 && Character.isWhitespace(content.charAt(j))) j--;
+        boolean hasTrailingComma = j >= 0 && content.charAt(j) == ',';
+
+        String block =
+            "  shadowengine: {\n" +
+            "    name: 'Shadow Engine',\n" +
+            "    effectType: 'Field',\n" +
+            "    // If the same pseudo-weather is added again (e.g., by subformats),\n" +
+            "    // Showdown will call onFieldRestart if present. Provide it so re-adds are harmless.\n" +
+            "    onFieldRestart(field, source, effect) {\n" +
+            "      this.add('shdebug', '[SH DEBUG] ShadowEngine restart (duplicate add)');\n" +
+            "      return true;\n" +
+            "    },\n" +
+            "    // Debug: confirm Shadow Engine field condition is active when added.\n" +
+            "    onFieldStart(field, source, effect) {\n" +
+            "      this.add('shdebug', '[SH DEBUG] ShadowEngine active');\n" +
+            "    },\n" +
+            "    // Apply starting volatiles if provided by team data (from Cobblemon aspects).\n" +
+            "    onSwitchIn(pokemon) {\n" +
+            "      // If the packed set indicates Hyper/Reverse at start, ensure volatiles are applied.\n" +
+            "      if (pokemon?.set?.isHyper && !pokemon.volatiles['hypermode']) {\n" +
+            "        this.add('shdebug', '[SH DEBUG] ShadowEngine onSwitchIn applying Hyper Mode to ' + pokemon.name);\n" +
+            "        this.add('-message', '[SH DEBUG] ShadowEngine onSwitchIn applying Hyper Mode to ' + pokemon.name);\n" +
+            "        pokemon.addVolatile('hypermode');\n" +
+            "      }\n" +
+            "      if (pokemon?.set?.isReverse && !pokemon.volatiles['reversemode']) {\n" +
+            "        this.add('shdebug', '[SH DEBUG] ShadowEngine onSwitchIn applying Reverse Mode to ' + pokemon.name);\n" +
+            "        this.add('-message', '[SH DEBUG] ShadowEngine onSwitchIn applying Reverse Mode to ' + pokemon.name);\n" +
+            "        pokemon.addVolatile('reversemode');\n" +
+            "      }\n" +
+            "    },\n" +
+            "    // Probability table: index maps bars 5..0 to [0..5]\n" +
+            "    natureTable: {\n" +
+            "      calm:[30,25,20,15,10,5], lonely:[30,25,20,15,10,5], modest:[30,25,20,15,10,5], timid:[30,25,20,15,10,5],\n" +
+            "      bold:[50,40,30,20,10,5], brave:[50,40,30,20,10,5], lax:[50,40,30,20,10,5], quirky:[50,40,30,20,10,5], sassy:[50,40,30,20,10,5],\n" +
+            "      hasty:[50,0,40,30,25,12], impish:[50,0,40,30,25,12], naughty:[50,0,40,30,25,12], rash:[50,0,40,30,25,12],\n" +
+            "      careful:[0,20,0,15,10,5], docile:[0,20,0,15,10,5], quiet:[0,20,0,15,10,5], serious:[0,20,0,15,10,5],\n" +
+            "      gentle:[0,0,50,0,0,0], jolly:[0,0,50,0,0,0], mild:[0,0,50,0,0,0], naive:[0,0,50,0,0,0],\n" +
+            "      adamant:[30,0,70,0,50,25], bashful:[30,0,70,0,50,25], hardy:[30,0,70,0,50,25], relaxed:[30,0,70,0,50,25]\n" +
+            "    },\n" +
+            "    onTryMove(source, target, move) {\n" +
+            "      if (!move || move.type === 'Shadow') return;\n" +
+            "      if (!source?.set?.isShadow) return;\n" +
+            "      if (source.volatiles['hypermode']) return;\n" +
+            "      const nat = (source.set.nature || '').toLowerCase();\n" +
+            "      let bars = Number(source.set.heartGaugeBars);\n" +
+            "      if (!Number.isFinite(bars)) bars = 5;\n" +
+            "      if (bars < 0) bars = 0; if (bars > 5) bars = 5;\n" +
+            "      const table = this.field.getPseudoWeather('shadowengine').natureTable;\n" +
+            "      const row = table[nat];\n" +
+            "      const idx = 5 - bars; // bars 5..0 -> idx 0..5\n" +
+            "      const pct = row ? row[idx] : [30,25,20,15,10,5][idx];\n" +
+            "      if (pct && this.random(100) < pct) {\n" +
+            "        source.addVolatile('hypermode');\n" +
+            "        this.add('-message', source.name + ' flew into Hyper Mode!');\n" +
+            "      }\n" +
+            "    },\n" +
+            "  }\n";
+
+        String insertionPrefix = hasTrailingComma ? "\n" : ",\n";
+        String patched = content.substring(0, endIndex) + insertionPrefix + block + content.substring(endIndex);
+        Files.writeString(conditionsPath, patched, StandardCharsets.UTF_8);
+        log("Inserted shadowengine into conditions.js: " + conditionsPath);
+    }
+
+    /** Adds field.addPseudoWeather('shadowengine') to battle constructor so the engine runs. */
+    private static void patchBattleAddShadowEngine(Path battlePath) throws IOException {
+        if (!Files.isRegularFile(battlePath)) return;
+        String content = Files.readString(battlePath, StandardCharsets.UTF_8);
+        if (content.contains("addPseudoWeather('shadowengine')") || content.contains("addPseudoWeather(\"shadowengine\")")) {
+            log("battle.js already enables shadowengine: " + battlePath);
+            return;
+        }
+        String anchor = "this.add(\"gametype\", this.gameType);";
+        int idx = content.indexOf(anchor);
+        if (idx < 0) { log("Could not find gametype anchor in battle.js: " + battlePath); return; }
+        int insertPos = idx + anchor.length();
+        String injected = "\n    this.field.addPseudoWeather('shadowengine');\n    this.add('shdebug', '[SH DEBUG] ShadowEngine enabled at battle start');";
+        String patched = content.substring(0, insertPos) + injected + content.substring(insertPos);
+        Files.writeString(battlePath, patched, StandardCharsets.UTF_8);
+        log("Enabled shadowengine at battle start in battle.js: " + battlePath);
+    }
+
+    /**
+     * Adds extra debug lines in sim/field.js addPseudoWeather to surface success/failure when adding
+     * the 'shadowengine' pseudo-weather. This helps diagnose cases where FieldStart returns false.
+     *
+     * The patch is idempotent and only touches the specific addPseudoWeather return block.
+     */
+    private static void patchFieldAddPseudoWeatherDebug(Path fieldPath) throws IOException {
+        if (!Files.isRegularFile(fieldPath)) return;
+        String content = Files.readString(fieldPath, StandardCharsets.UTF_8);
+
+        // Skip if our debug is already present
+        if (content.contains("ShadowEngine addPseudoWeather success") || content.contains("ShadowEngine FieldStart failed")) {
+            log("field.js already contains ShadowEngine addPseudoWeather debug: " + fieldPath);
+            return;
+        }
+
+        // Target the compiled JS for addPseudoWeather() block shown in PS sim/field.js
+        String needle =
+                "if (!this.battle.singleEvent(\"FieldStart\", status, state, this, source, sourceEffect)) {\n" +
+                "      delete this.pseudoWeather[status.id];\n" +
+                "      return false;\n" +
+                "    }\n" +
+                "    this.battle.runEvent(\"PseudoWeatherChange\", source, source, status);\n" +
+                "    return true;";
+
+        String replacement =
+                "if (!this.battle.singleEvent(\"FieldStart\", status, state, this, source, sourceEffect)) {\n" +
+                "      delete this.pseudoWeather[status.id];\n" +
+                "      if (status.id === 'shadowengine') this.battle.add('shdebug', '[SH DEBUG] ShadowEngine FieldStart failed');\n" +
+                "      return false;\n" +
+                "    }\n" +
+                "    if (status.id === 'shadowengine') this.battle.add('shdebug', '[SH DEBUG] ShadowEngine addPseudoWeather success');\n" +
+                "    this.battle.runEvent(\"PseudoWeatherChange\", source, source, status);\n" +
+                "    return true;";
+
+        if (content.contains(needle)) {
+            String patched = content.replace(needle, replacement);
+            Files.writeString(fieldPath, patched, StandardCharsets.UTF_8);
+            log("Patched field.js addPseudoWeather with ShadowEngine debug: " + fieldPath);
+        } else {
+            log("Could not locate addPseudoWeather return block in field.js (no debug injected): " + fieldPath);
+        }
     }
 }

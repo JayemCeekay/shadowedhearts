@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "shadowedhearts",
   "version": "${version}",
-  "name": "ShadowedHearts",
+  "name": "Cobblemon: Shadowed Hearts",
   "description": "",
   "authors": [
     "JayemCeekay"
@@ -11,7 +11,7 @@
     "homepage": ""
   },
   "license": "All-Rights-Reserved",
-  "icon": "assets/shadowedhearts/textures/gui/shadow_type.png",
+  "icon": "assets/shadowedhearts/icon.png",
   "environment": "*",
   "entrypoints": {
     "main": [
@@ -32,6 +32,7 @@
     "fabric-api": "*"
   },
   "suggests": {
-    "another-mod": "*"
+    "rctapi": ">=0.14.4-beta",
+    "accessories": ">=1.1.0-beta.51"
   }
 }

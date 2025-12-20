@@ -15,6 +15,10 @@
   "block.shadowedhearts.signal_locator": "Signal Locator",
   "block.shadowedhearts.mission_gateway": "Mission Gateway",
 
+  "item.shadowedhearts.joy_scent": "Joy Scent",
+  "item.shadowedhearts.excite_scent": "Excite Scent",
+  "item.shadowedhearts.vivid_scent": "Vivid Scent",
+
   "command.shadowedhearts.shadow.description": "Shadow Pokémon admin commands.",
   "command.shadowedhearts.shadow.usage": "/shadow <set|corr|setPurified|setCorrupted|purify|corrupt> ...",
   "command.shadowedhearts.shadow.depthdump": "Client-only note: use /sh_depthdump in chat.",
@@ -62,7 +66,16 @@
   "cobblemon.battle.weather.shadowyaura.start": "A shadowy aura filled the sky!",
   "cobblemon.battle.weather.shadowyaura.end": "The shadowy aura faded away!",
   "cobblemon.battle.weather.shadowyaura.upkeep": "Bursts of light showered from the shadowy aura!",
-  "cobblemon.battle.damage.shadowyaura": "The flashing light strikes %1$s!"
+  "cobblemon.battle.damage.shadowyaura": "The flashing light strikes %1$s!",
 
+  "shadowedhearts.set_name": "Set %1$s",
+  "shadowedhearts.gui.purification_chamber.tempo": "Tempo",
+  "shadowedhearts.gui.purification_chamber.flow": "Flow",
+  "shadowedhearts.shadow.nickname_blocked": "This Pokémon resists nicknames while shrouded in shadow.",
+  "subtitles.shadowedhearts.shadow_spawn": "A shadow presence emerges"
 
+  ,"shadowedhearts.npc.one_time_trainer": "Challenger",
+  "tooltip.shadowedhearts.snag_machine.energy": "Energy: %d / %d",
+  "tooltip.shadowedhearts.snag_machine.equippable.hand": "Equippable: Accessories Hand Slot",
+  "accessorify.slot.pauldron": "Pauldron"
 }
