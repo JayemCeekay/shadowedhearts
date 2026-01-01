@@ -64,6 +64,7 @@ dependencies {
     modImplementation("maven.modrinth:Ha28R6CL:i6MmXDwA")
 
     modCompileOnly("curse.maven:radical-cobblemon-trainers-api-1152792:7319961")
+    modCompileOnly("dragomordor.simpletms:simpletms-fabric:2.3.0")
 }
 
 processResources {

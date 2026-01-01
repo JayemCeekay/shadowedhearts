@@ -14,6 +14,7 @@ import com.cobblemon.mod.common.util.math.fromEulerXYZDegrees
 import com.jayemceekay.shadowedhearts.PokemonAspectUtil
 import com.jayemceekay.shadowedhearts.Shadowedhearts
 import com.jayemceekay.shadowedhearts.client.ModShaders
+import com.jayemceekay.shadowedhearts.client.aura.AuraEmitters
 import com.jayemceekay.shadowedhearts.client.purification.PurificationClientMetrics
 import com.jayemceekay.shadowedhearts.client.storage.ClientPurificationStorage
 import com.jayemceekay.shadowedhearts.storage.purification.PurificationMath
@@ -766,7 +767,7 @@ class PurificationStorageWidget(
                             0f
                         )
                     )
-
+                    matrices.pushPose()
                     drawProfilePokemon(
                         renderablePokemon = centerPokemon.asRenderablePokemon(),
                         matrixStack = matrices,
@@ -774,6 +775,22 @@ class PurificationStorageWidget(
                         state = centerModelState,
                         partialTicks = partialTick
                     )
+                    matrices.popPose()
+                    if (PokemonAspectUtil.hasShadowAspect(centerPokemon)) {
+                        AuraEmitters.renderInPurificationGUI(
+                            guiGraphics,
+                            matrices,
+                            Minecraft.getInstance().renderBuffers().bufferSource(),
+                            PokemonAspectUtil.getHeartGaugeValue(centerPokemon) / 100.0f,
+                            partialTick,
+                            centerPokemon.asRenderablePokemon(),
+                            centerModelState,
+                            x.toFloat(),
+                            y.toFloat(),
+                            SCREEN_WIDTH.toFloat(),
+                            SCREEN_HEIGHT.toFloat()
+                        )
+                    }
 
                     matrices.popPose()
 

@@ -41,6 +41,7 @@ public final class HyperModeLogic {
         putAll(new String[]{"gentle","jolly","mild","naive"}, new int[]{0,0,50,0,0,0});
         // Adamant, Bashful, Hardy, Relaxed — increases before decreasing
         putAll(new String[]{"adamant","bashful","hardy","relaxed"}, new int[]{30,0,70,0,50,25});
+
     }
 
     private static void putAll(String[] natures, int[] chances) {

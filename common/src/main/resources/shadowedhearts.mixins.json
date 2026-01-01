@@ -25,24 +25,31 @@
   ],
   "mixins": [
     "AccessorMoveActionResponse",
+    "CobblemonBattleExtrasMoveTileTooltipMixin",
     "MixinBattleActor_SetActionResponses",
     "MixinBattleCaptureAction",
     "MixinBattleRegistry",
     "MixinBenchMoveHandler",
     "MixinEmptyPokeBallEntity",
+    "MixinGraalShowdownUnbundler",
+    "MixinLivingEntity",
     "MixinMob_DoHurtTargetMicro",
     "MixinMob_TossGoals",
     "MixinMoveActionResponse",
+    "MixinNPCEntity",
     "MixinPokeBallItem",
     "MixinPokemon",
     "MixinPokemonBattle",
     "MixinPokemonBrain",
     "MixinPokemonEntity",
-    "MixinRCTModMakeBattle",
     "MixinRequestMoveSwapHandler",
     "MixinShowdownActionRequest",
+    "MixinShowdownActionResponse",
     "MixinShowdownInterpreter",
-    "MixinTypeIcon"
+    "MixinShowdownMoveset",
+    "MixinTypeIcon",
+    "rctmod.MixinRCTModMakeBattle",
+    "simpletms.MixinPokemonSelectingItemNonBattle"
   ],
   "injectors": {
     "defaultRequire": 1

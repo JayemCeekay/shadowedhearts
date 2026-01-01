@@ -5,9 +5,7 @@ import com.cobblemon.mod.common.api.battles.model.PokemonBattle;
 import com.cobblemon.mod.common.battles.ShowdownInterpreter;
 import com.cobblemon.mod.common.battles.dispatch.InstructionSet;
 import com.cobblemon.mod.common.battles.dispatch.InterpreterInstruction;
-import com.jayemceekay.shadowedhearts.cobblemon.instructions.CaptureInstruction;
-import com.jayemceekay.shadowedhearts.cobblemon.instructions.HyperInstruction;
-import com.jayemceekay.shadowedhearts.cobblemon.instructions.NoOpInstruction;
+import com.jayemceekay.shadowedhearts.cobblemon.instructions.*;
 import kotlin.jvm.functions.Function4;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
@@ -19,6 +17,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import java.util.Iterator;
 import java.util.Map;
+import java.util.UUID;
 
 /**
  * Register handlers for custom PS tokens we emit and handle micro one-turn auto-close.
@@ -42,6 +41,15 @@ public abstract class MixinShowdownInterpreter {
         updateInstructionParser.put("hyper",
                 (battle, instructionSet, message, ignored) -> new HyperInstruction(message)
         );
+        updateInstructionParser.put("reverse",
+                (battle, instructionSet, message, ignored) -> new ReverseInstruction(message)
+        );
+        updateInstructionParser.put("call",
+                (battle, instructionSet, message, ignored) -> new CallInstruction(message)
+        );
+        updateInstructionParser.put("sh_message",
+                (battle, instructionSet, message, ignored) -> new ShMessageInstruction(message)
+        );
         // Consume custom debug token emitted by our Showdown patches (conditions.js)
         // This prevents it from being treated as an unknown token and keeps logs clean.
         updateInstructionParser.put("shdebug",
@@ -52,7 +60,7 @@ public abstract class MixinShowdownInterpreter {
     @Inject(method = "interpret", at = @At("HEAD"), remap = false)
     private void shadowedhearts$oneTurnAutoClose(com.cobblemon.mod.common.api.battles.model.PokemonBattle battle, String rawMessage, CallbackInfo ci) {
         if (battle == null) return;
-        java.util.UUID battleId = battle.getBattleId();
+        UUID battleId = battle.getBattleId();
         if (rawMessage == null) return;
         // Surface Showdown-side debug messages to the server console so they are visible during testing.
         // This helps when '-message' lines are not rendered in the current UI/log sink.

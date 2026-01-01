@@ -6,78 +6,69 @@ import com.cobblemon.mod.common.client.gui.summary.widgets.screens.stats.StatWid
 import com.cobblemon.mod.common.pokemon.Pokemon;
 import com.jayemceekay.shadowedhearts.PokemonAspectUtil;
 import com.jayemceekay.shadowedhearts.client.gui.summary.widgets.screens.stats.features.HeartGaugeFeatureRenderer;
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
+import com.llamalad7.mixinextras.sugar.Local;
+import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
+import org.joml.Vector3f;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Mutable;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.ModifyArg;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Injects the Heart Gauge feature into the Cobblemon Summary Stats "Other" page for Shadow Pokémon.
- * Context: Minecraft Cobblemon mod; all shadow/purity/corruption/capture terms are gameplay mechanics.
- *
- * 02 §5 Mission Entrance flow (UI alignment) — display custom meters via mixin on client.
- */
-@Mixin(StatWidget.class)
-public class MixinStatWidget {
+@Mixin(value = StatWidget.class, remap = false)
+public abstract class MixinStatWidget {
 
-    // Shadow the target widget's fields we need to read/modify
     @Shadow @Final @Mutable private List<BarSummarySpeciesFeatureRenderer> universalFeatures;
     @Shadow @Final private Pokemon pokemon;
     @Shadow @Final private List<String> statOptions;
+    @Shadow private boolean statLabelsHovered(List<kotlin.Pair<Double, Double>> labelOffsets, int mouseX, int mouseY) { return false; }
 
-    /**
-     * After StatWidget constructor finishes, append our Heart Gauge feature for Shadow Pokémon.
-     */
+    @Shadow
+    public abstract int getStatTabIndex();
+
+    private int shadowedhearts$lastMouseX;
+    private int shadowedhearts$lastMouseY;
+
+    @Inject(method = "renderWidget", at = @At("HEAD"))
+    private void shadowedhearts$captureMouse(GuiGraphics context, int pMouseX, int pMouseY, float pPartialTicks, CallbackInfo ci) {
+        this.shadowedhearts$lastMouseX = pMouseX;
+        this.shadowedhearts$lastMouseY = pMouseY;
+    }
+
     @Inject(method = "<init>*", at = @At("TAIL"))
     private void shadowedhearts$appendHeartGauge(int pX, int pY, Pokemon pokemon, int tabIndex, CallbackInfo ci) {
-        // Only show on Shadow Pokémon
         if (!PokemonAspectUtil.hasShadowAspect(pokemon)) {
             return;
         }
-
-        // Ensure list is mutable for appending
         List<BarSummarySpeciesFeatureRenderer> mutated = new ArrayList<>(this.universalFeatures);
-
-        // Prevent duplicates if other mods/mixins also add it
         boolean exists = mutated.stream().anyMatch(r -> "heart_gauge".equals(r.getName()));
         if (!exists) {
             mutated.add(new HeartGaugeFeatureRenderer(pokemon));
         }
-
         this.universalFeatures = mutated;
     }
 
-    /**
-     * Mask EV polygon ratios by zeroing them when nature is hidden by the gauge (> 40%).
-     * Targets the call building EV ratios list in StatWidget.render (ordinal aligned to EV case).
-     */
-    // Note: We avoid polygon tampering to reduce fragility; numeric EV labels will be masked below.
-
-    /**
-     * Mask EV numeric labels "value/MAX" rendering when gauge hides nature.
-     * We intercept the text argument for EV label rendering by ordinal.
-     */
-    @com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation(
+    @WrapOperation(
             method = "renderWidget",
             at = @At(
                     value = "INVOKE",
                     target = "Lcom/cobblemon/mod/common/client/gui/summary/widgets/screens/stats/StatWidget;statValuesAsText(Ljava/util/List;Z)Ljava/util/List;"
-            ),
-            remap = false
+            )
     )
-    private List<MutableComponent> shadowedhearts$maskEvTexts(StatWidget instance, List<Stat> stats, boolean asPercent, com.llamalad7.mixinextras.injector.wrapoperation.Operation<List<MutableComponent>> original) {
+    private List<MutableComponent> shadowedhearts$maskEvTexts(StatWidget instance, List<Stat> stats, boolean asPercent, Operation<List<MutableComponent>> original) {
         List<MutableComponent> list = original.call(instance, stats, asPercent);
         try {
             String tab = statOptions.get(instance.getStatTabIndex());
-            // Mask EVs when nature is hidden (> 2 bars), mask IVs until 2 bars or fewer remain
             if (("evs".equals(tab) && PokemonAspectUtil.isEVHiddenByGauge(pokemon))
                     || ("ivs".equals(tab) && PokemonAspectUtil.isIVHiddenByGauge(pokemon))) {
                 List<MutableComponent> masked = new ArrayList<>(list.size());
@@ -86,5 +77,29 @@ public class MixinStatWidget {
             }
         } catch (Throwable ignored) { }
         return list;
+    }
+
+    @ModifyArg(method = "renderWidget", at = @At(value = "INVOKE", target = "Lcom/cobblemon/mod/common/client/gui/summary/widgets/screens/stats/StatWidget;renderPolygonLabels$default(Lcom/cobblemon/mod/common/client/gui/summary/widgets/screens/stats/StatWidget;Lnet/minecraft/client/gui/GuiGraphics;Ljava/util/List;Ljava/util/List;DZILjava/lang/Object;)V", ordinal = 2), index = 2)
+    public List<MutableComponent> shadowedhearts$maskLabels(List<MutableComponent> par3, @Local(name = "labelsHovered") boolean labelsHovered) {
+        if(labelsHovered && (statOptions.get(getStatTabIndex()).equalsIgnoreCase("ivs") || statOptions.get(getStatTabIndex()).equalsIgnoreCase("evs"))) {
+            if(PokemonAspectUtil.isEVHiddenByGauge(pokemon) || PokemonAspectUtil.isIVHiddenByGauge(pokemon))
+                return List.of(Component.literal("??/??"), Component.literal("??/??"), Component.literal("??/??"), Component.literal("??/??"), Component.literal("??/??"), Component.literal("??/??"));
+        }
+
+        return par3;
+    }
+
+    @WrapOperation(method = "renderWidget", at = @At(value = "INVOKE", target = "Lcom/cobblemon/mod/common/client/gui/summary/widgets/screens/stats/StatWidget;drawStatPolygon(Ljava/util/List;Lorg/joml/Vector3f;)V", ordinal = 2))
+    private void shadowedhearts$maskIVPolygon(StatWidget instance, List list, Vector3f vector3f, Operation<Void> original) {
+        if(!statOptions.get(getStatTabIndex()).equalsIgnoreCase("ivs") && PokemonAspectUtil.isIVHiddenByGauge(pokemon)) {
+            original.call(instance, list, vector3f);
+        }
+    }
+
+    @WrapOperation(method = "renderWidget", at = @At(value = "INVOKE", target = "Lcom/cobblemon/mod/common/client/gui/summary/widgets/screens/stats/StatWidget;drawStatPolygon(Ljava/util/List;Lorg/joml/Vector3f;)V", ordinal = 3))
+    private void shadowedhearts$maskEVPolygon(StatWidget instance, List list, Vector3f vector3f, Operation<Void> original) {
+        if(!statOptions.get(getStatTabIndex()).equalsIgnoreCase("evs") && PokemonAspectUtil.isEVHiddenByGauge(pokemon)) {
+            original.call(instance, list, vector3f);
+        }
     }
 }

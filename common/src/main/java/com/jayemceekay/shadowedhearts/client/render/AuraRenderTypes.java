@@ -28,14 +28,6 @@ public final class AuraRenderTypes {
             }
     );
 
-
-    // Explicitly disable alpha-to-coverage to prevent texture alpha from affecting stencil/depth coverage.
-    private static final RenderStateShard.TexturingStateShard NO_ALPHA_TO_COVERAGE = new RenderStateShard.TexturingStateShard(
-            "shadowedhearts_no_atoc",
-            () -> org.lwjgl.opengl.GL11.glDisable(org.lwjgl.opengl.GL13.GL_SAMPLE_ALPHA_TO_COVERAGE),
-            () -> org.lwjgl.opengl.GL11.glDisable(org.lwjgl.opengl.GL13.GL_SAMPLE_ALPHA_TO_COVERAGE)
-    );
-
     public static RenderType shadow_fog() {
         RenderType.CompositeState state = RenderType.CompositeState.builder()
                 .setShaderState(new RenderStateShard.ShaderStateShard(() -> ModShaders.SHADOW_AURA_FOG_CYLINDER != null
@@ -45,11 +37,27 @@ public final class AuraRenderTypes {
                 .setTransparencyState(RenderStateShard.TRANSLUCENT_TRANSPARENCY)
                 .setWriteMaskState(RenderStateShard.COLOR_WRITE)
                 .setDepthTestState(RenderStateShard.LEQUAL_DEPTH_TEST)
-                .setCullState(RenderStateShard.CULL)
+                .setCullState(RenderStateShard.NO_CULL)
                 .setLightmapState(RenderStateShard.LIGHTMAP)
                 .setLayeringState(RenderStateShard.VIEW_OFFSET_Z_LAYERING)
                 .createCompositeState(true);
         return RenderType.create("shadowedhearts:shadow_aura_fog_rendertype", DefaultVertexFormat.PARTICLE, VertexFormat.Mode.TRIANGLES, 512, false, true, state);
+    }
+
+    public static RenderType shadow_xd() {
+        RenderType.CompositeState state = RenderType.CompositeState.builder()
+                .setShaderState(new RenderStateShard.ShaderStateShard(() -> ModShaders.SHADOW_AURA_XD_CYLINDER != null
+                        ? ModShaders.SHADOW_AURA_XD_CYLINDER
+                        : GameRenderer.getParticleShader()))
+                .setTextureState(RenderStateShard.NO_TEXTURE)
+                .setTransparencyState(RenderStateShard.TRANSLUCENT_TRANSPARENCY)
+                .setWriteMaskState(RenderStateShard.COLOR_WRITE)
+                .setDepthTestState(RenderStateShard.LEQUAL_DEPTH_TEST)
+                .setCullState(RenderStateShard.CULL)
+                .setLightmapState(RenderStateShard.LIGHTMAP)
+                .setLayeringState(RenderStateShard.VIEW_OFFSET_Z_LAYERING)
+                .createCompositeState(true);
+        return RenderType.create("shadowedhearts:shadow_aura_xd_rendertype", DefaultVertexFormat.PARTICLE, VertexFormat.Mode.TRIANGLES, 512, false, true, state);
     }
 
     public static RenderType shadow_pool() {

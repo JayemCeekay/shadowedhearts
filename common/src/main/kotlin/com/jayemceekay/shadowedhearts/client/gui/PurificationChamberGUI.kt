@@ -37,6 +37,7 @@ import com.jayemceekay.shadowedhearts.client.storage.ClientPurificationStorage
 import com.jayemceekay.shadowedhearts.client.storage.ClientPurificationStorage.PurificationPosition
 import com.jayemceekay.shadowedhearts.network.purification.MovePCToPurificationPacket
 import com.jayemceekay.shadowedhearts.network.purification.MovePurificationToPCPacket
+import com.jayemceekay.shadowedhearts.network.purification.PurifyPokemonPacket
 import com.jayemceekay.shadowedhearts.network.purification.UnlinkPlayerFromPurificationChamberPacket
 import com.mojang.blaze3d.platform.InputConstants
 import net.minecraft.client.Minecraft
@@ -134,6 +135,7 @@ class PurificationChamberGUI(
     private var modelWidget: ModelWidget? = null
     internal var previewPokemon: Pokemon? = null
     private var heartGaugeRenderer: HeartGaugeFeatureRenderer? = null
+    private var purifyButton: PurificationActionButton? = null
 
     private var showCosmeticItem = false
     private var currentStatIndex = 0
@@ -312,6 +314,20 @@ class PurificationChamberGUI(
         ) { currentSet() }
 
         this.addRenderableWidget(setNameWidget)
+
+        this.purifyButton = PurificationActionButton(
+            x = x + (BASE_WIDTH / 2) - 27, // WIDTH is 54, so -27 centers it
+            y = y + BASE_HEIGHT - 25,
+            labelSupplier = { Component.literal("Purify") },
+            visibleSupplier = {
+                val centerPokemon = purificationStorage.get(PurificationPosition(0))
+                centerPokemon != null && PokemonAspectUtil.getHeartGauge(centerPokemon) == 0F
+            }
+        ) {
+            PurifyPokemonPacket(purificationStorage.uuid, currentSet()).sendToServer()
+        }
+        this.addRenderableWidget(purifyButton!!)
+
         storageWidget.getActionButton()?.let { this.addRenderableWidget(it) }
 
         this.addRenderableWidget(
@@ -781,19 +797,22 @@ class PurificationChamberGUI(
             if (centerPokemon != null) {
                 // Render heart gauge at bottom middle of the GUI if available
                 heartGaugeRenderer = HeartGaugeFeatureRenderer(centerPokemon)
-                heartGaugeRenderer?.let { renderer ->
-                    val bottomY =
-                        y + BASE_HEIGHT - 25 // leave a small margin above bottom
-                    val barWidth =
-                        120 // matches BarSummarySpeciesFeatureRenderer underlay width
-                    val centerX = x + (BASE_WIDTH / 2)
-                    val renderX = centerX - (barWidth / 2)
-                    renderer.render(
-                        context,
-                        renderX.toFloat(),
-                        bottomY.toFloat(),
-                        centerPokemon
-                    )
+
+                if (PokemonAspectUtil.getHeartGauge(centerPokemon) != 0F) {
+                    heartGaugeRenderer?.let { renderer ->
+                        val bottomY =
+                            y + BASE_HEIGHT - 25 // leave a small margin above bottom
+                        val barWidth =
+                            120 // matches BarSummarySpeciesFeatureRenderer underlay width
+                        val centerX = x + (BASE_WIDTH / 2)
+                        val renderX = centerX - (barWidth / 2)
+                        renderer.render(
+                            context,
+                            renderX.toFloat(),
+                            bottomY.toFloat(),
+                            centerPokemon
+                        )
+                    }
                 }
             }
         }

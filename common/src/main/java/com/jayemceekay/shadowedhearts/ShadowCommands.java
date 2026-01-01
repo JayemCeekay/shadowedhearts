@@ -1,6 +1,4 @@
 package com.jayemceekay.shadowedhearts;
-// /shadow set <pokemonEntity> <true|false>
-// /shadow corr <pokemonEntity> <0..100>
 
 import com.cobblemon.mod.common.Cobblemon;
 import com.cobblemon.mod.common.entity.npc.NPCEntity;
@@ -8,10 +6,9 @@ import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
 import com.cobblemon.mod.common.pokemon.Pokemon;
 import com.jayemceekay.shadowedhearts.heart.HeartGaugeEvents;
 import com.jayemceekay.shadowedhearts.storage.purification.PurificationChamberStore;
-import com.mojang.brigadier.CommandDispatcher;
-import com.mojang.brigadier.arguments.BoolArgumentType;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
+import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.EntityArgument;
@@ -19,18 +16,18 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 public class ShadowCommands {
-    /**
-     * Register the /shadow command tree.
-     */
-    public static void register(CommandDispatcher<CommandSourceStack> d) {
-        d.register(Commands.literal("shadow").requires(src -> src.hasPermission(2))
-                // Debug: advance the caller's Purification Chamber by a number of walking steps
-                // Usage: /shadow steps <count>
-                .then(Commands.literal("steps")
+
+    public static void registerSubcommands(LiteralArgumentBuilder<CommandSourceStack> root) {
+        root.then(Commands.literal("steps")
                         .then(Commands.argument("count", IntegerArgumentType.integer(1))
                                 .executes(ctx -> {
                                     ServerPlayer player;
@@ -95,14 +92,6 @@ public class ShadowCommands {
                                     );
                                     return 1;
                                 })))
-                .then(Commands.literal("depthdump").executes(ctx -> {
-                    ctx.getSource().sendSuccess(() -> Component.literal("Use client command /sh_depthdump in chat (client only)."), false);
-                    return 1;
-                }))
-                .then(Commands.literal("battledump").executes(ctx -> {
-                    ctx.getSource().sendFailure(Component.literal("Battle debug dump not available in this build."));
-                    return 0;
-                }))
                 // Convenience: manage NPC tags for Shadow injector
                 .then(Commands.literal("npc")
                         .then(Commands.literal("tag")
@@ -115,7 +104,8 @@ public class ShadowCommands {
                                                             int applied = 0;
                                                             for (Entity e : entities) {
                                                                 if (e instanceof NPCEntity npc) {
-                                                                    if (npc.addTag(tag)) applied++;
+                                                                    if (npc.addTag(tag))
+                                                                        applied++;
                                                                 }
                                                             }
                                                             final int appliedFinal = applied;
@@ -134,7 +124,8 @@ public class ShadowCommands {
                                                             int removed = 0;
                                                             for (Entity e : entities) {
                                                                 if (e instanceof NPCEntity npc) {
-                                                                    if (npc.removeTag(tag)) removed++;
+                                                                    if (npc.removeTag(tag))
+                                                                        removed++;
                                                                 }
                                                             }
                                                             final int removedFinal = removed;
@@ -146,92 +137,174 @@ public class ShadowCommands {
                                 )
                         )
                 )
-                .then(Commands.literal("set")
-                        .then(Commands.argument("target", EntityArgument.entity())
-                                .then(Commands.argument("value", BoolArgumentType.bool())
-                                        .executes(ctx -> {
-                                            Entity e = EntityArgument.getEntity(ctx, "target");
-                                            if (!(e instanceof PokemonEntity pe)) {
-                                                ctx.getSource().sendFailure(Component.literal("Target must be a Pokemon entity"));
-                                                return 0;
-                                            }
-                                            Pokemon pk = pe.getPokemon();
-                                            boolean val = BoolArgumentType.getBool(ctx, "value");
-                                            ShadowService.setShadow(pk, pe, val);
-                                            ctx.getSource().sendSuccess(() -> Component.literal("Shadow set to " + val), true);
-                                            return 1;
-                                        }))))
-                .then(Commands.literal("corr")
-                        .then(Commands.argument("target", EntityArgument.entity())
-                                .then(Commands.argument("value", IntegerArgumentType.integer(0, 100))
-                                        .executes(ctx -> {
-                                            Entity e = EntityArgument.getEntity(ctx, "target");
-                                            if (!(e instanceof PokemonEntity pe)) {
-                                                ctx.getSource().sendFailure(Component.literal("Target must be a Pokemon entity"));
-                                                return 0;
-                                            }
-                                            Pokemon pk = pe.getPokemon();
-                                            int percent = IntegerArgumentType.getInteger(ctx, "value");
-                                            // Convert percent (0..100) to species-absolute value
-                                            int max = HeartGaugeConfig.getMax(pk);
-                                            int absolute = Math.max(0, Math.min(100, percent));
-                                            absolute = Math.round((absolute / 100.0f) * max);
-                                            ShadowService.setHeartGauge(pk, pe, absolute);
-                                            ctx.getSource().sendSuccess(() -> Component.literal("Corruption meter set to " + percent + "%"), true);
-                                            return 1;
-                                        }))))
-                .then(Commands.literal("setPurified")
+                .then(Commands.literal("shadowify")
                         .then(Commands.argument("target", EntityArgument.entity())
                                 .executes(ctx -> {
                                     Entity e = EntityArgument.getEntity(ctx, "target");
-                                    if (!(e instanceof PokemonEntity pe)) {
-                                        ctx.getSource().sendFailure(Component.literal("Target must be a Pokemon entity"));
-                                        return 0;
+                                    if (e instanceof PokemonEntity pe) {
+                                        Pokemon pk = pe.getPokemon();
+                                        ShadowService.fullyCorrupt(pk, pe);
+                                        ctx.getSource().sendSuccess(() -> Component.literal("Shadowified " + pk.getSpecies().getName()), true);
+                                        return 1;
+                                    } else if (e instanceof ServerPlayer player) {
+                                        var party = Cobblemon.INSTANCE.getStorage().getParty(player);
+                                        int count = 0;
+                                        for (Pokemon pk : party) {
+                                            ShadowService.fullyCorrupt(pk, null);
+                                            count++;
+                                        }
+                                        final int countFinal = count;
+                                        ctx.getSource().sendSuccess(() -> Component.literal("Shadowified " + countFinal + " Pokémon in " + player.getScoreboardName() + "'s party"), true);
+                                        return count;
                                     }
-                                    Pokemon pk = pe.getPokemon();
-                                    ShadowService.fullyPurify(pk, pe);
-                                    ctx.getSource().sendSuccess(() -> Component.literal("Set to fully purified (0)"), true);
-                                    return 1;
-                                })))
-                .then(Commands.literal("setCorrupted")
-                        .then(Commands.argument("target", EntityArgument.entity())
-                                .executes(ctx -> {
-                                    Entity e = EntityArgument.getEntity(ctx, "target");
-                                    if (!(e instanceof PokemonEntity pe)) {
-                                        ctx.getSource().sendFailure(Component.literal("Target must be a Pokemon entity"));
-                                        return 0;
-                                    }
-                                    Pokemon pk = pe.getPokemon();
-                                    ShadowService.fullyCorrupt(pk, pe);
-                                    ctx.getSource().sendSuccess(() -> Component.literal("Set to fully corrupted (100)"), true);
-                                    return 1;
-                                })))
+                                    ctx.getSource().sendFailure(Component.literal("Target must be a Pokemon entity or a player"));
+                                    return 0;
+                                })
+                                .then(Commands.argument("slot", IntegerArgumentType.integer(1, 6))
+                                        .executes(ctx -> {
+                                            Entity e = EntityArgument.getEntity(ctx, "target");
+                                            int val = IntegerArgumentType.getInteger(ctx, "slot");
+                                            if (e instanceof PokemonEntity pe) {
+                                                Pokemon pk = pe.getPokemon();
+                                                ShadowService.corrupt(pk, pe, val);
+                                                ctx.getSource().sendSuccess(() -> Component.literal("Shadowified " + pk.getSpecies().getName() + " with heart gauge " + val), true);
+                                                return 1;
+                                            } else if (e instanceof ServerPlayer player) {
+                                                int slot = val - 1;
+                                                var party = Cobblemon.INSTANCE.getStorage().getParty(player);
+                                                Pokemon pk = party.get(slot);
+                                                if (pk == null) {
+                                                    ctx.getSource().sendFailure(Component.literal("No Pokemon in slot " + (slot + 1)));
+                                                    return 0;
+                                                }
+                                                ShadowService.fullyCorrupt(pk, null);
+                                                ctx.getSource().sendSuccess(() -> Component.literal("Shadowified " + pk.getSpecies().getName() + " in " + player.getScoreboardName() + "'s party"), true);
+                                                return 1;
+                                            }
+                                            return 0;
+                                        })
+                                        .then(Commands.argument("value", IntegerArgumentType.integer(0))
+                                                .executes(ctx -> {
+                                                    Entity e = EntityArgument.getEntity(ctx, "target");
+                                                    if (!(e instanceof ServerPlayer player)) {
+                                                        ctx.getSource().sendFailure(Component.literal("Slot argument only applicable when targeting a player"));
+                                                        return 0;
+                                                    }
+                                                    int slot = IntegerArgumentType.getInteger(ctx, "slot") - 1;
+                                                    int value = IntegerArgumentType.getInteger(ctx, "value");
+                                                    var party = Cobblemon.INSTANCE.getStorage().getParty(player);
+                                                    Pokemon pk = party.get(slot);
+                                                    if (pk == null) {
+                                                        ctx.getSource().sendFailure(Component.literal("No Pokemon in slot " + (slot + 1)));
+                                                        return 0;
+                                                    }
+                                                    ShadowService.corrupt(pk, null, value);
+                                                    ctx.getSource().sendSuccess(() -> Component.literal("Shadowified " + pk.getSpecies().getName() + " in " + player.getScoreboardName() + "'s party with heart gauge " + value), true);
+                                                    return 1;
+                                                })))
+                                .then(Commands.argument("value", IntegerArgumentType.integer(0))
+                                        .executes(ctx -> {
+                                            Entity e = EntityArgument.getEntity(ctx, "target");
+                                            int value = IntegerArgumentType.getInteger(ctx, "value");
+                                            if (e instanceof PokemonEntity pe) {
+                                                Pokemon pk = pe.getPokemon();
+                                                ShadowService.corrupt(pk, pe, value);
+                                                ctx.getSource().sendSuccess(() -> Component.literal("Shadowified " + pk.getSpecies().getName() + " with heart gauge " + value), true);
+                                                return 1;
+                                            } else if (e instanceof ServerPlayer player) {
+                                                var party = Cobblemon.INSTANCE.getStorage().getParty(player);
+                                                int count = 0;
+                                                for (Pokemon pk : party) {
+                                                    ShadowService.corrupt(pk, null, value);
+                                                    count++;
+                                                }
+                                                final int countFinal = count;
+                                                final int valFinal = value;
+                                                ctx.getSource().sendSuccess(() -> Component.literal("Shadowified " + countFinal + " Pokémon in " + player.getScoreboardName() + "'s party with heart gauge " + valFinal), true);
+                                                return count;
+                                            }
+                                            ctx.getSource().sendFailure(Component.literal("Target must be a Pokemon entity or a player"));
+                                            return 0;
+                                        }))
+                        ))
                 .then(Commands.literal("purify")
                         .then(Commands.argument("target", EntityArgument.entity())
                                 .executes(ctx -> {
                                     Entity e = EntityArgument.getEntity(ctx, "target");
-                                    if (!(e instanceof PokemonEntity pe)) {
-                                        ctx.getSource().sendFailure(Component.literal("Target must be a Pokemon entity"));
-                                        return 0;
+                                    if (e instanceof PokemonEntity pe) {
+                                        Pokemon pk = pe.getPokemon();
+                                        ShadowService.fullyPurify(pk, pe);
+                                        ctx.getSource().sendSuccess(() -> Component.literal("Purified " + pk.getSpecies().getName()), true);
+                                        return 1;
+                                    } else if (e instanceof ServerPlayer player) {
+                                        var party = Cobblemon.INSTANCE.getStorage().getParty(player);
+                                        int count = 0;
+                                        for (Pokemon pk : party) {
+                                            ShadowService.fullyPurify(pk, null);
+                                            count++;
+                                        }
+                                        final int countFinalPurify = count;
+                                        ctx.getSource().sendSuccess(() -> Component.literal("Purified " + countFinalPurify + " Pokémon in " + player.getScoreboardName() + "'s party"), true);
+                                        return count;
                                     }
-                                    Pokemon pk = pe.getPokemon();
-                                    ShadowService.fullyPurify(pk, pe);
-                                    ctx.getSource().sendSuccess(() -> Component.literal("Purified: shadow=false, meter=0"), true);
-                                    return 1;
-                                })))
-                .then(Commands.literal("corrupt")
-                        .then(Commands.argument("target", EntityArgument.entity())
+                                    ctx.getSource().sendFailure(Component.literal("Target must be a Pokemon entity or a player"));
+                                    return 0;
+                                })
+                                .then(Commands.argument("slot", IntegerArgumentType.integer(1, 6))
+                                        .executes(ctx -> {
+                                            Entity e = EntityArgument.getEntity(ctx, "target");
+                                            if (!(e instanceof ServerPlayer player)) {
+                                                ctx.getSource().sendFailure(Component.literal("Slot argument only applicable when targeting a player"));
+                                                return 0;
+                                            }
+                                            int slot = IntegerArgumentType.getInteger(ctx, "slot") - 1;
+                                            var party = Cobblemon.INSTANCE.getStorage().getParty(player);
+                                            Pokemon pk = party.get(slot);
+                                            if (pk == null) {
+                                                ctx.getSource().sendFailure(Component.literal("No Pokemon in slot " + (slot + 1)));
+                                                return 0;
+                                            }
+                                            ShadowService.fullyPurify(pk, null);
+                                            ctx.getSource().sendSuccess(() -> Component.literal("Purified " + pk.getSpecies().getName() + " in " + player.getScoreboardName() + "'s party"), true);
+                                            return 1;
+                                        })))
+                .then(Commands.literal("aspects")
+                        .then(Commands.argument("slot", IntegerArgumentType.integer(1, 6))
                                 .executes(ctx -> {
-                                    Entity e = EntityArgument.getEntity(ctx, "target");
-                                    if (!(e instanceof PokemonEntity pe)) {
-                                        ctx.getSource().sendFailure(Component.literal("Target must be a Pokemon entity"));
+                                    ServerPlayer player;
+                                    try {
+                                        player = ctx.getSource().getPlayerOrException();
+                                    } catch (Exception ex) {
+                                        ctx.getSource().sendFailure(Component.literal("Must be a player to use this command"));
                                         return 0;
                                     }
-                                    Pokemon pk = pe.getPokemon();
-                                    ShadowService.fullyCorrupt(pk, pe);
-                                    ctx.getSource().sendSuccess(() -> Component.literal("Corrupted: shadow=true, meter=100"), true);
-                                    return 1;
+
+                                    int slot = IntegerArgumentType.getInteger(ctx, "slot") - 1;
+                                    var party = Cobblemon.INSTANCE.getStorage().getParty(player);
+                                    Pokemon pk = party.get(slot);
+                                    if (pk == null) {
+                                        ctx.getSource().sendFailure(Component.literal("No Pokemon in slot " + (slot + 1)));
+                                        return 0;
+                                    }
+
+                                    Set<String> aspects = pk.getAspects();
+                                    String filename = "aspects_" + player.getScoreboardName() + "_slot" + (slot + 1) + ".txt";
+                                    File file = new File(filename);
+
+                                    try (PrintWriter writer = new PrintWriter(new FileWriter(file))) {
+                                        writer.println("Aspects for " + pk.getSpecies().getName() + " (Slot " + (slot + 1) + ") owned by " + player.getScoreboardName());
+                                        writer.println("Total aspects: " + aspects.size());
+                                        writer.println("------------------------------------------");
+                                        for (String aspect : aspects) {
+                                            writer.println(aspect);
+                                        }
+                                        ctx.getSource().sendSuccess(() -> Component.literal("Saved " + aspects.size() + " aspects to " + filename), true);
+                                        return 1;
+                                    } catch (IOException e) {
+                                        ctx.getSource().sendFailure(Component.literal("Failed to write to file: " + e.getMessage()));
+                                        return 0;
+                                    }
                                 })))
-        );
+                );
     }
 }

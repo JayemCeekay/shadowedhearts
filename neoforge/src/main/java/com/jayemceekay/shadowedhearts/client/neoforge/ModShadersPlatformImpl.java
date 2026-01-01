@@ -35,6 +35,13 @@ public class ModShadersPlatformImpl {
                         ModShaders.SHADOW_AURA_FOG_CYLINDER_UNIFORMS = com.jayemceekay.shadowedhearts.client.ShadowFogUniforms.from(shader);
                     });
 
+            // XD variant (filament-style)
+            evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:shadow_aura_xd_cylinder", DefaultVertexFormat.NEW_ENTITY),
+                    shader -> {
+                        ModShaders.SHADOW_AURA_XD_CYLINDER = shader;
+                        ModShaders.SHADOW_AURA_XD_CYLINDER_UNIFORMS = com.jayemceekay.shadowedhearts.client.ShadowFogUniforms.from(shader);
+                    });
+
             // Other shaders
             evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:shadow_pool", DefaultVertexFormat.PARTICLE),
                     shader -> ModShaders.SHADOW_POOL = shader);

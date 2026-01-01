@@ -10,7 +10,14 @@ pluginManagement {
 rootProject.name = 'shadowedhearts'
 
 include ':common', ':fabric', ':neoforge'
-/*
+
+includeBuild('external/rctmod') {
+    setName("rctmod")
+    dependencySubstitution {
+        substitute module("com.gitlab.srcmc:rctmod-common-1.21.1") using project(":common")
+    }
+}
+
 includeBuild('external/cobblemon') {
     name = 'cobblemon-src'
     dependencySubstitution {
@@ -20,4 +27,16 @@ includeBuild('external/cobblemon') {
         substitute module('com.cobblemon:cobblemon-fabric') using project(':fabric')
         substitute module('com.cobblemon:cobblemon-neoforge') using project(':neoforge')
     }
-}*/
+}
+
+
+
+includeBuild('external/CobblemonMegaShowdown')
+
+includeBuild('external/SimpleTMs') {
+    dependencySubstitution {
+        substitute module("dragomordor.simpletms:simpletms-common") using project(":common")
+        substitute module("dragomordor.simpletms:simpletms-fabric") using project(":fabric")
+        substitute module("dragomordor.simpletms:simpletms-neoforge") using project(":neoforge")
+    }
+}

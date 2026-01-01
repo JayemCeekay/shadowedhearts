@@ -1,5 +1,6 @@
 package com.jayemceekay.shadowedhearts.integration.accessories;
-
+    
+import dev.architectury.event.events.common.LifecycleEvent;
 import dev.architectury.platform.Platform;
 
 public final class SnagAccessoryBridgeHolder {
@@ -7,11 +8,13 @@ public final class SnagAccessoryBridgeHolder {
 
     public static void init() {
         if (Platform.isModLoaded("accessories")) {
-            try {
-                INSTANCE = new AccessoriesSnagAccessoryBridge();
-            } catch (Throwable t) {
-                System.err.println("Failed to initialize Accessories snag bridge even though mod is loaded: " + t.getMessage());
-            }
+            LifecycleEvent.SETUP.register(() -> {
+                try {
+                    INSTANCE = new AccessoriesSnagAccessoryBridge();
+                } catch (Throwable t) {
+                    System.err.println("Failed to initialize Accessories snag bridge even though mod is loaded: " + t.getMessage());
+                }
+            });
         }
     }
 }

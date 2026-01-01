@@ -34,6 +34,8 @@ public final class BallEmitters {
      * Called on client when a ball entity is created/loaded.
      */
     public static void startForEntity(EmptyPokeBallEntity entity) {
+        if (!entity.getAspects().contains("snag_ball")) return;
+
         var mc = Minecraft.getInstance();
         if (mc == null || mc.level == null) return;
         long now = mc.level.getGameTime();

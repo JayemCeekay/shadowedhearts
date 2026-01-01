@@ -1,6 +1,7 @@
 package com.jayemceekay.shadowedhearts.mixin;
 
 import com.jayemceekay.shadowedhearts.client.render.HeldBallSnagGlowRenderer;
+import com.jayemceekay.shadowedhearts.client.snag.ClientSnagState;
 import com.jayemceekay.shadowedhearts.util.HeldItemAnchorCache;
 import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.Minecraft;
@@ -34,7 +35,7 @@ public abstract class MixinItemInHandLayer {
                                                 MultiBufferSource buffers,
                                                 int i,
                                                 CallbackInfo ci) {
-        //if (!ClientSnagState.isArmed()) return;
+        if (!ClientSnagState.isArmed()) return;
         if (!HeldBallSnagGlowRenderer.isPokeball(stack)) return;
 
         poseStack.pushPose();

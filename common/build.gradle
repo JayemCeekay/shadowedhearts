@@ -3,7 +3,6 @@ plugins {
 }
 
 architectury {
-    injectInjectables = false
     common rootProject.enabled_platforms.split(',')
 }
 
@@ -56,6 +55,9 @@ dependencies {
 
     //accessories
     modCompileOnlyApi("io.wispforest:accessories-common:${project.accessories_version}")
+    modCompileOnly("dragomordor.simpletms:simpletms-common:2.3.0")
+
+    modCompileOnly("maven.modrinth:2iY8VFqL:y2ziXO9L")
 }
 
 // Default for all resource/copy tasks

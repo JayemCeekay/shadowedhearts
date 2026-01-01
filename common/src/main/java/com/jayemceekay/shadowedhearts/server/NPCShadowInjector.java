@@ -8,10 +8,12 @@ import com.cobblemon.mod.common.api.events.CobblemonEvents;
 import com.cobblemon.mod.common.api.events.battles.BattleStartedEvent;
 import com.cobblemon.mod.common.api.moves.Moves;
 import com.cobblemon.mod.common.api.pokemon.PokemonProperties;
+import com.cobblemon.mod.common.api.pokemon.evolution.PreEvolution;
 import com.cobblemon.mod.common.battles.pokemon.BattlePokemon;
-import com.cobblemon.mod.common.entity.npc.NPCEntity;
 import com.cobblemon.mod.common.pokemon.Pokemon;
 import com.cobblemon.mod.common.pokemon.properties.UncatchableProperty;
+import com.cobblemon.mod.common.pokemon.requirements.LevelRequirement;
+import com.jayemceekay.shadowedhearts.AspectHolder;
 import com.jayemceekay.shadowedhearts.PokemonAspectUtil;
 import com.jayemceekay.shadowedhearts.SHAspects;
 import com.jayemceekay.shadowedhearts.data.ShadowAspectPresets;
@@ -22,9 +24,7 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 
-import java.util.List;
-import java.util.Random;
-import java.util.Set;
+import java.util.*;
 
 /**
  * NPC Shadow Aspects injector.
@@ -58,6 +58,7 @@ public final class NPCShadowInjector {
     public static final String TAG_UNIQUE = "shadowedhearts:unique"; // avoid duplicates when injecting
     public static final String TAG_CONVERT_CHANCE_PREFIX = "shadowedhearts:convert_chance_"; // + percent 0-100
     public static final String TAG_PRESET_PREFIX = "shadowedhearts:preset/"; // + <preset id>
+    public static final String TAG_LVL_ENFORCE_EVO_MIN = "shadowedhearts:lvl_enforce_evo_min";
 
     private enum Mode { APPEND, CONVERT, REPLACE }
 
@@ -72,26 +73,40 @@ public final class NPCShadowInjector {
                     if (ba instanceof EntityBackedBattleActor<?> ebActor) {
                         // Include battle id as RNG salt to vary repeated encounters deterministically per battle
                         long battleSalt = 0L;
-                        try { battleSalt = event.getBattle().getBattleId().getLeastSignificantBits(); } catch (Throwable ignored) {}
+                        try {
+                            UUID bid = event.getBattle().getBattleId();
+                            if (bid != null) {
+                                battleSalt = bid.getLeastSignificantBits();
+                            }
+                        } catch (Throwable ignored) {}
                         Entity entity = ebActor.getEntity();
+                        System.out.println("[ShadowedHearts] Battle started with actor: " + ba.getName().getString() + " (Entity: " + (entity != null ? entity.getType().getDescriptionId() : "null") + ") | UUID: " + (entity != null ? entity.getUUID() : "null") + " | Salt: " + battleSalt);
                         // Expand any preset aspects present on the NPC into their concrete lists
                         expandPresetAspects(entity);
-                        Set<String> tags = entity.getTags();
-                        if (!tags.contains(TAG_ENABLE)) return; // opt-in per NPC instance
+                        Set<String> allTraits = new HashSet<>(entity.getTags());
+                        if (entity instanceof AspectHolder holder) {
+                            allTraits.addAll(holder.shadowedhearts$getAspects());
+                        }
 
-                        final int count = readCountFromTags(tags);
+                        if (!allTraits.contains(TAG_ENABLE)) return; // opt-in per NPC instance
+
+                        final int count = readCountFromTags(allTraits);
                         if (count <= 0) return;
 
-                        final Mode mode = readMode(tags);
-                        final LevelPolicy lvl = readLevelPolicy(tags, ba);
-                        final ResourceLocation poolId = readPoolId(tags);
-                        final boolean unique = tags.contains(TAG_UNIQUE);
-                        final int convertChance = readConvertChance(tags);
+                        final Mode mode = readMode(allTraits);
+                        final LevelPolicy lvl = readLevelPolicy(allTraits, ba);
+                        final ResourceLocation poolId = readPoolId(allTraits);
+                        System.out.println(poolId);
+                        final boolean unique = allTraits.contains(TAG_UNIQUE);
+                        final int convertChance = readConvertChance(allTraits);
+                        final boolean enforceMinEvo = allTraits.contains(TAG_LVL_ENFORCE_EVO_MIN);
+
+                        System.out.println("[ShadowedHearts] Processing actor: " + ba.getName().getString() + " | Mode: " + mode + " | Count: " + count + " | Unique: " + unique);
 
                         switch (mode) {
                             case CONVERT -> convertExistingToShadow(ba.getPokemonList(), count, convertChance, makeRng(entity, battleSalt));
-                            case APPEND -> appendShadowPokemon(ba, entity, count, lvl, poolId, unique, battleSalt);
-                            case REPLACE -> replaceWithShadowPokemon(ba, entity, count, lvl, poolId, unique, battleSalt);
+                            case APPEND -> appendShadowPokemon(ba, entity, count, lvl, poolId, unique, enforceMinEvo, battleSalt);
+                            case REPLACE -> replaceWithShadowPokemon(ba, entity, count, lvl, poolId, unique, enforceMinEvo, battleSalt);
                         }
                     }
                 });
@@ -104,13 +119,18 @@ public final class NPCShadowInjector {
 
     private static void expandPresetAspects(Entity entity) {
         try {
-            if (!(entity instanceof NPCEntity npc)) return;
             MinecraftServer server = entity.level().getServer();
             if (server == null) return;
+
+            Set<String> aspectsToProcess = new HashSet<>();
+            if (entity instanceof AspectHolder holder) {
+                aspectsToProcess.addAll(holder.shadowedhearts$getAspects());
+            }
+
             // Work on a copy to avoid concurrent modification
-            java.util.ArrayList<String> toRemove = new java.util.ArrayList<>();
-            java.util.ArrayList<String> toAdd = new java.util.ArrayList<>();
-            for (String aspect : npc.getAppliedAspects()) {
+            ArrayList<String> toRemove = new ArrayList<>();
+            ArrayList<String> toAdd = new ArrayList<>();
+            for (String aspect : aspectsToProcess) {
                 if (!ShadowAspectPresets.isPresetKey(aspect)) continue;
                 var id = ShadowAspectPresets.toPresetId(aspect);
                 if (id == null) continue;
@@ -120,12 +140,13 @@ public final class NPCShadowInjector {
                 }
                 toRemove.add(aspect);
             }
+
             // Also allow preset request via entity tag: shadowedhearts:preset/<presetId>
             for (String tag : entity.getTags()) {
                 if (!tag.startsWith(TAG_PRESET_PREFIX)) continue;
                 String presetId = tag.substring(TAG_PRESET_PREFIX.length());
                 if (presetId.isBlank()) continue;
-                String presetKey = "shadowedhearts:preset/" + presetId;
+                String presetKey = "shadowedhearts:shadow_presets/" + presetId;
                 if (!ShadowAspectPresets.isPresetKey(presetKey)) continue;
                 var id = ShadowAspectPresets.toPresetId(presetKey);
                 if (id == null) continue;
@@ -134,10 +155,18 @@ public final class NPCShadowInjector {
                     toAdd.addAll(list);
                 }
             }
+
             if (!toRemove.isEmpty() || !toAdd.isEmpty()) {
-                npc.getAppliedAspects().removeAll(toRemove);
-                npc.getAppliedAspects().addAll(toAdd);
-                // Note: We don't directly touch NPCEntity.ASPECTS (private). Server will propagate on next sync.
+                if (entity instanceof AspectHolder holder) {
+                    Set<String> current = new HashSet<>(holder.shadowedhearts$getAspects());
+                    current.removeAll(toRemove);
+                    current.addAll(toAdd);
+                    holder.shadowedhearts$setAspects(current);
+                } else {
+                    // Fallback to tags if no aspect holder (Option 2)
+                    for (String r : toRemove) entity.removeTag(r);
+                    for (String a : toAdd) entity.addTag(a);
+                }
             }
         } catch (Throwable ignored) {
         }
@@ -163,15 +192,31 @@ public final class NPCShadowInjector {
     }
 
     private static void convertExistingToShadow(List<BattlePokemon> list, int count, int convertChance, Random rng) {
-        int converted = 0;
-        for (BattlePokemon bp : list) {
+        if (list.isEmpty() || count <= 0) return;
+
+        // Collect indices of Pokémon that aren't already Shadow
+        List<Integer> eligibleIndices = new ArrayList<>();
+        for (int i = 0; i < list.size(); i++) {
+            BattlePokemon bp = list.get(i);
             if (bp == null) continue;
             Pokemon p = bp.getEffectedPokemon();
             if (p == null) continue;
-            // If already Shadow, skip counting it to avoid over-applying
-            if (p.getAspects().contains(SHAspects.SHADOW)) {
-                continue;
+            if (!p.getAspects().contains(SHAspects.SHADOW)) {
+                eligibleIndices.add(i);
             }
+        }
+
+        if (eligibleIndices.isEmpty()) return;
+
+        // Shuffle eligible indices to pick random ones if count < total eligible
+        if (rng != null) {
+            Collections.shuffle(eligibleIndices, rng);
+        }
+
+        int converted = 0;
+        for (int idx : eligibleIndices) {
+            BattlePokemon bp = list.get(idx);
+            Pokemon p = bp.getEffectedPokemon();
 
             // Per-slot probability gate if provided
             if (convertChance >= 0 && rng != null) {
@@ -181,14 +226,11 @@ public final class NPCShadowInjector {
                 }
             }
 
-            // Force the Shadow aspect for this battle (defensive against immutable collections)
+            // Force the Shadow aspect for this battle
             forceShadow(p);
-
-            // Ensure supporting aspects exist
             PokemonAspectUtil.ensureRequiredShadowAspects(p);
-            // Inject 1–2 Shadow moves into slots 0 and 1, preserving other known moves
             assignShadowMoves(p, rng);
-            System.out.println("Forced Shadow Aspect on " + p.getDisplayName(false).getString());
+            System.out.println("Forced Shadow Aspect on " + p.getDisplayName(false).getString() + " at slot " + idx);
             converted++;
             if (converted >= count) break;
         }
@@ -240,7 +282,7 @@ public final class NPCShadowInjector {
         return defaultVal;
     }
 
-    private static void appendShadowPokemon(BattleActor actor, Entity entity, int count, LevelPolicy lvl, ResourceLocation poolId, boolean unique, long battleSalt) {
+    private static void appendShadowPokemon(BattleActor actor, Entity entity, int count, LevelPolicy lvl, ResourceLocation poolId, boolean unique, boolean enforceMinEvo, long battleSalt) {
         List<BattlePokemon> list = actor.getPokemonList();
         int free = PARTY_MAX - list.size();
         if (free <= 0) return;
@@ -249,7 +291,7 @@ public final class NPCShadowInjector {
         System.out.println("Attempting to add " + toAdd + " shadows to " + entity.getName().getString());
         // Try datapack pool first
         if (poolId != null) {
-            var created = createFromPool(actor, entity, poolId, toAdd, lvl, unique, battleSalt);
+            var created = createFromPool(actor, entity, poolId, toAdd, lvl, unique, enforceMinEvo, battleSalt);
             if (!created.isEmpty()) {
                 for (BattlePokemon bp : created) {
                     bp.setActor(actor);
@@ -271,7 +313,12 @@ public final class NPCShadowInjector {
             BattlePokemon clone = BattlePokemon.Companion.safeCopyOf(source.getEffectedPokemon());
             Pokemon p = clone.getEffectedPokemon();
             forceShadow(p);
-            try { p.setLevel(Math.max(1, lvl.resolve())); } catch (Throwable ignored) {}
+            int resolvedLevel = Math.max(1, lvl.resolve());
+            try { p.setLevel(resolvedLevel); } catch (Throwable ignored) {}
+            if (enforceMinEvo && getMinEvolutionLevel(p) > p.getLevel()) {
+                i--;
+                continue;
+            }
             PokemonAspectUtil.ensureRequiredShadowAspects(p);
             // If unique, avoid duplicating species already present after injection
             if (unique && speciesAlreadyPresent(list, safeSpeciesId(p))) {
@@ -284,45 +331,71 @@ public final class NPCShadowInjector {
         }
     }
 
-    private static void replaceWithShadowPokemon(BattleActor actor, Entity entity, int count, LevelPolicy lvl, ResourceLocation poolId, boolean unique, long battleSalt) {
+    private static void replaceWithShadowPokemon(BattleActor actor, Entity entity, int count, LevelPolicy lvl, ResourceLocation poolId, boolean unique, boolean enforceMinEvo, long battleSalt) {
         List<BattlePokemon> list = actor.getPokemonList();
         if (list.isEmpty() || count <= 0) return;
-        int replaced = 0;
+        Random rng = makeRng(entity, battleSalt);
+
+        // Indices available for replacement (not already shadow)
+        List<Integer> targetIndices = new ArrayList<>();
+        for (int i = 0; i < list.size(); i++) {
+            BattlePokemon bp = list.get(i);
+            if (bp == null || bp.getEffectedPokemon() == null) continue;
+            if (bp.getEffectedPokemon().getAspects().contains(SHAspects.SHADOW)) continue;
+            targetIndices.add(i);
+        }
+        System.out.println("[ShadowedHearts] Target indices before shuffle: " + targetIndices);
+        if (targetIndices.isEmpty()) {
+            System.out.println("[ShadowedHearts] No eligible target indices for replacement.");
+            return;
+        }
+        System.out.println("[ShadowedHearts] Target indices before shuffle: " + targetIndices);
+        Collections.shuffle(targetIndices, rng);
+        System.out.println("[ShadowedHearts] Target indices after shuffle: " + targetIndices);
 
         // If a pool exists, pre-create up to 'count' candidates from pool
         List<BattlePokemon> poolCandidates = null;
         if (poolId != null) {
-            poolCandidates = createFromPool(actor, entity, poolId, count, lvl, unique, battleSalt);
+            poolCandidates = createFromPool(actor, entity, poolId, count, lvl, unique, enforceMinEvo, battleSalt);
             if (poolCandidates.isEmpty()) {
                 Cobblemon.LOGGER.warn("[ShadowedHearts] NPC {} requested shadow pool {} but it was missing or empty; falling back to cloning team.", entity.getUUID(), poolId);
+            } else {
+                System.out.println("[ShadowedHearts] Created " + poolCandidates.size() + " pool candidates.");
             }
+        } else {
+            System.out.println("[ShadowedHearts] No shadow pool requested." + poolId);
         }
 
-        for (int i = 0; i < list.size() && replaced < count; i++) {
-            BattlePokemon bp = list.get(i);
-            if (bp == null || bp.getEffectedPokemon() == null) continue;
-            if (bp.getEffectedPokemon().getAspects().contains(SHAspects.SHADOW)) continue; // keep existing shadows
+        int replaced = 0;
+        for (int i = 0; i < targetIndices.size() && replaced < count; i++) {
+            int slotIdx = targetIndices.get(i);
+            System.out.println("[ShadowedHearts] Replacing slot " + slotIdx);
+            BattlePokemon bp = list.get(slotIdx);
 
-            BattlePokemon clone;
+            BattlePokemon replacement;
             if (poolCandidates != null && replaced < poolCandidates.size()) {
-                clone = poolCandidates.get(replaced);
+                replacement = poolCandidates.get(replaced);
             } else {
                 // Fallback: clone existing species
-                clone = BattlePokemon.Companion.safeCopyOf(bp.getEffectedPokemon());
-                Pokemon p = clone.getEffectedPokemon();
+                replacement = BattlePokemon.Companion.safeCopyOf(bp.getEffectedPokemon());
+                Pokemon p = replacement.getEffectedPokemon();
                 forceShadow(p);
-                try { p.setLevel(Math.max(1, lvl.resolve())); } catch (Throwable ignored) {}
+                int resolvedLevel = Math.max(1, lvl.resolve());
+                try { p.setLevel(resolvedLevel); } catch (Throwable ignored) {}
+                if (enforceMinEvo && getMinEvolutionLevel(p) > p.getLevel()) {
+                    continue;
+                }
                 PokemonAspectUtil.ensureRequiredShadowAspects(p);
             }
             if (unique) {
-                // Avoid duplicates vs current party (including this slot being replaced)
-                String speciesId = safeSpeciesId(clone.getEffectedPokemon());
+                // Avoid duplicates vs current party (excluding this slot being replaced)
+                String speciesId = safeSpeciesId(replacement.getEffectedPokemon());
                 if (speciesAlreadyPresent(list, speciesId)) {
                     continue; // skip replacing this slot with a duplicate
                 }
             }
-            clone.setActor(actor);
-            list.set(i, clone);
+            replacement.setActor(actor);
+            list.set(slotIdx, replacement);
             replaced++;
         }
     }
@@ -332,7 +405,7 @@ public final class NPCShadowInjector {
         try {
             var forced = p.getForcedAspects();
             // Create a mutable copy to avoid UnsupportedOperationException from immutable sets (e.g., EmptySet)
-            java.util.HashSet<String> mutable = forced == null ? new java.util.HashSet<>() : new java.util.HashSet<>(forced);
+            HashSet<String> mutable = forced == null ? new HashSet<>() : new HashSet<>(forced);
             if (!mutable.contains(SHAspects.SHADOW)) {
                 mutable.add(SHAspects.SHADOW);
                 p.setForcedAspects(mutable);
@@ -343,7 +416,7 @@ public final class NPCShadowInjector {
             try { p.updateAspects(); } catch (Throwable ignored) {}
         } catch (Throwable t) {
             // Last resort: set exactly the shadow aspect
-            java.util.HashSet<String> fallback = new java.util.HashSet<>();
+            HashSet<String> fallback = new HashSet<>();
             fallback.add(SHAspects.SHADOW);
             try { p.setForcedAspects(fallback); } catch (Throwable ignored) {}
             try { UncatchableProperty.INSTANCE.catchable().apply(p); } catch (Throwable ignored) {}
@@ -355,18 +428,27 @@ public final class NPCShadowInjector {
         for (String t : tags) {
             if (t.startsWith(TAG_POOL_PREFIX)) {
                 String rest = t.substring(TAG_POOL_PREFIX.length());
-                int slash = rest.indexOf('/');
-                if (slash > 0) {
-                    String ns = rest.substring(0, slash);
-                    String path = rest.substring(slash + 1);
-                    try { return new ResourceLocation(ns, path); } catch (Exception ignored) {}
+                try {
+                    if (rest.contains("/")) {
+                        int slash = rest.indexOf('/');
+                        String ns = rest.substring(0, slash);
+                        String path = rest.substring(slash + 1);
+                        return new ResourceLocation(ns, path);
+                    } else if (rest.contains(":")) {
+                        int colon = rest.indexOf(':');
+                        String ns = rest.substring(0, colon);
+                        String path = rest.substring(colon + 1);
+                        return new ResourceLocation(ns, path);
+                    }
+                } catch (Exception ignored) {
+                    System.out.println("[ShadowedHearts] Invalid pool ID: " + rest);
                 }
             }
         }
         return null;
     }
 
-    private static List<BattlePokemon> createFromPool(BattleActor actor, Entity entity, ResourceLocation poolId, int count, LevelPolicy lvl, boolean unique, long battleSalt) {
+    private static List<BattlePokemon> createFromPool(BattleActor actor, Entity entity, ResourceLocation poolId, int count, LevelPolicy lvl, boolean unique, boolean enforceMinEvo, long battleSalt) {
         try {
             Entity e = entity;
             MinecraftServer server = entity.level().getServer();
@@ -377,15 +459,25 @@ public final class NPCShadowInjector {
             Random rng = makeRng(e, battleSalt);
 
             // Build unique set of species already present if needed
-            java.util.HashSet<String> present = unique ? collectSpeciesIds(actor.getPokemonList()) : null;
+            HashSet<String> present = unique ? collectSpeciesIds(actor.getPokemonList()) : null;
 
-            java.util.ArrayList<PokemonProperties> propsList = new java.util.ArrayList<>();
+            int resolvedLevel = lvl.resolve();
+            ArrayList<PokemonProperties> propsList = new ArrayList<>();
             int attempts = 0;
             while (propsList.size() < count && attempts < count * 10) {
                 attempts++;
                 var pick = ShadowPools.pick(rng, entries, 1);
                 if (pick.isEmpty()) break;
                 PokemonProperties candidate = pick.get(0);
+
+                PokemonProperties copy = candidate.copy();
+                int levelToTest = (copy.getLevel() == null || copy.getLevel() <= 0) ? resolvedLevel : copy.getLevel();
+                copy.setLevel(levelToTest);
+                Pokemon testMon = copy.create();
+                if (enforceMinEvo && getMinEvolutionLevel(testMon) > levelToTest) {
+                    continue;
+                }
+
                 if (unique) {
                     String speciesId = safeSpeciesId(candidate);
                     if (present.contains(speciesId)) continue;
@@ -393,7 +485,7 @@ public final class NPCShadowInjector {
                 }
                 propsList.add(candidate);
             }
-            java.util.ArrayList<BattlePokemon> out = new java.util.ArrayList<>();
+            ArrayList<BattlePokemon> out = new ArrayList<>();
             for (PokemonProperties props : propsList) {
                 PokemonProperties copy = props.copy();
                 try {
@@ -404,6 +496,7 @@ public final class NPCShadowInjector {
                 Pokemon p = bp.getEffectedPokemon();
                 forceShadow(p);
                 PokemonAspectUtil.ensureRequiredShadowAspects(p);
+                p.setOriginalTrainer("?????");
                 out.add(bp);
             }
             return out;
@@ -443,8 +536,8 @@ public final class NPCShadowInjector {
         return false;
     }
 
-    private static java.util.HashSet<String> collectSpeciesIds(List<BattlePokemon> list) {
-        java.util.HashSet<String> set = new java.util.HashSet<>();
+    private static HashSet<String> collectSpeciesIds(List<BattlePokemon> list) {
+        HashSet<String> set = new HashSet<>();
         for (BattlePokemon bp : list) {
             if (bp == null || bp.getEffectedPokemon() == null) continue;
             String id = safeSpeciesId(bp.getEffectedPokemon());
@@ -480,13 +573,13 @@ public final class NPCShadowInjector {
         }
     }
 
-    private static String pickShadow(java.util.List<String> ids, String exclude, Random rng) {
+    private static String pickShadow(List<String> ids, String exclude, Random rng) {
         // Use provided list if not null; otherwise use built-in IDs
-        java.util.List<String> pool;
+        List<String> pool;
         if (ids != null) {
             pool = ids;
         } else {
-            pool = new java.util.ArrayList<>(SHADOW_IDS.length);
+            pool = new ArrayList<>(SHADOW_IDS.length);
             for (String id : SHADOW_IDS) pool.add(id);
         }
         if (pool.isEmpty()) return null;
@@ -497,6 +590,22 @@ public final class NPCShadowInjector {
             if (exclude == null || !exclude.equalsIgnoreCase(id)) return id;
         }
         return pool.get(0);
+    }
+
+    private static int getMinEvolutionLevel(Pokemon pokemon) {
+        if (pokemon == null) return 1;
+        PreEvolution preEvo = pokemon.getPreEvolution();
+        if (preEvo == null) return 1;
+
+        var evolutions = preEvo.getForm().getEvolutions();
+        for (var evolution : evolutions) {
+            for (var req : evolution.getRequirements()) {
+                if (req instanceof LevelRequirement levelReq) {
+                    return levelReq.getMinLevel();
+                }
+            }
+        }
+        return 1;
     }
 
     private static final String[] SHADOW_IDS = new String[]{

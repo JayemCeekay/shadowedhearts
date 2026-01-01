@@ -438,9 +438,9 @@ public final class CylinderBuffers {
 
     /** Draws a cylinder scaled to height with top and bottom domes (capsule). */
     public static void drawCylinderWithDomesLod(VertexConsumer vc, Matrix4f mat, float height, float r, float g, float b, float a, int lod) {
-        float yScale = Math.max(0.0001f, height * 0.5f);
-        Matrix4f scaled = new Matrix4f(mat).scale(1.0f, yScale, 1.0f);
-        drawUnitCylinderWithDomesLod(vc, scaled, r, g, b, a, lod);
+        float yScale = Math.max(0.0001f, height);
+        Matrix4f scaled = mat.scale(1.0f, yScale, 1.0f);
+        drawUnitCylinderWithDomesLod(vc, mat, r, g, b, a, lod);
     }
 
     /** Convenience aliases for capsule drawing. */

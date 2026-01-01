@@ -89,7 +89,7 @@ public final class LuminousMoteEmitters {
             double[] angles = poissonAngles(count, seed);
 
             // Keep the overall particle budget roughly constant by splitting base rate among emitters.
-            double totalRatePerSec = 30.0; // approximately what we had before: 3 * 10/sec
+            double totalRatePerSec = 15.0; // approximately what we had before: 3 * 10/sec
             double perEmitterRate = totalRatePerSec / Math.max(1, count);
 
             // Alternate inside/outside bias so motes spawn just inside and just outside the AABB.
@@ -192,7 +192,7 @@ public final class LuminousMoteEmitters {
 
             // Spawn count this frame (approximate real-time rate), scaled by bbox
             double dtSec = Math.max(0.0, partialTicks / 20.0);
-            double emitRate = ratePerSec * (0.75 + 0.25 * scale);
+            double emitRate = ratePerSec * (0.015 + 1.0 * scale);
             double want = emitRate * dtSec + carry;
             int count = (int) Math.floor(want);
             carry = want - count;
@@ -251,7 +251,8 @@ public final class LuminousMoteEmitters {
                 // Shoot outward from center with some upward velocity.
                 Vec3 dir = new Vec3(sx - cx, 0.0, sz - cz).normalize().scale(0.5);
                 // Scale initial speeds by bbox as well so larger entities get slightly more energetic motes
-                double speedScale = (0.75 * scale);
+                // Added a floor (0.2) to prevent particles from being stationary on very small entities.
+                double speedScale = Math.max(0.2, 0.75 * scale);
                 double speedH = (0.008 + level.random.nextDouble() * 0.1) * speedScale; // horizontal speed
                 double vy = (0.04 + level.random.nextDouble() * 0.10) * speedScale;     // upward speed
                 double vx = dir.x * speedH;

@@ -44,8 +44,6 @@ final class ClientRenderHooks {
     }
 
 
-
-
     @SubscribeEvent
     public static void onRenderLevel(RenderLevelStageEvent evt) {
         // Choose a late stage to render particles after most world translucency

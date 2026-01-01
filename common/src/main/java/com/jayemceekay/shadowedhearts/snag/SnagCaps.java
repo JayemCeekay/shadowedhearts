@@ -19,15 +19,4 @@ public final class SnagCaps {
         return get(player).hasSnagMachine();
     }
 
-    /**
-     * Treat throws as Snag only if: player has machine in offhand, device is armed, and the player is in a trainer battle.
-     * Energy is no longer consumed at throw time (moved to arming in-battle).
-     */
-    public static boolean shouldTreatThrowsAsSnag(Player player) {
-        if (player == null) return false;
-        if (!hasMachineAvailable(player)) return false;
-        if (!get(player).isArmed()) return false;
-        // require trainer battle context
-        return SnagBattleUtil.isInTrainerBattle(player);
-    }
 }

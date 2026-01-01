@@ -36,7 +36,7 @@ public abstract class MixinModelWidgetAura {
         return rp != null && rp.getAspects().contains(SHAspects.SHADOW);
     }
 
-    @Inject(method = "renderPKM", at = @At(value = "INVOKE", target = "Lcom/cobblemon/mod/common/client/gui/PokemonGuiUtilsKt;drawProfilePokemon$default(Lcom/cobblemon/mod/common/pokemon/RenderablePokemon;Lcom/mojang/blaze3d/vertex/PoseStack;Lorg/joml/Quaternionf;Lcom/cobblemon/mod/common/entity/PoseType;Lcom/cobblemon/mod/common/client/render/models/blockbench/PosableState;FFZZFFFFFFILjava/lang/Object;)V", ordinal = 0, shift = At.Shift.AFTER))
+    @Inject(method = "renderPKM", at = @At(value = "INVOKE", target = "Lcom/mojang/blaze3d/vertex/PoseStack;popPose()V", ordinal = 0, shift = At.Shift.AFTER))
     private void shadowedhearts$renderAuraAndAxes(GuiGraphics context, float partialTicks, int mouseX, int mouseY, CallbackInfo ci, @Local(name = "matrices") PoseStack matrices) {
         if (this.pokemon == null) return;
         if (!ClientConfig.get().enableShadowAura) return;

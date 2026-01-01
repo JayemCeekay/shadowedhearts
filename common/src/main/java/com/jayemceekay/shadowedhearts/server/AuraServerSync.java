@@ -7,7 +7,7 @@ import com.cobblemon.mod.common.api.events.pokemon.PokemonSentEvent;
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
 import com.cobblemon.mod.common.pokemon.Pokemon;
 import com.jayemceekay.shadowedhearts.PokemonAspectUtil;
-import com.jayemceekay.shadowedhearts.network.ModNetworking;
+import com.jayemceekay.shadowedhearts.network.ShadowedHeartsNetworkingUtils;
 import dev.architectury.event.events.common.TickEvent;
 import kotlin.Unit;
 import net.minecraft.server.MinecraftServer;
@@ -47,7 +47,7 @@ public final class AuraServerSync {
             }
             TRACKING.put(pe.getId(), new WeakReference<>(pe));
             // Notify clients tracking this entity to start rendering the aura
-            ModNetworking.broadcastAuraStartToTracking(pe);
+            ShadowedHeartsNetworkingUtils.broadcastAuraStartToTracking(pe);
             return Unit.INSTANCE;
         });
         CobblemonEvents.POKEMON_RECALL_PRE.subscribe(Priority.NORMAL, (PokemonRecallEvent.Pre e) -> {
@@ -55,7 +55,7 @@ public final class AuraServerSync {
             if (pe == null || pe.level().isClientSide()) return Unit.INSTANCE;
             TRACKING.remove(pe.getId());
             // Tell clients to fade out the aura quickly
-            ModNetworking.broadcastAuraFadeOutToTracking(pe, 10);
+            ShadowedHeartsNetworkingUtils.broadcastAuraFadeOutToTracking(pe, 10);
             return Unit.INSTANCE;
         });
 
@@ -79,14 +79,14 @@ public final class AuraServerSync {
             }
             // If the Pokémon has just died or been removed, send a quick fade-out and drop tracking
             if (!pe.isAlive()) {
-                ModNetworking.broadcastAuraFadeOutToTracking(pe, 10);
+                ShadowedHeartsNetworkingUtils.broadcastAuraFadeOutToTracking(pe, 10);
                 it.remove();
                 continue;
             }
             // Broadcast to tracking players and the owner if present
             if (pe.level() instanceof ServerLevel level) {
                 long now = level.getGameTime();
-                ModNetworking.broadcastStateToTracking(pe, now);
+                ShadowedHeartsNetworkingUtils.broadcastStateToTracking(pe, now);
             } else {
                 it.remove();
             }

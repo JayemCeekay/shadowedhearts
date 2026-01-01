@@ -14,4 +14,6 @@ public interface PlayerSnagData {
     /** Adds energy up to the device's capacity. Negative values are ignored. */
     void addEnergy(int amt);
     void setCooldown(int ticks);
+    boolean lastSyncedEligibility();
+    void setLastSyncedEligibility(boolean v);
 }

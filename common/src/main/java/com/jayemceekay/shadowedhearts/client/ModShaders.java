@@ -12,6 +12,9 @@ public final class ModShaders {
     public static ShaderInstance SHADOW_AURA_FOG_CYLINDER;
     public static ShadowFogUniforms SHADOW_AURA_FOG_CYLINDER_UNIFORMS;
 
+    public static ShaderInstance SHADOW_AURA_XD_CYLINDER;
+    public static ShadowFogUniforms SHADOW_AURA_XD_CYLINDER_UNIFORMS;
+
     public static ShaderInstance SHADOW_POOL;
     public static ShaderInstance WHISTLE_GROUND_OVERLAY;
     public static ShaderInstance PURIFICATION_CHAMBER_BACKGROUND;

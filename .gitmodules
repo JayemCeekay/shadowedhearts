@@ -1,0 +1,13 @@
+[submodule "external/rctmod"]
+	path = external/rctmod
+	url = https://gitlab.com/srcmc/rct/mod.git
+	branch = 1.21.1
+[submodule "external/CobblemonMegaShowdown"]
+	path = external/CobblemonMegaShowdown
+	url = https://github.com/yajatkaul/CobblemonMegaShowdown
+[submodule "external/SimpleTMs"]
+	path = external/SimpleTMs
+	url = https://github.com/Dragomordor/SimpleTMs
+[submodule "external/tm-craft"]
+	path = external/tm-craft
+	url = https://github.com/KiwiFlavoredApollo/tm-craft

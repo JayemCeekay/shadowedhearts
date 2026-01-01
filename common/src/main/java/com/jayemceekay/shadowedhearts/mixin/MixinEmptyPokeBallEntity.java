@@ -80,6 +80,11 @@ public abstract class MixinEmptyPokeBallEntity extends ThrowableItemProjectile {
                         }
 
                         if (battle != null && owner != null && owner instanceof LivingEntity) {
+                            if (!((EmptyPokeBallEntity) (Object) this).getAspects().contains("snag_ball")) {
+                                owner.sendSystemMessage(lang("message.shadowedhearts.snag_machine.requires_snag_ball").withStyle(ChatFormatting.RED));
+                                drop();
+                                return;
+                            }
                             var throwerActor = battle.getActor(owner.getUUID());
                             var hitActor = Iterables.find(battle.getActors(), actor -> actor.isForPokemon(pokemonEntity));
                             var hitBattlePokemon = Iterables.find(hitActor.getActivePokemon(), battlePokemon -> battlePokemon.getBattlePokemon().getEffectedPokemon().getEntity() == pokemonEntity, null);
@@ -112,6 +117,13 @@ public abstract class MixinEmptyPokeBallEntity extends ThrowableItemProjectile {
                                             pokemonEntity.getExposedSpecies().getTranslatedName()
                                     ).withStyle(ChatFormatting.YELLOW));
                             battle.sendUpdate(new BattleCaptureStartPacket(((EmptyPokeBallEntity) (Object) this).getPokeBall().getName(), ((EmptyPokeBallEntity) (Object) this).getAspects(), hitBattlePokemon.getPNX()));
+                            if (owner instanceof ServerPlayer sp) {
+                                var cap = com.jayemceekay.shadowedhearts.snag.SnagCaps.get(sp);
+                                if (cap.isArmed()) {
+                                    cap.setArmed(false);
+                                    com.jayemceekay.shadowedhearts.network.ShadowedHeartsNetwork.sendToPlayer(sp, new com.jayemceekay.shadowedhearts.network.SnagArmedPacket(false));
+                                }
+                            }
                             throwerActor.getActivePokemon().forEach(activeBattlePokemon -> {
                                 throwerActor.forceChoose(PassActionResponse.INSTANCE);
                             });

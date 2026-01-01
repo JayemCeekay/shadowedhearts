@@ -27,6 +27,9 @@ public class ShadowPokemonData implements ShadowFlag {
         e.getEntityData().set(SHADOW, shadow);
         // corruption is expected as 0..1 scalar for visuals
         e.getEntityData().set(HEART_GAUGE, Mth.clamp(corruption, 0f, 1f));
+        PokemonAspectUtil.syncAspects(e.getPokemon());
+        PokemonAspectUtil.syncBenchedMoves(e.getPokemon());
+        PokemonAspectUtil.syncMoveSet(e.getPokemon());
     }
 
     public static void bootstrap() { /* no-op */ }

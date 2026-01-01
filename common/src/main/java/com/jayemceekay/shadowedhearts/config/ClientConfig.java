@@ -26,6 +26,9 @@ public final class ClientConfig {
     public static final class Data {
         /** Master toggle for client-side Shadow aura rendering. */
         public boolean enableShadowAura = true;
+
+        /** Whether to use the XD-style (filament) aura instead of the Colosseum-style (fog) aura. */
+        public boolean useXdAura = false;
     }
 
     private static final Data DATA = new Data();
@@ -35,14 +38,19 @@ public final class ClientConfig {
     public static void load() {
         Path configDir = Paths.get("config");
         Path jsonFile = configDir.resolve(CLIENT_FILE);
-        if (!Files.isRegularFile(jsonFile)) return;
+        if (!Files.isRegularFile(jsonFile)) {
+            save();
+            return;
+        }
         try (BufferedReader r = Files.newBufferedReader(jsonFile, StandardCharsets.UTF_8)) {
             JsonElement el = JsonParser.parseReader(r);
             if (el != null && el.isJsonObject()) {
                 JsonObject root = el.getAsJsonObject();
                 DATA.enableShadowAura = optBool(root, "enableShadowAura", DATA.enableShadowAura);
+                //DATA.useXdAura = optBool(root, "useXdAura", DATA.useXdAura);
             }
         } catch (IOException ignored) {}
+        save();
     }
 
     public static void save() {
@@ -52,6 +60,7 @@ public final class ClientConfig {
             if (!Files.isDirectory(configDir)) Files.createDirectories(configDir);
             JsonObject root = new JsonObject();
             root.addProperty("enableShadowAura", DATA.enableShadowAura);
+            root.addProperty("useXdAura", DATA.useXdAura);
             try (BufferedWriter w = Files.newBufferedWriter(jsonFile, StandardCharsets.UTF_8)) {
                 new GsonBuilder().setPrettyPrinting().create().toJson(root, w);
             }

@@ -5,7 +5,9 @@ import net.minecraft.client.renderer.LightTexture;
 import org.joml.Matrix4f;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Small reusable unit icosphere mesh emitter for aura shells.
@@ -156,10 +158,10 @@ public final class SphereBuffers {
         // Subdivide
         List<int[]> tris = new ArrayList<>();
         for (int i = 0; i < faces.length; i += 3) tris.add(new int[]{faces[i], faces[i+1], faces[i+2]});
-        java.util.Map<Long, Integer> midCache;
+        Map<Long, Integer> midCache;
         for (int s = 0; s < subdivisions; s++) {
             List<int[]> next = new ArrayList<>();
-            midCache = new java.util.HashMap<>();
+            midCache = new HashMap<>();
             for (int[] tri : tris) {
                 int a = tri[0], b = tri[1], c = tri[2];
                 int ab = midpointIndex(verts, midCache, a, b);
@@ -194,7 +196,7 @@ public final class SphereBuffers {
         verts.add(new float[]{(float)(x/len), (float)(y/len), (float)(z/len)});
     }
 
-    private static int midpointIndex(List<float[]> verts, java.util.Map<Long, Integer> cache, int i1, int i2) {
+    private static int midpointIndex(List<float[]> verts, Map<Long, Integer> cache, int i1, int i2) {
         long key = (((long) Math.min(i1,i2)) << 32) | (long) Math.max(i1,i2);
         Integer cached = cache.get(key);
         if (cached != null) return cached;

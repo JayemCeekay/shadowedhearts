@@ -29,6 +29,30 @@ public final class ModItemComponents {
                     .build()
     );
 
+    public static final RegistrySupplier<DataComponentType<Boolean>> SNAG_ARMED = COMPONENT_TYPES.register(
+            "snag_armed",
+            () -> DataComponentType.<Boolean>builder()
+                    .persistent(Codec.BOOL)
+                    .networkSynchronized(ByteBufCodecs.BOOL)
+                    .build()
+    );
+
+    public static final RegistrySupplier<DataComponentType<Integer>> SNAG_COOLDOWN = COMPONENT_TYPES.register(
+            "snag_cooldown",
+            () -> DataComponentType.<Integer>builder()
+                    .persistent(Codec.INT)
+                    .networkSynchronized(ByteBufCodecs.VAR_INT)
+                    .build()
+    );
+
+    public static final RegistrySupplier<DataComponentType<Boolean>> SNAG_ELIGIBLE = COMPONENT_TYPES.register(
+            "snag_eligible",
+            () -> DataComponentType.<Boolean>builder()
+                    .persistent(Codec.BOOL)
+                    .networkSynchronized(ByteBufCodecs.BOOL)
+                    .build()
+    );
+
     /** Call once during common init on both loaders. */
     public static void init() {
         COMPONENT_TYPES.register();

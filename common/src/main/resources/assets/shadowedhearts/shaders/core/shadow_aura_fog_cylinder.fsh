@@ -48,10 +48,8 @@ uniform float uAbsorption;// Beer extinction along inDist
 uniform float uRimStrength;// 0..1
 uniform float uRimPower;// 1..4
 
-// Thickness / edges (ABSOLUTE units; keep your radius scaling in Java)
+// Thickness (ABSOLUTE units; keep your radius scaling in Java)
 uniform float uMaxThickness;// skin thickness under surface
-uniform float uThicknessFeather;// softness at 0 and uMaxThickness
-uniform float uEdgeKill;// erase very near the surface
 
 // ===== Relative controls (size-invariant look) =====
 uniform float uNoiseScaleRel;// features per radius (e.g., 3.0)
@@ -229,6 +227,13 @@ float sdCappedCylinderY(vec3 p, float r, float H) {
     return min(max(d.x,d.y),0.0) + length(max(d,0.0)) - 1.0;
 }
 
+float sdCapsule( vec3 p, vec3 a, vec3 b, float r )
+{
+    vec3 pa = p - a, ba = b - a;
+    float h = clamp( dot(pa,ba)/dot(ba,ba), 0.0, 1.0 );
+    return length( pa - ba*h ) - r;
+}
+
 float sdVerticalCapsule(vec3 p, float h, float r) {
     p.y -= clamp(p.y, 0.0, h);
     return length(p)-r;
@@ -374,7 +379,11 @@ void main() {
     // Build ray in object space
     vec3 roWS = uCameraPosWS;
     vec3 rdWS = normalize(vRayDirWS);
+
+    //Ray Origin in Shader Space
     vec3 ro   = (uInvModel * vec4(roWS, 1.0)).xyz;
+
+    //Ray Direction in Shader Space
     vec3 rd   = normalize((uInvModel * vec4(rdWS, 0.0)).xyz);
 
     // Capsule proxy params
@@ -386,7 +395,7 @@ void main() {
     //   bottom cap is at y = 0
     //   top    cap is at y = 2H
     vec3 roCaps = ro;
-    roCaps.y += H;
+    //roCaps.y += H;
 
     float tHit;
     bool hit = intersectVerticalCapsule(roCaps, rd, H, R, tHit);
@@ -394,7 +403,7 @@ void main() {
     // Detect if the camera (ray origin) starts inside the volume using the same SDF
     // used for sampling. When inside, we should march from the camera out to the
     // first surface (exit). When outside, we march a thin shell past the entry.
-    float dCam = sdVerticalCapsule(ro, H, R);
+    float dCam = sdVerticalCapsule(roCaps, H, R);
     bool cameraInside = (dCam < 0.0);
 
     if (!hit && !cameraInside) {
@@ -438,10 +447,10 @@ void main() {
         float ti = tEnter + ((float(i) + 0.5 + jitter) * stepLen);
         if (ti > tExit) break;
 
-        vec3 p = ro + rd * ti;// object space sample
+        vec3 p = roCaps + rd * ti;// object space sample
 
         // --- Relative coords (size-invariant) ---
-        vec3 pRel = p / R;
+        vec3 pRel = vec3(p.x/R, p.y/R, p.z/R);
 
         // Height from -1..+1 in relative object space -> 0..1
         float y01 = saturate(0.5 * (pRel.y + 1.0));
@@ -476,7 +485,7 @@ void main() {
         vec3 shearRel = tailHatRel * ((-uSpeed) * pow(y01, max(uLagGamma, 0.0001)));
 
         // Main FBM sample position (stationary domain; field moves)
-        vec3 pw = (pPix * uNoiseScaleRel) - (advRel + advScrollRel) * uNoiseScaleRel + shearRel * uNoiseScaleRel;
+        vec3 pw = (pPix * uNoiseScaleRel) - (advRel + advScrollRel) * uNoiseScaleRel;
 
         // Patchiness mask
         float patchH = pow(y01, max(uPatchGamma, 0.0001));
@@ -513,7 +522,7 @@ void main() {
 
         // Subtle rim enhancement (optional)
         if (uRimStrength > 0.0){
-            vec3 nrm = sdfNormalCylinderY(p, R, H);
+            vec3 nrm = sdfNormalCylinderY(pRel, R, H);
             float rim = pow(saturate(1.0 - abs(dot(normalize(rd), nrm))), uRimPower);
             densitySample *= (1.0 + rim * uRimStrength);
         }

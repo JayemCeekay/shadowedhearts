@@ -6,7 +6,11 @@ import com.cobblemon.mod.common.api.battles.model.actor.ActorType;
 import com.cobblemon.mod.common.api.battles.model.actor.BattleActor;
 import com.cobblemon.mod.common.api.events.CobblemonEvents;
 import com.cobblemon.mod.common.api.events.battles.BattleVictoryEvent;
+import com.cobblemon.mod.common.battles.BattleRegistry;
 import com.cobblemon.mod.common.battles.actor.PlayerBattleActor;
+import com.jayemceekay.shadowedhearts.network.ShadowedHeartsNetwork;
+import com.jayemceekay.shadowedhearts.network.SnagArmedPacket;
+import com.jayemceekay.shadowedhearts.network.SnagEligibilityPacket;
 import dev.architectury.event.events.common.TickEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
@@ -90,22 +94,35 @@ public final class SnagEvents {
         var cap = SnagCaps.get(player);
         int cd = cap.cooldown();
         if (cd > 0) cap.setCooldown(cd - 1);
+
+        // Sync snag eligibility to client
+        if (player instanceof ServerPlayer sp) {
+            boolean eligible = SnagBattleUtil.canShowSnagButton(sp);
+            if (eligible != cap.lastSyncedEligibility()) {
+                cap.setLastSyncedEligibility(eligible);
+                ShadowedHeartsNetwork.sendToPlayer(sp, new SnagEligibilityPacket(eligible));
+            }
+        }
+
         // Disarm when leaving battle
         if (cap.isArmed() && !SnagBattleUtil.isInTrainerBattle(player)) {
             cap.setArmed(false);
-            // minimal debug log could be added here if needed
+            if (player instanceof ServerPlayer sp) {
+                ShadowedHeartsNetwork.sendToPlayer(sp, new SnagArmedPacket(false));
+            }
         } else if (cap.isArmed()) {
             // Also disarm at the end of the player's turn if they didn't throw a Poké Ball.
             // We approximate end-of-turn by when the actor cannot fit a forced action anymore
             // (i.e., they've already committed their action for this turn).
             if (player instanceof ServerPlayer sp) {
-                var battle = SnagBattleUtil.getBattle(player);
+                var battle = BattleRegistry.getBattleByParticipatingPlayerId(player.getUUID());
                 if (battle != null) {
                     var actor = battle.getActor(sp);
                     if (actor != null) {
                         try {
                             if (!actor.canFitForcedAction()) {
                                 cap.setArmed(false);
+                                ShadowedHeartsNetwork.sendToPlayer(sp, new SnagArmedPacket(false));
                             }
                         } catch (Throwable ignored) {}
                     }

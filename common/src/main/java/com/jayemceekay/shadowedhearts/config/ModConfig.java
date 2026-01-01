@@ -1,6 +1,7 @@
 package com.jayemceekay.shadowedhearts.config;
 
 import com.google.gson.*;
+import dev.architectury.platform.Platform;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -9,7 +10,6 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.*;
 
 /**
@@ -30,7 +30,17 @@ public final class ModConfig {
 
         // Shadow spawn block (moved from ShadowSpawnConfig)
         public double shadowSpawnChancePercent = 0.78125; // default 1/256
-        public final Set<String> shadowSpawnBlacklist = new HashSet<>();
+        public final Set<String> shadowSpawnBlacklist = new HashSet<>(Set.of("#shadowedhearts:legendaries", "#shadowedhearts:mythical"));
+
+        // Hyper Mode config
+        public final HyperModeConfig hyperMode = new HyperModeConfig();
+        // Reverse Mode config
+        public final ReverseModeConfig reverseMode = new ReverseModeConfig();
+        // Call Button config
+        public final CallButtonConfig callButton = new CallButtonConfig();
+
+        // Shadow Moves config
+        public final ShadowMovesConfig shadowMoves = new ShadowMovesConfig();
 
         // Mod Integrations
         public final RCTIntegrationConfig rctIntegration = new RCTIntegrationConfig();
@@ -46,7 +56,7 @@ public final class ModConfig {
     public static Set<String> getShadowSpawnBlacklist() { return Collections.unmodifiableSet(DATA.shadowSpawnBlacklist); }
 
     public static void load() {
-        Path configDir = Paths.get("config");
+        Path configDir = Platform.getConfigFolder();
         Path jsonFile = configDir.resolve(COMMON_FILE);
 
         // One-time migration from legacy properties if present and JSON missing
@@ -64,7 +74,10 @@ public final class ModConfig {
             }
         }
 
-        if (!Files.isRegularFile(jsonFile)) return; // keep defaults if nothing exists
+        if (!Files.isRegularFile(jsonFile)) {
+            save();
+            return; // keep defaults if nothing exists, but save them
+        }
 
         try (BufferedReader reader = Files.newBufferedReader(jsonFile, StandardCharsets.UTF_8)) {
             JsonElement el = JsonParser.parseReader(reader);
@@ -72,6 +85,33 @@ public final class ModConfig {
                 JsonObject root = el.getAsJsonObject();
                 DATA.showdownPatched = optBool(root, "showdownPatched", DATA.showdownPatched);
                 DATA.tossOrderBarUI = optBool(root, "tossOrderBarUI", DATA.tossOrderBarUI);
+
+                if (root.has("hyperMode") && root.get("hyperMode").isJsonObject()) {
+                    JsonObject hm = root.getAsJsonObject("hyperMode");
+                    DATA.hyperMode.enabled = optBool(hm, "enabled", DATA.hyperMode.enabled);
+                    DATA.hyperMode.debugCalmDown = optBool(hm, "debugCalmDown", DATA.hyperMode.debugCalmDown);
+                    DATA.hyperMode.debugHyperModeAction = hm.has("debugHyperModeAction") ? hm.get("debugHyperModeAction").getAsString() : DATA.hyperMode.debugHyperModeAction;
+                 //   DATA.hyperMode.baseChanceModifier = optDouble(hm, "baseChanceModifier", DATA.hyperMode.baseChanceModifier);
+                }
+
+                if (root.has("reverseMode") && root.get("reverseMode").isJsonObject()) {
+                    JsonObject rm = root.getAsJsonObject("reverseMode");
+                    DATA.reverseMode.enabled = optBool(rm, "enabled", DATA.reverseMode.enabled);
+                    DATA.reverseMode.debugReverseModeFailure = optBool(rm, "debugReverseModeFailure", DATA.reverseMode.debugReverseModeFailure);
+                //    DATA.reverseMode.baseChanceModifier = optDouble(rm, "baseChanceModifier", DATA.reverseMode.baseChanceModifier);
+                }
+
+                if (root.has("callButton") && root.get("callButton").isJsonObject()) {
+                    JsonObject cb = root.getAsJsonObject("callButton");
+                    DATA.callButton.reducesHeartGauge = optBool(cb, "reducesHeartGauge", DATA.callButton.reducesHeartGauge);
+                    DATA.callButton.accuracyBoost = optBool(cb, "accuracyBoost", DATA.callButton.accuracyBoost);
+                    DATA.callButton.removeSleep = optBool(cb, "removeSleep", DATA.callButton.removeSleep);
+                }
+
+                if (root.has("shadowMoves") && root.get("shadowMoves").isJsonObject()) {
+                    JsonObject sm = root.getAsJsonObject("shadowMoves");
+                    DATA.shadowMoves.replaceCount = optInt(sm, "replaceCount", DATA.shadowMoves.replaceCount);
+                }
 
                 if (root.has("shadowSpawn") && root.get("shadowSpawn").isJsonObject()) {
                     JsonObject ss = root.getAsJsonObject("shadowSpawn");
@@ -101,17 +141,44 @@ public final class ModConfig {
                     }
                 }
             }
-        } catch (IOException ignored) {}
+        } catch (IOException ignored) {
+            ignored.printStackTrace();
+        }
+        save();
     }
 
     public static void save() {
-        Path configDir = Paths.get("config");
+        Path configDir = Platform.getConfigFolder();
         Path jsonFile = configDir.resolve(COMMON_FILE);
         try {
             if (!Files.isDirectory(configDir)) Files.createDirectories(configDir);
             JsonObject root = new JsonObject();
             root.addProperty("showdownPatched", DATA.showdownPatched);
             root.addProperty("tossOrderBarUI", DATA.tossOrderBarUI);
+
+            JsonObject hm = new JsonObject();
+            hm.addProperty("enabled", DATA.hyperMode.enabled);
+            hm.addProperty("debugCalmDown", DATA.hyperMode.debugCalmDown);
+            hm.addProperty("debugHyperModeAction", DATA.hyperMode.debugHyperModeAction);
+           // hm.addProperty("baseChanceModifier", DATA.hyperMode.baseChanceModifier);
+            root.add("hyperMode", hm);
+
+            JsonObject rm = new JsonObject();
+            rm.addProperty("enabled", DATA.reverseMode.enabled);
+            rm.addProperty("debugReverseModeFailure", DATA.reverseMode.debugReverseModeFailure);
+            //rm.addProperty("baseChanceModifier", DATA.reverseMode.baseChanceModifier);
+            root.add("reverseMode", rm);
+
+            JsonObject cb = new JsonObject();
+            cb.addProperty("reducesHeartGauge", DATA.callButton.reducesHeartGauge);
+            cb.addProperty("accuracyBoost", DATA.callButton.accuracyBoost);
+            cb.addProperty("removeSleep", DATA.callButton.removeSleep);
+            root.add("callButton", cb);
+
+            JsonObject sm = new JsonObject();
+            sm.addProperty("replaceCount", DATA.shadowMoves.replaceCount);
+            root.add("shadowMoves", sm);
+
             JsonObject ss = new JsonObject();
             ss.addProperty("chancePercent", DATA.shadowSpawnChancePercent);
             JsonArray arr = new JsonArray();
@@ -132,7 +199,9 @@ public final class ModConfig {
             try (BufferedWriter w = Files.newBufferedWriter(jsonFile, StandardCharsets.UTF_8)) {
                 new GsonBuilder().setPrettyPrinting().create().toJson(root, w);
             }
-        } catch (IOException ignored) {}
+        } catch (IOException ignored) {
+            ignored.printStackTrace();
+        }
     }
 
     private static boolean optBool(JsonObject o, String key, boolean def) {
@@ -144,6 +213,29 @@ public final class ModConfig {
 
     private static double optDouble(JsonObject o, String key, double def) {
         try { return o.has(key) ? o.get(key).getAsDouble() : def; } catch (Exception e) { return def; }
+    }
+
+    public static final class HyperModeConfig {
+        public boolean enabled = true;
+        public boolean debugCalmDown = false;
+        public String debugHyperModeAction = "";
+        //public double baseChanceModifier = 1.0;
+    }
+
+    public static final class ReverseModeConfig {
+        public boolean enabled = true;
+        public boolean debugReverseModeFailure = false;
+        //public double baseChanceModifier = 1.0;
+    }
+
+    public static final class CallButtonConfig {
+        public boolean reducesHeartGauge = true;
+        public boolean accuracyBoost = true;
+        public boolean removeSleep = true;
+    }
+
+    public static final class ShadowMovesConfig {
+        public int replaceCount = 1;
     }
 
     // ===== RCT Integration config types and (de)serialization =====
@@ -163,9 +255,20 @@ public final class ModConfig {
     public static final class RCTSection {
         public final String name; // for debugging/logging only
         public final List<String> trainerTypes = new ArrayList<>();
+        public final Map<String, String> typePresets = new HashMap<>(); // type -> presetId
         public final List<String> trainerBlacklist = new ArrayList<>();
         public final List<RCTTrainerConfig> trainers = new ArrayList<>();
-        RCTSection(String n) { this.name = n; }
+        RCTSection(String n) {
+            this.name = n;
+            if ("replace".equals(n)) {
+                trainerTypes.add("team_rocket");
+                typePresets.put("team_rocket", "shadowedhearts/team_rocket");
+                RCTTrainerConfig teamRocket = new RCTTrainerConfig();
+                teamRocket.id = "team_rocket";
+                teamRocket.preset = "shadowedhearts/team_rocket";
+                trainers.add(teamRocket);
+            }
+        }
     }
 
     private static void readRCTIntegration(JsonObject obj, RCTIntegrationConfig out) {
@@ -177,10 +280,24 @@ public final class ModConfig {
 
     private static void readRCTSection(JsonObject obj, RCTSection out) {
         out.trainerTypes.clear();
+        out.typePresets.clear();
         out.trainerBlacklist.clear();
         out.trainers.clear();
         // Allow either keys: trainer_types / trainerTypes (be lenient)
         readStringArrayInto(obj, out.trainerTypes, obj.has("trainer_types") ? "trainer_types" : "trainerTypes");
+        
+        if (obj.has("type_presets") && obj.get("type_presets").isJsonObject()) {
+            JsonObject tp = obj.getAsJsonObject("type_presets");
+            for (Map.Entry<String, JsonElement> entry : tp.entrySet()) {
+                out.typePresets.put(entry.getKey().toLowerCase(Locale.ROOT), entry.getValue().getAsString());
+            }
+        } else if (obj.has("typePresets") && obj.get("typePresets").isJsonObject()) {
+            JsonObject tp = obj.getAsJsonObject("typePresets");
+            for (Map.Entry<String, JsonElement> entry : tp.entrySet()) {
+                out.typePresets.put(entry.getKey().toLowerCase(Locale.ROOT), entry.getValue().getAsString());
+            }
+        }
+
         readStringArrayInto(obj, out.trainerBlacklist, obj.has("trainer_blacklist") ? "trainer_blacklist" : "trainerBlacklist");
         if (obj.has("trainers") && obj.get("trainers").isJsonArray()) {
             for (JsonElement el : obj.getAsJsonArray("trainers")) {
@@ -215,6 +332,13 @@ public final class ModConfig {
         JsonArray types = new JsonArray();
         for (String s : sec.trainerTypes) types.add(s);
         o.add("trainer_types", types);
+        
+        JsonObject typePresets = new JsonObject();
+        for (Map.Entry<String, String> entry : sec.typePresets.entrySet()) {
+            typePresets.addProperty(entry.getKey(), entry.getValue());
+        }
+        o.add("type_presets", typePresets);
+
         JsonArray bl = new JsonArray();
         for (String s : sec.trainerBlacklist) bl.add(s);
         o.add("trainer_blacklist", bl);

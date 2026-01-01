@@ -6,7 +6,6 @@ import com.cobblemon.mod.common.api.types.ElementalTypes;
 import com.cobblemon.mod.common.client.gui.summary.Summary;
 import com.cobblemon.mod.common.client.gui.summary.widgets.screens.moves.MoveSwapScreen;
 import com.cobblemon.mod.common.client.gui.summary.widgets.screens.moves.MovesWidget;
-import com.jayemceekay.shadowedhearts.PokemonAspectUtil;
 import com.jayemceekay.shadowedhearts.ShadowGate;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
@@ -41,21 +40,7 @@ public abstract class MixinMoveSwapScreenMoveSlot {
         Summary summary = mw.getSummary();
         var pokemon = summary.getSelectedPokemon$common();
         if (pokemon == null) return false;
-        String current = move.getName();
-        if (ShadowGate.isShadowMoveId(current)) return false;
-
-        int allowed = PokemonAspectUtil.getAllowedVisibleNonShadowMoves(pokemon);
-        int nonShadowIndex = 0;
-        for (var mv : pokemon.getAllAccessibleMoves()) {
-            if (mv == null) continue;
-            String id = mv.getName();
-            if (ShadowGate.isShadowMoveId(id)) continue;
-            if (id.equalsIgnoreCase(current)) {
-                return nonShadowIndex >= allowed;
-            }
-            nonShadowIndex++;
-        }
-        return false;
+        return ShadowGate.isShadowLockedClient(pokemon);
     }
 
     // Mask move name (ordinal 0)

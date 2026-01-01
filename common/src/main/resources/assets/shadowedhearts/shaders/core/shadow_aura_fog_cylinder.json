@@ -49,39 +49,38 @@
 
     { "name": "uDensity",         "type": "float", "count": 1, "values": [1.2] },
     { "name": "uAbsorption",      "type": "float", "count": 1, "values": [0.15] },
-    { "name": "uRimStrength",     "type": "float", "count": 1, "values": [0.8] },
-    { "name": "uRimPower",        "type": "float", "count": 1, "values": [2.0] },
+    { "name": "uRimStrength",     "type": "float", "count": 1, "values": [1.5] },
+    { "name": "uRimPower",        "type": "float", "count": 1, "values": [0.8] },
 
     { "name": "uMaxThickness",     "type": "float", "count": 1, "values": [0.0] },
-    { "name": "uThicknessFeather", "type": "float", "count": 1, "values": [0.0] },
-    { "name": "uEdgeKill",         "type": "float", "count": 1, "values": [0.0] },
 
     { "name": "uWarpAmp",       "type": "float", "count": 1, "values": [0.075] },
 
-    { "name": "uPixelsPerRadius",  "type": "float",   "count": 1, "values": [20.0] },
-    { "name": "uPosterizeSteps",  "type": "float",   "count": 1, "values": [0.0] },
+    { "name": "uPixelsPerRadius",  "type": "float",   "count": 1, "values": [24.0] },
+    { "name": "uPosterizeSteps",  "type": "float",   "count": 1, "values": [3.0] },
     { "name": "uDitherAmount",  "type": "float",   "count": 1, "values": [1.4] },
 
     { "name": "uLimbSoft",     "type": "float", "count": 1, "values": [0.22] },
     { "name": "uLimbHardness", "type": "float", "count": 1, "values": [2.25] },
     { "name": "uMinPathNorm",  "type": "float", "count": 1, "values": [0.18] },
-    { "name": "uGlowGamma",    "type": "float", "count": 1, "values": [1.0] },
+    { "name": "uGlowGamma",    "type": "float", "count": 1, "values": [0.5] },
     { "name": "uBlackPoint",   "type": "float", "count": 1, "values": [0.0] },
 
-    { "name": "uNoiseScaleRel", "type": "float", "count": 1, "values": [5.0] },
-    { "name": "uScrollSpeedRel","type":"float","count":1,"values":[1.0] },
+    { "name": "uNoiseScaleRel", "type": "float", "count": 1, "values": [2.0]},
+    { "name": "uScrollSpeedRel","type":"float","count":1,"values":[0.8] },
 
     { "name": "uPatchScaleRel",     "type":"float","count":1,"values":[6.5] },
     { "name": "uPatchThreshBase",   "type":"float","count":1,"values":[0.35] },
-    { "name": "uPatchThreshTop",    "type":"float","count":1,"values":[0.7] },
-    { "name": "uPatchSharpness",    "type":"float","count":1,"values":[0.12] },
-    { "name": "uPatchGamma",        "type":"float","count":1,"values":[0.6] },
+    { "name": "uPatchThreshTop",    "type":"float","count":1,"values":[0.8] },
+    { "name": "uPatchSharpness",    "type":"float","count":1,"values":[0.45] },
+    { "name": "uPatchGamma",        "type":"float","count":1,"values":[0.45] },
     { "name": "uPatchStrengthTop",  "type":"float","count":1,"values":[1.85] },
 
-    { "name": "uHeightFadeMin",     "type":"float","count":1,"values":[0.20] },
+    { "name": "uHeightFadeMin",     "type":"float","count":1,"values":[0.25] },
     { "name": "uHeightFadePow",     "type":"float","count":1,"values":[1.6] },
-    { "name": "uCorePow",     "type":"float","count":1,"values":[1.15] },
-    { "name": "uShadowMix",   "type":"float","count":1,"values":[0.85] },
+
+    { "name": "uCorePow",     "type":"float","count":1,"values":[4.0] },
+    { "name": "uShadowMix",   "type":"float","count":1,"values":[1.75] },
     { "name": "uShadowKnee",  "type":"float","count":1,"values":[0.15] },
     { "name": "uShadowGamma", "type":"float","count":1,"values":[1.40] },
     { "name": "uShadowDesat", "type":"float","count":1,"values":[0.25] }

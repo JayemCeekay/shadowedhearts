@@ -9,6 +9,7 @@ import com.jayemceekay.shadowedhearts.client.particle.LuminousMoteEmitters;
 import com.jayemceekay.shadowedhearts.client.particle.LuminousMoteParticle;
 import com.jayemceekay.shadowedhearts.client.render.BallGlowHudDebug;
 import com.jayemceekay.shadowedhearts.client.trail.BallTrailHudDebug;
+import com.jayemceekay.shadowedhearts.config.ClientConfig;
 import com.jayemceekay.shadowedhearts.core.ModParticleTypes;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientEntityEvents;
@@ -20,6 +21,7 @@ public final class ShadowedheartsFabricClient implements ClientModInitializer {
 
     @Override
     public void onInitializeClient() {
+        ClientConfig.load();
         // Register client-side handlers for our Cobblemon-style packets
         com.jayemceekay.shadowedhearts.fabric.net.ShadowedHeartsFabricNetworkManager.registerClientHandlers();
         // Client-side common init

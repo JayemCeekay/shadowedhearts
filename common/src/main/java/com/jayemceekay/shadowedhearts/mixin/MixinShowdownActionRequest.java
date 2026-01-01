@@ -32,15 +32,21 @@ public abstract class MixinShowdownActionRequest {
             var moveset = reqMovesets.get(i);
             if (moveset == null || moveset.getMoves() == null) continue;
 
+            int allowed = com.jayemceekay.shadowedhearts.PokemonAspectUtil.getAllowedVisibleNonShadowMoves(effected);
+            int nonShadowIndex = 0;
+
             for (var m : moveset.getMoves()) {
                 if (m == null) continue;
                 String id = m.getId();
                 boolean forced = m.getMaxpp() == 100 && m.getPp() == 100; // Thrash/forced turn placeholder
                 if (forced || "struggle".equalsIgnoreCase(id)) continue;
                 if (!com.jayemceekay.shadowedhearts.ShadowGate.isShadowMoveId(id)) {
-                    m.setDisabled(true);
-                    var gm = m.getGimmickMove();
-                    if (gm != null) gm.setDisabled(true);
+                    if (nonShadowIndex >= allowed) {
+                        m.setDisabled(true);
+                        var gm = m.getGimmickMove();
+                        if (gm != null) gm.setDisabled(true);
+                    }
+                    nonShadowIndex++;
                 }
             }
         }

@@ -15,7 +15,7 @@ class HyperInstruction(private val message: BattleMessage) : InterpreterInstruct
         val action = message.argumentAt(0) ?: return
 
         // Locate actor + active slot using the next token (index 1) after the id
-        val (_, active) = message.actorAndActivePokemon(1, battle) ?: return
+        val (_, active) = battle.getActorAndActiveSlotFromPNX(message.argumentAt(1) ?: return)
         val bp = active.battlePokemon ?: return
 
         val effected = bp.effectedPokemon

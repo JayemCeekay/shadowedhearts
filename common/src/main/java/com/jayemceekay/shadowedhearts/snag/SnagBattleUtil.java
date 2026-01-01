@@ -21,7 +21,7 @@ public final class SnagBattleUtil {
     public static PokemonBattle getBattle(Player player) {
         if (!(player instanceof ServerPlayer sp)) return null;
         try {
-            return BattleRegistry.INSTANCE.getBattleByParticipatingPlayer(sp);
+            return BattleRegistry.getBattleByParticipatingPlayer(sp);
         } catch (Throwable t) {
             return null;
         }
@@ -64,26 +64,15 @@ public final class SnagBattleUtil {
                 }
             }
         }
-        // Fallback: scan roster
-        for (var a : otherSide.getActors()) {
-            if (a == null || a.getPokemonList() == null) continue;
-            for (var bp : a.getPokemonList()) {
-                if (bp == null) continue;
-                var effected = bp.getEffectedPokemon();
-                var aspects = effected.getAspects();
-                if (aspects == null || !aspects.contains(SHAspects.SHADOW)) continue;
-                var entity = effected.getEntity();
-                if (!(entity instanceof PokemonEntity pe) || UncatchableProperty.INSTANCE.isCatchable(pe)) {
-                    return true;
-                }
-            }
-        }
         return false;
     }
 
     /** Client-visible predicate to determine whether to show Snag button. Server authoritative. */
     public static boolean canShowSnagButton(Player player) {
         if (player == null) return false;
+        if (player.level().isClientSide) {
+            return com.jayemceekay.shadowedhearts.client.snag.ClientSnagState.isEligible();
+        }
         if (!SnagCaps.hasMachineAvailable(player)) return false;
         if (!isInTrainerBattle(player)) return false;
         return hasEligibleShadowOpponent(player);

@@ -10,6 +10,9 @@ import org.jetbrains.annotations.Nullable;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
 
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashSet;
 import java.util.UUID;
 
 public final class HeldItemAnchorCache {
@@ -79,7 +82,7 @@ public final class HeldItemAnchorCache {
         }
 
         // Build current player set for quick membership checks
-        java.util.HashSet<UUID> livePlayers = new java.util.HashSet<>();
+        HashSet<UUID> livePlayers = new HashSet<>();
         for (var pl : level.players()) livePlayers.add(pl.getUUID());
 
         // Remove stale or non-present players
@@ -95,11 +98,11 @@ public final class HeldItemAnchorCache {
 
         // Enforce hard cap (remove oldest first)
         if (CACHE.size() > MAX_SIZE) {
-            java.util.ArrayList<AnchorWithId> list = new java.util.ArrayList<>(CACHE.size());
+            ArrayList<AnchorWithId> list = new ArrayList<>(CACHE.size());
             for (var e : CACHE.object2ObjectEntrySet()) {
                 list.add(new AnchorWithId(e.getKey(), e.getValue()));
             }
-            list.sort(java.util.Comparator.comparingLong(x -> x.anchor.lastSeenMs()));
+            list.sort(Comparator.comparingLong(x -> x.anchor.lastSeenMs()));
             int toRemove = CACHE.size() - MAX_SIZE;
             for (int i = 0; i < toRemove; i++) {
                 CACHE.remove(list.get(i).id);

@@ -2,6 +2,7 @@ package com.jayemceekay.shadowedhearts.config;
 
 import com.cobblemon.mod.common.pokemon.Pokemon;
 import com.cobblemon.mod.common.pokemon.Species;
+import com.jayemceekay.shadowedhearts.server.SpeciesTagManager;
 
 import java.util.Locale;
 
@@ -44,6 +45,15 @@ public final class ShadowSpawnConfig {
         String full = keyFor(species);
         String alt = altKeyFor(species);
         var bl = ModConfig.getShadowSpawnBlacklist();
-        return (full != null && bl.contains(full)) || (alt != null && bl.contains(alt));
+
+        for (String entry : bl) {
+            if (entry.startsWith("#")) {
+                if (SpeciesTagManager.INSTANCE.isInTag(species, entry)) return true;
+            } else {
+                if (entry.equals(full) || entry.equals(alt)) return true;
+            }
+        }
+
+        return false;
     }
 }
