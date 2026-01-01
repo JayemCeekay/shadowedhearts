@@ -1,3 +1,6 @@
+[submodule "external/cobblemon"]
+    path = external/cobblemon
+    url = https://gitlab.com/cable-mc/cobblemon
 [submodule "external/rctmod"]
 	path = external/rctmod
 	url = https://gitlab.com/srcmc/rct/mod.git
@@ -8,6 +11,3 @@
 [submodule "external/SimpleTMs"]
 	path = external/SimpleTMs
 	url = https://github.com/Dragomordor/SimpleTMs
-[submodule "external/tm-craft"]
-	path = external/tm-craft
-	url = https://github.com/KiwiFlavoredApollo/tm-craft
