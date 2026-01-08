@@ -2,12 +2,15 @@
   "itemGroup.shadowedhearts.main": "Shadowed Hearts",
 
   "block.shadowedhearts.purification_pc": "Purification PC",
+  "block.shadowedhearts.relic_stone": "Relic Stone",
 
-  "item.shadowedhearts.sang_machine_prototype": "Sang Machine Prototype",
+  "item.shadowedhearts.snag_machine_prototype": "Snag Machine Prototype",
   "item.shadowedhearts.snag_machine_advanced": "Snag Machine Advanced",
   "item.shadowedhearts.joy_scent": "Joy Scent",
   "item.shadowedhearts.excite_scent": "Excite Scent",
   "item.shadowedhearts.vivid_scent": "Vivid Scent",
+  "item.shadowedhearts.shadow_shard": "Shadow Shard",
+  "item.shadowedhearts.purified_gem": "Purified Gem",
 
   "command.shadowedhearts.shadow.description": "Shadow Pokémon admin commands.",
   "command.shadowedhearts.shadow.usage": "/shadow <set|corr|setPurified|setCorrupted|purify|corrupt> ...",
@@ -80,10 +83,14 @@
   "shadowedhearts.gui.purification_chamber.tempo": "Tempo",
   "shadowedhearts.gui.purification_chamber.flow": "Flow",
   "shadowedhearts.shadow.nickname_blocked": "This Pokémon resists nicknames while shrouded in shadow.",
-  "subtitles.shadowedhearts.shadow_spawn": "A shadow presence emerges"
-
-  ,"shadowedhearts.npc.one_time_trainer": "Challenger",
+  "subtitles.shadowedhearts.shadow_spawn": "A shadow presence emerges",
+  "subtitles.shadowedhearts.shadow_aura_loop": "A shadowy aura emanates from a Pokémon",
+  "subtitles.shadowedhearts.shadow_aura_initial_burst": "A Pokémon releases a burst of shadowy aura",
+  "shadowedhearts.npc.one_time_trainer": "Challenger",
   "tooltip.shadowedhearts.snag_machine.energy": "Energy: %d / %d",
   "tooltip.shadowedhearts.snag_machine.equippable.hand": "Equippable: Accessories Hand Slot",
-  "accessorify.slot.pauldron": "Pauldron"
+  "message.shadowedhearts.scent_cooldown": "You must wait %d seconds before using another scent on this Pokémon.",
+  "message.shadowedhearts.relic_stone.purified": "%s has been purified!",
+  "message.shadowedhearts.relic_stone.no_pokemon": "No Shadow Pokémon found nearby.",
+  "message.shadowedhearts.relic_stone.not_ready": "Nearby Shadow Pokémon are not ready for purification yet."
 }

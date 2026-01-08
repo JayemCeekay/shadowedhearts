@@ -3,7 +3,7 @@ package com.jayemceekay.shadowedhearts.mixin.rctmod;
 import com.gitlab.srcmc.rctmod.api.RCTMod;
 import com.gitlab.srcmc.rctmod.api.service.TrainerManager;
 import com.gitlab.srcmc.rctmod.world.entities.TrainerMob;
-import com.jayemceekay.shadowedhearts.config.ModConfig;
+import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs;
 import com.jayemceekay.shadowedhearts.server.NPCShadowInjector;
 import net.minecraft.world.entity.player.Player;
 import org.spongepowered.asm.mixin.Mixin;
@@ -11,6 +11,8 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
+import java.util.Collections;
+import java.util.List;
 import java.util.Locale;
 
 /**
@@ -29,8 +31,8 @@ public abstract class MixinRCTModMakeBattle {
     private void shadowedhearts$applyConfigDrivenRCTIntegration(TrainerMob mob, Player player, CallbackInfoReturnable<Boolean> cir) {
         try {
             // Read config
-            var cfg = ModConfig.get().rctIntegration;
-            if (cfg == null || !cfg.enabled) return;
+            var cfg = ShadowedHeartsConfigs.getInstance().getShadowConfig();
+            if (!cfg.rctIntegrationEnabled()) return;
 
             TrainerManager tm = RCTMod.getInstance().getTrainerManager();
             var tmd = tm.getData(mob);
@@ -41,63 +43,71 @@ public abstract class MixinRCTModMakeBattle {
             if (typeId == null) return;
             String trainerId = resolveTrainerIdentifier(tmd);
 
-            System.out.println("[ShadowedHearts] RCT Trainer Battle: type=" + typeId + ", id=" + trainerId);
-
             String typeIdLc = typeId.toLowerCase(Locale.ROOT);
             String trainerIdLc = trainerId == null ? null : trainerId.toLowerCase(Locale.ROOT);
 
             // Determine which section applies: specific trainer entry has priority; otherwise type-based lists.
             String section = null; // one of: append, replace, convert
-            ModConfig.RCTTrainerConfig chosenTrainer = null;
             String typePreset = null;
 
             // 1) replace section
-            if (cfg.replace != null) {
+            if (cfg.replace() != null) {
                 // trainers first
                 if (trainerIdLc != null) {
-                    for (ModConfig.RCTTrainerConfig t : cfg.replace.trainers) {
-                        if (t != null && t.id != null && trainerIdLc.equalsIgnoreCase(t.id)) {
-                            chosenTrainer = t; section = "replace"; }
+                    for (String tRaw : cfg.replace().trainers()) {
+                        String[] parts = tRaw.split(";");
+                        if (parts.length >= 1 && trainerIdLc.equalsIgnoreCase(parts[0])) {
+                            section = "replace";
+                        }
                     }
                 }
                 if (section == null) {
-                    typePreset = cfg.replace.typePresets.get(typeIdLc);
-                    boolean listed = typePreset != null || cfg.replace.trainerTypes.stream().anyMatch(s -> s != null && s.equalsIgnoreCase(typeIdLc));
-                    boolean blocked = cfg.replace.trainerBlacklist.stream().anyMatch(s -> s != null && s.equalsIgnoreCase(typeIdLc));
+                    boolean listed = cfg.replace().typePresets().stream().anyMatch(s -> s.startsWith(typeIdLc + "=")) ||
+                                     cfg.replace().trainerTypes().stream().anyMatch(s -> s != null && s.equalsIgnoreCase(typeIdLc));
+                    boolean blocked = cfg.replace().trainerBlacklist().stream().anyMatch(s -> s != null && s.equalsIgnoreCase(typeIdLc));
                     if (listed && !blocked) section = "replace";
-                    else typePreset = null;
                 }
             }
 
             // 2) append section
-            if (section == null && cfg.append != null) {
+            if (section == null && cfg.append() != null) {
                 if (trainerIdLc != null) {
-                    for (ModConfig.RCTTrainerConfig t : cfg.append.trainers) {
-                        if (t != null && t.id != null && trainerIdLc.equalsIgnoreCase(t.id)) {
-                            chosenTrainer = t; section = "append"; }
+                    for (String tRaw : cfg.append().trainers()) {
+                        String[] parts = tRaw.split(";");
+                        if (parts.length >= 1 && trainerIdLc.equalsIgnoreCase(parts[0])) {
+                            section = "append";
+                        }
                     }
                 }
                 if (section == null) {
-                    typePreset = cfg.append.typePresets.get(typeIdLc);
-                    boolean listed = typePreset != null || cfg.append.trainerTypes.stream().anyMatch(s -> s != null && s.equalsIgnoreCase(typeIdLc));
-                    boolean blocked = cfg.append.trainerBlacklist.stream().anyMatch(s -> s != null && s.equalsIgnoreCase(typeIdLc));
+                    typePreset = cfg.append().typePresets().stream()
+                            .filter(s -> s.startsWith(typeIdLc + "="))
+                            .map(s -> s.substring(typeIdLc.length() + 1))
+                            .findFirst().orElse(null);
+                    boolean listed = typePreset != null || cfg.append().trainerTypes().stream().anyMatch(s -> s != null && s.equalsIgnoreCase(typeIdLc));
+                    boolean blocked = cfg.append().trainerBlacklist().stream().anyMatch(s -> s != null && s.equalsIgnoreCase(typeIdLc));
                     if (listed && !blocked) section = "append";
                     else typePreset = null;
                 }
             }
 
             // 3) convert section
-            if (section == null && cfg.convert != null) {
+            if (section == null && cfg.convert() != null) {
                 if (trainerIdLc != null) {
-                    for (ModConfig.RCTTrainerConfig t : cfg.convert.trainers) {
-                        if (t != null && t.id != null && trainerIdLc.equalsIgnoreCase(t.id)) {
-                            chosenTrainer = t; section = "convert"; }
+                    for (String tRaw : cfg.convert().trainers()) {
+                        String[] parts = tRaw.split(";");
+                        if (parts.length >= 1 && trainerIdLc.equalsIgnoreCase(parts[0])) {
+                            section = "convert";
+                        }
                     }
                 }
                 if (section == null) {
-                    typePreset = cfg.convert.typePresets.get(typeIdLc);
-                    boolean listed = typePreset != null || cfg.convert.trainerTypes.stream().anyMatch(s -> s != null && s.equalsIgnoreCase(typeIdLc));
-                    boolean blocked = cfg.convert.trainerBlacklist.stream().anyMatch(s -> s != null && s.equalsIgnoreCase(typeIdLc));
+                    typePreset = cfg.convert().typePresets().stream()
+                            .filter(s -> s.startsWith(typeIdLc + "="))
+                            .map(s -> s.substring(typeIdLc.length() + 1))
+                            .findFirst().orElse(null);
+                    boolean listed = typePreset != null || cfg.convert().trainerTypes().stream().anyMatch(s -> s != null && s.equalsIgnoreCase(typeIdLc));
+                    boolean blocked = cfg.convert().trainerBlacklist().stream().anyMatch(s -> s != null && s.equalsIgnoreCase(typeIdLc));
                     if (listed && !blocked) section = "convert";
                     else typePreset = null;
                 }
@@ -109,19 +119,35 @@ public abstract class MixinRCTModMakeBattle {
             mob.addTag(NPCShadowInjector.TAG_ENABLE);
             // Default to converting/adding a single mon unless the config's custom tags override this
             boolean hasCount = false;
-            if (chosenTrainer != null) {
-                for (String tag : chosenTrainer.tags) {
-                    if (tag != null && !tag.isBlank()) {
-                        mob.addTag(tag);
-                        if (tag.startsWith(NPCShadowInjector.TAG_COUNT_PREFIX)) hasCount = true;
+            
+            // Re-resolve chosen trainer tags/presets from raw strings if specific trainer matched
+            if (trainerIdLc != null) {
+                List<? extends String> rawTrainers = Collections.emptyList();
+                if ("replace".equals(section)) rawTrainers = cfg.replace().trainers();
+                else if ("append".equals(section)) rawTrainers = cfg.append().trainers();
+                else if ("convert".equals(section)) rawTrainers = cfg.convert().trainers();
+
+                for (String tRaw : rawTrainers) {
+                    String[] parts = tRaw.split(";");
+                    if (parts.length >= 1 && trainerIdLc.equalsIgnoreCase(parts[0])) {
+                        if (parts.length >= 2 && !parts[1].isBlank()) {
+                            mob.addTag(NPCShadowInjector.TAG_PRESET_PREFIX + parts[1]);
+                            hasCount = true;
+                        }
+                        if (parts.length >= 3 && !parts[2].isBlank()) {
+                            for (String tag : parts[2].split(",")) {
+                                if (!tag.isBlank()) {
+                                    mob.addTag(tag);
+                                    if (tag.startsWith(NPCShadowInjector.TAG_COUNT_PREFIX)) hasCount = true;
+                                }
+                            }
+                        }
+                        break;
                     }
                 }
-                if (chosenTrainer.preset != null && !chosenTrainer.preset.isBlank()) {
-                    mob.addTag(NPCShadowInjector.TAG_PRESET_PREFIX + chosenTrainer.preset);
-                    // Presets usually define their own count; we only add shadow_n1 if no preset is present
-                    hasCount = true; 
-                }
-            } else if (typePreset != null) {
+            }
+
+            if (!hasCount && typePreset != null) {
                 mob.addTag(NPCShadowInjector.TAG_PRESET_PREFIX + typePreset);
                 hasCount = true;
             }

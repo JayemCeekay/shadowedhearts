@@ -1,0 +1,28 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "DND",
+    "RPR",
+    "DOD"
+  ],
+  "key": {
+    "P": {
+      "item": "shadowedhearts:snag_machine_prototype"
+    },
+    "D": {
+      "item": "minecraft:diamond"
+    },
+    "N": {
+      "item": "shadowedhearts:purified_gem"
+    },
+    "R": {
+      "item": "minecraft:redstone_block"
+    },
+    "O": {
+      "item": "minecraft:obsidian"
+    }
+  },
+  "result": {
+    "id": "shadowedhearts:snag_machine_advanced"
+  }
+}

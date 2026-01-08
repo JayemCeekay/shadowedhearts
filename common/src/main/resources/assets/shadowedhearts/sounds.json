@@ -7,5 +7,24 @@
         "volume": 1.0
       }
     ]
+  },
+  "shadow_aura_loop": {
+    "subtitle": "subtitles.shadowedhearts.shadow_aura_loop",
+    "sounds": [
+      {
+        "name": "shadowedhearts:shadow_aura_loop",
+        "stream": false,
+        "volume": 1.0
+      }
+    ]
+  },
+  "shadow_aura_initial_burst": {
+    "subtitle": "subtitles.shadowedhearts.shadow_aura_initial_burst",
+    "sounds": [
+      {
+        "name": "shadowedhearts:shadow_aura_initial_burst",
+        "volume": 1.0
+      }
+    ]
   }
 }

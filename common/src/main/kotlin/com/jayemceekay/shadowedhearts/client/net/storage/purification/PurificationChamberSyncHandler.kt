@@ -25,7 +25,6 @@ object PurificationChamberSyncHandler : ClientNetworkPacketHandler<PurificationC
                     mon
                 )
             } catch (t: Throwable) {
-                System.out.println("[ShadowedHearts][PurificationChamberSyncHandler] Failed to load Pokémon from NBT: ${t.message}")
             }
         }
     }

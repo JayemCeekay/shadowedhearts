@@ -3,10 +3,10 @@ module.exports = `
     "call": function(pokemon) {
         this.add('call', pokemon.getSlot());
         let success = false;
-        const config = this.dex.data.Scripts.shadowedhearts_config?.Config || {
-            callButton: { accuracyBoost: true, removeSleep: true }
+        const config = this.dex.data.Scripts.shadowedhearts?.Config || {
+            callButton: { accuracyBoost: false, removeSleep: false }
         };
-
+  
         if (pokemon.volatiles['hypermode']) {
             this.add('sh_message', 'cobblemon.battle.hypermode.calm', pokemon.getSlot());
             pokemon.removeVolatile('hypermode');

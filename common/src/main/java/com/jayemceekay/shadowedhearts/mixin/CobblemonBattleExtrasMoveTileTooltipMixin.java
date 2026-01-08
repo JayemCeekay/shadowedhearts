@@ -21,14 +21,14 @@ public abstract class CobblemonBattleExtrasMoveTileTooltipMixin {
     ) {
         BattleMoveSelection.MoveTile self = (BattleMoveSelection.MoveTile) (Object) this;
 
-        if (shadowedhearts$shouldMask(self)) {
+        if (shadowedhearts$shouldMaskTooltip(self)) {
             // Cancel the call to prevent the tooltip from rendering
             return;
         }
         original.call(context, tooltipX, tooltipY);
     }
 
-    private static boolean shadowedhearts$shouldMask(BattleMoveSelection.MoveTile self) {
+    private static boolean shadowedhearts$shouldMaskTooltip(BattleMoveSelection.MoveTile self) {
         InBattleMove m = self.getMove();
         var pokemon = self.getPokemon();
         if (m == null || pokemon == null) return false;

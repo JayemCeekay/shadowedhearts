@@ -1,6 +1,6 @@
 package com.jayemceekay.shadowedhearts;
 
-import com.jayemceekay.shadowedhearts.config.ModConfig;
+import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs;
 import com.jayemceekay.shadowedhearts.showdown.ShowdownRuntimePatcher;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
@@ -15,7 +15,9 @@ public class ShadowedHeartsCommands {
                 .then(Commands.literal("reloadConfigs")
                         .executes(ctx -> {
                             try {
-                                ModConfig.load();
+                                ShadowedHeartsConfigs.getInstance().getShadowConfig().load();
+                                ShadowedHeartsConfigs.getInstance().getSnagConfig().load();
+                                ShadowedHeartsConfigs.getInstance().getTrainerSpawnConfig().load();
                                 ShowdownRuntimePatcher.injectDynamicData();
                                 ctx.getSource().sendSuccess(() -> Component.literal("Shadowed Hearts configurations reloaded successfully."), true);
                                 return 1;

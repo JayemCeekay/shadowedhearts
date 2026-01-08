@@ -10,12 +10,15 @@ import com.cobblemon.mod.common.api.moves.Moves;
 import com.cobblemon.mod.common.api.pokemon.PokemonProperties;
 import com.cobblemon.mod.common.api.pokemon.evolution.PreEvolution;
 import com.cobblemon.mod.common.battles.pokemon.BattlePokemon;
+import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
 import com.cobblemon.mod.common.pokemon.Pokemon;
 import com.cobblemon.mod.common.pokemon.properties.UncatchableProperty;
 import com.cobblemon.mod.common.pokemon.requirements.LevelRequirement;
 import com.jayemceekay.shadowedhearts.AspectHolder;
 import com.jayemceekay.shadowedhearts.PokemonAspectUtil;
 import com.jayemceekay.shadowedhearts.SHAspects;
+import com.jayemceekay.shadowedhearts.config.ModConfig;
+import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs;
 import com.jayemceekay.shadowedhearts.data.ShadowAspectPresets;
 import com.jayemceekay.shadowedhearts.data.ShadowPools;
 import kotlin.Unit;
@@ -80,8 +83,11 @@ public final class NPCShadowInjector {
                             }
                         } catch (Throwable ignored) {}
                         Entity entity = ebActor.getEntity();
-                        System.out.println("[ShadowedHearts] Battle started with actor: " + ba.getName().getString() + " (Entity: " + (entity != null ? entity.getType().getDescriptionId() : "null") + ") | UUID: " + (entity != null ? entity.getUUID() : "null") + " | Salt: " + battleSalt);
+                        if(ebActor.getEntity() instanceof PokemonEntity) {
+                            return;
+                        }
                         // Expand any preset aspects present on the NPC into their concrete lists
+
                         expandPresetAspects(entity);
                         Set<String> allTraits = new HashSet<>(entity.getTags());
                         if (entity instanceof AspectHolder holder) {
@@ -96,7 +102,6 @@ public final class NPCShadowInjector {
                         final Mode mode = readMode(allTraits);
                         final LevelPolicy lvl = readLevelPolicy(allTraits, ba);
                         final ResourceLocation poolId = readPoolId(allTraits);
-                        System.out.println(poolId);
                         final boolean unique = allTraits.contains(TAG_UNIQUE);
                         final int convertChance = readConvertChance(allTraits);
                         final boolean enforceMinEvo = allTraits.contains(TAG_LVL_ENFORCE_EVO_MIN);
@@ -113,6 +118,7 @@ public final class NPCShadowInjector {
             } catch (Throwable ignored) {
                 ignored.printStackTrace();
             }
+
             return Unit.INSTANCE;
         });
     }
@@ -230,7 +236,6 @@ public final class NPCShadowInjector {
             forceShadow(p);
             PokemonAspectUtil.ensureRequiredShadowAspects(p);
             assignShadowMoves(p, rng);
-            System.out.println("Forced Shadow Aspect on " + p.getDisplayName(false).getString() + " at slot " + idx);
             converted++;
             if (converted >= count) break;
         }
@@ -320,6 +325,7 @@ public final class NPCShadowInjector {
                 continue;
             }
             PokemonAspectUtil.ensureRequiredShadowAspects(p);
+            assignShadowMoves(p, makeRng(entity, battleSalt + i));
             // If unique, avoid duplicating species already present after injection
             if (unique && speciesAlreadyPresent(list, safeSpeciesId(p))) {
                 // skip adding this one; try next source slot
@@ -496,6 +502,7 @@ public final class NPCShadowInjector {
                 Pokemon p = bp.getEffectedPokemon();
                 forceShadow(p);
                 PokemonAspectUtil.ensureRequiredShadowAspects(p);
+                assignShadowMoves(p, makeRng(entity, battleSalt + entries.indexOf(props))); // Use props index as salt offset
                 p.setOriginalTrainer("?????");
                 out.add(bp);
             }
@@ -557,19 +564,23 @@ public final class NPCShadowInjector {
     // === Shadow move assignment for converted Pokémon (convert mode) ===
     private static void assignShadowMoves(Pokemon pokemon, Random rng) {
         if (pokemon == null) return;
-        // Pick 1 or 2 distinct shadow moves
-        int count = 1 + (rng == null ? new Random() : rng).nextInt(2); // 1..2
-        String first = pickShadow(null, null, rng);
-        String second = count == 2 ? pickShadow(null, first, rng) : null;
-
-        // Place into slots 0 and 1 (do not clear other known moves)
-        if (first != null) {
-            var tmpl = Moves.INSTANCE.getByNameOrDummy(first);
+        if (ShadowedHeartsConfigs.getInstance().getShadowConfig().shadowMovesOnlyShadowRush()) {
+            var tmpl = Moves.INSTANCE.getByNameOrDummy("shadowrush");
             pokemon.getMoveSet().setMove(0, tmpl.create(tmpl.getPp(), 0));
+            return;
         }
-        if (second != null) {
-            var tmpl = Moves.INSTANCE.getByNameOrDummy(second);
-            pokemon.getMoveSet().setMove(1, tmpl.create(tmpl.getPp(), 0));
+
+        Random r = (rng == null ? new Random() : rng);
+        int count = ModConfig.resolveReplaceCount(r);
+        List<String> pool = new ArrayList<>(Arrays.asList(SHADOW_IDS));
+
+        for (int i = 0; i < Math.min(count, 4); i++) {
+            String moveId = (i == 0) ? "shadowrush" : pickShadow(pool, null, r);
+            if (moveId != null) {
+                var tmpl = Moves.INSTANCE.getByNameOrDummy(moveId);
+                pokemon.getMoveSet().setMove(i, tmpl.create(tmpl.getPp(), 0));
+                pool.remove(moveId);
+            }
         }
     }
 

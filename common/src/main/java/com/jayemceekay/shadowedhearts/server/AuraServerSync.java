@@ -8,13 +8,9 @@ import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
 import com.cobblemon.mod.common.pokemon.Pokemon;
 import com.jayemceekay.shadowedhearts.PokemonAspectUtil;
 import com.jayemceekay.shadowedhearts.network.ShadowedHeartsNetworkingUtils;
-import dev.architectury.event.events.common.TickEvent;
 import kotlin.Unit;
-import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.level.ServerLevel;
 
 import java.lang.ref.WeakReference;
-import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -48,8 +44,23 @@ public final class AuraServerSync {
             TRACKING.put(pe.getId(), new WeakReference<>(pe));
             // Notify clients tracking this entity to start rendering the aura
             ShadowedHeartsNetworkingUtils.broadcastAuraStartToTracking(pe);
+            ShadowedHeartsNetworkingUtils.broadcastLuminousMoteToTracking(pe);
             return Unit.INSTANCE;
         });
+
+        // Track wild shadow spawns
+        CobblemonEvents.POKEMON_ENTITY_SPAWN.subscribe(Priority.LOWEST, (e) -> {
+            var pe = e.getEntity();
+            if (pe == null || pe.level().isClientSide()) return Unit.INSTANCE;
+            if (PokemonAspectUtil.hasShadowAspect(pe.getPokemon())) {
+                TRACKING.put(pe.getId(), new WeakReference<>(pe));
+                // We don't broadcast START here because listeners (like WildShadowSpawnListener)
+                // might want to broadcast a specialized one. The tick loop will pick it up
+                // for regular updates if it's missing.
+            }
+            return Unit.INSTANCE;
+        });
+
         CobblemonEvents.POKEMON_RECALL_PRE.subscribe(Priority.NORMAL, (PokemonRecallEvent.Pre e) -> {
             var pe = e.getOldEntity();
             if (pe == null || pe.level().isClientSide()) return Unit.INSTANCE;
@@ -60,10 +71,27 @@ public final class AuraServerSync {
         });
 
         // Server tick: broadcast states and prune entries
-        TickEvent.SERVER_POST.register(AuraServerSync::onServerTick);
+       // TickEvent.SERVER_POST.register(AuraServerSync::onServerTick);
     }
 
-    private static void onServerTick(MinecraftServer server) {
+    /*private static void onServerTick(MinecraftServer server) {
+        // Automatically discover untracked Shadow Pokémon in all levels
+        for (ServerLevel level : server.getAllLevels()) {
+            for (Entity e : level.getAllEntities()) {
+                if (e instanceof PokemonEntity pe && pe.isAlive()) {
+                    if (PokemonAspectUtil.hasShadowAspect(pe.getPokemon())) {
+                        if (!TRACKING.containsKey(pe.getId())) {
+                            TRACKING.put(pe.getId(), new WeakReference<>(pe));
+                            // If it's a wild spawn or already in world, it might need an initial broadcast
+                            // but we usually want the specialized one from SpawnListener if it just spawned.
+                            // This serves as a safety catch-all.
+                            ShadowedHeartsNetworkingUtils.broadcastAuraStartToTracking(pe);
+                        }
+                    }
+                }
+            }
+        }
+
         Iterator<Map.Entry<Integer, WeakReference<PokemonEntity>>> it = TRACKING.entrySet().iterator();
         while (it.hasNext()) {
             var en = it.next();
@@ -91,5 +119,5 @@ public final class AuraServerSync {
                 it.remove();
             }
         }
-    }
+    }*/
 }

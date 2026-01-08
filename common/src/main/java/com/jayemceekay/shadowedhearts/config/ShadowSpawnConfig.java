@@ -4,12 +4,9 @@ import com.cobblemon.mod.common.pokemon.Pokemon;
 import com.cobblemon.mod.common.pokemon.Species;
 import com.jayemceekay.shadowedhearts.server.SpeciesTagManager;
 
+import java.util.List;
 import java.util.Locale;
 
-/**
- * Global config facade for wild Shadow spawn chance and blacklist.
- * Values are now read from ModConfig (shadowedhearts-common.json).
- */
 public final class ShadowSpawnConfig {
     private ShadowSpawnConfig() {}
 
@@ -31,7 +28,7 @@ public final class ShadowSpawnConfig {
 
 
     public static double getChancePercent() {
-        return ModConfig.getShadowSpawnChancePercent();
+        return ShadowedHeartsConfigs.getInstance().getShadowConfig().shadowSpawnChancePercent();
     }
 
     public static boolean isBlacklisted(Pokemon pokemon) {
@@ -44,7 +41,7 @@ public final class ShadowSpawnConfig {
         if (species == null) return false;
         String full = keyFor(species);
         String alt = altKeyFor(species);
-        var bl = ModConfig.getShadowSpawnBlacklist();
+        List<? extends String> bl = ShadowedHeartsConfigs.getInstance().getShadowConfig().shadowSpawnBlacklist();
 
         for (String entry : bl) {
             if (entry.startsWith("#")) {

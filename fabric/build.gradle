@@ -44,6 +44,10 @@ repositories {
             includeGroup "curse.maven"
         }
     }
+    maven {
+        name = "Fuzs Mod Resources"
+        url = "https://raw.githubusercontent.com/Fuzss/modresources/main/maven/"
+    }
 }
 
 dependencies {
@@ -65,6 +69,8 @@ dependencies {
 
     modCompileOnly("curse.maven:radical-cobblemon-trainers-api-1152792:7319961")
     modCompileOnly("dragomordor.simpletms:simpletms-fabric:2.3.0")
+
+    modImplementation "fuzs.forgeconfigapiport:forgeconfigapiport-fabric:${fcap_version}"
 }
 
 processResources {

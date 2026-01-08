@@ -26,15 +26,31 @@ object ShadowedHeartsNetworkingUtils {
     }
 
     @JvmStatic
-    fun broadcastAuraStartToTracking(entity: Entity) {
+    @JvmOverloads
+    fun broadcastAuraStartToTracking(entity: Entity, heightMultiplier: Float = 1.0f, sustainOverride: Int = -1) {
         if (entity is PokemonEntity) {
             val pkt = AuraLifecyclePacket(
                 entity.id, AuraLifecyclePacket.Action.START, 0,
                 entity.x, entity.y, entity.z,
                 entity.knownMovement.x, entity.knownMovement.y, entity.knownMovement.z,
                 entity.bbWidth, entity.bbHeight, entity.boundingBox.size,
-                PokemonAspectUtil.getHeartGauge(entity.pokemon)
+                PokemonAspectUtil.getHeartGauge(entity.pokemon),
+                heightMultiplier,
+                sustainOverride
             )
+            if (entity.level() is ServerLevel) {
+                val level = entity.level() as ServerLevel
+                for (sp in level.players()) {
+                    ShadowedHeartsNetwork.sendToPlayer(sp, pkt)
+                }
+            }
+        }
+    }
+
+    @JvmStatic
+    fun broadcastLuminousMoteToTracking(entity: Entity) {
+        if (entity is PokemonEntity) {
+            val pkt = LuminousMotePacket(entity.id)
             if (entity.level() is ServerLevel) {
                 val level = entity.level() as ServerLevel
                 for (sp in level.players()) {

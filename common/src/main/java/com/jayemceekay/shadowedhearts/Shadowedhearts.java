@@ -3,7 +3,8 @@ package com.jayemceekay.shadowedhearts;
 import com.cobblemon.mod.common.Cobblemon;
 import com.cobblemon.mod.common.api.types.ElementalType;
 import com.cobblemon.mod.common.api.types.ElementalTypes;
-import com.jayemceekay.shadowedhearts.config.ModConfig;
+import com.jayemceekay.shadowedhearts.client.particle.LuminousMoteEmitters;
+import com.jayemceekay.shadowedhearts.config.HeartGaugeConfig;
 import com.jayemceekay.shadowedhearts.core.*;
 import com.jayemceekay.shadowedhearts.integration.accessories.SnagAccessoryBridgeHolder;
 import com.jayemceekay.shadowedhearts.properties.ShadowPropertyRegistration;
@@ -20,10 +21,8 @@ public final class Shadowedhearts {
     public static final String MOD_ID = "shadowedhearts";
 
     public static void init() {
-        // Load config first
-        ModConfig.load();
-
-        // Common init across platforms
+        // ModConfig.load() and SnagConfig.load() are now handled by platform-specific config registration
+        System.out.println("[ShadowedHearts] Initializing mod...");
         ModItemComponents.init();
         ModBlocks.init();
         ModItems.init();
@@ -43,8 +42,11 @@ public final class Shadowedhearts {
         PurificationStepTracker.INSTANCE.init();
         BattleSentOnceListener.INSTANCE.init();
         WildShadowSpawnListener.init();
+        AuraBroadcastQueue.init();
+        ShadowDropListener.init();
         NPCShadowInjector.init();
-
+        LuminousMoteEmitters.init();
+        HeartGaugeConfig.ensureLoaded();
         ReloadListenerRegistry.register(PackType.SERVER_DATA, SpeciesTagManager.INSTANCE);
 
         ElementalTypes.register(new ElementalType(

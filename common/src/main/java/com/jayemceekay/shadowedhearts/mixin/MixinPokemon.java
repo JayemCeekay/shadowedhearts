@@ -42,7 +42,7 @@ public abstract class MixinPokemon {
 
     }
 
-    @Inject(method = "setFriendship", at = @At("HEAD"), cancellable = true)
+    @Inject(method = "setFriendship(IZ)Z", at = @At("HEAD"), cancellable = true)
     public void shadowedhearts$preventSetFriendship(int value, boolean coerceSafe, CallbackInfoReturnable<Boolean> cir) {
         if (((Pokemon) (Object) this).getAspects().contains(SHAspects.SHADOW)) {
             cir.setReturnValue(false);
@@ -62,9 +62,6 @@ public abstract class MixinPokemon {
             cir.setReturnValue(false);
         }
     }
-
-
-
 
     /*@Inject(method = "updateMovesOnFormChange", at = @At("HEAD"), cancellable = true)
     private void shadowedhearts$preventShadowMoveRemovalOnFormChange(FormData newForm, CallbackInfo ci) {

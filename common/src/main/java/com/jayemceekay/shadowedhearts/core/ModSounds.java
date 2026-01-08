@@ -18,6 +18,16 @@ public final class ModSounds {
             () -> SoundEvent.createFixedRangeEvent(ResourceLocation.fromNamespaceAndPath(Shadowedhearts.MOD_ID, "shadow_spawn"), 64.0f)
     );
 
+    public static final RegistrySupplier<SoundEvent> SHADOW_AURA_INITIAL_BURST = SOUNDS.register(
+            "shadow_aura_initial_burst",
+            () -> SoundEvent.createFixedRangeEvent(ResourceLocation.fromNamespaceAndPath(Shadowedhearts.MOD_ID, "shadow_aura_initial_burst"), 64.0f)
+    );
+
+    public static final RegistrySupplier<SoundEvent> SHADOW_AURA_LOOP = SOUNDS.register(
+            "shadow_aura_loop",
+            () -> SoundEvent.createFixedRangeEvent(ResourceLocation.fromNamespaceAndPath(Shadowedhearts.MOD_ID, "shadow_aura_loop"), 24.0f)
+    );
+
     public static void init() {
         SOUNDS.register();
     }

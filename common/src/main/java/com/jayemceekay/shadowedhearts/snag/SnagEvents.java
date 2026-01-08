@@ -8,6 +8,8 @@ import com.cobblemon.mod.common.api.events.CobblemonEvents;
 import com.cobblemon.mod.common.api.events.battles.BattleVictoryEvent;
 import com.cobblemon.mod.common.battles.BattleRegistry;
 import com.cobblemon.mod.common.battles.actor.PlayerBattleActor;
+import com.jayemceekay.shadowedhearts.config.ISnagConfig;
+import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs;
 import com.jayemceekay.shadowedhearts.network.ShadowedHeartsNetwork;
 import com.jayemceekay.shadowedhearts.network.SnagArmedPacket;
 import com.jayemceekay.shadowedhearts.network.SnagEligibilityPacket;
@@ -26,10 +28,11 @@ public final class SnagEvents {
 
         // Recharge Snag Machines on battle victory, scaled by defeated opponents' difficulty
         CobblemonEvents.BATTLE_VICTORY.subscribe(Priority.NORMAL, (BattleVictoryEvent e) -> {
-            if (!SnagConfig.RECHARGE_ON_VICTORY) return kotlin.Unit.INSTANCE;
+            ISnagConfig cfg = ShadowedHeartsConfigs.getInstance().getSnagConfig();
+            if (!cfg.rechargeOnVictory()) return kotlin.Unit.INSTANCE;
             var battle = e.getBattle();
             if (battle == null) return kotlin.Unit.INSTANCE;
-            if (battle.isPvP() && !SnagConfig.RECHARGE_IN_PVP) return kotlin.Unit.INSTANCE;
+            if (battle.isPvP() && !cfg.rechargeInPvp()) return kotlin.Unit.INSTANCE;
 
             // Compute difficulty from non-player losers
             int nonPlayerActorCount = 0;
@@ -59,11 +62,11 @@ public final class SnagEvents {
             }
 
             double avgLevel = levelCount > 0 ? (double) levelSum / (double) levelCount : 1.0;
-            double raw = SnagConfig.RECHARGE_BASE
-                    + (avgLevel * SnagConfig.RECHARGE_PER_LEVEL)
-                    + (nonPlayerActorCount * SnagConfig.RECHARGE_PER_NPC);
+            double raw = cfg.rechargeBase()
+                    + (avgLevel * cfg.rechargePerLevel())
+                    + (nonPlayerActorCount * cfg.rechargePerNpc());
             int award = (int) Math.round(raw);
-            award = Math.max(SnagConfig.RECHARGE_MIN, Math.min(award, SnagConfig.RECHARGE_MAX));
+            award = Math.max(cfg.rechargeMin(), Math.min(award, cfg.rechargeMax()));
             if (award <= 0) return kotlin.Unit.INSTANCE;
 
             // Award to each winning player with a Snag Machine

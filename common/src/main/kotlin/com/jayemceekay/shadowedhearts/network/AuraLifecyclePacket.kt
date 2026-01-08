@@ -18,7 +18,9 @@ data class AuraLifecyclePacket(
     @get:JvmName("getBbw") val bbw: Float,
     @get:JvmName("getBbh") val bbh: Float,
     @get:JvmName("getBbs") val bbs: Double,
-    @get:JvmName("getCorruption") val corruption: Float
+    @get:JvmName("getCorruption") val corruption: Float,
+    @get:JvmName("getHeightMultiplier") val heightMultiplier: Float = 1.0f,
+    @get:JvmName("getSustainOverride") val sustainOverride: Int = -1
 ) : NetworkPacket<AuraLifecyclePacket> {
     override val id: ResourceLocation = ID
 
@@ -36,6 +38,8 @@ data class AuraLifecyclePacket(
         buf.writeFloat(bbh)
         buf.writeDouble(bbs)
         buf.writeFloat(corruption)
+        buf.writeFloat(heightMultiplier)
+        buf.writeVarInt(sustainOverride)
     }
 
     enum class Action {
@@ -60,7 +64,9 @@ data class AuraLifecyclePacket(
                 buf.readFloat(),
                 buf.readFloat(),
                 buf.readDouble(),
-                buf.readFloat()
+                buf.readFloat(),
+                buf.readFloat(),
+                buf.readVarInt()
             )
         }
     }

@@ -1,10 +1,14 @@
 package com.jayemceekay.shadowedhearts;
 
 import com.cobblemon.mod.common.Cobblemon;
+import com.cobblemon.mod.common.command.argument.PokemonPropertiesArgumentType;
 import com.cobblemon.mod.common.entity.npc.NPCEntity;
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
 import com.cobblemon.mod.common.pokemon.Pokemon;
+import com.jayemceekay.shadowedhearts.config.HeartGaugeConfig;
 import com.jayemceekay.shadowedhearts.heart.HeartGaugeEvents;
+import com.jayemceekay.shadowedhearts.server.AuraBroadcastQueue;
+import com.jayemceekay.shadowedhearts.server.WildShadowSpawnListener;
 import com.jayemceekay.shadowedhearts.storage.purification.PurificationChamberStore;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
@@ -15,6 +19,8 @@ import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.MobSpawnType;
+import net.minecraft.world.level.Level;
 
 import java.io.File;
 import java.io.FileWriter;
@@ -268,43 +274,81 @@ public class ShadowCommands {
                                             ctx.getSource().sendSuccess(() -> Component.literal("Purified " + pk.getSpecies().getName() + " in " + player.getScoreboardName() + "'s party"), true);
                                             return 1;
                                         })))
-                .then(Commands.literal("aspects")
-                        .then(Commands.argument("slot", IntegerArgumentType.integer(1, 6))
+                        .then(Commands.literal("aspects")
+                                .then(Commands.argument("slot", IntegerArgumentType.integer(1, 6))
+                                        .executes(ctx -> {
+                                            ServerPlayer player;
+                                            try {
+                                                player = ctx.getSource().getPlayerOrException();
+                                            } catch (Exception ex) {
+                                                ctx.getSource().sendFailure(Component.literal("Must be a player to use this command"));
+                                                return 0;
+                                            }
+
+                                            int slot = IntegerArgumentType.getInteger(ctx, "slot") - 1;
+                                            var party = Cobblemon.INSTANCE.getStorage().getParty(player);
+                                            Pokemon pk = party.get(slot);
+                                            if (pk == null) {
+                                                ctx.getSource().sendFailure(Component.literal("No Pokemon in slot " + (slot + 1)));
+                                                return 0;
+                                            }
+
+                                            Set<String> aspects = pk.getAspects();
+                                            String filename = "aspects_" + player.getScoreboardName() + "_slot" + (slot + 1) + ".txt";
+                                            File file = new File(filename);
+
+                                            try (PrintWriter writer = new PrintWriter(new FileWriter(file))) {
+                                                writer.println("Aspects for " + pk.getSpecies().getName() + " (Slot " + (slot + 1) + ") owned by " + player.getScoreboardName());
+                                                writer.println("Total aspects: " + aspects.size());
+                                                writer.println("------------------------------------------");
+                                                for (String aspect : aspects) {
+                                                    writer.println(aspect);
+                                                }
+                                                ctx.getSource().sendSuccess(() -> Component.literal("Saved " + aspects.size() + " aspects to " + filename), true);
+                                                return 1;
+                                            } catch (IOException e) {
+                                                ctx.getSource().sendFailure(Component.literal("Failed to write to file: " + e.getMessage()));
+                                                return 0;
+                                            }
+                                        }))))
+                .then(Commands.literal("spawn")
+                        .then(Commands.argument("properties", PokemonPropertiesArgumentType.Companion.properties())
                                 .executes(ctx -> {
-                                    ServerPlayer player;
+                                    var pos = ctx.getSource().getPosition();
+                                    var world = ctx.getSource().getLevel();
+                                    var blockPos = net.minecraft.core.BlockPos.containing(pos);
+                                    if (!Level.isInSpawnableBounds(blockPos)) {
+                                        ctx.getSource().sendFailure(Component.literal("Invalid position"));
+                                        return 0;
+                                    }
+                                    var properties = PokemonPropertiesArgumentType.Companion.getPokemonProperties(ctx, "properties");
+                                    if (!properties.hasSpecies()) {
+                                        ctx.getSource().sendFailure(Component.literal("No species specified"));
+                                        return 0;
+                                    }
                                     try {
-                                        player = ctx.getSource().getPlayerOrException();
-                                    } catch (Exception ex) {
-                                        ctx.getSource().sendFailure(Component.literal("Must be a player to use this command"));
-                                        return 0;
-                                    }
+                                        PokemonEntity pokemonEntity = properties.createEntity(world, null);
+                                        pokemonEntity.moveTo(pos.x, pos.y, pos.z, pokemonEntity.getYRot(), pokemonEntity.getXRot());
+                                        pokemonEntity.getEntityData().set(PokemonEntity.Companion.getSPAWN_DIRECTION(), pokemonEntity.getRandom().nextFloat() * 360F);
+                                        pokemonEntity.finalizeSpawn(world, world.getCurrentDifficultyAt(blockPos), MobSpawnType.COMMAND, null);
+                                        if (world.addFreshEntity(pokemonEntity)) {
+                                            Pokemon pokemon = pokemonEntity.getPokemon();
+                                            ShadowService.setShadow(pokemon, pokemonEntity, true);
+                                            ShadowService.setHeartGauge(pokemon, pokemonEntity, HeartGaugeConfig.getMax(pokemon));
+                                            PokemonAspectUtil.ensureRequiredShadowAspects(pokemon);
+                                            WildShadowSpawnListener.assignShadowMoves(pokemon);
+                                            AuraBroadcastQueue.queueBroadcast(pokemonEntity, 2.5f, 200);
 
-                                    int slot = IntegerArgumentType.getInteger(ctx, "slot") - 1;
-                                    var party = Cobblemon.INSTANCE.getStorage().getParty(player);
-                                    Pokemon pk = party.get(slot);
-                                    if (pk == null) {
-                                        ctx.getSource().sendFailure(Component.literal("No Pokemon in slot " + (slot + 1)));
-                                        return 0;
-                                    }
-
-                                    Set<String> aspects = pk.getAspects();
-                                    String filename = "aspects_" + player.getScoreboardName() + "_slot" + (slot + 1) + ".txt";
-                                    File file = new File(filename);
-
-                                    try (PrintWriter writer = new PrintWriter(new FileWriter(file))) {
-                                        writer.println("Aspects for " + pk.getSpecies().getName() + " (Slot " + (slot + 1) + ") owned by " + player.getScoreboardName());
-                                        writer.println("Total aspects: " + aspects.size());
-                                        writer.println("------------------------------------------");
-                                        for (String aspect : aspects) {
-                                            writer.println(aspect);
+                                            ctx.getSource().sendSuccess(() -> Component.literal("Spawned Shadow " + pokemon.getSpecies().getName()), true);
+                                            return 1;
                                         }
-                                        ctx.getSource().sendSuccess(() -> Component.literal("Saved " + aspects.size() + " aspects to " + filename), true);
-                                        return 1;
-                                    } catch (IOException e) {
-                                        ctx.getSource().sendFailure(Component.literal("Failed to write to file: " + e.getMessage()));
+                                        ctx.getSource().sendFailure(Component.literal("Unable to spawn at the given position"));
+                                        return 0;
+                                    } catch (Exception e) {
+                                        e.printStackTrace();
+                                        ctx.getSource().sendFailure(Component.literal("Failed to spawn: " + e.getMessage()));
                                         return 0;
                                     }
-                                })))
-                );
+                                })));
     }
 }

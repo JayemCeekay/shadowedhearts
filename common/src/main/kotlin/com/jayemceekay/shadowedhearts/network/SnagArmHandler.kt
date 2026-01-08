@@ -1,6 +1,7 @@
 package com.jayemceekay.shadowedhearts.network
 
 import com.cobblemon.mod.common.api.net.ServerNetworkPacketHandler
+import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs
 import com.jayemceekay.shadowedhearts.snag.*
 import net.minecraft.network.chat.Component
 import net.minecraft.server.MinecraftServer
@@ -29,9 +30,10 @@ object SnagArmHandler : ServerNetworkPacketHandler<SnagArmPacket> {
 
                 // Prevent arming if there isn't enough energy for an attempt
                 val currentEnergy = SnagCaps.get(player).energy()
-                val required = SnagConfig.ENERGY_PER_ATTEMPT
+                val cfg = ShadowedHeartsConfigs.getInstance().snagConfig
+                val required = cfg.energyPerAttempt()
                 if (currentEnergy < required) {
-                    cap.setCooldown(SnagConfig.TOGGLE_COOLDOWN_TICKS)
+                    cap.setCooldown(cfg.toggleCooldownTicks())
                     player.sendSystemMessage(
                         Component.translatable(
                             "message.shadowedhearts.snag_machine.not_enough_energy",
@@ -42,13 +44,14 @@ object SnagArmHandler : ServerNetworkPacketHandler<SnagArmPacket> {
                 }
 
                 cap.isArmed = true
-                cap.setCooldown(SnagConfig.TOGGLE_COOLDOWN_TICKS)
+                cap.setCooldown(cfg.toggleCooldownTicks())
                 ShadowedHeartsNetwork.sendToPlayer(player, SnagArmedPacket(true))
             }
         } else {
             // Disarm request — allowed anytime; no cost
+            val cfg = ShadowedHeartsConfigs.getInstance().snagConfig
             cap.isArmed = false
-            cap.setCooldown(SnagConfig.TOGGLE_COOLDOWN_TICKS)
+            cap.setCooldown(cfg.toggleCooldownTicks())
             ShadowedHeartsNetwork.sendToPlayer(player, SnagArmedPacket(false))
         }
     }

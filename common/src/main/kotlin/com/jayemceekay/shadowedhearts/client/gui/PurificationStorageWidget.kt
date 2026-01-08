@@ -811,12 +811,10 @@ class PurificationStorageWidget(
                         matrices.pushPose()
 
                         var zTranslation = 0.0
-                        if (centerProj != null) {
-                            if (centerProj.screenY > orb.screenY) {
-                                zTranslation = -350.0
-                            } else {
-                                zTranslation = 350.0
-                            }
+                        zTranslation = if (centerProj.screenY > orb.screenY) {
+                            -350.0
+                        } else {
+                            350.0
                         }
                         // Place the Pokémon roughly centered over the platform and lifted a bit.
                         val lift =

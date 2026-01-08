@@ -4,13 +4,16 @@ import com.cobblemon.mod.common.api.moves.*;
 import com.cobblemon.mod.common.api.pokemon.stats.Stat;
 import com.cobblemon.mod.common.api.pokemon.stats.Stats;
 import com.cobblemon.mod.common.net.messages.client.pokemon.update.AspectsUpdatePacket;
-import com.cobblemon.mod.common.net.messages.client.pokemon.update.BenchedMovesUpdatePacket;
 import com.cobblemon.mod.common.net.messages.client.pokemon.update.MoveSetUpdatePacket;
 import com.cobblemon.mod.common.pokemon.Pokemon;
+import com.jayemceekay.shadowedhearts.config.HeartGaugeConfig;
+import com.jayemceekay.shadowedhearts.config.IShadowConfig;
 import com.jayemceekay.shadowedhearts.config.ModConfig;
+import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs;
 import com.jayemceekay.shadowedhearts.network.PokemonPropertyUpdatePacket;
 import com.jayemceekay.shadowedhearts.property.EVBufferProperty;
 import com.jayemceekay.shadowedhearts.property.HeartGaugeProperty;
+import com.jayemceekay.shadowedhearts.property.ScentCooldownProperty;
 import com.jayemceekay.shadowedhearts.property.XPBufferProperty;
 import kotlin.jvm.functions.Function0;
 import net.minecraft.util.Mth;
@@ -29,6 +32,7 @@ public final class PokemonAspectUtil {
     private static final String NBT_HEART_GAUGE = "shadowedhearts:heartgauge";
     private static final String NBT_XP_BUF = "shadowedhearts:xpbuf";
     private static final String NBT_EV_BUF = "shadowedhearts:evbuf";
+    private static final String NBT_SCENT_COOLDOWN = "shadowedhearts:scent_cooldown";
 
     /**
      * Add/remove the Shadow aspect on the Pokemon’s stored data.
@@ -50,7 +54,9 @@ public final class PokemonAspectUtil {
     }
 
     private static void replaceMovesWithShadowMoves(Pokemon pokemon) {
-        int replaceCount = ModConfig.get().shadowMoves.replaceCount;
+        long salt = pokemon.getUuid().getLeastSignificantBits();
+        Random rng = new Random(salt);
+        int replaceCount = ModConfig.resolveReplaceCount(rng);
         if (replaceCount <= 0) return;
 
         MoveSet moveSet = pokemon.getMoveSet();
@@ -67,7 +73,18 @@ public final class PokemonAspectUtil {
             pokemon.getBenchedMoves().add(benched);
 
             // Replace with shadow move
-            String shadowMoveName = (i == 0) ? "shadowrush" : getRandomShadowMove(pokemon, i);
+            String shadowMoveName;
+            IShadowConfig cfg = ShadowedHeartsConfigs.getInstance().getShadowConfig();
+            if (cfg.shadowMovesOnlyShadowRush()) {
+                if (i == 0) {
+                    shadowMoveName = "shadowrush";
+                } else {
+                    continue; // Only allow shadowrush in the first slot if onlyShadowRush is enabled
+                }
+            } else {
+                shadowMoveName = (i == 0) ? "shadowrush" : getRandomShadowMove(pokemon, i);
+            }
+
             var template = Moves.getByName(shadowMoveName);
             if (template != null) {
                 moveSet.setMove(i, template.create(template.getPp(), 0));
@@ -199,9 +216,6 @@ public final class PokemonAspectUtil {
         if (pokemon == null) return;
         try {
             final Pokemon pk = pokemon;
-            Function0<Pokemon> supplier = () -> pk;
-            // Create a snapshot of benched moves to avoid race conditions during Netty encoding.
-            // This prevents ConcurrentModificationException and IndexOutOfBoundsException (buffer under-fill).
             BenchedMoves snapshot = new BenchedMoves();
             snapshot.doWithoutEmitting(() -> {
                 for (BenchedMove bm : pk.getBenchedMoves()) {
@@ -209,7 +223,7 @@ public final class PokemonAspectUtil {
                 }
                 return null;
             });
-            pokemon.onChange(new BenchedMovesUpdatePacket(supplier, snapshot));
+            pokemon.setBenchedMoves$common(snapshot);
         } catch (Throwable t) {
             // Fallback
         } finally {
@@ -302,6 +316,21 @@ public final class PokemonAspectUtil {
                 .map(p -> ((EVBufferProperty) p).getValues())
                 .findFirst()
                 .orElse(null);
+    }
+
+    public static void setScentCooldown(Pokemon pokemon, long value) {
+        pokemon.getCustomProperties().removeIf(p -> p instanceof ScentCooldownProperty);
+        pokemon.getCustomProperties().add(new ScentCooldownProperty(value));
+        pokemon.getPersistentData().putLong(NBT_SCENT_COOLDOWN, value);
+        syncProperties(pokemon);
+    }
+
+    public static long getScentCooldown(Pokemon pokemon) {
+        return pokemon.getCustomProperties().stream()
+                .filter(p -> p instanceof ScentCooldownProperty)
+                .map(p -> ((ScentCooldownProperty) p).getLastUseTime())
+                .findFirst()
+                .orElseGet(() -> pokemon.getPersistentData().getLong(NBT_SCENT_COOLDOWN));
     }
 
     public static float getHeartGauge(Pokemon pokemon) {

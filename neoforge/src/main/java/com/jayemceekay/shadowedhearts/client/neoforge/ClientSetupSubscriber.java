@@ -3,8 +3,9 @@ package com.jayemceekay.shadowedhearts.client.neoforge;
 import com.jayemceekay.shadowedhearts.Shadowedhearts;
 import com.jayemceekay.shadowedhearts.client.ModKeybinds;
 import com.jayemceekay.shadowedhearts.client.ModShaders;
+import com.jayemceekay.shadowedhearts.client.particle.LuminousMoteEmitters;
 import com.jayemceekay.shadowedhearts.client.render.DepthCapture;
-import com.jayemceekay.shadowedhearts.config.ClientConfig;
+import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
@@ -20,7 +21,7 @@ public final class ClientSetupSubscriber {
 
     @SubscribeEvent
     public static void onClientSetup(final FMLClientSetupEvent event) {
-        ClientConfig.load();
+        ShadowedHeartsConfigs.getInstance().getClientConfig().load();
         // Client-side common init
         DepthCapture.init();
         ModShaders.initClient();
@@ -28,6 +29,9 @@ public final class ClientSetupSubscriber {
         // Register keybinds
         com.jayemceekay.shadowedhearts.client.ModKeybinds.init();
         ModKeybindsPlatformImpl.register(ModKeybinds.ORDER_WHEEL);
+
+        // Subscribe luminous mote emitters to Cobblemon events
+        LuminousMoteEmitters.init();
 
         // Register Snag Machine accessory renderer
         if (dev.architectury.platform.Platform.isModLoaded("accessories")) {

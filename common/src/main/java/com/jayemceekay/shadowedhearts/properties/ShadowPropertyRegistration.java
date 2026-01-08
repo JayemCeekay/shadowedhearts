@@ -3,6 +3,7 @@ package com.jayemceekay.shadowedhearts.properties;
 import com.cobblemon.mod.common.api.properties.CustomPokemonProperty;
 import com.jayemceekay.shadowedhearts.property.EVBufferProperty;
 import com.jayemceekay.shadowedhearts.property.HeartGaugeProperty;
+import com.jayemceekay.shadowedhearts.property.ScentCooldownProperty;
 import com.jayemceekay.shadowedhearts.property.XPBufferProperty;
 
 import java.util.List;
@@ -37,6 +38,11 @@ public final class ShadowPropertyRegistration {
                 }
                 return new EVBufferProperty(evs);
             }, () -> List.of("0,0,0,0,0,0", "252,252,4,0,0,0"));
+
+            CustomPokemonProperty.Companion.register("shadowedhearts:scent_cooldown", true, (val) -> {
+                if (val == null) return null;
+                return new ScentCooldownProperty(Long.parseLong(val));
+            }, () -> List.of("0"));
         } catch (Throwable ignored) {
             // Avoid crashing if the API is unavailable in some environments.
         }

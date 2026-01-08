@@ -2,6 +2,11 @@
   name: "Reverse Mode",
   effectType: "VolatileStatus",
   onStart(pokemon) {
+    const config = this.dex.data.Scripts.shadowedhearts?.Config?.reverseMode || { enabled: false };
+    if (!config.enabled) {
+      delete pokemon.volatiles['reversemode'];
+      return;
+    }
     this.add('-start', pokemon, 'Reverse Mode');
     if (pokemon.volatiles['hypermode']) {
       pokemon.removeVolatile('hypermode');
@@ -16,13 +21,16 @@
   },
   onResidualOrder: 5,
   onResidual(pokemon) {
+    const config = this.dex.data.Scripts.shadowedhearts?.Config?.reverseMode || { enabled: false };
+    if (!config.enabled) return;
     this.damage(pokemon.baseMaxhp / 16, pokemon, pokemon);
     this.add('sh_message', 'cobblemon.battle.reversemode.hurt', pokemon.getSlot());
   },
   onTryMove(source, target, move) {
     if (!move || move.type === 'Shadow') return;
-    const config = this.dex.data.Scripts.shadowedhearts_config?.Config?.reverseMode || {};
-    if (config.debugReverseModeFailure || source.set?.debugReverseModeFailure || this.randomChance(1, 5)) {
+    const config = this.dex.data.Scripts.shadowedhearts?.Config?.reverseMode || { enabled: false };
+    if (!config.enabled) return;
+    if (this.randomChance(1, 5)) {
       this.add('sh_message', 'cobblemon.battle.reversemode.disobey', source.getSlot());
       return false;
     }

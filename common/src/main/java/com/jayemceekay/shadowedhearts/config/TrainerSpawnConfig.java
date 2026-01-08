@@ -1,102 +1,117 @@
 package com.jayemceekay.shadowedhearts.config;
 
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
-
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
+import net.neoforged.neoforge.common.ModConfigSpec;
 
 /**
- * Config for spawning overworld NPC trainers near players.
- * File: config/shadowedhearts/trainer_spawn.json
- * {
- *   "spawn_chance_percent": 5,
- *   "max_per_player": 2,
- *   "radius_min": 12,
- *   "radius_max": 32,
- *   "avg_party_level": 25,
- *   "party_size_min": 3,
- *   "party_size_max": 6,
- *   "shadow1_percent": 20,
- *   "shadow2_percent": 3,
- *   "spawn_interval_ticks": 400,
- *   "despawn_after_ticks": 6000
- * }
+ * Config for spawning overworld NPC trainers near players using ModConfigSpec.
  */
-public final class TrainerSpawnConfig {
-    private TrainerSpawnConfig() {}
+public final class TrainerSpawnConfig implements ITrainerSpawnConfig {
+    private boolean loaded = false;
+    public static final ModConfigSpec SPEC;
+    private static final Data DATA = new Data();
 
-    private static volatile boolean loaded = false;
-
-    private static int spawnChancePercent = 75;
-    private static int maxPerPlayer = 2;
-    private static int radiusMin = 12;
-    private static int radiusMax = 32;
-    private static int avgPartyLevel = 25;
-    private static int partySizeMin = 3;
-    private static int partySizeMax = 6;
-    private static int shadow1Percent = 20;
-    private static int shadow2Percent = 3;
-    private static int spawnIntervalTicks = 400;
-    private static int despawnAfterTicks = 6000;
-
-    private static Path configPath() {
-        return Path.of("config", "shadowedhearts", "trainer_spawn.json");
+    static {
+        ModConfigSpec.Builder builder = new ModConfigSpec.Builder();
+        DATA.build(builder);
+        SPEC = builder.build();
     }
 
-    private static void ensureLoaded() {
-        if (loaded) return;
-        synchronized (TrainerSpawnConfig.class) {
-            if (loaded) return;
-            Path path = configPath();
-            if (Files.exists(path)) {
-                try (BufferedReader reader = Files.newBufferedReader(path, StandardCharsets.UTF_8)) {
-                    JsonElement root = JsonParser.parseReader(reader);
-                    if (root != null && root.isJsonObject()) {
-                        JsonObject obj = root.getAsJsonObject();
-                        spawnChancePercent = clamp(obj, "spawn_chance_percent", spawnChancePercent, 0, 100);
-                        maxPerPlayer = clamp(obj, "max_per_player", maxPerPlayer, 0, 32);
-                        radiusMin = clamp(obj, "radius_min", radiusMin, 1, 256);
-                        radiusMax = clamp(obj, "radius_max", radiusMax, radiusMin, 512);
-                        avgPartyLevel = clamp(obj, "avg_party_level", avgPartyLevel, 1, 100);
-                        partySizeMin = clamp(obj, "party_size_min", partySizeMin, 1, 6);
-                        partySizeMax = clamp(obj, "party_size_max", partySizeMax, partySizeMin, 6);
-                        shadow1Percent = clamp(obj, "shadow1_percent", shadow1Percent, 0, 100);
-                        shadow2Percent = clamp(obj, "shadow2_percent", shadow2Percent, 0, 100);
-                        spawnIntervalTicks = clamp(obj, "spawn_interval_ticks", spawnIntervalTicks, 20, 20_000);
-                        despawnAfterTicks = clamp(obj, "despawn_after_ticks", despawnAfterTicks, 200, 120_000);
-                    }
-                } catch (IOException ignored) {}
-            }
-            loaded = true;
+    @Override
+    public int spawnChancePercent() {
+        return DATA.spawnChancePercent.get();
+    }
+
+    @Override
+    public int maxPerPlayer() {
+        return DATA.maxPerPlayer.get();
+    }
+
+    @Override
+    public int radiusMin() {
+        return DATA.radiusMin.get();
+    }
+
+    @Override
+    public int radiusMax() {
+        return DATA.radiusMax.get();
+    }
+
+    @Override
+    public int avgPartyLevel() {
+        return DATA.avgPartyLevel.get();
+    }
+
+    @Override
+    public int partySizeMin() {
+        return DATA.partySizeMin.get();
+    }
+
+    @Override
+    public int partySizeMax() {
+        return DATA.partySizeMax.get();
+    }
+
+    @Override
+    public int shadow1Percent() {
+        return DATA.shadow1Percent.get();
+    }
+
+    @Override
+    public int shadow2Percent() {
+        return DATA.shadow2Percent.get();
+    }
+
+    @Override
+    public int spawnIntervalTicks() {
+        return DATA.spawnIntervalTicks.get();
+    }
+
+    @Override
+    public int despawnAfterTicks() {
+        return DATA.despawnAfterTicks.get();
+    }
+
+    @Override
+    public ModConfigSpec getSpec() {
+        return SPEC;
+    }
+
+    private static final class Data {
+        public ModConfigSpec.IntValue spawnChancePercent;
+        public ModConfigSpec.IntValue maxPerPlayer;
+        public ModConfigSpec.IntValue radiusMin;
+        public ModConfigSpec.IntValue radiusMax;
+        public ModConfigSpec.IntValue avgPartyLevel;
+        public ModConfigSpec.IntValue partySizeMin;
+        public ModConfigSpec.IntValue partySizeMax;
+        public ModConfigSpec.IntValue shadow1Percent;
+        public ModConfigSpec.IntValue shadow2Percent;
+        public ModConfigSpec.IntValue spawnIntervalTicks;
+        public ModConfigSpec.IntValue despawnAfterTicks;
+
+        private void build(ModConfigSpec.Builder builder) {
+            spawnChancePercent = builder.defineInRange("spawn_chance_percent", 75, 0, 100);
+            maxPerPlayer = builder.defineInRange("max_per_player", 2, 0, 32);
+            radiusMin = builder.defineInRange("radius_min", 12, 1, 256);
+            radiusMax = builder.defineInRange("radius_max", 32, 1, 512);
+            avgPartyLevel = builder.defineInRange("avg_party_level", 25, 1, 100);
+            partySizeMin = builder.defineInRange("party_size_min", 3, 1, 6);
+            partySizeMax = builder.defineInRange("party_size_max", 6, 1, 6);
+            shadow1Percent = builder.defineInRange("shadow1_percent", 20, 0, 100);
+            shadow2Percent = builder.defineInRange("shadow2_percent", 3, 0, 100);
+            spawnIntervalTicks = builder.defineInRange("spawn_interval_ticks", 400, 20, 20000);
+            despawnAfterTicks = builder.defineInRange("despawn_after_ticks", 6000, 200, 120000);
         }
     }
 
-    private static int clamp(JsonObject obj, String key, int def, int min, int max) {
-        try {
-            if (obj.has(key)) {
-                int v = obj.get(key).getAsInt();
-                if (v < min) v = min;
-                if (v > max) v = max;
-                return v;
-            }
-        } catch (Exception ignored) {}
-        return def;
+    @Override
+    public void load() {
+        loaded = true;
+        System.out.println("[ShadowedHearts] TrainerSpawnConfig loaded via Forge Config API Port.");
     }
 
-    public static int getSpawnChancePercent() { ensureLoaded(); return spawnChancePercent; }
-    public static int getMaxPerPlayer() { ensureLoaded(); return maxPerPlayer; }
-    public static int getRadiusMin() { ensureLoaded(); return radiusMin; }
-    public static int getRadiusMax() { ensureLoaded(); return radiusMax; }
-    public static int getAvgPartyLevel() { ensureLoaded(); return avgPartyLevel; }
-    public static int getPartySizeMin() { ensureLoaded(); return partySizeMin; }
-    public static int getPartySizeMax() { ensureLoaded(); return partySizeMax; }
-    public static int getShadow1Percent() { ensureLoaded(); return shadow1Percent; }
-    public static int getShadow2Percent() { ensureLoaded(); return shadow2Percent; }
-    public static int getSpawnIntervalTicks() { ensureLoaded(); return spawnIntervalTicks; }
-    public static int getDespawnAfterTicks() { ensureLoaded(); return despawnAfterTicks; }
+    @Override
+    public boolean isLoaded() {
+        return loaded;
+    }
 }

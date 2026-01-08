@@ -23,14 +23,12 @@ object PurifyPokemonHandler : ServerNetworkPacketHandler<PurifyPokemonPacket> {
         val target = PurificationChamberPosition(setIndex = packet.setIndex, index = 0, isShadow = true)
         val pokemon = purification[target]
         if (pokemon == null) {
-            System.out.println("MISSING")
             return
         }
 
 
         // Verify it's actually ready for purification (heart gauge 0)
         if (PokemonAspectUtil.getHeartGauge(pokemon) == 0F) {
-            System.out.println("PURIFYING")
             ShadowService.fullyPurify(pokemon, null)
         }
     }

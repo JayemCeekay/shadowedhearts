@@ -19,7 +19,7 @@ public final class ModCreativeTabs {
             "shadowed_hearts_tab",
             () -> CreativeTabRegistry.create(
                     Component.translatable("itemGroup.shadowedhearts.main"),
-                    () -> new ItemStack(ModItems.SNAG_MACHINE_PROTOTYPE.get())
+                    () -> new ItemStack(ModItems.SHADOW_SHARD.get())
             )
     );
 

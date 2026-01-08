@@ -12,7 +12,9 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.fml.config.ModConfig.Type;
 import net.neoforged.neoforge.client.event.RegisterParticleProvidersEvent;
 import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
 
@@ -24,17 +26,17 @@ public final class ClientInit {
     private ClientInit() {
     }
 
+    public static void init(ModContainer container) {
+        container.registerConfig(Type.CLIENT, ClientConfig.SPEC, "shadowedhearts/client.toml");
+    }
+
     @SubscribeEvent
     public static void registerParticles(RegisterParticleProvidersEvent evt) {
         // Load client config early on client
-        ClientConfig.load();
         evt.registerSpriteSet(
                 ModParticleTypes.LUMINOUS_MOTE.get(),
                 LuminousMoteParticle.Provider::new
         );
-
-        // Subscribe emitters on client startup once
-        LuminousMoteEmitters.init();
     }
 }
 
@@ -47,6 +49,12 @@ final class ClientRenderHooks {
     @SubscribeEvent
     public static void onRenderLevel(RenderLevelStageEvent evt) {
         // Choose a late stage to render particles after most world translucency
+
+        if(evt.getStage() == RenderLevelStageEvent.Stage.AFTER_PARTICLES) {
+            float pt = evt.getPartialTick().getGameTimeDeltaTicks() + evt.getPartialTick().getGameTimeDeltaPartialTick(true);
+            LuminousMoteEmitters.onRender(pt);
+        }
+
         if (evt.getStage() == RenderLevelStageEvent.Stage.AFTER_WEATHER) {
 
             var mc = Minecraft.getInstance();
@@ -55,7 +63,6 @@ final class ClientRenderHooks {
             PoseStack pose = evt.getPoseStack();
             var buffers = mc.renderBuffers().bufferSource();
             float pt = evt.getPartialTick().getGameTimeDeltaTicks() + evt.getPartialTick().getGameTimeDeltaPartialTick(true);
-            LuminousMoteEmitters.onRender(pt);
 
             // "frame id" so we only use anchors captured this same frame
             int frameId = mc.getFrameTimeNs() != 0 ? (int) (mc.getFrameTimeNs() & 0x7fffffff) : (int) (System.nanoTime() & 0x7fffffff);

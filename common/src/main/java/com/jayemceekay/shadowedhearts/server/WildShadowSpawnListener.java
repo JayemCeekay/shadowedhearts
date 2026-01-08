@@ -7,10 +7,12 @@ import com.cobblemon.mod.common.api.moves.Moves;
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
 import com.cobblemon.mod.common.net.messages.client.sound.UnvalidatedPlaySoundS2CPacket;
 import com.cobblemon.mod.common.pokemon.Pokemon;
-import com.jayemceekay.shadowedhearts.HeartGaugeConfig;
 import com.jayemceekay.shadowedhearts.PokemonAspectUtil;
 import com.jayemceekay.shadowedhearts.ShadowService;
+import com.jayemceekay.shadowedhearts.config.HeartGaugeConfig;
+import com.jayemceekay.shadowedhearts.config.ModConfig;
 import com.jayemceekay.shadowedhearts.config.ShadowSpawnConfig;
+import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs;
 import com.jayemceekay.shadowedhearts.core.ModSounds;
 import kotlin.Unit;
 import net.minecraft.server.level.ServerLevel;
@@ -68,9 +70,12 @@ public final class WildShadowSpawnListener {
 
             // Play spawn sound near by
             if (ModSounds.SHADOW_SPAWN != null) {
-                new UnvalidatedPlaySoundS2CPacket(ModSounds.SHADOW_SPAWN.getId(), SoundSource.MASTER,
-                        entity.getX(), entity.getY(), entity.getZ(), 0.6f, 1.0f).sendToPlayersAround(entity.getX(), entity.getY(), entity.getZ(), 32.0f, level.dimension(), serverPlayer -> false);
+                new UnvalidatedPlaySoundS2CPacket(ModSounds.SHADOW_AURA_INITIAL_BURST.getId(), SoundSource.NEUTRAL,
+                        entity.getX(), entity.getY(), entity.getZ(), 1.0f, 1.0f).sendToPlayersAround(entity.getX(), entity.getY(), entity.getZ(), 64.0f, level.dimension(), serverPlayer -> false);
             }
+
+            // Broadcast specialized aura for wild spawn: 2.5x height for 10 seconds (200 ticks)
+            AuraBroadcastQueue.queueBroadcast(entity, 2.5f, 600);
 
             return Unit.INSTANCE;
         });
@@ -78,25 +83,26 @@ public final class WildShadowSpawnListener {
 
     private static final Random RANDOM = new Random();
 
-    private static void assignShadowMoves(Pokemon pokemon) {
-        // Collect all known shadow move ids
-        List<String> shadowIds = new ArrayList<>();
-        // Using ShadowGate utilities list
-        for (String id : SHADOW_IDS) shadowIds.add(id);
-
-        // Pick 1 or 2 distinct shadow moves
-        int count = 1 + RANDOM.nextInt(2); // 1..2
-        String first = pickShadow(shadowIds, null);
-        String second = count == 2 ? pickShadow(shadowIds, first) : null;
-
-        // Place into slots 0 and 1
-        if (first != null) {
-            var tmpl = Moves.INSTANCE.getByNameOrDummy(first);
+    public static void assignShadowMoves(Pokemon pokemon) {
+        if (ShadowedHeartsConfigs.getInstance().getShadowConfig().shadowMovesOnlyShadowRush()) {
+            var tmpl = Moves.INSTANCE.getByNameOrDummy("shadowrush");
             pokemon.getMoveSet().setMove(0, tmpl.create(tmpl.getPp(), 0));
+            return;
         }
-        if (second != null) {
-            var tmpl = Moves.INSTANCE.getByNameOrDummy(second);
-            pokemon.getMoveSet().setMove(1, tmpl.create(tmpl.getPp(), 0));
+
+        // Pick shadow moves based on config
+        int count = ModConfig.resolveReplaceCount(RANDOM);
+        List<String> pool = new ArrayList<>();
+        for (String id : SHADOW_IDS) pool.add(id);
+
+        for (int i = 0; i < Math.min(count, 4); i++) {
+            String moveId = (i == 0) ? "shadowrush" : pickShadow(pool, null);
+            if (moveId != null) {
+                var tmpl = Moves.INSTANCE.getByNameOrDummy(moveId);
+                pokemon.getMoveSet().setMove(i, tmpl.create(tmpl.getPp(), 0));
+                // Remove from pool to avoid duplicates if possible
+                pool.remove(moveId);
+            }
         }
     }
 

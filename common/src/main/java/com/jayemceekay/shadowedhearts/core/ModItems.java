@@ -32,6 +32,10 @@ public final class ModItems {
             "purification_pc",
             () -> new BlockItem(ModBlocks.PURIFICATION_PC.get(), new Item.Properties().arch$tab(ModCreativeTabs.SHADOWED_HEARTS_TAB)));
 
+    public static final RegistrySupplier<Item> RELIC_STONE_ITEM = ITEMS.register(
+            "relic_stone",
+            () -> new BlockItem(ModBlocks.RELIC_STONE.get(), new Item.Properties().arch$tab(ModCreativeTabs.SHADOWED_HEARTS_TAB)));
+
     // Scents
     public static final RegistrySupplier<Item> JOY_SCENT = ITEMS.register(
             "joy_scent",
@@ -42,6 +46,14 @@ public final class ModItems {
     public static final RegistrySupplier<Item> VIVID_SCENT = ITEMS.register(
             "vivid_scent",
             () -> new ScentItem(new Item.Properties().arch$tab(ModCreativeTabs.SHADOWED_HEARTS_TAB), 3));
+
+    public static final RegistrySupplier<Item> SHADOW_SHARD = ITEMS.register(
+            "shadow_shard",
+            () -> new Item(new Item.Properties().arch$tab(ModCreativeTabs.SHADOWED_HEARTS_TAB)));
+
+    public static final RegistrySupplier<Item> PURIFIED_GEM = ITEMS.register(
+            "purified_gem",
+            () -> new Item(new Item.Properties().arch$tab(ModCreativeTabs.SHADOWED_HEARTS_TAB)));
 
     public static void init() {
         ITEMS.register();

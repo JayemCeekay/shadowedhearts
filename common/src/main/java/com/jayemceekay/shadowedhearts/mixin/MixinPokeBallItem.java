@@ -1,6 +1,7 @@
 package com.jayemceekay.shadowedhearts.mixin;
 
 import com.cobblemon.mod.common.item.PokeBallItem;
+import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs;
 import com.jayemceekay.shadowedhearts.network.ShadowedHeartsNetwork;
 import com.jayemceekay.shadowedhearts.network.SnagArmedPacket;
 import com.jayemceekay.shadowedhearts.snag.SnagCaps;
@@ -24,7 +25,7 @@ public class MixinPokeBallItem {
         if (player != null && SnagCaps.hasMachineAvailable(player)) {
             var cap = SnagCaps.get(player);
             if (cap.isArmed()) {
-                cap.consumeEnergy(com.jayemceekay.shadowedhearts.snag.SnagConfig.ENERGY_PER_ATTEMPT);
+                cap.consumeEnergy(ShadowedHeartsConfigs.getInstance().getSnagConfig().energyPerAttempt());
                 cap.setArmed(false);
                 ShadowedHeartsNetwork.sendToPlayer(player, new SnagArmedPacket(false));
 

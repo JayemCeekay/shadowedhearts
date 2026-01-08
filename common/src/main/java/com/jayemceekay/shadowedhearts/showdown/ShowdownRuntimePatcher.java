@@ -2,6 +2,8 @@ package com.jayemceekay.shadowedhearts.showdown;
 
 import com.cobblemon.mod.common.Cobblemon;
 import com.cobblemon.mod.common.battles.runner.graal.GraalShowdownService;
+import com.jayemceekay.shadowedhearts.config.IShadowConfig;
+import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs;
 import kotlin.Unit;
 
 import java.io.IOException;
@@ -25,6 +27,7 @@ public final class ShowdownRuntimePatcher {
     private ShowdownRuntimePatcher() {}
 
     public static void applyPatches() {
+        System.out.println("[ShadowedHearts] Applying Showdown runtime patches...");
         for (Path showdown : locateShowdownDirs()) {
             try {
                 patchDexConditions(showdown.resolve("sim").resolve("dex-conditions.js"));
@@ -108,7 +111,6 @@ public final class ShowdownRuntimePatcher {
 
                 if ((Boolean) hasMemberMethod.invoke(bindings, "receiveScriptData")) {
                     Object receiveScriptDataFn = getMemberMethod.invoke(bindings, "receiveScriptData");
-                    injectConfig(receiveScriptDataFn);
                     injectScript(receiveScriptDataFn, "shadowedhearts", "/data/shadowedhearts/showdown/scripts/shadowedhearts.js");
                     System.out.println("[ShadowedHearts] Injected custom scripts into Showdown.");
                 }
@@ -117,28 +119,28 @@ public final class ShowdownRuntimePatcher {
             }
         }
 
-        private static void injectConfig(Object fn) {
-            com.jayemceekay.shadowedhearts.config.ModConfig.Data config = com.jayemceekay.shadowedhearts.config.ModConfig.get();
-            String js = String.format(
-                "exports.Config = { " +
-                    "callButton: { accuracyBoost: %b, removeSleep: %b }, " +
-                    "hyperMode: { debugCalmDown: %b, debugHyperModeAction: '%s' }, " +
-                    "reverseMode: { debugReverseModeFailure: %b } " +
-                    "}",
-                config.callButton.accuracyBoost,
-                config.callButton.removeSleep,
-                config.hyperMode.debugCalmDown,
-                config.hyperMode.debugHyperModeAction,
-                config.reverseMode.debugReverseModeFailure
-            );
-            executeFn(fn, "shadowedhearts_config", js);
-        }
-
         private static void injectScript(Object fn, String id, String resourcePath) {
             String js = readResourceText(resourcePath);
             if (js != null) {
                 js = js.replaceAll("//.*", "");
                 js = extractExportedTemplate(js);
+
+                if (id.equals("shadowedhearts")) {
+                    IShadowConfig cfg = ShadowedHeartsConfigs.getInstance().getShadowConfig();
+                    String configJs = String.format(
+                            "\"Config\": { " +
+                                    "\"callButton\": { \"accuracyBoost\": %b, \"removeSleep\": %b }, " +
+                                    "\"hyperMode\": { \"enabled\": %b}, " +
+                                    "\"reverseMode\": { \"enabled\": %b} " +
+                                    "},",
+                            cfg.callButtonAccuracyBoost(),
+                            cfg.callButtonRemoveSleep(),
+                            cfg.hyperModeEnabled(),
+                            cfg.reverseModeEnabled()
+                    );
+                    js = js.replaceFirst("\\{", "{" + configJs);
+                }
+
                 js = js.replace("\n", " ").replace("\r", "");
                 executeFn(fn, id, js);
                 System.out.println("[ShadowedHearts] Injected script: " + id);

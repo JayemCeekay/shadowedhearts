@@ -1,12 +1,9 @@
 package com.jayemceekay.shadowedhearts.client.particle;
 
-import com.cobblemon.mod.common.api.Priority;
-import com.cobblemon.mod.common.api.events.CobblemonEvents;
-import com.cobblemon.mod.common.api.events.pokemon.PokemonSentEvent;
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
 import com.jayemceekay.shadowedhearts.PokemonAspectUtil;
 import com.jayemceekay.shadowedhearts.core.ModParticleTypes;
-import kotlin.Unit;
+import com.jayemceekay.shadowedhearts.network.LuminousMotePacket;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.world.entity.Entity;
@@ -24,28 +21,43 @@ import java.util.concurrent.ConcurrentHashMap;
  * small lavender sparkles that shoot outward/upward like the reference GIF.
  */
 public final class LuminousMoteEmitters {
-    private LuminousMoteEmitters() {}
+    private LuminousMoteEmitters() {
+    }
 
     private static final Map<Integer, EmitterGroup> ACTIVE = new ConcurrentHashMap<>();
 
-    /** Lifetime of an emitter after send-out, in ticks (5s @ 20 TPS). */
+    /**
+     * Lifetime of an emitter after send-out, in ticks (5s @ 20 TPS).
+     */
     private static final long EMIT_TICKS = 60L;
 
-    /** Call from client init to subscribe to Cobblemon sent-out events. */
+    /**
+     * Call from client init to subscribe to Cobblemon sent-out events.
+     */
     public static void init() {
-        CobblemonEvents.POKEMON_SENT_POST.subscribe(Priority.NORMAL, (PokemonSentEvent.Post e) -> {
-            PokemonEntity pe = e.getPokemonEntity();
-            if (pe == null) return Unit.INSTANCE;
-            if (!PokemonAspectUtil.hasShadowAspect(pe.getPokemon())) return Unit.INSTANCE;
-            var mc = Minecraft.getInstance();
-            if (mc == null || mc.level == null) return Unit.INSTANCE;
-            long now = mc.level.getGameTime();
-            ACTIVE.put(pe.getId(), EmitterGroup.create(pe, now + EMIT_TICKS));
-            return Unit.INSTANCE;
-        });
+        // Server is authoritative for luminous mote lifecycle now.
     }
 
-    /** Invoke once per frame from a late render stage (e.g., AFTER_WEATHER). */
+    public static void receivePacket(LuminousMotePacket pkt) {
+        var mc = Minecraft.getInstance();
+        if (mc == null || mc.level == null) return;
+        Entity ent = mc.level.getEntity(pkt.getEntityId());
+        if (ent instanceof PokemonEntity pe) {
+            register(pe);
+        }
+    }
+
+    public static void register(PokemonEntity pe) {
+        if (!PokemonAspectUtil.hasShadowAspect(pe.getPokemon())) return;
+        var mc = Minecraft.getInstance();
+        if (mc == null || mc.level == null) return;
+        long now = mc.level.getGameTime();
+        ACTIVE.put(pe.getId(), EmitterGroup.create(pe, now + EMIT_TICKS));
+    }
+
+    /**
+     * Invoke once per frame from a late render stage (e.g., AFTER_WEATHER).
+     */
     public static void onRender(float partialTicks) {
         var mc = Minecraft.getInstance();
         ClientLevel level = mc != null ? mc.level : null;
@@ -57,7 +69,10 @@ public final class LuminousMoteEmitters {
         while (it.hasNext()) {
             var en = it.next();
             EmitterGroup group = en.getValue();
-            if (group == null || group.isExpired(now)) { it.remove(); continue; }
+            if (group == null || group.isExpired(now)) {
+                it.remove();
+                continue;
+            }
             if (!group.tickAndEmit(level, partialTicks)) {
                 it.remove();
             }
@@ -116,7 +131,10 @@ public final class LuminousMoteEmitters {
                     double d = Math.abs(a - result[j]);
                     d = d % twoPi;
                     double circ = Math.min(d, twoPi - d);
-                    if (circ < minSep) { ok = false; break; }
+                    if (circ < minSep) {
+                        ok = false;
+                        break;
+                    }
                 }
                 if (ok) {
                     result[placed++] = a;

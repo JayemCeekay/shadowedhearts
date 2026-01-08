@@ -6,7 +6,7 @@ import com.cobblemon.mod.common.client.gui.summary.widgets.ModelWidget;
 import com.cobblemon.mod.common.pokemon.RenderablePokemon;
 import com.jayemceekay.shadowedhearts.SHAspects;
 import com.jayemceekay.shadowedhearts.client.aura.AuraEmitters;
-import com.jayemceekay.shadowedhearts.config.ClientConfig;
+import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs;
 import com.llamalad7.mixinextras.sugar.Local;
 import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.Minecraft;
@@ -39,7 +39,7 @@ public abstract class MixinModelWidgetAura {
     @Inject(method = "renderPKM", at = @At(value = "INVOKE", target = "Lcom/mojang/blaze3d/vertex/PoseStack;popPose()V", ordinal = 0, shift = At.Shift.AFTER))
     private void shadowedhearts$renderAuraAndAxes(GuiGraphics context, float partialTicks, int mouseX, int mouseY, CallbackInfo ci, @Local(name = "matrices") PoseStack matrices) {
         if (this.pokemon == null) return;
-        if (!ClientConfig.get().enableShadowAura) return;
+        if (!ShadowedHeartsConfigs.getInstance().getClientConfig().enableShadowAura()) return;
 
         // Render the Shadow aura only for Shadow-aspected Pokémon.
         if (!shadowedhearts$isShadow(this.pokemon)) return;

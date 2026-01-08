@@ -1,358 +1,330 @@
 package com.jayemceekay.shadowedhearts.config;
 
-import com.google.gson.*;
 import dev.architectury.platform.Platform;
+import net.neoforged.neoforge.common.ModConfigSpec;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.IOException;
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.*;
+import java.util.Collections;
+import java.util.List;
+import java.util.Random;
 
 /**
- * Minimal config system for Shadowed Hearts.
- * Now stored as JSON in config/shadowedhearts-common.json (common) and a separate client file.
- * Common also centralizes ShadowSpawnConfig settings. See 02 §5 Mission Entrance flow.
+ * Server/Common config system for Shadowed Hearts using ModConfigSpec.
  */
-public final class ModConfig {
-    private ModConfig() {}
-
-    private static final String COMMON_FILE = "shadowedhearts-common.json";
-    private static final String LEGACY_PROPS_FILE = "shadowedhearts.properties";
-
-    public static final class Data {
-        public boolean showdownPatched = false;
-        /** If true, use the alternate bottom-bar Toss Order UI instead of the radial wheel. */
-        public boolean tossOrderBarUI = true;
-
-        // Shadow spawn block (moved from ShadowSpawnConfig)
-        public double shadowSpawnChancePercent = 0.78125; // default 1/256
-        public final Set<String> shadowSpawnBlacklist = new HashSet<>(Set.of("#shadowedhearts:legendaries", "#shadowedhearts:mythical"));
-
-        // Hyper Mode config
-        public final HyperModeConfig hyperMode = new HyperModeConfig();
-        // Reverse Mode config
-        public final ReverseModeConfig reverseMode = new ReverseModeConfig();
-        // Call Button config
-        public final CallButtonConfig callButton = new CallButtonConfig();
-
-        // Shadow Moves config
-        public final ShadowMovesConfig shadowMoves = new ShadowMovesConfig();
-
-        // Mod Integrations
-        public final RCTIntegrationConfig rctIntegration = new RCTIntegrationConfig();
-    }
-
+public final class ModConfig implements IShadowConfig {
+    private boolean loaded = false;
+    public static final ModConfigSpec SPEC;
     private static final Data DATA = new Data();
 
-    public static Data get() {
-        return DATA;
+    static {
+        ModConfigSpec.Builder builder = new ModConfigSpec.Builder();
+        DATA.build(builder);
+        SPEC = builder.build();
     }
 
-    public static double getShadowSpawnChancePercent() { return DATA.shadowSpawnChancePercent; }
-    public static Set<String> getShadowSpawnBlacklist() { return Collections.unmodifiableSet(DATA.shadowSpawnBlacklist); }
+    @Override
+    public double shadowSpawnChancePercent() {
+        return DATA.shadowSpawnChancePercent.get();
+    }
 
-    public static void load() {
-        Path configDir = Platform.getConfigFolder();
-        Path jsonFile = configDir.resolve(COMMON_FILE);
+    @Override
+    public List<? extends String> shadowSpawnBlacklist() {
+        return DATA.shadowSpawnBlacklist.get();
+    }
 
-        // One-time migration from legacy properties if present and JSON missing
-        if (!Files.isRegularFile(jsonFile)) {
-            Path legacy = configDir.resolve(LEGACY_PROPS_FILE);
-            if (Files.isRegularFile(legacy)) {
-                // Load legacy .properties into DATA then persist JSON
-                var props = new Properties();
-                try (InputStream in = Files.newInputStream(legacy)) {
-                    props.load(in);
-                    DATA.showdownPatched = Boolean.parseBoolean(props.getProperty("showdownPatched", Boolean.toString(DATA.showdownPatched)));
-                    DATA.tossOrderBarUI = Boolean.parseBoolean(props.getProperty("tossOrderBarUI", Boolean.toString(DATA.tossOrderBarUI)));
-                } catch (IOException ignored) {}
-                save();
-            }
+    @Override
+    public boolean hyperModeEnabled() {
+        return DATA.hyperMode.enabled.get();
+    }
+
+    @Override
+    public boolean reverseModeEnabled() {
+        return DATA.reverseMode.enabled.get();
+    }
+
+    @Override
+    public boolean callButtonReducesHeartGauge() {
+        return DATA.callButton.reducesHeartGauge.get();
+    }
+
+    @Override
+    public boolean callButtonAccuracyBoost() {
+        return DATA.callButton.accuracyBoost.get();
+    }
+
+    @Override
+    public boolean callButtonRemoveSleep() {
+        return DATA.callButton.removeSleep.get();
+    }
+
+    @Override
+    public int scentCooldownSeconds() {
+        return DATA.scent.cooldownSeconds.get();
+    }
+
+    @Override
+    public String shadowMovesReplaceCount() {
+        return DATA.shadowMoves.replaceCount.get();
+    }
+
+    @Override
+    public boolean shadowMovesOnlyShadowRush() {
+        return DATA.shadowMoves.onlyShadowRush.get();
+    }
+
+    @Override
+    public boolean rctIntegrationEnabled() {
+        return DATA.rctIntegration.enabled.get();
+    }
+
+    @Override
+    public IRCTSection append() {
+        return DATA.rctIntegration.append;
+    }
+
+    @Override
+    public IRCTSection convert() {
+        return DATA.rctIntegration.convert;
+    }
+
+    @Override
+    public IRCTSection replace() {
+        return DATA.rctIntegration.replace;
+    }
+
+    @Override
+    public ModConfigSpec getSpec() {
+        return SPEC;
+    }
+
+    private static final class Data {
+        public ModConfigSpec.DoubleValue shadowSpawnChancePercent;
+        public ModConfigSpec.ConfigValue<List<? extends String>> shadowSpawnBlacklist;
+
+        public final HyperModeConfig hyperMode = new HyperModeConfig();
+        public final ReverseModeConfig reverseMode = new ReverseModeConfig();
+        public final CallButtonConfig callButton = new CallButtonConfig();
+        public final ScentConfig scent = new ScentConfig();
+        public final ShadowMovesConfig shadowMoves = new ShadowMovesConfig();
+        public final RCTIntegrationConfig rctIntegration = new RCTIntegrationConfig();
+
+        private void build(ModConfigSpec.Builder builder) {
+            builder.push("hyperMode");
+            hyperMode.build(builder);
+            builder.pop();
+
+            builder.push("reverseMode");
+            reverseMode.build(builder);
+            builder.pop();
+
+            builder.push("callButton");
+            callButton.build(builder);
+            builder.pop();
+
+            builder.push("scent");
+            scent.build(builder);
+            builder.pop();
+
+            builder.push("shadowMoves");
+            shadowMoves.build(builder);
+            builder.pop();
+
+            builder.push("shadowSpawn");
+            shadowSpawnChancePercent = builder
+                    .comment("The percentage chance (0.0-100.0) for a wild Pokémon to spawn as a Shadow Pokémon.")
+                    .defineInRange("chancePercent", 0.78125, 0.0, 100.0);
+
+            shadowSpawnBlacklist = builder
+                    .comment("List of Pokémon species or tags that cannot spawn as Shadow Pokémon.")
+                    .defineList("blacklist", List.of("#shadowedhearts:legendaries", "#shadowedhearts:mythical"), o -> o instanceof String);
+            builder.pop();
+
+            builder.push("modIntegrations");
+            builder.push("rctmod");
+            rctIntegration.build(builder);
+            builder.pop();
+            builder.pop();
         }
-
-        if (!Files.isRegularFile(jsonFile)) {
-            save();
-            return; // keep defaults if nothing exists, but save them
-        }
-
-        try (BufferedReader reader = Files.newBufferedReader(jsonFile, StandardCharsets.UTF_8)) {
-            JsonElement el = JsonParser.parseReader(reader);
-            if (el != null && el.isJsonObject()) {
-                JsonObject root = el.getAsJsonObject();
-                DATA.showdownPatched = optBool(root, "showdownPatched", DATA.showdownPatched);
-                DATA.tossOrderBarUI = optBool(root, "tossOrderBarUI", DATA.tossOrderBarUI);
-
-                if (root.has("hyperMode") && root.get("hyperMode").isJsonObject()) {
-                    JsonObject hm = root.getAsJsonObject("hyperMode");
-                    DATA.hyperMode.enabled = optBool(hm, "enabled", DATA.hyperMode.enabled);
-                    DATA.hyperMode.debugCalmDown = optBool(hm, "debugCalmDown", DATA.hyperMode.debugCalmDown);
-                    DATA.hyperMode.debugHyperModeAction = hm.has("debugHyperModeAction") ? hm.get("debugHyperModeAction").getAsString() : DATA.hyperMode.debugHyperModeAction;
-                 //   DATA.hyperMode.baseChanceModifier = optDouble(hm, "baseChanceModifier", DATA.hyperMode.baseChanceModifier);
-                }
-
-                if (root.has("reverseMode") && root.get("reverseMode").isJsonObject()) {
-                    JsonObject rm = root.getAsJsonObject("reverseMode");
-                    DATA.reverseMode.enabled = optBool(rm, "enabled", DATA.reverseMode.enabled);
-                    DATA.reverseMode.debugReverseModeFailure = optBool(rm, "debugReverseModeFailure", DATA.reverseMode.debugReverseModeFailure);
-                //    DATA.reverseMode.baseChanceModifier = optDouble(rm, "baseChanceModifier", DATA.reverseMode.baseChanceModifier);
-                }
-
-                if (root.has("callButton") && root.get("callButton").isJsonObject()) {
-                    JsonObject cb = root.getAsJsonObject("callButton");
-                    DATA.callButton.reducesHeartGauge = optBool(cb, "reducesHeartGauge", DATA.callButton.reducesHeartGauge);
-                    DATA.callButton.accuracyBoost = optBool(cb, "accuracyBoost", DATA.callButton.accuracyBoost);
-                    DATA.callButton.removeSleep = optBool(cb, "removeSleep", DATA.callButton.removeSleep);
-                }
-
-                if (root.has("shadowMoves") && root.get("shadowMoves").isJsonObject()) {
-                    JsonObject sm = root.getAsJsonObject("shadowMoves");
-                    DATA.shadowMoves.replaceCount = optInt(sm, "replaceCount", DATA.shadowMoves.replaceCount);
-                }
-
-                if (root.has("shadowSpawn") && root.get("shadowSpawn").isJsonObject()) {
-                    JsonObject ss = root.getAsJsonObject("shadowSpawn");
-                    double p = optDouble(ss, "chancePercent", DATA.shadowSpawnChancePercent);
-                    if (p < 0) p = 0; if (p > 100) p = 100;
-                    DATA.shadowSpawnChancePercent = p;
-                    DATA.shadowSpawnBlacklist.clear();
-                    if (ss.has("blacklist") && ss.get("blacklist").isJsonArray()) {
-                        for (JsonElement bl : ss.getAsJsonArray("blacklist")) {
-                            try {
-                                String s = bl.getAsString();
-                                if (s != null && !s.isBlank()) DATA.shadowSpawnBlacklist.add(s.toLowerCase(Locale.ROOT).trim());
-                            } catch (Exception ignored) {}
-                        }
-                    }
-                }
-
-                // Mod Integrations → RCTMod
-                if (root.has("modIntegrations") && root.get("modIntegrations").isJsonObject()) {
-                    JsonObject mi = root.getAsJsonObject("modIntegrations");
-                    // Accept keys: "rctmod", "Radical Cobblemon Trainers" (user-friendly)
-                    JsonObject rct = null;
-                    if (mi.has("rctmod") && mi.get("rctmod").isJsonObject()) rct = mi.getAsJsonObject("rctmod");
-                    else if (mi.has("Radical Cobblemon Trainers") && mi.get("Radical Cobblemon Trainers").isJsonObject()) rct = mi.getAsJsonObject("Radical Cobblemon Trainers");
-                    if (rct != null) {
-                        readRCTIntegration(rct, DATA.rctIntegration);
-                    }
-                }
-            }
-        } catch (IOException ignored) {
-            ignored.printStackTrace();
-        }
-        save();
-    }
-
-    public static void save() {
-        Path configDir = Platform.getConfigFolder();
-        Path jsonFile = configDir.resolve(COMMON_FILE);
-        try {
-            if (!Files.isDirectory(configDir)) Files.createDirectories(configDir);
-            JsonObject root = new JsonObject();
-            root.addProperty("showdownPatched", DATA.showdownPatched);
-            root.addProperty("tossOrderBarUI", DATA.tossOrderBarUI);
-
-            JsonObject hm = new JsonObject();
-            hm.addProperty("enabled", DATA.hyperMode.enabled);
-            hm.addProperty("debugCalmDown", DATA.hyperMode.debugCalmDown);
-            hm.addProperty("debugHyperModeAction", DATA.hyperMode.debugHyperModeAction);
-           // hm.addProperty("baseChanceModifier", DATA.hyperMode.baseChanceModifier);
-            root.add("hyperMode", hm);
-
-            JsonObject rm = new JsonObject();
-            rm.addProperty("enabled", DATA.reverseMode.enabled);
-            rm.addProperty("debugReverseModeFailure", DATA.reverseMode.debugReverseModeFailure);
-            //rm.addProperty("baseChanceModifier", DATA.reverseMode.baseChanceModifier);
-            root.add("reverseMode", rm);
-
-            JsonObject cb = new JsonObject();
-            cb.addProperty("reducesHeartGauge", DATA.callButton.reducesHeartGauge);
-            cb.addProperty("accuracyBoost", DATA.callButton.accuracyBoost);
-            cb.addProperty("removeSleep", DATA.callButton.removeSleep);
-            root.add("callButton", cb);
-
-            JsonObject sm = new JsonObject();
-            sm.addProperty("replaceCount", DATA.shadowMoves.replaceCount);
-            root.add("shadowMoves", sm);
-
-            JsonObject ss = new JsonObject();
-            ss.addProperty("chancePercent", DATA.shadowSpawnChancePercent);
-            JsonArray arr = new JsonArray();
-            for (String s : DATA.shadowSpawnBlacklist) arr.add(s);
-            ss.add("blacklist", arr);
-            root.add("shadowSpawn", ss);
-
-            // Persist minimal RCT integration block (only if enabled to avoid noise)
-            JsonObject mi = new JsonObject();
-            JsonObject rct = new JsonObject();
-            rct.addProperty("enabled", DATA.rctIntegration.enabled);
-            rct.add("append", writeRCTSection(DATA.rctIntegration.append));
-            rct.add("convert", writeRCTSection(DATA.rctIntegration.convert));
-            rct.add("replace", writeRCTSection(DATA.rctIntegration.replace));
-            mi.add("rctmod", rct);
-            root.add("modIntegrations", mi);
-
-            try (BufferedWriter w = Files.newBufferedWriter(jsonFile, StandardCharsets.UTF_8)) {
-                new GsonBuilder().setPrettyPrinting().create().toJson(root, w);
-            }
-        } catch (IOException ignored) {
-            ignored.printStackTrace();
-        }
-    }
-
-    private static boolean optBool(JsonObject o, String key, boolean def) {
-        try { return o.has(key) ? o.get(key).getAsBoolean() : def; } catch (Exception e) { return def; }
-    }
-    private static int optInt(JsonObject o, String key, int def) {
-        try { return o.has(key) ? o.get(key).getAsInt() : def; } catch (Exception e) { return def; }
-    }
-
-    private static double optDouble(JsonObject o, String key, double def) {
-        try { return o.has(key) ? o.get(key).getAsDouble() : def; } catch (Exception e) { return def; }
     }
 
     public static final class HyperModeConfig {
-        public boolean enabled = true;
-        public boolean debugCalmDown = false;
-        public String debugHyperModeAction = "";
-        //public double baseChanceModifier = 1.0;
+        public ModConfigSpec.BooleanValue enabled;
+
+        private void build(ModConfigSpec.Builder builder) {
+            enabled = builder
+                    .comment("Whether Hyper Mode mechanics are enabled.")
+                    .define("enabled", true);
+        }
     }
 
     public static final class ReverseModeConfig {
-        public boolean enabled = true;
-        public boolean debugReverseModeFailure = false;
-        //public double baseChanceModifier = 1.0;
+        public ModConfigSpec.BooleanValue enabled;
+
+        private void build(ModConfigSpec.Builder builder) {
+            enabled = builder
+                    .comment("Whether Reverse Mode mechanics are enabled.")
+                    .define("enabled", true);
+        }
     }
 
     public static final class CallButtonConfig {
-        public boolean reducesHeartGauge = true;
-        public boolean accuracyBoost = true;
-        public boolean removeSleep = true;
+        public ModConfigSpec.BooleanValue reducesHeartGauge;
+        public ModConfigSpec.BooleanValue accuracyBoost;
+        public ModConfigSpec.BooleanValue removeSleep;
+
+        private void build(ModConfigSpec.Builder builder) {
+            reducesHeartGauge = builder
+                    .comment("If true, the Call button in battle reduces the Heart Gauge of Shadow Pokémon when snapping them out of Hyper Mode or Reverse Mode.")
+                    .define("reducesHeartGauge", true);
+            accuracyBoost = builder
+                    .comment("If true, the Call button provides an accuracy boost to the Pokémon if they are not in Hyper Mode or Reverse Mode.")
+                    .define("accuracyBoost", true);
+            removeSleep = builder
+                    .comment("If true, the Call button can wake up a sleeping Pokémon.")
+                    .define("removeSleep", true);
+        }
+    }
+
+    public static final class ScentConfig {
+        public ModConfigSpec.IntValue cooldownSeconds;
+
+        private void build(ModConfigSpec.Builder builder) {
+            cooldownSeconds = builder
+                    .comment("Cooldown in seconds between using Scent items on a Pokémon.")
+                    .defineInRange("cooldownSeconds", 300, 0, Integer.MAX_VALUE);
+        }
     }
 
     public static final class ShadowMovesConfig {
-        public int replaceCount = 1;
+        public ModConfigSpec.ConfigValue<String> replaceCount;
+        public ModConfigSpec.BooleanValue onlyShadowRush;
+
+        private void build(ModConfigSpec.Builder builder) {
+            replaceCount = builder
+                    .comment("How many moves to replace with Shadow moves. Supports single values (e.g. '1') or ranges (e.g. '1-3').")
+                    .define("replaceCount", "1");
+            onlyShadowRush = builder
+                    .comment("If true, only 'Shadow Rush' will be assigned, even if replaceCount > 1.")
+                    .define("onlyShadowRush", false);
+        }
     }
 
-    // ===== RCT Integration config types and (de)serialization =====
     public static final class RCTIntegrationConfig {
-        public boolean enabled = false;
-        public final RCTSection append = new RCTSection("append");
-        public final RCTSection convert = new RCTSection("convert");
-        public final RCTSection replace = new RCTSection("replace");
+        public ModConfigSpec.BooleanValue enabled;
+        public RCTSection append;
+        public RCTSection convert;
+        public RCTSection replace;
+
+        private void build(ModConfigSpec.Builder builder) {
+            enabled = builder
+                    .comment("Enables integration with Radical Cobblemon Trainers.")
+                    .define("enabled", Platform.isModLoaded("rctmod"));
+
+            builder.push("append");
+            append = new RCTSection();
+            append.build(builder);
+            builder.pop();
+
+            builder.push("convert");
+            convert = new RCTSection();
+            convert.build(builder);
+            builder.pop();
+
+            builder.push("replace");
+            replace = new RCTSection(true);
+            replace.build(builder);
+            builder.pop();
+        }
     }
 
-    public static final class RCTTrainerConfig {
-        public String id = ""; // exact trainer id (implementation-defined from RCT)
-        public final List<String> tags = new ArrayList<>(); // NPCShadowInjector tags to add
-        public String preset = ""; // optional: Shadow aspect preset key
+    public static final class RCTSection implements IRCTSection {
+        public ModConfigSpec.ConfigValue<List<? extends String>> trainerTypes;
+        public ModConfigSpec.ConfigValue<List<? extends String>> typePresets; // We'll store as key=value strings
+        public ModConfigSpec.ConfigValue<List<? extends String>> trainerBlacklist;
+        public ModConfigSpec.ConfigValue<List<? extends String>> trainers; // We'll store as JSON strings or key=value
+
+        private final boolean isDefaultReplace;
+
+        public RCTSection() {
+            this(false);
+        }
+
+        public RCTSection(boolean isDefaultReplace) {
+            this.isDefaultReplace = isDefaultReplace;
+        }
+
+        private void build(ModConfigSpec.Builder builder) {
+            trainerTypes = builder.defineList("trainerTypes",
+                    isDefaultReplace ? List.of("team_rocket") : Collections.emptyList(),
+                    o -> o instanceof String);
+
+            typePresets = builder
+                    .comment("Format: type=presetId")
+                    .defineList("typePresets",
+                            isDefaultReplace ? List.of("team_rocket=shadowedhearts/team_rocket") : Collections.emptyList(),
+                            o -> o instanceof String && ((String) o).contains("="));
+
+            trainerBlacklist = builder.defineList("trainerBlacklist", Collections.emptyList(), o -> o instanceof String);
+
+            trainers = builder
+                    .comment("Format: id;preset;tag1,tag2...")
+                    .defineList("trainers",
+                            isDefaultReplace ? List.of("team_rocket;shadowedhearts/team_rocket;") : Collections.emptyList(),
+                            o -> o instanceof String);
+        }
+
+        @Override
+        public List<? extends String> trainerTypes() {
+            return trainerTypes.get();
+        }
+
+        @Override
+        public List<? extends String> typePresets() {
+            return typePresets.get();
+        }
+
+        @Override
+        public List<? extends String> trainerBlacklist() {
+            return trainerBlacklist.get();
+        }
+
+        @Override
+        public List<? extends String> trainers() {
+            return trainers.get();
+        }
     }
 
-    public static final class RCTSection {
-        public final String name; // for debugging/logging only
-        public final List<String> trainerTypes = new ArrayList<>();
-        public final Map<String, String> typePresets = new HashMap<>(); // type -> presetId
-        public final List<String> trainerBlacklist = new ArrayList<>();
-        public final List<RCTTrainerConfig> trainers = new ArrayList<>();
-        RCTSection(String n) {
-            this.name = n;
-            if ("replace".equals(n)) {
-                trainerTypes.add("team_rocket");
-                typePresets.put("team_rocket", "shadowedhearts/team_rocket");
-                RCTTrainerConfig teamRocket = new RCTTrainerConfig();
-                teamRocket.id = "team_rocket";
-                teamRocket.preset = "shadowedhearts/team_rocket";
-                trainers.add(teamRocket);
+    @Override
+    public void load() {
+        loaded = true;
+        System.out.println("[ShadowedHearts] ModConfig loaded via Forge Config API Port.");
+    }
+
+    @Override
+    public boolean isLoaded() {
+        return loaded;
+    }
+
+    public static int resolveReplaceCount(Random rng) {
+        IShadowConfig cfg = ShadowedHeartsConfigs.getInstance().getShadowConfig();
+        String raw = cfg.shadowMovesReplaceCount();
+        if (raw == null || raw.isBlank()) return 1;
+        try {
+            if (raw.contains("-")) {
+                String[] parts = raw.split("-");
+                if (parts.length == 2) {
+                    int min = Integer.parseInt(parts[0].trim());
+                    int max = Integer.parseInt(parts[1].trim());
+                    if (max < min) {
+                        int temp = min;
+                        min = max;
+                        max = temp;
+                    }
+                    return min + rng.nextInt(max - min + 1);
+                }
             }
+            return Integer.parseInt(raw.trim());
+        } catch (Exception e) {
+            return 1;
         }
-    }
-
-    private static void readRCTIntegration(JsonObject obj, RCTIntegrationConfig out) {
-        out.enabled = optBool(obj, "enabled", out.enabled);
-        if (obj.has("append") && obj.get("append").isJsonObject()) readRCTSection(obj.getAsJsonObject("append"), out.append);
-        if (obj.has("convert") && obj.get("convert").isJsonObject()) readRCTSection(obj.getAsJsonObject("convert"), out.convert);
-        if (obj.has("replace") && obj.get("replace").isJsonObject()) readRCTSection(obj.getAsJsonObject("replace"), out.replace);
-    }
-
-    private static void readRCTSection(JsonObject obj, RCTSection out) {
-        out.trainerTypes.clear();
-        out.typePresets.clear();
-        out.trainerBlacklist.clear();
-        out.trainers.clear();
-        // Allow either keys: trainer_types / trainerTypes (be lenient)
-        readStringArrayInto(obj, out.trainerTypes, obj.has("trainer_types") ? "trainer_types" : "trainerTypes");
-        
-        if (obj.has("type_presets") && obj.get("type_presets").isJsonObject()) {
-            JsonObject tp = obj.getAsJsonObject("type_presets");
-            for (Map.Entry<String, JsonElement> entry : tp.entrySet()) {
-                out.typePresets.put(entry.getKey().toLowerCase(Locale.ROOT), entry.getValue().getAsString());
-            }
-        } else if (obj.has("typePresets") && obj.get("typePresets").isJsonObject()) {
-            JsonObject tp = obj.getAsJsonObject("typePresets");
-            for (Map.Entry<String, JsonElement> entry : tp.entrySet()) {
-                out.typePresets.put(entry.getKey().toLowerCase(Locale.ROOT), entry.getValue().getAsString());
-            }
-        }
-
-        readStringArrayInto(obj, out.trainerBlacklist, obj.has("trainer_blacklist") ? "trainer_blacklist" : "trainerBlacklist");
-        if (obj.has("trainers") && obj.get("trainers").isJsonArray()) {
-            for (JsonElement el : obj.getAsJsonArray("trainers")) {
-                if (!el.isJsonObject()) continue;
-                JsonObject to = el.getAsJsonObject();
-                RCTTrainerConfig t = new RCTTrainerConfig();
-                try { if (to.has("id")) t.id = to.get("id").getAsString(); } catch (Exception ignored) {}
-                readStringArrayInto(to, t.tags, "tags");
-                try { if (to.has("preset")) t.preset = to.get("preset").getAsString(); } catch (Exception ignored) {}
-                if (t.id != null && !t.id.isBlank()) out.trainers.add(t);
-            }
-        }
-        // Normalize to lowercase for type/blacklist ids
-        for (int i = 0; i < out.trainerTypes.size(); i++) out.trainerTypes.set(i, safeLower(out.trainerTypes.get(i)));
-        for (int i = 0; i < out.trainerBlacklist.size(); i++) out.trainerBlacklist.set(i, safeLower(out.trainerBlacklist.get(i)));
-    }
-
-    private static void readStringArrayInto(JsonObject obj, List<String> out, String key) {
-        if (!obj.has(key) || !obj.get(key).isJsonArray()) return;
-        for (JsonElement el : obj.getAsJsonArray(key)) {
-            try {
-                String s = el.getAsString();
-                if (s != null && !s.isBlank()) out.add(s);
-            } catch (Exception ignored) {}
-        }
-    }
-
-    private static String safeLower(String s) { return s == null ? null : s.toLowerCase(Locale.ROOT); }
-
-    private static JsonObject writeRCTSection(RCTSection sec) {
-        JsonObject o = new JsonObject();
-        JsonArray types = new JsonArray();
-        for (String s : sec.trainerTypes) types.add(s);
-        o.add("trainer_types", types);
-        
-        JsonObject typePresets = new JsonObject();
-        for (Map.Entry<String, String> entry : sec.typePresets.entrySet()) {
-            typePresets.addProperty(entry.getKey(), entry.getValue());
-        }
-        o.add("type_presets", typePresets);
-
-        JsonArray bl = new JsonArray();
-        for (String s : sec.trainerBlacklist) bl.add(s);
-        o.add("trainer_blacklist", bl);
-        JsonArray trs = new JsonArray();
-        for (RCTTrainerConfig t : sec.trainers) {
-            JsonObject to = new JsonObject();
-            to.addProperty("id", t.id);
-            if (!t.preset.isBlank()) to.addProperty("preset", t.preset);
-            JsonArray tags = new JsonArray();
-            for (String tg : t.tags) tags.add(tg);
-            to.add("tags", tags);
-            trs.add(to);
-        }
-        o.add("trainers", trs);
-        return o;
     }
 }

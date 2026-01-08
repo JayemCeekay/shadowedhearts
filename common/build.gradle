@@ -28,6 +28,10 @@ repositories {
             includeGroup "curse.maven"
         }
     }
+    maven {
+        name = "Fuzs Mod Resources"
+        url = "https://raw.githubusercontent.com/Fuzss/modresources/main/maven/"
+    }
 }
 
 dependencies {
@@ -49,6 +53,9 @@ dependencies {
     compileOnly("name:molang-1.1.20")
 
     modCompileOnlyApi("curse.maven:radical-cobblemon-trainers-api-1152792:7319958")
+
+    // Forge Config API Port
+    compileOnly "fuzs.forgeconfigapiport:forgeconfigapiport-common-neoforgeapi:$rootProject.fcap_version"
 
     //rctmod
     modCompileOnlyApi( "com.gitlab.srcmc:rctmod-common-1.21.1:0.17.4-beta")

@@ -64,19 +64,8 @@ public abstract class MixinShowdownInterpreter {
         if (rawMessage == null) return;
         // Surface Showdown-side debug messages to the server console so they are visible during testing.
         // This helps when '-message' lines are not rendered in the current UI/log sink.
-        if (rawMessage.contains("[SH DEBUG]")) {
+        if (rawMessage.contains("|shdebug|")) {
             System.out.println("[ShadowedHearts][Showdown DEBUG] " + rawMessage);
         }
-        // First sign that turn 1 has fully resolved is the start of turn 2 (only for one-turn battles)
-        /*if (__sh_isOneTurn && rawMessage.contains("|turn|2") && OneTurnMicroController.tryMarkClosed(battleId)) {
-            try {
-                battle.doWhenClear(() -> {
-                    battle.stop();
-                    OneTurnMicroController.clear(battleId);
-                    return Unit.INSTANCE;
-                });
-            } catch (Throwable ignored) {
-            }
-        }*/
     }
 }

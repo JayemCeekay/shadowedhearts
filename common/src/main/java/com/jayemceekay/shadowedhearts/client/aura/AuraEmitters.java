@@ -10,7 +10,7 @@ import com.jayemceekay.shadowedhearts.client.ModShaders;
 import com.jayemceekay.shadowedhearts.client.render.AuraRenderTypes;
 import com.jayemceekay.shadowedhearts.client.render.DepthCapture;
 import com.jayemceekay.shadowedhearts.client.render.geom.CylinderBuffers;
-import com.jayemceekay.shadowedhearts.config.ClientConfig;
+import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs;
 import com.jayemceekay.shadowedhearts.network.AuraLifecyclePacket;
 import com.jayemceekay.shadowedhearts.network.AuraStatePacket;
 import com.mojang.blaze3d.shaders.Uniform;
@@ -55,7 +55,7 @@ public final class AuraEmitters {
      * Called by a networking handler when a state update arrives.
      */
     public static void receiveState(AuraStatePacket pkt) {
-        if (!ClientConfig.get().enableShadowAura) return;
+        if (!ShadowedHeartsConfigs.getInstance().getClientConfig().enableShadowAura()) return;
         var mc = Minecraft.getInstance();
         if (mc == null || mc.level == null) return;
         AuraInstance inst = ACTIVE.getOrDefault(pkt.getEntityId(), null);
@@ -109,7 +109,7 @@ public final class AuraEmitters {
      * Called by networking handler when a lifecycle update arrives.
      */
     public static void receiveLifecycle(AuraLifecyclePacket pkt) {
-        if (!ClientConfig.get().enableShadowAura) return;
+        if (!ShadowedHeartsConfigs.getInstance().getClientConfig().enableShadowAura()) return;
         var mc = Minecraft.getInstance();
         if (mc == null || mc.level == null) return;
         long now = mc.level.getGameTime();
@@ -126,7 +126,7 @@ public final class AuraEmitters {
                         }
                     }
                 }
-                ACTIVE.put(pkt.getEntityId(), new AuraInstance(pkt.getEntityId(), ent, now, FADE_IN, SUSTAIN, FADE_OUT, pkt.getX(), pkt.getY(), pkt.getZ(), pkt.getDx(), pkt.getDy(), pkt.getDz(), pkt.getBbw(), pkt.getBbh(), pkt.getBbs(), pkt.getCorruption()));
+                ACTIVE.put(pkt.getEntityId(), new AuraInstance(pkt.getEntityId(), ent, now, FADE_IN, (pkt.getSustainOverride() > 0) ? pkt.getSustainOverride() : SUSTAIN, FADE_OUT, pkt.getX(), pkt.getY(), pkt.getZ(), pkt.getDx(), pkt.getDy(), pkt.getDz(), pkt.getBbw(), pkt.getBbh() * pkt.getHeightMultiplier(), pkt.getBbs(), pkt.getCorruption()));
             }
             case FADE_OUT -> {
                 ACTIVE.computeIfPresent(pkt.getEntityId(), (id, inst) -> {
@@ -141,7 +141,7 @@ public final class AuraEmitters {
 
     // Timings (ticks): ~0.25s fade-in, ~5s sustain, ~0.5s fade-out
     private static final int FADE_IN = 10;
-    private static final int SUSTAIN = 60000; // can be tuned; original recent value ~90-100
+    private static final int SUSTAIN = 60; // can be tuned; original recent value ~90-100
     private static final int FADE_OUT = 10;
     // If a position update jumps farther than this squared distance, snap to avoid long lerp streaks
     private static final double TELEPORT_SNAP_DIST2 = 36.0; // 6 blocks squared
@@ -155,6 +155,7 @@ public final class AuraEmitters {
         var mc = Minecraft.getInstance();
         long now = (mc != null && mc.level != null) ? mc.level.getGameTime() : 0L;
         ACTIVE.computeIfPresent(entityId, (id, inst) -> {
+            inst.stopSound();
             inst.beginImmediateFadeOut(now, 10);
             return inst;
         });
@@ -189,8 +190,7 @@ public final class AuraEmitters {
         float radius = (float) pokemon.getForm().getHitbox().makeBoundingBox(new Vec3(0, 0, 0)).getSize();
         float halfHeight = (float) pokemon.getForm().getHitbox().makeBoundingBox(new Vec3(0.0, 0.0, 0.0)).getYsize();
 
-        boolean useXd = false;
-        //ClientConfig.get().useXdAura;
+        boolean useXd = ShadowedHeartsConfigs.getInstance().getClientConfig().useXdAura();
         var shader = useXd ? ModShaders.SHADOW_AURA_XD_CYLINDER : ModShaders.SHADOW_AURA_FOG_CYLINDER;
         if (shader == null) return;
 
@@ -637,11 +637,11 @@ public final class AuraEmitters {
     }
 
     public static void onRender(Camera camera, float partialTicks) {
+        if (!ShadowedHeartsConfigs.getInstance().getClientConfig().enableShadowAura()) return;
         var mc = Minecraft.getInstance();
         if (mc == null || mc.level == null) return;
 
-        boolean useXd = false;
-        //ClientConfig.get().useXdAura;
+        boolean useXd = ShadowedHeartsConfigs.getInstance().getClientConfig().useXdAura();
         var activeShader = useXd ? ModShaders.SHADOW_AURA_XD_CYLINDER : ModShaders.SHADOW_AURA_FOG_CYLINDER;
         var activeUniforms = useXd ? ModShaders.SHADOW_AURA_XD_CYLINDER_UNIFORMS : ModShaders.SHADOW_AURA_FOG_CYLINDER_UNIFORMS;
 
@@ -693,9 +693,12 @@ public final class AuraEmitters {
                 continue;
             }
             if (inst.isExpired(now)) {
+                inst.stopSound();
                 ACTIVE.remove(en.getKey());
                 continue;
             }
+
+            inst.updateSound();
 
             // Interpolate position from client-side entity when available; fallback to last server state
             double ix, iy, iz;
@@ -712,6 +715,12 @@ public final class AuraEmitters {
                 iy = Mth.lerp(partialTicks, ent.yOld, ent.getY());
                 iz = Mth.lerp(partialTicks, ent.zOld, ent.getZ());
             } else {
+                // If the entity wasn't available at START, try to find it now
+                ent = mc.level.getEntity(inst.entityId);
+                if (ent != null && ent.isAlive() && (inst.entityUuid == null || inst.entityUuid.equals(ent.getUUID()))) {
+                    inst.entityRef = new WeakReference<>(ent);
+                    inst.entityUuid = ent.getUUID();
+                }
                 ix = Mth.lerp(partialTicks, inst.lastX, inst.x);
                 iy = Mth.lerp(partialTicks, inst.lastY, inst.y);
                 iz = Mth.lerp(partialTicks, inst.lastZ, inst.z);
@@ -730,10 +739,8 @@ public final class AuraEmitters {
             double z = iz - camPos.z;
 
             if (ent instanceof PokemonEntity pokemonEntity) {
-                float entityHeight = Math.max(1f, pokemonEntity.getForm().getHitbox().height());
-                //Mth.lerp(partialTicks, inst.prevBbH, inst.lastBbH));
+                float entityHeight = Mth.lerp(partialTicks, inst.prevBbH, inst.lastBbH);
                 float radius = Math.max(0.25f, Mth.lerp(partialTicks, (float) inst.prevBbSize, (float) inst.lastBbSize));
-                //System.out.println("Entity Height " + entityHeight + " Radius " + radius);
                 // Screen-space radius for LOD selection
                 double cy = y;
                 double distCenter = Math.sqrt(x * x + cy * cy + z * z);
@@ -814,7 +821,7 @@ public final class AuraEmitters {
         }
     }
 
-    private static final class AuraInstance {
+    public static final class AuraInstance {
         private long startTick;
         private int fadeInTicks;
         private int sustainTicks;
@@ -824,9 +831,10 @@ public final class AuraEmitters {
         private int entityId;
         private WeakReference<Entity> entityRef;
         private UUID entityUuid;
+        private ShadowAuraSoundInstance soundInstance;
 
         // Cached transform/state updated from server (used as fallback/smoothing for size & corruption)
-        double x, y, z;
+        public double x, y, z;
         double lastX, lastY, lastZ;
         double lastDeltaX, lastDeltaY, lastDeltaZ;
         float lastBbH, lastBbW;
@@ -865,17 +873,37 @@ public final class AuraEmitters {
             this.prevCorruption = lastCorruption;
         }
 
+        public Entity getEntity() {
+            return (entityRef != null) ? entityRef.get() : null;
+        }
+
+        public void updateSound() {
+            var mc = Minecraft.getInstance();
+            if (mc == null || mc.level == null) return;
+            if (soundInstance == null || soundInstance.isStopped()) {
+                soundInstance = new ShadowAuraSoundInstance(this);
+                mc.getSoundManager().play(soundInstance);
+            }
+        }
+
+        public void stopSound() {
+            if (soundInstance != null) {
+                soundInstance.stopSound();
+                soundInstance = null;
+            }
+        }
+
         void beginImmediateFadeOut(long now, int outTicks) {
             this.startTick = now - (long) this.fadeInTicks - (long) this.sustainTicks;
             this.fadeOutTicks = Math.max(1, outTicks);
         }
 
-        boolean isExpired(long now) {
+        public boolean isExpired(long now) {
             long total = (long) fadeInTicks + (long) sustainTicks + (long) fadeOutTicks;
             return now - startTick >= total;
         }
 
-        float fadeFactor(long now) {
+        public float fadeFactor(long now) {
             long age = Math.max(0, now - startTick);
             long fi = this.fadeInTicks;
             long sus = this.sustainTicks;

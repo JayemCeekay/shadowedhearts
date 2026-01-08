@@ -7,6 +7,7 @@ import com.cobblemon.mod.common.api.pokemon.experience.SidemodExperienceSource;
 import com.cobblemon.mod.common.api.pokemon.stats.Stats;
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
 import com.cobblemon.mod.common.pokemon.Pokemon;
+import com.jayemceekay.shadowedhearts.config.HeartGaugeConfig;
 import com.jayemceekay.shadowedhearts.property.EVBufferProperty;
 import com.jayemceekay.shadowedhearts.property.HeartGaugeProperty;
 import com.jayemceekay.shadowedhearts.property.XPBufferProperty;

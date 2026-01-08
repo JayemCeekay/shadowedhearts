@@ -3,6 +3,7 @@ package com.jayemceekay.shadowedhearts.core;
 
 import com.jayemceekay.shadowedhearts.Shadowedhearts;
 import com.jayemceekay.shadowedhearts.blocks.PurificationChamberBlock;
+import com.jayemceekay.shadowedhearts.blocks.RelicStoneBlock;
 import dev.architectury.registry.registries.DeferredRegister;
 import dev.architectury.registry.registries.RegistrySupplier;
 import net.minecraft.core.registries.Registries;
@@ -29,6 +30,15 @@ public final class ModBlocks {
                     .strength(2.5F)
                     .sound(SoundType.METAL)
                     .noOcclusion())
+    );
+
+    public static final RegistrySupplier<Block> RELIC_STONE = BLOCKS.register(
+            "relic_stone",
+            () -> new RelicStoneBlock(BlockBehaviour.Properties
+                    .of().mapColor(MapColor.STONE)
+                    .strength(3.5F)
+                    .sound(SoundType.STONE)
+                    .requiresCorrectToolForDrops())
     );
 
     /** Call once during common init on both loaders. */

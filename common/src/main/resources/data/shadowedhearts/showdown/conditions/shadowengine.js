@@ -7,10 +7,14 @@
   onFieldStart(field, source, effect) {
   },
   onSwitchIn(pokemon) {
-    if (pokemon?.set?.isHyper && !pokemon.volatiles['hypermode']) {
+    const config = this.dex.data.Scripts.shadowedhearts?.Config || {
+      hyperMode: { enabled: false },
+      reverseMode: { enabled: false }
+    };
+    if (pokemon?.set?.isHyper && !pokemon.volatiles['hypermode'] && config.hyperMode.enabled) {
       pokemon.addVolatile('hypermode');
     }
-    if (pokemon?.set?.isReverse && !pokemon.volatiles['reversemode']) {
+    if (pokemon?.set?.isReverse && !pokemon.volatiles['reversemode'] && config.reverseMode.enabled) {
       pokemon.addVolatile('reversemode');
     }
   },
@@ -36,6 +40,8 @@
   },
   onTryMove(source, target, move) {
     if (!source?.set?.isShadow) return;
+    const config = this.dex.data.Scripts.shadowedhearts?.Config?.hyperMode || { enabled: false };
+    if (!config.enabled) return;
     if (source.volatiles['hypermode'] || source.volatiles['reversemode']) return;
     const nat = (source.set.nature || '').toLowerCase();
     let bars = Number(source.set.heartGaugeBars);
@@ -52,6 +58,8 @@
   },
   onAfterMove(source, target, move) {
     if (!move || move.type !== 'Shadow') return;
+    const config = this.dex.data.Scripts.shadowedhearts?.Config?.reverseMode || { enabled: false };
+    if (!config.enabled) return;
     for (const pokemon of this.getAllActive()) {
       if (!pokemon?.set?.isShadow) continue;
       if (pokemon.volatiles['hypermode'] || pokemon.volatiles['reversemode']) continue;
