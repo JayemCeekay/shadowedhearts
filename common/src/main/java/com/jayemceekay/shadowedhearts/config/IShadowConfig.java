@@ -26,7 +26,10 @@ public interface IShadowConfig extends IModConfig {
 
     // RCT Integration
     default boolean rctIntegrationEnabled() { return false; }
-    
+
+    // Relic Stone
+    default int relicStoneCooldownMinutes() { return 5; }
+
     IRCTSection append();
     IRCTSection convert();
     IRCTSection replace();

@@ -1,6 +1,7 @@
 package com.jayemceekay.shadowedhearts;
 
 import com.cobblemon.mod.common.Cobblemon;
+import com.cobblemon.mod.common.api.storage.player.PlayerDataExtensionRegistry;
 import com.cobblemon.mod.common.api.types.ElementalType;
 import com.cobblemon.mod.common.api.types.ElementalTypes;
 import com.jayemceekay.shadowedhearts.client.particle.LuminousMoteEmitters;
@@ -11,6 +12,7 @@ import com.jayemceekay.shadowedhearts.properties.ShadowPropertyRegistration;
 import com.jayemceekay.shadowedhearts.restrictions.ShadowRestrictions;
 import com.jayemceekay.shadowedhearts.server.*;
 import com.jayemceekay.shadowedhearts.snag.SnagEvents;
+import com.jayemceekay.shadowedhearts.util.ShadowedHeartsPlayerData;
 import dev.architectury.registry.ReloadListenerRegistry;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
@@ -46,6 +48,7 @@ public final class Shadowedhearts {
         ShadowDropListener.init();
         NPCShadowInjector.init();
         LuminousMoteEmitters.init();
+        PlayerDataExtensionRegistry.INSTANCE.register(ShadowedHeartsPlayerData.NAME, ShadowedHeartsPlayerData.class, false);
         HeartGaugeConfig.ensureLoaded();
         ReloadListenerRegistry.register(PackType.SERVER_DATA, SpeciesTagManager.INSTANCE);
 

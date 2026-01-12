@@ -19,6 +19,11 @@ import java.util.Set;
 @Mixin(LivingEntity.class)
 public abstract class MixinLivingEntity implements AspectHolder {
 
+    @Inject(method = "<clinit>", at = @At("TAIL"))
+    private static void shadowedhearts$clinit(CallbackInfo ci) {
+        SyncedEntityAspects.register();
+    }
+
     @Inject(method = "defineSynchedData", at = @At("RETURN"))
     private void shadowedhearts$defineSynchedData(SynchedEntityData.Builder builder, CallbackInfo ci) {
         SyncedEntityAspects.define(builder);

@@ -1,6 +1,5 @@
 package com.jayemceekay.shadowedhearts.neoforge;
 
-import com.jayemceekay.shadowedhearts.ShadowPokemonData;
 import com.jayemceekay.shadowedhearts.Shadowedhearts;
 import com.jayemceekay.shadowedhearts.config.ModConfig;
 import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs;
@@ -11,7 +10,6 @@ import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.config.ModConfig.Type;
 import net.neoforged.fml.event.config.ModConfigEvent;
-import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
 
 @Mod(Shadowedhearts.MOD_ID)
 public final class ShadowedheartsNeoForge {
@@ -23,10 +21,10 @@ public final class ShadowedheartsNeoForge {
 
         modEventBus.addListener(ShadowedheartsNeoForge::onConfigLoading);
         modEventBus.addListener(ShadowedheartsNeoForge::onConfigReloading);
+       // NeoForge.EVENT_BUS.addListener(this::onRegisterBrewing);
 
         // Run our common setup.
         Shadowedhearts.init();
-        modEventBus.addListener((final FMLCommonSetupEvent e) -> ShadowPokemonData.bootstrap());
     }
 
     public static void onConfigLoading(ModConfigEvent.Loading event) {
@@ -48,4 +46,10 @@ public final class ShadowedheartsNeoForge {
             ShadowedHeartsConfigs.getInstance().getTrainerSpawnConfig().load();
         }
     }
+
+    /*private void onRegisterBrewing(RegisterBrewingRecipesEvent event) {
+        event.getBuilder().addContainerRecipe(CobblemonItems.BERRY_JUICE, CobblemonItems.POTION, ModItems.JOY_SCENT.get());
+        event.getBuilder().addContainerRecipe(CobblemonItems.BERRY_JUICE, CobblemonItems.SUPER_POTION, ModItems.EXCITE_SCENT.get());
+        event.getBuilder().addContainerRecipe(CobblemonItems.BERRY_JUICE, CobblemonItems.HYPER_POTION, ModItems.VIVID_SCENT.get());
+    }*/
 }

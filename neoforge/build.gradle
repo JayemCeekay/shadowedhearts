@@ -51,6 +51,10 @@ repositories {
         name = "Fuzs Mod Resources"
         url = "https://raw.githubusercontent.com/Fuzss/modresources/main/maven/"
     }
+    maven {
+        name = "AzureDoom Mods"
+        url = "https://maven.azuredoom.com/mods"
+    }
 }
 
 dependencies {
@@ -63,7 +67,6 @@ dependencies {
 
     //cobblemon neoforge
     modImplementation("com.cobblemon:neoforge:${cobblemon_version}")
-
 
     //kotlin for forge
     modCompileOnly("maven.modrinth:ordsPcFz:4qCjWixP")
@@ -97,7 +100,7 @@ dependencies {
     modRuntimeOnly("maven.modrinth:2iY8VFqL:y2ziXO9L")
 
     //simpleTMs
-    modCompileOnly("dragomordor.simpletms:simpletms-neoforge:2.3.0")
+    modCompileOnly("maven.modrinth:yFqR0DNc:uaKfPMYS")
 
 }
 

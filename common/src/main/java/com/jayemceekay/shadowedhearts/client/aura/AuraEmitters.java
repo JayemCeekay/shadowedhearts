@@ -802,7 +802,7 @@ public final class AuraEmitters {
                         if (uu.uProxyHalfHeight() != null)
                             uu.uProxyHalfHeight().set(entityHeight * 0.5f);
                         if (uu.uAuraFade() != null)
-                            uu.uAuraFade().set(0.7f * fade);
+                            uu.uAuraFade().set(0.9f * fade);
                         if (uu.uDensity() != null)
                             uu.uDensity().set(radius * (useXd ? 1.0f : 1.0f));
                         if (uu.uMaxThickness() != null)

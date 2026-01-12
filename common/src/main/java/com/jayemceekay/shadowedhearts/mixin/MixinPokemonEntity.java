@@ -17,6 +17,11 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(PokemonEntity.class)
 public abstract class MixinPokemonEntity implements ShadowFlag {
 
+    @Inject(method = "<clinit>", at = @At("TAIL"))
+    private static void shadowedhearts$clinit(CallbackInfo ci) {
+        ShadowPokemonData.register();
+    }
+
     @Inject(method = "defineSynchedData", at = @At("RETURN"))
     private void shadowedhearts$defineSynchedData(SynchedEntityData.Builder builder, CallbackInfo ci) {
         // Ensure our flags are defined with defaults

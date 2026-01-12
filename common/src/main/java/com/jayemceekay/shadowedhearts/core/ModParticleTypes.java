@@ -18,6 +18,9 @@ public final class ModParticleTypes {
     public static final RegistrySupplier<SimpleParticleType> LUMINOUS_MOTE =
             PARTICLE_TYPES.register("luminous_mote", () -> new SimpleParticleType(false) {});
 
+    public static final RegistrySupplier<SimpleParticleType> RELIC_STONE_MOTE =
+            PARTICLE_TYPES.register("relic_stone_mote", () -> new SimpleParticleType(false) {});
+
     public static void register() {
         PARTICLE_TYPES.register();
     }

@@ -12,12 +12,20 @@ import net.minecraft.util.Mth;
  */
 public class ShadowPokemonData implements ShadowFlag {
     /** Synced boolean: whether the PokemonEntity is a shadow. */
-    public static final EntityDataAccessor<Boolean> SHADOW = SynchedEntityData.defineId(PokemonEntity.class, EntityDataSerializers.BOOLEAN);
+    public static EntityDataAccessor<Boolean> SHADOW;
     /** Synced float [0..1]: corruption intensity for visual/behavioral effects. */
-    public static final EntityDataAccessor<Float> HEART_GAUGE = SynchedEntityData.defineId(PokemonEntity.class, EntityDataSerializers.FLOAT);
+    public static EntityDataAccessor<Float> HEART_GAUGE;
+
+    public static void register() {
+        if (SHADOW == null) {
+            SHADOW = SynchedEntityData.defineId(PokemonEntity.class, EntityDataSerializers.BOOLEAN);
+            HEART_GAUGE = SynchedEntityData.defineId(PokemonEntity.class, EntityDataSerializers.FLOAT);
+        }
+    }
 
     /** Define default values into the entity's data container. Called from mixin. */
     public static void define(SynchedEntityData.Builder builder) {
+        register();
         builder.define(SHADOW, false);
         builder.define(HEART_GAUGE, 0f);
     }
@@ -31,8 +39,6 @@ public class ShadowPokemonData implements ShadowFlag {
         PokemonAspectUtil.syncBenchedMoves(e.getPokemon());
         PokemonAspectUtil.syncMoveSet(e.getPokemon());
     }
-
-    public static void bootstrap() { /* no-op */ }
 
     public static boolean isShadow(PokemonEntity e) { return e.getEntityData().get(SHADOW); }
     public static float getHeartGauge(PokemonEntity e) { return e.getEntityData().get(HEART_GAUGE); }

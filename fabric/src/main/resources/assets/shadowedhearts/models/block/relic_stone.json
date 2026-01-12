@@ -1,0 +1,13 @@
+{
+  "render_type": "minecraft:cutout",
+  "parent": "special-model-loader:builtin/obj",
+  "model": "shadowedhearts:models/block/relic_stone.geo.obj",
+  "flip_v": true,
+  "ambient_occlusion": true,
+  "gui_light": "side",
+  "textures": {
+    "all": "shadowedhearts:block/relic_stone",
+    "particle": "shadowedhearts:block/relic_stone",
+    "m_c7cae9e3-8752-c02e-3b3e-e2d76f13a828": "shadowedhearts:block/relic_stone"
+  }
+}

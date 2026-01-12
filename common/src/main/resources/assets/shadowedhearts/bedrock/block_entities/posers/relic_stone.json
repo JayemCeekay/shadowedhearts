@@ -1,0 +1,10 @@
+{
+  "maxScale": 1.0,
+  "yTranslation": 0.0,
+  "allPoseTypes": true,
+  "poses": {
+    "idle": {
+      "allPoseTypes": true
+    }
+  }
+}

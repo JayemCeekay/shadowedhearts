@@ -44,7 +44,6 @@ dependencies {
 
     modImplementation("com.cobblemon:mod:${project.property('cobblemon_version')}")
 
-
     implementation("org.graalvm.sdk:graal-sdk:22.3.0")
 
     // Test framework for common module
@@ -58,11 +57,13 @@ dependencies {
     compileOnly "fuzs.forgeconfigapiport:forgeconfigapiport-common-neoforgeapi:$rootProject.fcap_version"
 
     //rctmod
-    modCompileOnlyApi( "com.gitlab.srcmc:rctmod-common-1.21.1:0.17.4-beta")
+    modCompileOnlyApi( "maven.modrinth:lRwTUnD7:6WnjrnPQ")
 
     //accessories
     modCompileOnlyApi("io.wispforest:accessories-common:${project.accessories_version}")
-    modCompileOnly("dragomordor.simpletms:simpletms-common:2.3.0")
+
+    //simpleTMs
+    modCompileOnly("maven.modrinth:yFqR0DNc:uWiIETYV")
 
     modCompileOnly("maven.modrinth:2iY8VFqL:y2ziXO9L")
 }

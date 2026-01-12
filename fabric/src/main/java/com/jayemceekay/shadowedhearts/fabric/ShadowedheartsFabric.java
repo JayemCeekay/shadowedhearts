@@ -1,6 +1,5 @@
 package com.jayemceekay.shadowedhearts.fabric;
 
-import com.jayemceekay.shadowedhearts.ShadowPokemonData;
 import com.jayemceekay.shadowedhearts.Shadowedhearts;
 import com.jayemceekay.shadowedhearts.config.ModConfig;
 import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs;
@@ -9,7 +8,6 @@ import com.jayemceekay.shadowedhearts.config.TrainerSpawnConfig;
 import fuzs.forgeconfigapiport.fabric.api.neoforge.v4.NeoForgeConfigRegistry;
 import fuzs.forgeconfigapiport.fabric.api.neoforge.v4.NeoForgeModConfigEvents;
 import net.fabricmc.api.ModInitializer;
-import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.neoforged.fml.config.ModConfig.Type;
 
 public final class ShadowedheartsFabric implements ModInitializer {
@@ -32,6 +30,7 @@ public final class ShadowedheartsFabric implements ModInitializer {
                 ShadowedHeartsConfigs.getInstance().getTrainerSpawnConfig().load();
             }
         });
+
         NeoForgeModConfigEvents.reloading(Shadowedhearts.MOD_ID).register(config -> {
             if (config.getSpec() == ModConfig.SPEC) {
                 ShadowedHeartsConfigs.getInstance().getShadowConfig().load();
@@ -44,12 +43,10 @@ public final class ShadowedheartsFabric implements ModInitializer {
 
         // Run our common setup.
         Shadowedhearts.init();
+        FabricBrewingRecipes.register();
         // Register S2C network payloads and client handlers using Cobblemon's system
         com.jayemceekay.shadowedhearts.fabric.net.ShadowedHeartsFabricNetworkManager.registerMessages();
         // Register C2S codecs and server handlers
         com.jayemceekay.shadowedhearts.fabric.net.ShadowedHeartsFabricNetworkManager.registerServerHandlers();
-        ServerLifecycleEvents.SERVER_STARTING.register((server) -> {
-            ShadowPokemonData.bootstrap();
-        });
     }
 }

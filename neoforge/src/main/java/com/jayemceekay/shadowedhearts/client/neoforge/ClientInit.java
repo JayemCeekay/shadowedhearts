@@ -37,6 +37,10 @@ public final class ClientInit {
                 ModParticleTypes.LUMINOUS_MOTE.get(),
                 LuminousMoteParticle.Provider::new
         );
+        evt.registerSpriteSet(
+                ModParticleTypes.RELIC_STONE_MOTE.get(),
+                com.jayemceekay.shadowedhearts.client.particle.RelicStoneMoteParticle.Provider::new
+        );
     }
 }
 

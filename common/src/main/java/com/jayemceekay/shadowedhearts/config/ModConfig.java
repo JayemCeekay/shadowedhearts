@@ -77,6 +77,11 @@ public final class ModConfig implements IShadowConfig {
     }
 
     @Override
+    public int relicStoneCooldownMinutes() {
+        return DATA.relicStone.cooldownMinutes.get();
+    }
+
+    @Override
     public IRCTSection append() {
         return DATA.rctIntegration.append;
     }
@@ -105,6 +110,7 @@ public final class ModConfig implements IShadowConfig {
         public final CallButtonConfig callButton = new CallButtonConfig();
         public final ScentConfig scent = new ScentConfig();
         public final ShadowMovesConfig shadowMoves = new ShadowMovesConfig();
+        public final RelicStoneConfig relicStone = new RelicStoneConfig();
         public final RCTIntegrationConfig rctIntegration = new RCTIntegrationConfig();
 
         private void build(ModConfigSpec.Builder builder) {
@@ -126,6 +132,10 @@ public final class ModConfig implements IShadowConfig {
 
             builder.push("shadowMoves");
             shadowMoves.build(builder);
+            builder.pop();
+
+            builder.push("relicStone");
+            relicStone.build(builder);
             builder.pop();
 
             builder.push("shadowSpawn");
@@ -205,6 +215,16 @@ public final class ModConfig implements IShadowConfig {
             onlyShadowRush = builder
                     .comment("If true, only 'Shadow Rush' will be assigned, even if replaceCount > 1.")
                     .define("onlyShadowRush", false);
+        }
+    }
+
+    public static final class RelicStoneConfig {
+        public ModConfigSpec.IntValue cooldownMinutes;
+
+        private void build(ModConfigSpec.Builder builder) {
+            cooldownMinutes = builder
+                    .comment("Cooldown in minutes between using the Relic Stone's purification function.")
+                    .defineInRange("cooldownMinutes", 5, 0, Integer.MAX_VALUE);
         }
     }
 

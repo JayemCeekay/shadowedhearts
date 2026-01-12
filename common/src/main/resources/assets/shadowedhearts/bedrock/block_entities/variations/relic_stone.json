@@ -1,0 +1,12 @@
+{
+  "name": "shadowedhearts:relic_stone",
+  "order": 0,
+  "variations": [
+    {
+      "aspects": [],
+      "model": "shadowedhearts:relic_stone.geo",
+      "texture": "shadowedhearts:textures/block/relic_stone.png",
+      "poser": "shadowedhearts:relic_stone"
+    }
+  ]
+}
