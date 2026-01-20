@@ -25,6 +25,8 @@ public final class ModShaders {
     // Trail ribbon shader (uses UV scrolling texture)
     public static ShaderInstance BALL_TRAIL;
 
+    public static ShaderInstance AURA_PULSE;
+
     private ModShaders() {}
 
     /** Called from each platform's client init to trigger shader registration. */

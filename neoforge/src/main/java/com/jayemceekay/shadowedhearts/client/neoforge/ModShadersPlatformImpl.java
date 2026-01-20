@@ -58,6 +58,9 @@ public class ModShadersPlatformImpl {
             evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:ball_trail", DefaultVertexFormat.NEW_ENTITY),
                     shader -> ModShaders.BALL_TRAIL = shader);
 
+            evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:aura_pulse", DefaultVertexFormat.POSITION_TEX),
+                    shader -> ModShaders.AURA_PULSE = shader);
+
         } catch (IOException e) {
             throw new RuntimeException("Failed to load shaders", e);
         }

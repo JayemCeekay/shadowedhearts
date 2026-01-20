@@ -12,6 +12,9 @@ public interface IShadowConfig extends IModConfig {
     // Reverse Mode
     default boolean reverseModeEnabled() { return true; }
 
+    // GO Damage Modifier
+    default boolean goDamageModifierEnabled() { return false; }
+
     // Call Button
     default boolean callButtonReducesHeartGauge() { return true; }
     default boolean callButtonAccuracyBoost() { return true; }
@@ -19,8 +22,10 @@ public interface IShadowConfig extends IModConfig {
 
     // Scent
     default int scentCooldownSeconds() { return 300; }
+    default boolean expandedScentSystemEnabled() { return true; }
 
     // Shadow Moves
+    default boolean superEffectiveShadowMovesEnabled() { return true; }
     default String shadowMovesReplaceCount() { return "1"; }
     default boolean shadowMovesOnlyShadowRush() { return false; }
 
@@ -30,9 +35,15 @@ public interface IShadowConfig extends IModConfig {
     // Relic Stone
     default int relicStoneCooldownMinutes() { return 5; }
 
+    // Aura Scanner
+    default int auraScannerShadowRange() { return 128; }
+    default int auraScannerMeteoroidRange() { return 256; }
+
     IRCTSection append();
     IRCTSection convert();
     IRCTSection replace();
+
+    IWorldAlterationConfig worldAlteration();
 
     interface IRCTSection {
         List<? extends String> trainerTypes();

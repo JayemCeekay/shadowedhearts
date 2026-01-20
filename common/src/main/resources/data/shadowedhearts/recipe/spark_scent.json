@@ -1,0 +1,23 @@
+{
+  "type": "cobblemon:cooking_pot_shapeless",
+  "category": "misc",
+  "ingredients": [
+    {
+      "item": "minecraft:sunflower"
+    },
+    {
+      "item": "minecraft:cocoa_beans"
+    },
+    {
+      "item": "minecraft:sugar"
+    },
+    {
+      "item": "minecraft:glass_bottle"
+    }
+  ],
+  "result": {
+    "id": "shadowedhearts:spark_scent"
+  },
+  "seasoningTag": "cobblemon:empty",
+  "seasoningProcessors": []
+}

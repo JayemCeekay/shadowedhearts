@@ -1,0 +1,37 @@
+{
+  "parent": "shadowedhearts:main/purified_gem",
+  "display": {
+    "icon": {
+      "id": "shadowedhearts:snag_machine_advanced"
+    },
+    "title": {
+      "translate": "advancements.shadowedhearts.snag_machine_advanced.title"
+    },
+    "description": {
+      "translate": "advancements.shadowedhearts.snag_machine_advanced.description"
+    },
+    "frame": "goal",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "has_advanced": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": [
+              "shadowedhearts:snag_machine_advanced"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "has_advanced"
+    ]
+  ]
+}

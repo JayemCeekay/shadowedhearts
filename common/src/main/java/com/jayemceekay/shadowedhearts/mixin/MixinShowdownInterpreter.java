@@ -5,6 +5,7 @@ import com.cobblemon.mod.common.api.battles.model.PokemonBattle;
 import com.cobblemon.mod.common.battles.ShowdownInterpreter;
 import com.cobblemon.mod.common.battles.dispatch.InstructionSet;
 import com.cobblemon.mod.common.battles.dispatch.InterpreterInstruction;
+import com.jayemceekay.shadowedhearts.Shadowedhearts;
 import com.jayemceekay.shadowedhearts.cobblemon.instructions.*;
 import kotlin.jvm.functions.Function4;
 import org.spongepowered.asm.mixin.Final;
@@ -65,7 +66,7 @@ public abstract class MixinShowdownInterpreter {
         // Surface Showdown-side debug messages to the server console so they are visible during testing.
         // This helps when '-message' lines are not rendered in the current UI/log sink.
         if (rawMessage.contains("|shdebug|")) {
-            System.out.println("[ShadowedHearts][Showdown DEBUG] " + rawMessage);
+          Shadowedhearts.LOGGER.debug("[ShadowedHearts Showdown DEBUG] " + rawMessage);
         }
     }
 }

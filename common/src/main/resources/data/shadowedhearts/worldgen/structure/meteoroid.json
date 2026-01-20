@@ -1,0 +1,7 @@
+{
+  "type": "shadowedhearts:meteoroid",
+  "biomes": "#minecraft:is_overworld",
+  "step": "surface_structures",
+  "spawn_overrides": {},
+  "terrain_adaptation": "none"
+}

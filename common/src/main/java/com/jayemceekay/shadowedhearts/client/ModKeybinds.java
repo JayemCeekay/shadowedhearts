@@ -2,6 +2,7 @@ package com.jayemceekay.shadowedhearts.client;
 
 import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.KeyMapping;
+import org.lwjgl.glfw.GLFW;
 
 /**
  * Client key mappings shared across platforms. Platform registration occurs in ModKeybindsPlatform.
@@ -11,31 +12,53 @@ public final class ModKeybinds {
 
     public static KeyMapping ORDER_WHEEL;
     public static KeyMapping AURA_TRAIL_TOGGLE;
+    public static KeyMapping AURA_SCANNER;
+    public static KeyMapping AURA_PULSE;
 
     private static final String CAT = "key.categories.shadowedhearts";
-
-    /** Call during client init to construct + register key mappings. */
     public static void init() {
         if (ORDER_WHEEL == null) {
             ORDER_WHEEL = new KeyMapping(
                     "key.shadowedhearts.order_wheel",
                     InputConstants.Type.KEYSYM,
-                    // Default to G
-                    org.lwjgl.glfw.GLFW.GLFW_KEY_G,
+                    GLFW.GLFW_KEY_G,
                     CAT
             );
         }
 
+        if (AURA_SCANNER == null) {
+            AURA_SCANNER = new KeyMapping(
+                    "key.shadowedhearts.aura_scanner",
+                    InputConstants.Type.KEYSYM,
+                    GLFW.GLFW_KEY_V,
+                    CAT
+            );
+        }
+
+        if (AURA_PULSE == null) {
+            AURA_PULSE = new KeyMapping(
+                    "key.shadowedhearts.aura_pulse",
+                    InputConstants.Type.KEYSYM,
+                    GLFW.GLFW_KEY_B,
+                    CAT
+            );
+        }
 
     }
 
-    /** Returns true while the order wheel key is currently held down. */
     public static boolean isOrderWheelDown() {
         return ORDER_WHEEL != null && ORDER_WHEEL.isDown();
     }
 
-    /** Returns true once when the order wheel key was pressed since last poll. */
     public static boolean consumeOrderWheelPress() {
         return ORDER_WHEEL != null && ORDER_WHEEL.consumeClick();
+    }
+
+    public static boolean consumeAuraScannerPress() {
+        return AURA_SCANNER != null && AURA_SCANNER.consumeClick();
+    }
+
+    public static boolean consumeAuraPulsePress() {
+        return AURA_PULSE != null && AURA_PULSE.consumeClick();
     }
 }

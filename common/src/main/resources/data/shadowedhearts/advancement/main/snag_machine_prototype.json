@@ -1,0 +1,37 @@
+{
+  "parent": "shadowedhearts:main/wild_shadow_defeated",
+  "display": {
+    "icon": {
+      "id": "shadowedhearts:snag_machine_prototype"
+    },
+    "title": {
+      "translate": "advancements.shadowedhearts.snag_machine_prototype.title"
+    },
+    "description": {
+      "translate": "advancements.shadowedhearts.snag_machine_prototype.description"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "has_prototype": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": [
+              "shadowedhearts:snag_machine_prototype"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "has_prototype"
+    ]
+  ]
+}

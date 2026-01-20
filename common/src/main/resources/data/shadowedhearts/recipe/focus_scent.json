@@ -1,0 +1,23 @@
+{
+  "type": "cobblemon:cooking_pot_shapeless",
+  "category": "misc",
+  "ingredients": [
+    {
+      "item": "minecraft:torchflower"
+    },
+    {
+      "item": "minecraft:paper"
+    },
+    {
+      "item": "minecraft:sugar"
+    },
+    {
+      "item": "minecraft:glass_bottle"
+    }
+  ],
+  "result": {
+    "id": "shadowedhearts:focus_scent"
+  },
+  "seasoningTag": "cobblemon:empty",
+  "seasoningProcessors": []
+}

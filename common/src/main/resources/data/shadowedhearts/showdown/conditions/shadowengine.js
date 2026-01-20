@@ -38,7 +38,7 @@
     sassy: [0, 0, 2, 5, 10, 10], relaxed: [0, 0, 2, 5, 10, 10],
     modest: [0, 0, 0, 2, 5, 5], timid: [0, 0, 0, 2, 5, 5], quiet: [0, 0, 0, 2, 5, 5]
   },
-  onTryMove(source, target, move) {
+  onBeforeMove(source, target, move) {
     if (!source?.set?.isShadow) return;
     const config = this.dex.data.Scripts.shadowedhearts?.Config?.hyperMode || { enabled: false };
     if (!config.enabled) return;
@@ -60,23 +60,41 @@
     if (!move || move.type !== 'Shadow') return;
     const config = this.dex.data.Scripts.shadowedhearts?.Config?.reverseMode || { enabled: false };
     if (!config.enabled) return;
-    for (const pokemon of this.getAllActive()) {
-      if (!pokemon?.set?.isShadow) continue;
-      if (pokemon.volatiles['hypermode'] || pokemon.volatiles['reversemode']) continue;
+    if (!source?.set?.isShadow) return;
+    if (source.volatiles['hypermode'] || source.volatiles['reversemode']) return;;
 
-      const nat = (pokemon.getNature() || '').toLowerCase();
-      let bars = Number(pokemon.set.heartGaugeBars);
-      if (!Number.isFinite(bars)) bars = 5;
-      if (bars < 0) bars = 0; if (bars > 5) bars = 5;
+    const nat = (source.getNature() || '').toLowerCase();
+    let bars = Number(source.set.heartGaugeBars);
+    if (!Number.isFinite(bars)) bars = 5;
+    if (bars < 0) bars = 0; if (bars > 5) bars = 5;
 
-      const table = this.field.getPseudoWeather('shadowengine').natureTableReverseMode;
-      const row = table[nat];
-      const idx = 5 - bars;
-      const pct = row ? row[idx] : 0;
+    const table = this.field.getPseudoWeather('shadowengine').natureTableReverseMode;
+    const row = table[nat];
+    const idx = 5 - bars;
+    const pct = row ? row[idx] : 0;
 
-      if (pct && this.random(100) < pct) {
-        pokemon.addVolatile('reversemode');
-      }
+    if (pct && this.random(100) < pct) {
+      source.addVolatile('reversemode');
+      return false;
     }
+  },
+  onModifyDamage(damage, source, target, move) {
+    const config = this.dex.data.Scripts.shadowedhearts?.Config?.GOdamageModifier || {enabled: false};
+    if (!config.enabled) return;
+    
+    let mod = 1;
+    if (source?.set?.isShadow) mod *= 1.2;
+    if (target?.set?.isShadow) mod *= 1.2;
+    if (mod !== 1) return this.chainModify(mod);
+  },
+  onEffectiveness(typeMod, target, type, move) {
+    const config = this.dex.data.Scripts.shadowedhearts?.Config?.shadowMoves || { superEffectiveEnabled: true };
+    if (!config.superEffectiveEnabled) return;
+    if (!target || move.type !== 'Shadow') return;
+
+    const targetTypes = target.getTypes();
+    if (type !== targetTypes[0]) return 0;
+    const isShadowTarget = !!(target.set && target.set.isShadow);
+    return isShadowTarget ? -1 : 1;
   }
 })

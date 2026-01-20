@@ -35,8 +35,6 @@ import org.joml.Vector3f
  * Minimal storage widget for the Purification Chamber.
  * Similar intent to Cobblemon's StorageWidget, but with 5 slots (0 center, 1-4 outer).
  * Shows a single context button that toggles between "Add" and "Remove" depending on selection.
- *
- * Context: This is a Minecraft Cobblemon mod; all shadow/purity/corruption/capture terms are gameplay mechanics.
  */
 class PurificationStorageWidget(
     pX: Int,

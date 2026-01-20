@@ -1,0 +1,23 @@
+{
+  "type": "cobblemon:cooking_pot_shapeless",
+  "category": "misc",
+  "ingredients": [
+    {
+      "item": "minecraft:fern"
+    },
+    {
+      "item": "minecraft:moss_carpet"
+    },
+    {
+      "item": "minecraft:clay_ball"
+    },
+    {
+      "item": "minecraft:glass_bottle"
+    }
+  ],
+  "result": {
+    "id": "shadowedhearts:grounding_scent"
+  },
+  "seasoningTag": "cobblemon:empty",
+  "seasoningProcessors": []
+}

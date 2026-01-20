@@ -8,21 +8,17 @@ import dev.architectury.registry.registries.DeferredRegister;
 import dev.architectury.registry.registries.RegistrySupplier;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.material.MapColor;
 
-// If you have block entities, keep them here too (see section below).
-// import net.minecraft.world.level.block.entity.BlockEntityType;
-
 public final class ModBlocks {
     private ModBlocks() {}
 
-    /** Architectury deferred register bound to BLOCK registry. */
     public static final DeferredRegister<Block> BLOCKS =
             DeferredRegister.create(Shadowedhearts.MOD_ID, Registries.BLOCK);
 
-    // Purification Chamber (MVP UI container block)
     public static final RegistrySupplier<Block> PURIFICATION_PC = BLOCKS.register(
             "purification_pc",
             () -> new PurificationChamberBlock(BlockBehaviour.Properties
@@ -40,6 +36,14 @@ public final class ModBlocks {
                     .sound(SoundType.STONE)
                     .noLootTable()
                     .forceSolidOn())
+    );
+
+    public static final RegistrySupplier<Block> SHADOWFALL_METEOROID = BLOCKS.register(
+            "shadowfall_meteoroid",
+            () -> new Block(BlockBehaviour.Properties
+                    .ofFullCopy(Blocks.IRON_ORE).requiresCorrectToolForDrops().mapColor(MapColor.COLOR_PURPLE)
+                    .strength(3.0F, 6.0F)
+                    .sound(SoundType.DEEPSLATE))
     );
 
     /** Call once during common init on both loaders. */

@@ -1,0 +1,37 @@
+{
+  "parent": "shadowedhearts:main/shadow_purified",
+  "display": {
+    "icon": {
+      "id": "shadowedhearts:purified_gem"
+    },
+    "title": {
+      "translate": "advancements.shadowedhearts.purified_gem.title"
+    },
+    "description": {
+      "translate": "advancements.shadowedhearts.purified_gem.description"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "has_gem": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": [
+              "shadowedhearts:purified_gem"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "has_gem"
+    ]
+  ]
+}

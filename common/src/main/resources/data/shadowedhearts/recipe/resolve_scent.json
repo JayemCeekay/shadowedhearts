@@ -1,0 +1,23 @@
+{
+  "type": "cobblemon:cooking_pot_shapeless",
+  "category": "misc",
+  "ingredients": [
+    {
+      "item": "minecraft:mangrove_roots"
+    },
+    {
+      "item": "minecraft:mud"
+    },
+    {
+      "item": "minecraft:wheat"
+    },
+    {
+      "item": "minecraft:glass_bottle"
+    }
+  ],
+  "result": {
+    "id": "shadowedhearts:resolve_scent"
+  },
+  "seasoningTag": "cobblemon:empty",
+  "seasoningProcessors": []
+}

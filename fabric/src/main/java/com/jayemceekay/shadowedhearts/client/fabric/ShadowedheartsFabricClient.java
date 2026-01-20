@@ -5,17 +5,22 @@ import com.jayemceekay.shadowedhearts.Shadowedhearts;
 import com.jayemceekay.shadowedhearts.client.ModKeybinds;
 import com.jayemceekay.shadowedhearts.client.ModShaders;
 import com.jayemceekay.shadowedhearts.client.aura.AuraEmitters;
+import com.jayemceekay.shadowedhearts.client.aura.AuraPulseRenderer;
 import com.jayemceekay.shadowedhearts.client.ball.BallEmitters;
+import com.jayemceekay.shadowedhearts.client.gui.AuraScannerHUD;
 import com.jayemceekay.shadowedhearts.client.particle.LuminousMoteEmitters;
 import com.jayemceekay.shadowedhearts.client.particle.LuminousMoteParticle;
 import com.jayemceekay.shadowedhearts.client.particle.RelicStoneMoteParticle;
 import com.jayemceekay.shadowedhearts.client.render.DepthCapture;
 import com.jayemceekay.shadowedhearts.client.render.HeldBallSnagGlowRenderer;
+import com.jayemceekay.shadowedhearts.client.sound.RelicStoneSoundManager;
 import com.jayemceekay.shadowedhearts.config.ClientConfig;
 import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs;
 import com.jayemceekay.shadowedhearts.core.ModBlocks;
+import com.jayemceekay.shadowedhearts.core.ModItems;
 import com.jayemceekay.shadowedhearts.core.ModParticleTypes;
 import com.jayemceekay.shadowedhearts.fabric.net.ShadowedHeartsFabricNetworkManager;
+import com.jayemceekay.shadowedhearts.items.ScentItem;
 import com.jayemceekay.shadowedhearts.util.HeldItemAnchorCache;
 import com.mojang.blaze3d.vertex.PoseStack;
 import dev.felnull.specialmodelloader.api.event.SpecialModelLoaderEvents;
@@ -24,7 +29,10 @@ import fuzs.forgeconfigapiport.fabric.api.neoforge.v4.NeoForgeModConfigEvents;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.blockrenderlayer.v1.BlockRenderLayerMap;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientEntityEvents;
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.particle.v1.ParticleFactoryRegistry;
+import net.fabricmc.fabric.api.client.rendering.v1.ColorProviderRegistry;
+import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.RenderType;
@@ -50,12 +58,22 @@ public final class ShadowedheartsFabricClient implements ClientModInitializer {
         ShadowedHeartsFabricNetworkManager.registerClientHandlers();
         // Client-side common init
         AuraEmitters.init();
+        AuraPulseRenderer.init();
         DepthCapture.init();
         ModShaders.initClient();
         ModShadersPlatformImpl.registerShaders();
         // Register keybinds
         ModKeybinds.init();
         ModKeybindsPlatformImpl.register(ModKeybinds.ORDER_WHEEL);
+        ModKeybindsPlatformImpl.register(ModKeybinds.AURA_SCANNER);
+        ModKeybindsPlatformImpl.register(ModKeybinds.AURA_PULSE);
+
+        ClientTickEvents.END_CLIENT_TICK.register(client -> {
+            AuraScannerHUD.tick();
+            AuraPulseRenderer.tick();
+            RelicStoneSoundManager.tick();
+        });
+        HudRenderCallback.EVENT.register((guiGraphics, tickCounter) -> AuraScannerHUD.render(guiGraphics, tickCounter.getGameTimeDeltaPartialTick(true)));
 
         // Special Model Loader registration
         SpecialModelLoaderEvents.LOAD_SCOPE.register(() -> {
@@ -78,7 +96,6 @@ public final class ShadowedheartsFabricClient implements ClientModInitializer {
         // Subscribe luminous mote emitters to Cobblemon events
         LuminousMoteEmitters.init();
 
-        // Render hooks: aura + luminous motes at late translucent stage
         WorldRenderEvents.AFTER_TRANSLUCENT.register(context -> {
             AuraEmitters.onRender(context.camera(), context.camera().getPartialTickTime());
             BallEmitters.onRender(context.camera(), context.camera().getPartialTickTime());
@@ -148,5 +165,29 @@ public final class ShadowedheartsFabricClient implements ClientModInitializer {
                 AccessoriesRendererBridge.registerRenderers();
             } catch (Throwable ignored) {}
         }
+
+        // Register Item Colors
+        ColorProviderRegistry.ITEM.register((stack, tintIndex) -> {
+            if (tintIndex == 1 && stack.getItem() instanceof ScentItem scentItem) {
+                return 0xFF000000 | scentItem.getColor();
+            }
+            return 0xFFFFFFFF;
+        },
+                ModItems.JOY_SCENT.get(),
+                ModItems.EXCITE_SCENT.get(),
+                ModItems.VIVID_SCENT.get(),
+                ModItems.TRANQUIL_SCENT.get(),
+                ModItems.MEADOW_SCENT.get(),
+                ModItems.SPARK_SCENT.get(),
+                ModItems.FOCUS_SCENT.get(),
+                ModItems.COMFORT_SCENT.get(),
+                ModItems.FAMILIAR_SCENT.get(),
+                ModItems.HEARTH_SCENT.get(),
+                ModItems.INSIGHT_SCENT.get(),
+                ModItems.LUCID_SCENT.get(),
+                ModItems.RESOLVE_SCENT.get(),
+                ModItems.STEADY_SCENT.get(),
+                ModItems.GROUNDING_SCENT.get()
+        );
     }
 }

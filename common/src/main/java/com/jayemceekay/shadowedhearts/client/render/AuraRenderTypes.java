@@ -28,7 +28,7 @@ public final class AuraRenderTypes {
             }
     );
 
-    public static RenderType shadow_fog() {
+    public static RenderType shadow_fog(boolean throughTerrain) {
         RenderType.CompositeState state = RenderType.CompositeState.builder()
                 .setShaderState(new RenderStateShard.ShaderStateShard(() -> ModShaders.SHADOW_AURA_FOG_CYLINDER != null
                         ? ModShaders.SHADOW_AURA_FOG_CYLINDER
@@ -36,15 +36,15 @@ public final class AuraRenderTypes {
                 .setTextureState(RenderStateShard.NO_TEXTURE)
                 .setTransparencyState(RenderStateShard.TRANSLUCENT_TRANSPARENCY)
                 .setWriteMaskState(RenderStateShard.COLOR_WRITE)
-                .setDepthTestState(RenderStateShard.LEQUAL_DEPTH_TEST)
+                .setDepthTestState(throughTerrain ? RenderStateShard.NO_DEPTH_TEST : RenderStateShard.LEQUAL_DEPTH_TEST)
                 .setCullState(RenderStateShard.NO_CULL)
                 .setLightmapState(RenderStateShard.LIGHTMAP)
                 .setLayeringState(RenderStateShard.VIEW_OFFSET_Z_LAYERING)
                 .createCompositeState(true);
-        return RenderType.create("shadowedhearts:shadow_aura_fog_rendertype", DefaultVertexFormat.PARTICLE, VertexFormat.Mode.TRIANGLES, 512, false, true, state);
+        return RenderType.create("shadowedhearts:shadow_aura_fog_rendertype" + (throughTerrain ? "_no_depth" : ""), DefaultVertexFormat.PARTICLE, VertexFormat.Mode.TRIANGLES, 512, false, true, state);
     }
 
-    public static RenderType shadow_xd() {
+    public static RenderType shadow_xd(boolean throughTerrain) {
         RenderType.CompositeState state = RenderType.CompositeState.builder()
                 .setShaderState(new RenderStateShard.ShaderStateShard(() -> ModShaders.SHADOW_AURA_XD_CYLINDER != null
                         ? ModShaders.SHADOW_AURA_XD_CYLINDER
@@ -52,12 +52,20 @@ public final class AuraRenderTypes {
                 .setTextureState(RenderStateShard.NO_TEXTURE)
                 .setTransparencyState(RenderStateShard.TRANSLUCENT_TRANSPARENCY)
                 .setWriteMaskState(RenderStateShard.COLOR_WRITE)
-                .setDepthTestState(RenderStateShard.LEQUAL_DEPTH_TEST)
+                .setDepthTestState(throughTerrain ? RenderStateShard.NO_DEPTH_TEST : RenderStateShard.LEQUAL_DEPTH_TEST)
                 .setCullState(RenderStateShard.CULL)
                 .setLightmapState(RenderStateShard.LIGHTMAP)
                 .setLayeringState(RenderStateShard.VIEW_OFFSET_Z_LAYERING)
                 .createCompositeState(true);
-        return RenderType.create("shadowedhearts:shadow_aura_xd_rendertype", DefaultVertexFormat.PARTICLE, VertexFormat.Mode.TRIANGLES, 512, false, true, state);
+        return RenderType.create("shadowedhearts:shadow_aura_xd_rendertype" + (throughTerrain ? "_no_depth" : ""), DefaultVertexFormat.PARTICLE, VertexFormat.Mode.TRIANGLES, 512, false, true, state);
+    }
+
+    public static RenderType shadow_fog() {
+        return shadow_fog(false);
+    }
+
+    public static RenderType shadow_xd() {
+        return shadow_xd(false);
     }
 
     public static RenderType shadow_pool() {

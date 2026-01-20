@@ -8,8 +8,6 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.server.packs.resources.SimpleJsonResourceReloadListener;
 import net.minecraft.util.profiling.ProfilerFiller;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -22,7 +20,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * Loads from data/&lt;namespace&gt;/tags/species/&lt;name&gt;.json
  */
 public class SpeciesTagManager extends SimpleJsonResourceReloadListener {
-    private static final Logger LOGGER = LoggerFactory.getLogger(SpeciesTagManager.class);
+
     private static final Gson GSON = new Gson();
     public static final SpeciesTagManager INSTANCE = new SpeciesTagManager();
 

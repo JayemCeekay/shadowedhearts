@@ -13,12 +13,17 @@ public class ShadowedHeartsMixinConfigPlugin implements IMixinConfigPlugin {
     @Override
     public boolean shouldApplyMixin(String targetClassName, String mixinClassName) {
         return switch (mixinClassName) {
-            case "com.jayemceekay.shadowedhearts.mixin.CobblemonBattleExtrasMoveTileTooltipMixin" ->
+            case "com.jayemceekay.shadowedhearts.mixin.cobblemonbattleextras.CobblemonBattleExtrasMoveTileTooltipMixin" ->
                     Platform.isModLoaded("cobblemon_battle_extras");
+            case "com.jayemceekay.shadowedhearts.mixin.cobblemonpartyextras.CobblemonPartyExtrasCustomTooltipRendererMixin" ->
+                    Platform.isModLoaded("cobblemon_party_extras");
             case "com.jayemceekay.shadowedhearts.mixin.simpletms.MixinPokemonSelectingItemNonBattle" ->
                     Platform.isModLoaded("simpletms");
             case "com.jayemceekay.shadowedhearts.mixin.rctmod.MixinRCTModMakeBattle" ->
                    Platform.isModLoaded("rctmod");
+            case "com.jayemceekay.shadowedhearts.mixin.MixinIrisRenderingPipeline",
+                 "com.jayemceekay.shadowedhearts.mixin.IrisRenderingPipelineAccessor" ->
+                    Platform.isModLoaded("iris");
             default -> true;
         };
     }

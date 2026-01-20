@@ -1,0 +1,20 @@
+{
+  "entries": [
+    { "pokemon": "houndoom", "weight": 3 },
+    { "pokemon": "granbull", "weight": 3 },
+    { "pokemon": "mightyena", "weight": 3 },
+    { "pokemon": "shiftry", "weight": 2 },
+    { "pokemon": "cacturne", "weight": 2 },
+    { "pokemon": "zangoose", "weight": 2 },
+    { "pokemon": "seviper", "weight": 2 },
+    { "pokemon": "salamence", "weight": 1 },
+    { "pokemon": "metagross", "weight": 1 },
+    { "pokemon": "tyranitar", "weight": 1 },
+    { "pokemon": "aggron", "weight": 2 },
+    { "pokemon": "flygon", "weight": 2 },
+    { "pokemon": "altaria", "weight": 2 },
+    { "pokemon": "absol", "weight": 2 },
+    { "pokemon": "walrein", "weight": 1 },
+    { "pokemon": "glalie", "weight": 2 }
+  ]
+}

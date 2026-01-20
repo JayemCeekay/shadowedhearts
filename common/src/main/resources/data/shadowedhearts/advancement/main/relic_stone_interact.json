@@ -1,0 +1,28 @@
+{
+  "parent": "shadowedhearts:main/snag_from_npc",
+  "display": {
+    "icon": {
+      "id": "shadowedhearts:relic_stone"
+    },
+    "title": {
+      "translate": "advancements.shadowedhearts.relic_stone_interact.title"
+    },
+    "description": {
+      "translate": "advancements.shadowedhearts.relic_stone_interact.description"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "relic_stone_interact": {
+      "trigger": "shadowedhearts:relic_stone_interact"
+    }
+  },
+  "requirements": [
+    [
+      "relic_stone_interact"
+    ]
+  ]
+}

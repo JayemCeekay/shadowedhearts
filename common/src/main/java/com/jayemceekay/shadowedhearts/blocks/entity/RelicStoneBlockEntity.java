@@ -1,5 +1,6 @@
 package com.jayemceekay.shadowedhearts.blocks.entity;
  
+import com.jayemceekay.shadowedhearts.blocks.RelicStoneBlock;
 import com.jayemceekay.shadowedhearts.core.ModBlockEntities;
 import com.jayemceekay.shadowedhearts.network.RelicStoneMotePacket;
 import net.minecraft.core.BlockPos;
@@ -21,10 +22,14 @@ public class RelicStoneBlockEntity extends BlockEntity {
             BlockState state,
             RelicStoneBlockEntity blockEntity
     ) {
+        if (!state.getValue(RelicStoneBlock.HAS_BE)) {
+            return;
+        }
+
         if (!level.isClientSide && level.getGameTime() % 2 == 0) {
-            Player closestPlayer = level.getNearestPlayer(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5, 5.0, false);
+            Player closestPlayer = level.getNearestPlayer(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5, 16.0, false);
             if (closestPlayer != null) {
-                // Send packet to nearby players to spawn particles
+                // Send packet to nearby players to spawn particles and play sound
                 RelicStoneMotePacket packet = new RelicStoneMotePacket(pos);
                 ((ServerLevel) level).players().forEach(player -> {
                     if (player.distanceToSqr(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5) < 32 * 32) {

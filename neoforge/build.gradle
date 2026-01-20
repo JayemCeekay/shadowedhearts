@@ -72,13 +72,17 @@ dependencies {
     modCompileOnly("maven.modrinth:ordsPcFz:4qCjWixP")
     runtimeOnly("maven.modrinth:ordsPcFz:4qCjWixP")
 
+    //iris shaders
+    modCompileOnly("maven.modrinth:YL57xq9U:t3ruzodq")
+
     //rctapi
     modCompileOnlyApi("curse.maven:radical-cobblemon-trainers-api-1152792:7319959")
 
-    modImplementation("maven.modrinth:ccKDOlHs:NMCHU6DZ")
+    //owo lib?
+    modCompileOnly("maven.modrinth:ccKDOlHs:NMCHU6DZ")
 
     //accessories
-    modImplementation("io.wispforest:accessories-neoforge:${project.accessories_version}")
+    modCompileOnly("io.wispforest:accessories-neoforge:${project.accessories_version}")
 
     forgeRuntimeLibrary("io.wispforest:endec:0.1.5.1")
     forgeRuntimeLibrary("io.wispforest.endec:gson:0.1.3.1")
@@ -87,17 +91,17 @@ dependencies {
     forgeRuntimeLibrary("blue.endless:jankson:1.2.2")
 
     //modernFix
-    modRuntimeOnly("maven.modrinth:nmDcB62a:8Be8uJW6")
+    //modRuntimeOnly("maven.modrinth:nmDcB62a:8Be8uJW6")
 
     //embeddium
-    modRuntimeOnly("maven.modrinth:sk9rgfiA:J7b96IEd")
+    //modRuntimeOnly("maven.modrinth:sk9rgfiA:J7b96IEd")
 
     //modRuntimeOnly("maven.modrinth:AANobbMI:Pb3OXVqC")
 
     //concentration
-    modRuntimeOnly("maven.modrinth:QyvWSZ5S:E7K9ZMD2")
+    //modRuntimeOnly("maven.modrinth:QyvWSZ5S:E7K9ZMD2")
 
-    modRuntimeOnly("maven.modrinth:2iY8VFqL:y2ziXO9L")
+    //modRuntimeOnly("maven.modrinth:2iY8VFqL:y2ziXO9L")
 
     //simpleTMs
     modCompileOnly("maven.modrinth:yFqR0DNc:uaKfPMYS")

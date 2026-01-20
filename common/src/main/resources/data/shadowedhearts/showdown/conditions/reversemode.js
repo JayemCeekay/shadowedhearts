@@ -26,12 +26,13 @@
     this.damage(pokemon.baseMaxhp / 16, pokemon, pokemon);
     this.add('sh_message', 'cobblemon.battle.reversemode.hurt', pokemon.getSlot());
   },
-  onTryMove(source, target, move) {
+  onBeforeMove(source, target, move) {
     if (!move || move.type === 'Shadow') return;
     const config = this.dex.data.Scripts.shadowedhearts?.Config?.reverseMode || { enabled: false };
     if (!config.enabled) return;
     if (this.randomChance(1, 5)) {
       this.add('sh_message', 'cobblemon.battle.reversemode.disobey', source.getSlot());
+      this.damage(source.baseMaxhp / 8, source, source);
       return false;
     }
   }

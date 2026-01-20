@@ -1,0 +1,23 @@
+{
+  "type": "cobblemon:cooking_pot_shapeless",
+  "category": "misc",
+  "ingredients": [
+    {
+      "item": "minecraft:blue_orchid"
+    },
+    {
+      "item": "minecraft:wheat"
+    },
+    {
+      "item": "minecraft:sugar"
+    },
+    {
+      "item": "minecraft:glass_bottle"
+    }
+  ],
+  "result": {
+    "id": "shadowedhearts:tranquil_scent"
+  },
+  "seasoningTag": "cobblemon:empty",
+  "seasoningProcessors": []
+}

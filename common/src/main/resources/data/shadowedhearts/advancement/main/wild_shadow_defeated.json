@@ -1,0 +1,28 @@
+{
+  "parent": "shadowedhearts:main/root",
+  "display": {
+    "icon": {
+      "id": "cobblemon:dusk_ball"
+    },
+    "title": {
+      "translate": "advancements.shadowedhearts.wild_shadow_defeated.title"
+    },
+    "description": {
+      "translate": "advancements.shadowedhearts.wild_shadow_defeated.description"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "wild_shadow_defeated": {
+      "trigger": "shadowedhearts:wild_shadow_defeated"
+    }
+  },
+  "requirements": [
+    [
+      "wild_shadow_defeated"
+    ]
+  ]
+}

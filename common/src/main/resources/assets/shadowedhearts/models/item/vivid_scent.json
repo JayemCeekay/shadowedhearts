@@ -1,6 +1,7 @@
 {
   "parent": "minecraft:item/generated",
   "textures": {
-    "layer0": "shadowedhearts:item/vivid_scent"
+    "layer0": "shadowedhearts:item/scent_base",
+    "layer1": "shadowedhearts:item/scent_mask"
   }
 }

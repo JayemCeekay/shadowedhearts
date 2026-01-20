@@ -190,7 +190,7 @@ public final class AuraEmitters {
         float radius = (float) pokemon.getForm().getHitbox().makeBoundingBox(new Vec3(0, 0, 0)).getSize();
         float halfHeight = (float) pokemon.getForm().getHitbox().makeBoundingBox(new Vec3(0.0, 0.0, 0.0)).getYsize();
 
-        boolean useXd = ShadowedHeartsConfigs.getInstance().getClientConfig().useXdAura();
+        boolean useXd = false;
         var shader = useXd ? ModShaders.SHADOW_AURA_XD_CYLINDER : ModShaders.SHADOW_AURA_FOG_CYLINDER;
         if (shader == null) return;
 
@@ -641,7 +641,8 @@ public final class AuraEmitters {
         var mc = Minecraft.getInstance();
         if (mc == null || mc.level == null) return;
 
-        boolean useXd = ShadowedHeartsConfigs.getInstance().getClientConfig().useXdAura();
+        //xd aura not implemented yet
+        boolean useXd = false;
         var activeShader = useXd ? ModShaders.SHADOW_AURA_XD_CYLINDER : ModShaders.SHADOW_AURA_FOG_CYLINDER;
         var activeUniforms = useXd ? ModShaders.SHADOW_AURA_XD_CYLINDER_UNIFORMS : ModShaders.SHADOW_AURA_FOG_CYLINDER_UNIFORMS;
 
@@ -728,6 +729,7 @@ public final class AuraEmitters {
             float fade = inst.fadeFactor(now);
             // Interpolate corruption
             float corruption = Mth.lerp(partialTicks, inst.prevCorruption, inst.lastCorruption);
+
             // Debug handling: if not debugging, completely skip when invisible; otherwise, proceed so the trail can render
             boolean hasVisibility = fade > 0.001f && corruption > 0.01f;
             if (!hasVisibility) continue;
@@ -802,7 +804,7 @@ public final class AuraEmitters {
                         if (uu.uProxyHalfHeight() != null)
                             uu.uProxyHalfHeight().set(entityHeight * 0.5f);
                         if (uu.uAuraFade() != null)
-                            uu.uAuraFade().set(0.9f * fade);
+                            uu.uAuraFade().set(0.8f * fade);
                         if (uu.uDensity() != null)
                             uu.uDensity().set(radius * (useXd ? 1.0f : 1.0f));
                         if (uu.uMaxThickness() != null)

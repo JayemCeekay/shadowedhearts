@@ -13,4 +13,9 @@ public final class NoopSnagAccessoryBridge implements SnagAccessoryBridge {
     public ItemStack getEquippedStack(Player player) {
         return ItemStack.EMPTY;
     }
+
+    @Override
+    public boolean isAuraReaderEquipped(Player player) {
+        return false;
+    }
 }

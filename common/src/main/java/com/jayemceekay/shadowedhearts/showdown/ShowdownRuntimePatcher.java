@@ -2,6 +2,7 @@ package com.jayemceekay.shadowedhearts.showdown;
 
 import com.cobblemon.mod.common.Cobblemon;
 import com.cobblemon.mod.common.battles.runner.graal.GraalShowdownService;
+import com.jayemceekay.shadowedhearts.Shadowedhearts;
 import com.jayemceekay.shadowedhearts.config.IShadowConfig;
 import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs;
 import kotlin.Unit;
@@ -16,18 +17,19 @@ import java.util.List;
 
 /**
  * Applies small text patches to the runtime-extracted Pokemon Showdown JS files.
- *
+ * <p>
  * Goals:
  * - Insert a custom "shadow" type into data/typechart.js.
  * - Extend sim/battle.js capture(pokemon) to emit a replacement request after capture.
- *
+ * <p>
  * This runs at mod init and targets common dev/prod locations. The patch is idempotent.
  */
 public final class ShowdownRuntimePatcher {
-    private ShowdownRuntimePatcher() {}
+    private ShowdownRuntimePatcher() {
+    }
 
     public static void applyPatches() {
-        System.out.println("[ShadowedHearts] Applying Showdown runtime patches...");
+        Shadowedhearts.LOGGER.info("Applying Showdown runtime patches...");
         for (Path showdown : locateShowdownDirs()) {
             try {
                 patchDexConditions(showdown.resolve("sim").resolve("dex-conditions.js"));
@@ -100,19 +102,20 @@ public final class ShowdownRuntimePatcher {
                     injectCondition(receiveConditionDataFn, "hypermode", "/data/shadowedhearts/showdown/conditions/hypermode.js");
                     injectCondition(receiveConditionDataFn, "reversemode", "/data/shadowedhearts/showdown/conditions/reversemode.js");
                     injectCondition(receiveConditionDataFn, "shadowengine", "/data/shadowedhearts/showdown/conditions/shadowengine.js");
-                    System.out.println("[ShadowedHearts] Injected custom conditions into Showdown.");
+                    Shadowedhearts.LOGGER.info("Injected custom conditions into Showdown...");
+
                 }
 
                 if ((Boolean) hasMemberMethod.invoke(bindings, "receiveTypeChartData")) {
                     Object receiveTypeChartDataFn = getMemberMethod.invoke(bindings, "receiveTypeChartData");
                     injectTypeChart(receiveTypeChartDataFn, "shadow", "/data/shadowedhearts/showdown/typecharts/shadow.js");
-                    System.out.println("[ShadowedHearts] Injected custom typechart into Showdown.");
+                    Shadowedhearts.LOGGER.info("Injected custom typechart into Showdown...");
                 }
 
                 if ((Boolean) hasMemberMethod.invoke(bindings, "receiveScriptData")) {
                     Object receiveScriptDataFn = getMemberMethod.invoke(bindings, "receiveScriptData");
                     injectScript(receiveScriptDataFn, "shadowedhearts", "/data/shadowedhearts/showdown/scripts/shadowedhearts.js");
-                    System.out.println("[ShadowedHearts] Injected custom scripts into Showdown.");
+                    Shadowedhearts.LOGGER.info("Injected custom scripts into Showdown.");
                 }
             } catch (Exception e) {
                 e.printStackTrace();
@@ -131,21 +134,24 @@ public final class ShowdownRuntimePatcher {
                             "\"Config\": { " +
                                     "\"callButton\": { \"accuracyBoost\": %b, \"removeSleep\": %b }, " +
                                     "\"hyperMode\": { \"enabled\": %b}, " +
-                                    "\"reverseMode\": { \"enabled\": %b} " +
+                                    "\"reverseMode\": { \"enabled\": %b}, " +
+                                    "\"GOdamageModifier\": { \"enabled\": %b}, " +
+                                    "\"shadowMoves\": { \"superEffectiveEnabled\": %b } " +
                                     "},",
                             cfg.callButtonAccuracyBoost(),
                             cfg.callButtonRemoveSleep(),
                             cfg.hyperModeEnabled(),
-                            cfg.reverseModeEnabled()
+                            cfg.reverseModeEnabled(),
+                            cfg.goDamageModifierEnabled(),
+                            cfg.superEffectiveShadowMovesEnabled()
                     );
                     js = js.replaceFirst("\\{", "{" + configJs);
                 }
 
                 js = js.replace("\n", " ").replace("\r", "");
                 executeFn(fn, id, js);
-                System.out.println("[ShadowedHearts] Injected script: " + id);
             } else {
-                System.err.println("[ShadowedHearts] Failed to find script resource: " + resourcePath);
+                Shadowedhearts.LOGGER.error("Failed to find script resource: " + resourcePath);
             }
         }
 
@@ -156,9 +162,8 @@ public final class ShowdownRuntimePatcher {
                 js = extractExportedTemplate(js);
                 js = js.replace("\n", " ").replace("\r", "");
                 executeFn(fn, id, js);
-                System.out.println("[ShadowedHearts] Injected condition: " + id);
             } else {
-                System.err.println("[ShadowedHearts] Failed to find condition resource: " + resourcePath);
+                Shadowedhearts.LOGGER.error("Failed to find condition resource: " + resourcePath);
             }
         }
 
@@ -168,9 +173,8 @@ public final class ShowdownRuntimePatcher {
                 js = js.replaceAll("//.*", "");
                 js = js.replace("\n", " ").replace("\r", "");
                 executeFn(fn, id, js);
-                System.out.println("[ShadowedHearts] Injected typechart: " + id);
             } else {
-                System.err.println("[ShadowedHearts] Failed to find typechart resource: " + resourcePath);
+                Shadowedhearts.LOGGER.error("Failed to find typechart resource: " + resourcePath);
             }
         }
 
@@ -179,8 +183,7 @@ public final class ShowdownRuntimePatcher {
                 var executeMethod = fn.getClass().getMethod("execute", Object[].class);
                 executeMethod.invoke(fn, (Object) args);
             } catch (Exception e) {
-                System.err.println("[ShadowedHearts] Failed to execute Showdown injection function for args: " + java.util.Arrays.toString(args));
-                e.printStackTrace();
+                Shadowedhearts.LOGGER.error("Failed to execute Showdown injection function for args: " + java.util.Arrays.toString(args));
             }
         }
     }
@@ -204,7 +207,8 @@ public final class ShowdownRuntimePatcher {
     private static void addIfDir(List<Path> list, Path p) {
         try {
             if (Files.isDirectory(p)) list.add(p.toRealPath());
-        } catch (IOException ignored) {}
+        } catch (IOException ignored) {
+        }
     }
 
 
@@ -283,26 +287,26 @@ public final class ShowdownRuntimePatcher {
 
         final String needle =
                 "      if (this.checkWin())\n" +
-                "        return true;\n" +
-                "    }\n" +
-                "    return false;\n" +
-                "  }";
+                        "        return true;\n" +
+                        "    }\n" +
+                        "    return false;\n" +
+                        "  }";
 
         final String replacement =
                 "      if (this.checkWin())\n" +
-                "        return true;\n" +
-                "      this.checkFainted();\n\n" +
-                "      // Build and emit a new request so the victim side can choose a replacement\n" +
-                "      const activeData = pokemon.side.active.map(pk => pk?.getMoveRequestData());\n" +
-                "      const req = { active: activeData, side: pokemon.side.getRequestData() };\n" +
-                "      if (pokemon.side.allySide) {\n" +
-                "          req.ally = pokemon.side.allySide.getRequestData(true);\n" +
-                "      }\n" +
-                "      pokemon.side.emitRequest(req);\n" +
-                "      pokemon.side.clearChoice();\n" +
-                "    }\n" +
-                "    return false;\n" +
-                "  }";
+                        "        return true;\n" +
+                        "      this.checkFainted();\n\n" +
+                        "      // Build and emit a new request so the victim side can choose a replacement\n" +
+                        "      const activeData = pokemon.side.active.map(pk => pk?.getMoveRequestData());\n" +
+                        "      const req = { active: activeData, side: pokemon.side.getRequestData() };\n" +
+                        "      if (pokemon.side.allySide) {\n" +
+                        "          req.ally = pokemon.side.allySide.getRequestData(true);\n" +
+                        "      }\n" +
+                        "      pokemon.side.emitRequest(req);\n" +
+                        "      pokemon.side.clearChoice();\n" +
+                        "    }\n" +
+                        "    return false;\n" +
+                        "  }";
 
         if (content.contains(needle)) {
             String patched = content.replace(needle, replacement);
@@ -323,9 +327,13 @@ public final class ShowdownRuntimePatcher {
         }
 
         int packStart = content.indexOf("  pack(team) {");
-        if (packStart < 0) { return; }
+        if (packStart < 0) {
+            return;
+        }
         int unpackStart = content.indexOf("\n  unpack(buf) {", packStart);
-        if (unpackStart < 0) { return; }
+        if (unpackStart < 0) {
+            return;
+        }
         int afterUnpack = content.indexOf("\n  /**", unpackStart);
         if (afterUnpack < 0) {
             afterUnpack = content.indexOf("\n  packName(", unpackStart);
@@ -333,244 +341,246 @@ public final class ShowdownRuntimePatcher {
         if (afterUnpack < 0) {
             afterUnpack = content.indexOf("\n  static packName(", unpackStart);
         }
-        if (afterUnpack < 0) { return; }
+        if (afterUnpack < 0) {
+            return;
+        }
 
         final String newBlock =
                 "  pack(team) {\n" +
-                "    if (!team)\n" +
-                "      return \"\";\n" +
-                "    function getIv(ivs, s) {\n" +
-                "      return ivs[s] === 31 || ivs[s] === void 0 ? \"\" : ivs[s].toString();\n" +
-                "    }\n" +
-                "    let buf = \"\";\n" +
-                "    for (const set of team) {\n" +
-                "      if (buf)\n" +
-                "        buf += \"]\";\n" +
-                "      buf += set.name || set.species;\n" +
-                "      const id = this.packName(set.species || set.name);\n" +
-                "      buf += \"|\" + (this.packName(set.name || set.species) === id ? \"\" : id);\n" +
-                "      buf += \"|\" + this.packName(set.item);\n" +
-                "      buf += \"|\" + this.packName(set.ability);\n" +
-                "      buf += \"|\" + set.moves.map(this.packName).join(\",\");\n" +
-                "      buf += \"|\" + (set.nature || \"\");\n" +
-                "      let evs = \"|\";\n" +
-                "      if (set.evs) {\n" +
-                "        evs = \"|\" + (set.evs[\"hp\"] || \"\") + \",\" + (set.evs[\"atk\"] || \"\") + \",\" + (set.evs[\"def\"] || \"\") + \",\" + (set.evs[\"spa\"] || \"\") + \",\" + (set.evs[\"spd\"] || \"\") + \",\" + (set.evs[\"spe\"] || \"\");\n" +
-                "      }\n" +
-                "      if (evs === \"|,,,,,\") {\n" +
-                "        buf += \"|\";\n" +
-                "      } else {\n" +
-                "        buf += evs;\n" +
-                "      }\n" +
-                "      if (set.gender) {\n" +
-                "        buf += \"|\" + set.gender;\n" +
-                "      } else {\n" +
-                "        buf += \"|\";\n" +
-                "      }\n" +
-                "      let ivs = \"|\";\n" +
-                "      if (set.ivs) {\n" +
-                "        ivs = \"|\" + getIv(set.ivs, \"hp\") + \",\" + getIv(set.ivs, \"atk\") + \",\" + getIv(set.ivs, \"def\") + \",\" + getIv(set.ivs, \"spa\") + \",\" + getIv(set.ivs, \"spd\") + \",\" + getIv(set.ivs, \"spe\");\n" +
-                "      }\n" +
-                "      if (ivs === \"|,,,,,\") {\n" +
-                "        buf += \"|\";\n" +
-                "      } else {\n" +
-                "        buf += ivs;\n" +
-                "      }\n" +
-                "      if (set.shiny) {\n" +
-                "        buf += \"|S\";\n" +
-                "      } else {\n" +
-                "        buf += \"|\";\n" +
-                "      }\n" +
-                "      if (set.level && set.level !== 100) {\n" +
-                "        buf += \"|\" + set.level;\n" +
-                "      } else {\n" +
-                "        buf += \"|\";\n" +
-                "      }\n" +
-                "      if (set.happiness !== void 0 && set.happiness !== 255) {\n" +
-                "        buf += \"|\" + set.happiness;\n" +
-                "      } else {\n" +
-                "        buf += \"|\";\n" +
-                "      }\n" +
-                "      if (set.pokeball || set.hpType || set.gigantamax || set.dynamaxLevel !== void 0 && set.dynamaxLevel !== 10 || set.teraType || set.isShadow || set.heartGaugeBars !== void 0 || set.isHyper || set.isReverse) {\n" +
-                "        buf += \",\" + this.packName(set.pokeball || \"\");\n" +
-                "        buf += \",\" + (set.hpType || \"\");\n" +
-                "        buf += \",\" + (set.gigantamax ? \"G\" : \"\");\n" +
-                "        buf += \",\" + (set.dynamaxLevel !== void 0 && set.dynamaxLevel !== 10 ? set.dynamaxLevel : \"\");\n" +
-                "        buf += \",\" + (set.teraType || \"\");\n" +
-                "        buf += \",\" + (set.isShadow ? \"true\" : \"false\");\n" +
-                "        buf += \",\" + (set.heartGaugeBars !== void 0 ? set.heartGaugeBars : \"\");\n" +
-                "        buf += \",\" + (set.isHyper ? 'true' : 'false');\n" +
-                "        buf += \",\" + (set.isReverse ? 'true' : 'false');\n" +
-                "      }\n" +
-                "    }\n" +
-                "    return buf;\n" +
-                "  }\n" +
-                "  unpack(buf) {\n" +
-                "    if (!buf)\n" +
-                "      return null;\n" +
-                "    if (typeof buf !== \"string\")\n" +
-                "      return buf;\n" +
-                "    if (buf.startsWith(\"[\") && buf.endsWith(\"]\")) {\n" +
-                "      try {\n" +
-                "        buf = this.pack(JSON.parse(buf));\n" +
-                "      } catch {\n" +
-                "        return null;\n" +
-                "      }\n" +
-                "    }\n" +
-                "    const team = [];\n" +
-                "    let i = 0;\n" +
-                "    let j = 0;\n" +
-                "    for (let count = 0; count < 24; count++) {\n" +
-                "      const set = {};\n" +
-                "      team.push(set);\n" +
-                "      j = buf.indexOf(\"|\", i);\n" +
-                "      if (j < 0)\n" +
-                "        return null;\n" +
-                "      set.name = buf.substring(i, j);\n" +
-                "      i = j + 1;\n" +
-                "      j = buf.indexOf(\"|\", i);\n" +
-                "      if (j < 0)\n" +
-                "        return null;\n" +
-                "      set.species = this.unpackName(buf.substring(i, j), import_dex.Dex.species) || set.name;\n" +
-                "      i = j + 1;\n" +
-                "      j = buf.indexOf(\"|\", i);\n" +
-                "      if (j < 0)\n" +
-                "        return null;\n" +
-                "      set.uuid = buf.substring(i, j);\n" +
-                "      i = j + 1;\n" +
-                "      j = buf.indexOf(\"|\", i);\n" +
-                "      if (j < 0)\n" +
-                "        return null;\n" +
-                "      set.currentHealth = parseInt(buf.substring(i, j));\n" +
-                "      i = j + 1;\n" +
-                "      j = buf.indexOf(\"|\", i);\n" +
-                "      if (j < 0)\n" +
-                "        return null;\n" +
-                "      set.status = buf.substring(i, j);\n" +
-                "      i = j + 1;\n" +
-                "      j = buf.indexOf(\"|\", i);\n" +
-                "      if (j < 0)\n" +
-                "        return null;\n" +
-                "      set.statusDuration = parseInt(buf.substring(i, j));\n" +
-                "      i = j + 1;\n" +
-                "      j = buf.indexOf(\"|\", i);\n" +
-                "      if (j < 0)\n" +
-                "        return null;\n" +
-                "      set.item = this.unpackName(buf.substring(i, j), import_dex.Dex.items);\n" +
-                "      i = j + 1;\n" +
-                "      j = buf.indexOf(\"|\", i);\n" +
-                "      if (j < 0)\n" +
-                "        return null;\n" +
-                "      const ability = buf.substring(i, j);\n" +
-                "      set.ability = this.unpackName(ability, import_dex.Dex.abilities);\n" +
-                "      i = j + 1;\n" +
-                "      j = buf.indexOf(\"|\", i);\n" +
-                "      if (j < 0)\n" +
-                "        return null;\n" +
-                "      set.moves = buf.substring(i, j).split(\",\", 24).map((name) => this.unpackName(name, import_dex.Dex.moves));\n" +
-                "      i = j + 1;\n" +
-                "      j = buf.indexOf(\"|\", i);\n" +
-                "      if (j < 0)\n" +
-                "        return null;\n" +
-                "      set.movesInfo = buf.substring(i, j).split(\",\", 24).map((moveData) => {\n" +
-                "        const moveInfo = {};\n" +
-                "        let data = moveData.split(\"/\");\n" +
-                "        moveInfo.pp = parseInt(data[0]);\n" +
-                "        moveInfo.maxPp = parseInt(data[1]);\n" +
-                "        return moveInfo;\n" +
-                "      });\n" +
-                "      i = j + 1;\n" +
-                "      j = buf.indexOf(\"|\", i);\n" +
-                "      if (j < 0)\n" +
-                "        return null;\n" +
-                "      set.nature = this.unpackName(buf.substring(i, j), import_dex.Dex.natures);\n" +
-                "      i = j + 1;\n" +
-                "      j = buf.indexOf(\"|\", i);\n" +
-                "      if (j < 0)\n" +
-                "        return null;\n" +
-                "      if (j !== i) {\n" +
-                "        const evs = buf.substring(i, j).split(\",\", 6);\n" +
-                "        set.evs = {\n" +
-                "          hp: Number(evs[0]) || 0,\n" +
-                "          atk: Number(evs[1]) || 0,\n" +
-                "          def: Number(evs[2]) || 0,\n" +
-                "          spa: Number(evs[3]) || 0,\n" +
-                "          spd: Number(evs[4]) || 0,\n" +
-                "          spe: Number(evs[5]) || 0\n" +
-                "        };\n" +
-                "      }\n" +
-                "      i = j + 1;\n" +
-                "      j = buf.indexOf(\"|\", i);\n" +
-                "      if (j < 0)\n" +
-                "        return null;\n" +
-                "      if (i !== j)\n" +
-                "        set.gender = buf.substring(i, j);\n" +
-                "      i = j + 1;\n" +
-                "      j = buf.indexOf(\"|\", i);\n" +
-                "      if (j < 0)\n" +
-                "        return null;\n" +
-                "      if (j !== i) {\n" +
-                "        const ivs = buf.substring(i, j).split(\",\", 6);\n" +
-                "        set.ivs = {\n" +
-                "          hp: ivs[0] === \"\" ? 31 : Number(ivs[0]) || 0,\n" +
-                "          atk: ivs[1] === \"\" ? 31 : Number(ivs[1]) || 0,\n" +
-                "          def: ivs[2] === \"\" ? 31 : Number(ivs[2]) || 0,\n" +
-                "          spa: ivs[3] === \"\" ? 31 : Number(ivs[3]) || 0,\n" +
-                "          spd: ivs[4] === \"\" ? 31 : Number(ivs[4]) || 0,\n" +
-                "          spe: ivs[5] === \"\" ? 31 : Number(ivs[5]) || 0\n" +
-                "        };\n" +
-                "      }\n" +
-                "      i = j + 1;\n" +
-                "      j = buf.indexOf(\"|\", i);\n" +
-                "      if (j < 0)\n" +
-                "        return null;\n" +
-                "      if (i !== j)\n" +
-                "        set.shiny = true;\n" +
-                "      i = j + 1;\n" +
-                "      j = buf.indexOf(\"|\", i);\n" +
-                "      if (j < 0)\n" +
-                "        return null;\n" +
-                "      if (i !== j)\n" +
-                "        set.level = parseInt(buf.substring(i, j));\n" +
-                "      i = j + 1;\n" +
-                "        // happiness + extended misc\n" +
-                "        j = buf.indexOf(']', i);\n" +
-                "        let misc;\n" +
-                "        if (j < 0) {\n" +
-                "            if (i < buf.length) misc = buf.substring(i).split(',', 10);\n" +
-                "        } else {\n" +
-                "            if (i !== j) misc = buf.substring(i, j).split(',', 10);\n" +
-                "        }\n" +
-                "        if (misc) {\n" +
-                "            set.happiness = (misc[0] ? Number(misc[0]) : 255);\n" +
-                "            set.pokeball = this.unpackName(misc[1] || '', import_dex.Dex.items);\n" +
-                "            set.hpType = misc[2] || '';\n" +
-                "            set.gigantamax = !!misc[3];\n" +
-                "            set.dynamaxLevel = (misc[4] ? Number(misc[4]) : 10);\n" +
-                "            set.teraType = misc[5];\n" +
-                "\n" +
-                "            // 7th token: Shadow flag\n" +
-                "            const shadowTok = misc[6];\n" +
-                "            set.isShadow = shadowTok === 'true';\n" +
-                "            // 8th token: Heart Gauge bars (0..5)\n" +
-                "            if (misc.length > 7 && misc[7] !== undefined && misc[7] !== '') {\n" +
-                "                set.heartGaugeBars = Number(misc[7]);\n" +
-                "            }\n" +
-                "            // 9th token: Start in Hyper Mode flag\n" +
-                "            if (misc.length > 8) {\n" +
-                "                set.isHyper = misc[8] === 'true';\n" +
-                "            }\n" +
-                "            // 10th token: Start in Reverse Mode flag\n" +
-                "            if (misc.length > 9) {\n" +
-                "                set.isReverse = misc[9] === 'true';\n" +
-                "            }\n" +
-                "        }\n" +
-                "      if (j < 0)\n" +
-                "        break;\n" +
-                "      i = j + 1;\n" +
-                "    }\n" +
-                "    return team;\n" +
-                "  }\n";
+                        "    if (!team)\n" +
+                        "      return \"\";\n" +
+                        "    function getIv(ivs, s) {\n" +
+                        "      return ivs[s] === 31 || ivs[s] === void 0 ? \"\" : ivs[s].toString();\n" +
+                        "    }\n" +
+                        "    let buf = \"\";\n" +
+                        "    for (const set of team) {\n" +
+                        "      if (buf)\n" +
+                        "        buf += \"]\";\n" +
+                        "      buf += set.name || set.species;\n" +
+                        "      const id = this.packName(set.species || set.name);\n" +
+                        "      buf += \"|\" + (this.packName(set.name || set.species) === id ? \"\" : id);\n" +
+                        "      buf += \"|\" + this.packName(set.item);\n" +
+                        "      buf += \"|\" + this.packName(set.ability);\n" +
+                        "      buf += \"|\" + set.moves.map(this.packName).join(\",\");\n" +
+                        "      buf += \"|\" + (set.nature || \"\");\n" +
+                        "      let evs = \"|\";\n" +
+                        "      if (set.evs) {\n" +
+                        "        evs = \"|\" + (set.evs[\"hp\"] || \"\") + \",\" + (set.evs[\"atk\"] || \"\") + \",\" + (set.evs[\"def\"] || \"\") + \",\" + (set.evs[\"spa\"] || \"\") + \",\" + (set.evs[\"spd\"] || \"\") + \",\" + (set.evs[\"spe\"] || \"\");\n" +
+                        "      }\n" +
+                        "      if (evs === \"|,,,,,\") {\n" +
+                        "        buf += \"|\";\n" +
+                        "      } else {\n" +
+                        "        buf += evs;\n" +
+                        "      }\n" +
+                        "      if (set.gender) {\n" +
+                        "        buf += \"|\" + set.gender;\n" +
+                        "      } else {\n" +
+                        "        buf += \"|\";\n" +
+                        "      }\n" +
+                        "      let ivs = \"|\";\n" +
+                        "      if (set.ivs) {\n" +
+                        "        ivs = \"|\" + getIv(set.ivs, \"hp\") + \",\" + getIv(set.ivs, \"atk\") + \",\" + getIv(set.ivs, \"def\") + \",\" + getIv(set.ivs, \"spa\") + \",\" + getIv(set.ivs, \"spd\") + \",\" + getIv(set.ivs, \"spe\");\n" +
+                        "      }\n" +
+                        "      if (ivs === \"|,,,,,\") {\n" +
+                        "        buf += \"|\";\n" +
+                        "      } else {\n" +
+                        "        buf += ivs;\n" +
+                        "      }\n" +
+                        "      if (set.shiny) {\n" +
+                        "        buf += \"|S\";\n" +
+                        "      } else {\n" +
+                        "        buf += \"|\";\n" +
+                        "      }\n" +
+                        "      if (set.level && set.level !== 100) {\n" +
+                        "        buf += \"|\" + set.level;\n" +
+                        "      } else {\n" +
+                        "        buf += \"|\";\n" +
+                        "      }\n" +
+                        "      if (set.happiness !== void 0 && set.happiness !== 255) {\n" +
+                        "        buf += \"|\" + set.happiness;\n" +
+                        "      } else {\n" +
+                        "        buf += \"|\";\n" +
+                        "      }\n" +
+                        "      if (set.pokeball || set.hpType || set.gigantamax || set.dynamaxLevel !== void 0 && set.dynamaxLevel !== 10 || set.teraType || set.isShadow || set.heartGaugeBars !== void 0 || set.isHyper || set.isReverse) {\n" +
+                        "        buf += \",\" + this.packName(set.pokeball || \"\");\n" +
+                        "        buf += \",\" + (set.hpType || \"\");\n" +
+                        "        buf += \",\" + (set.gigantamax ? \"G\" : \"\");\n" +
+                        "        buf += \",\" + (set.dynamaxLevel !== void 0 && set.dynamaxLevel !== 10 ? set.dynamaxLevel : \"\");\n" +
+                        "        buf += \",\" + (set.teraType || \"\");\n" +
+                        "        buf += \",\" + (set.isShadow ? \"true\" : \"false\");\n" +
+                        "        buf += \",\" + (set.heartGaugeBars !== void 0 ? set.heartGaugeBars : \"\");\n" +
+                        "        buf += \",\" + (set.isHyper ? 'true' : 'false');\n" +
+                        "        buf += \",\" + (set.isReverse ? 'true' : 'false');\n" +
+                        "      }\n" +
+                        "    }\n" +
+                        "    return buf;\n" +
+                        "  }\n" +
+                        "  unpack(buf) {\n" +
+                        "    if (!buf)\n" +
+                        "      return null;\n" +
+                        "    if (typeof buf !== \"string\")\n" +
+                        "      return buf;\n" +
+                        "    if (buf.startsWith(\"[\") && buf.endsWith(\"]\")) {\n" +
+                        "      try {\n" +
+                        "        buf = this.pack(JSON.parse(buf));\n" +
+                        "      } catch {\n" +
+                        "        return null;\n" +
+                        "      }\n" +
+                        "    }\n" +
+                        "    const team = [];\n" +
+                        "    let i = 0;\n" +
+                        "    let j = 0;\n" +
+                        "    for (let count = 0; count < 24; count++) {\n" +
+                        "      const set = {};\n" +
+                        "      team.push(set);\n" +
+                        "      j = buf.indexOf(\"|\", i);\n" +
+                        "      if (j < 0)\n" +
+                        "        return null;\n" +
+                        "      set.name = buf.substring(i, j);\n" +
+                        "      i = j + 1;\n" +
+                        "      j = buf.indexOf(\"|\", i);\n" +
+                        "      if (j < 0)\n" +
+                        "        return null;\n" +
+                        "      set.species = this.unpackName(buf.substring(i, j), import_dex.Dex.species) || set.name;\n" +
+                        "      i = j + 1;\n" +
+                        "      j = buf.indexOf(\"|\", i);\n" +
+                        "      if (j < 0)\n" +
+                        "        return null;\n" +
+                        "      set.uuid = buf.substring(i, j);\n" +
+                        "      i = j + 1;\n" +
+                        "      j = buf.indexOf(\"|\", i);\n" +
+                        "      if (j < 0)\n" +
+                        "        return null;\n" +
+                        "      set.currentHealth = parseInt(buf.substring(i, j));\n" +
+                        "      i = j + 1;\n" +
+                        "      j = buf.indexOf(\"|\", i);\n" +
+                        "      if (j < 0)\n" +
+                        "        return null;\n" +
+                        "      set.status = buf.substring(i, j);\n" +
+                        "      i = j + 1;\n" +
+                        "      j = buf.indexOf(\"|\", i);\n" +
+                        "      if (j < 0)\n" +
+                        "        return null;\n" +
+                        "      set.statusDuration = parseInt(buf.substring(i, j));\n" +
+                        "      i = j + 1;\n" +
+                        "      j = buf.indexOf(\"|\", i);\n" +
+                        "      if (j < 0)\n" +
+                        "        return null;\n" +
+                        "      set.item = this.unpackName(buf.substring(i, j), import_dex.Dex.items);\n" +
+                        "      i = j + 1;\n" +
+                        "      j = buf.indexOf(\"|\", i);\n" +
+                        "      if (j < 0)\n" +
+                        "        return null;\n" +
+                        "      const ability = buf.substring(i, j);\n" +
+                        "      set.ability = this.unpackName(ability, import_dex.Dex.abilities);\n" +
+                        "      i = j + 1;\n" +
+                        "      j = buf.indexOf(\"|\", i);\n" +
+                        "      if (j < 0)\n" +
+                        "        return null;\n" +
+                        "      set.moves = buf.substring(i, j).split(\",\", 24).map((name) => this.unpackName(name, import_dex.Dex.moves));\n" +
+                        "      i = j + 1;\n" +
+                        "      j = buf.indexOf(\"|\", i);\n" +
+                        "      if (j < 0)\n" +
+                        "        return null;\n" +
+                        "      set.movesInfo = buf.substring(i, j).split(\",\", 24).map((moveData) => {\n" +
+                        "        const moveInfo = {};\n" +
+                        "        let data = moveData.split(\"/\");\n" +
+                        "        moveInfo.pp = parseInt(data[0]);\n" +
+                        "        moveInfo.maxPp = parseInt(data[1]);\n" +
+                        "        return moveInfo;\n" +
+                        "      });\n" +
+                        "      i = j + 1;\n" +
+                        "      j = buf.indexOf(\"|\", i);\n" +
+                        "      if (j < 0)\n" +
+                        "        return null;\n" +
+                        "      set.nature = this.unpackName(buf.substring(i, j), import_dex.Dex.natures);\n" +
+                        "      i = j + 1;\n" +
+                        "      j = buf.indexOf(\"|\", i);\n" +
+                        "      if (j < 0)\n" +
+                        "        return null;\n" +
+                        "      if (j !== i) {\n" +
+                        "        const evs = buf.substring(i, j).split(\",\", 6);\n" +
+                        "        set.evs = {\n" +
+                        "          hp: Number(evs[0]) || 0,\n" +
+                        "          atk: Number(evs[1]) || 0,\n" +
+                        "          def: Number(evs[2]) || 0,\n" +
+                        "          spa: Number(evs[3]) || 0,\n" +
+                        "          spd: Number(evs[4]) || 0,\n" +
+                        "          spe: Number(evs[5]) || 0\n" +
+                        "        };\n" +
+                        "      }\n" +
+                        "      i = j + 1;\n" +
+                        "      j = buf.indexOf(\"|\", i);\n" +
+                        "      if (j < 0)\n" +
+                        "        return null;\n" +
+                        "      if (i !== j)\n" +
+                        "        set.gender = buf.substring(i, j);\n" +
+                        "      i = j + 1;\n" +
+                        "      j = buf.indexOf(\"|\", i);\n" +
+                        "      if (j < 0)\n" +
+                        "        return null;\n" +
+                        "      if (j !== i) {\n" +
+                        "        const ivs = buf.substring(i, j).split(\",\", 6);\n" +
+                        "        set.ivs = {\n" +
+                        "          hp: ivs[0] === \"\" ? 31 : Number(ivs[0]) || 0,\n" +
+                        "          atk: ivs[1] === \"\" ? 31 : Number(ivs[1]) || 0,\n" +
+                        "          def: ivs[2] === \"\" ? 31 : Number(ivs[2]) || 0,\n" +
+                        "          spa: ivs[3] === \"\" ? 31 : Number(ivs[3]) || 0,\n" +
+                        "          spd: ivs[4] === \"\" ? 31 : Number(ivs[4]) || 0,\n" +
+                        "          spe: ivs[5] === \"\" ? 31 : Number(ivs[5]) || 0\n" +
+                        "        };\n" +
+                        "      }\n" +
+                        "      i = j + 1;\n" +
+                        "      j = buf.indexOf(\"|\", i);\n" +
+                        "      if (j < 0)\n" +
+                        "        return null;\n" +
+                        "      if (i !== j)\n" +
+                        "        set.shiny = true;\n" +
+                        "      i = j + 1;\n" +
+                        "      j = buf.indexOf(\"|\", i);\n" +
+                        "      if (j < 0)\n" +
+                        "        return null;\n" +
+                        "      if (i !== j)\n" +
+                        "        set.level = parseInt(buf.substring(i, j));\n" +
+                        "      i = j + 1;\n" +
+                        "        // happiness + extended misc\n" +
+                        "        j = buf.indexOf(']', i);\n" +
+                        "        let misc;\n" +
+                        "        if (j < 0) {\n" +
+                        "            if (i < buf.length) misc = buf.substring(i).split(',', 10);\n" +
+                        "        } else {\n" +
+                        "            if (i !== j) misc = buf.substring(i, j).split(',', 10);\n" +
+                        "        }\n" +
+                        "        if (misc) {\n" +
+                        "            set.happiness = (misc[0] ? Number(misc[0]) : 255);\n" +
+                        "            set.pokeball = this.unpackName(misc[1] || '', import_dex.Dex.items);\n" +
+                        "            set.hpType = misc[2] || '';\n" +
+                        "            set.gigantamax = !!misc[3];\n" +
+                        "            set.dynamaxLevel = (misc[4] ? Number(misc[4]) : 10);\n" +
+                        "            set.teraType = misc[5];\n" +
+                        "\n" +
+                        "            // 7th token: Shadow flag\n" +
+                        "            const shadowTok = misc[6];\n" +
+                        "            set.isShadow = shadowTok === 'true';\n" +
+                        "            // 8th token: Heart Gauge bars (0..5)\n" +
+                        "            if (misc.length > 7 && misc[7] !== undefined && misc[7] !== '') {\n" +
+                        "                set.heartGaugeBars = Number(misc[7]);\n" +
+                        "            }\n" +
+                        "            // 9th token: Start in Hyper Mode flag\n" +
+                        "            if (misc.length > 8) {\n" +
+                        "                set.isHyper = misc[8] === 'true';\n" +
+                        "            }\n" +
+                        "            // 10th token: Start in Reverse Mode flag\n" +
+                        "            if (misc.length > 9) {\n" +
+                        "                set.isReverse = misc[9] === 'true';\n" +
+                        "            }\n" +
+                        "        }\n" +
+                        "      if (j < 0)\n" +
+                        "        break;\n" +
+                        "      i = j + 1;\n" +
+                        "    }\n" +
+                        "    return team;\n" +
+                        "  }\n";
 
         String patched = content.substring(0, packStart) + newBlock + content.substring(afterUnpack);
         Files.writeString(teamsPath, patched, StandardCharsets.UTF_8);
@@ -581,7 +591,8 @@ public final class ShowdownRuntimePatcher {
         if (!Files.isRegularFile(customFormatsPath)) {
             try {
                 Files.createDirectories(customFormatsPath.getParent());
-            } catch (IOException ignored) {}
+            } catch (IOException ignored) {
+            }
             String scaffold = "exports.Formats = [\n];\n";
             Files.writeString(customFormatsPath, scaffold, StandardCharsets.UTF_8);
         }
@@ -595,38 +606,38 @@ public final class ShowdownRuntimePatcher {
 
         final String microBlock =
                 "\n" +
-                ",{\n" +
-                "    section: \"Shadowed Hearts\",\n" +
-                "},\n" +
-                "{\n" +
-                "    name: \"[Gen 9] Micro\",\n" +
-                "    desc: \"Internal one-action micro battle for overworld interactions; not for human play.\",\n" +
-                "    mod: 'micro',\n" +
-                "    gameType: 'singles',\n" +
-                "    searchShow: false,\n" +
-                "    challengeShow: false,\n" +
-                "    tournamentShow: false,\n" +
-                "    rated: false,\n" +
-                "    ruleset: [\n" +
-                "        'Obtainable', 'Species Clause', 'HP Percentage Mod', 'Cancel Mod', 'Illusion Level Mod', 'Endless Battle Clause',\n" +
-                "        'Picked Team Size = 1', 'Max Team Size = 1', 'Min Team Size = 1',\n" +
-                "    ],\n" +
-                "    banlist: [\n" +
-                "        // Hazards and delayed-turn moves\n" +
-                "        'Stealth Rock', 'Spikes', 'Toxic Spikes', 'Sticky Web',\n" +
-                "        'Future Sight', 'Doom Desire', 'Perish Song',\n" +
-                "        // Pivots and passers (avoid switch flow)\n" +
-                "        'Baton Pass', 'Parting Shot',\n" +
-                "        // Two-turn/charge/invuln moves\n" +
-                "        'Sky Drop', 'Dive', 'Dig', 'Bounce', 'Fly', 'Phantom Force', 'Shadow Force', 'Solar Beam', 'Solar Blade', 'Skull Bash', 'Freeze Shock', 'Ice Burn', 'Razor Wind', 'Geomancy',\n" +
-                "    ],\n" +
-                "    onBegin() {\n" +
-                "        // State should be injected by the micro-battle runner; nothing to do here.\n" +
-                "    },\n" +
-                "    onResidual() {\n" +
-                "        // Prevent format-level residual effects; core statuses/weather may still apply if present.\n" +
-                "    },\n" +
-                "},\n";
+                        ",{\n" +
+                        "    section: \"Shadowed Hearts\",\n" +
+                        "},\n" +
+                        "{\n" +
+                        "    name: \"[Gen 9] Micro\",\n" +
+                        "    desc: \"Internal one-action micro battle for overworld interactions; not for human play.\",\n" +
+                        "    mod: 'micro',\n" +
+                        "    gameType: 'singles',\n" +
+                        "    searchShow: false,\n" +
+                        "    challengeShow: false,\n" +
+                        "    tournamentShow: false,\n" +
+                        "    rated: false,\n" +
+                        "    ruleset: [\n" +
+                        "        'Obtainable', 'Species Clause', 'HP Percentage Mod', 'Cancel Mod', 'Illusion Level Mod', 'Endless Battle Clause',\n" +
+                        "        'Picked Team Size = 1', 'Max Team Size = 1', 'Min Team Size = 1',\n" +
+                        "    ],\n" +
+                        "    banlist: [\n" +
+                        "        // Hazards and delayed-turn moves\n" +
+                        "        'Stealth Rock', 'Spikes', 'Toxic Spikes', 'Sticky Web',\n" +
+                        "        'Future Sight', 'Doom Desire', 'Perish Song',\n" +
+                        "        // Pivots and passers (avoid switch flow)\n" +
+                        "        'Baton Pass', 'Parting Shot',\n" +
+                        "        // Two-turn/charge/invuln moves\n" +
+                        "        'Sky Drop', 'Dive', 'Dig', 'Bounce', 'Fly', 'Phantom Force', 'Shadow Force', 'Solar Beam', 'Solar Blade', 'Skull Bash', 'Freeze Shock', 'Ice Burn', 'Razor Wind', 'Geomancy',\n" +
+                        "    ],\n" +
+                        "    onBegin() {\n" +
+                        "        // State should be injected by the micro-battle runner; nothing to do here.\n" +
+                        "    },\n" +
+                        "    onResidual() {\n" +
+                        "        // Prevent format-level residual effects; core statuses/weather may still apply if present.\n" +
+                        "    },\n" +
+                        "},\n";
 
         int endIndex = content.lastIndexOf("];");
         String patched;
@@ -650,7 +661,10 @@ public final class ShowdownRuntimePatcher {
                 return;
             }
         } else {
-            try { Files.createDirectories(scriptsPath.getParent()); } catch (IOException ignored) {}
+            try {
+                Files.createDirectories(scriptsPath.getParent());
+            } catch (IOException ignored) {
+            }
         }
 
         String js = "exports.Scripts = {\n" +
@@ -693,7 +707,9 @@ public final class ShowdownRuntimePatcher {
         }
         String anchor = "this.add(\"gametype\", this.gameType);";
         int idx = content.indexOf(anchor);
-        if (idx < 0) { return; }
+        if (idx < 0) {
+            return;
+        }
         int insertPos = idx + anchor.length();
         String injected = "\n    this.field.addPseudoWeather('shadowengine');";
         String patched = content.substring(0, insertPos) + injected + content.substring(insertPos);
@@ -702,7 +718,7 @@ public final class ShowdownRuntimePatcher {
 
     /**
      * Adds extra lines in sim/field.js addPseudoWeather for 'shadowengine'.
-     *
+     * <p>
      * The patch is idempotent and only touches the specific addPseudoWeather return block.
      */
     private static void patchFieldAddPseudoWeatherDebug(Path fieldPath) throws IOException {
@@ -717,19 +733,19 @@ public final class ShowdownRuntimePatcher {
         // Target the compiled JS for addPseudoWeather() block shown in PS sim/field.js
         String needle =
                 "if (!this.battle.singleEvent(\"FieldStart\", status, state, this, source, sourceEffect)) {\n" +
-                "      delete this.pseudoWeather[status.id];\n" +
-                "      return false;\n" +
-                "    }\n" +
-                "    this.battle.runEvent(\"PseudoWeatherChange\", source, source, status);\n" +
-                "    return true;";
+                        "      delete this.pseudoWeather[status.id];\n" +
+                        "      return false;\n" +
+                        "    }\n" +
+                        "    this.battle.runEvent(\"PseudoWeatherChange\", source, source, status);\n" +
+                        "    return true;";
 
         String replacement =
                 "if (!this.battle.singleEvent(\"FieldStart\", status, state, this, source, sourceEffect)) {\n" +
-                "      delete this.pseudoWeather[status.id];\n" +
-                "      return false;\n" +
-                "    }\n" +
-                "    this.battle.runEvent(\"PseudoWeatherChange\", source, source, status);\n" +
-                "    return true;";
+                        "      delete this.pseudoWeather[status.id];\n" +
+                        "      return false;\n" +
+                        "    }\n" +
+                        "    this.battle.runEvent(\"PseudoWeatherChange\", source, source, status);\n" +
+                        "    return true;";
 
         if (content.contains(needle)) {
             String patched = content.replace(needle, replacement);

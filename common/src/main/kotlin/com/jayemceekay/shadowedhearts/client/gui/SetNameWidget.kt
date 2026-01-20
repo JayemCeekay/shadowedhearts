@@ -14,8 +14,6 @@ import net.minecraft.network.chat.Component
 /**
  * SetNameWidget — lightweight, read-only label modeled after Cobblemon's BoxNameWidget.
  * Displays "Set #" where # is provided by [getSetIndex] + 1, and centers text within the widget width.
- *
- * Context: This is a Minecraft Cobblemon mod; all shadow/purity/corruption/capture terms are gameplay mechanics.
  */
 class SetNameWidget(
     pX: Int,

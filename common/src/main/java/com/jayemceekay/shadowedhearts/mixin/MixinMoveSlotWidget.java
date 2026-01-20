@@ -23,7 +23,6 @@ import org.spongepowered.asm.mixin.injection.ModifyArg;
  * Obfuscate locked moves in the Summary -> Moves screen.
  * When a Pokemon is Shadow-locked, non-Shadow moves have their name and PP masked.
  * Also neutralize the colored move bar tint and swap the TypeIcon to a shadow-locked placeholder.
- * (02 §5 Mission Entrance flow – visual privacy of locked content; Project guideline alignment)
  */
 @Mixin(value = MoveSlotWidget.class, remap = false)
 public abstract class MixinMoveSlotWidget {
@@ -143,4 +142,17 @@ public abstract class MixinMoveSlotWidget {
     private ElementalType shadowedhearts$swapType(ElementalType original) {
         return shadowedhearts$shouldMask() ? ElementalTypes.get("shadow-locked") : original;
     }
+
+   /* @WrapMethod(method = "renderMoveTooltipWithIcons")
+    private void shadowedhearts$cancelShadowTooltip(
+            GuiGraphics context, int tooltipX, int tooltipY, Operation<Void> original
+    ) {
+        if (shadowedhearts$shouldMask()) {
+            // Cancel the call to prevent the tooltip from rendering
+            return;
+        }
+        original.call(context, tooltipX, tooltipY);
+    }*/
+
+
 }

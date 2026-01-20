@@ -1,5 +1,6 @@
 package com.jayemceekay.shadowedhearts.config;
 
+import com.jayemceekay.shadowedhearts.Shadowedhearts;
 import dev.architectury.platform.Platform;
 import net.neoforged.neoforge.common.ModConfigSpec;
 
@@ -42,6 +43,11 @@ public final class ModConfig implements IShadowConfig {
     }
 
     @Override
+    public boolean goDamageModifierEnabled() {
+        return DATA.goDamageModifier.enabled.get();
+    }
+
+    @Override
     public boolean callButtonReducesHeartGauge() {
         return DATA.callButton.reducesHeartGauge.get();
     }
@@ -59,6 +65,16 @@ public final class ModConfig implements IShadowConfig {
     @Override
     public int scentCooldownSeconds() {
         return DATA.scent.cooldownSeconds.get();
+    }
+
+    @Override
+    public boolean expandedScentSystemEnabled() {
+        return DATA.scent.expandedSystemEnabled.get();
+    }
+
+    @Override
+    public boolean superEffectiveShadowMovesEnabled() {
+        return DATA.shadowMoves.superEffectiveEnabled.get();
     }
 
     @Override
@@ -82,6 +98,16 @@ public final class ModConfig implements IShadowConfig {
     }
 
     @Override
+    public int auraScannerShadowRange() {
+        return DATA.auraScanner.auraScannerShadowRange.get();
+    }
+
+    @Override
+    public int auraScannerMeteoroidRange() {
+        return DATA.auraScanner.auraScannerMeteoroidRange.get();
+    }
+
+    @Override
     public IRCTSection append() {
         return DATA.rctIntegration.append;
     }
@@ -97,6 +123,11 @@ public final class ModConfig implements IShadowConfig {
     }
 
     @Override
+    public IWorldAlterationConfig worldAlteration() {
+        return DATA.worldAlteration;
+    }
+
+    @Override
     public ModConfigSpec getSpec() {
         return SPEC;
     }
@@ -107,11 +138,14 @@ public final class ModConfig implements IShadowConfig {
 
         public final HyperModeConfig hyperMode = new HyperModeConfig();
         public final ReverseModeConfig reverseMode = new ReverseModeConfig();
+        public final GODamageModifierConfig goDamageModifier = new GODamageModifierConfig();
         public final CallButtonConfig callButton = new CallButtonConfig();
         public final ScentConfig scent = new ScentConfig();
         public final ShadowMovesConfig shadowMoves = new ShadowMovesConfig();
+        public final AuraScannerConfig auraScanner = new AuraScannerConfig();
         public final RelicStoneConfig relicStone = new RelicStoneConfig();
         public final RCTIntegrationConfig rctIntegration = new RCTIntegrationConfig();
+        public final WorldAlterationConfig worldAlteration = new WorldAlterationConfig();
 
         private void build(ModConfigSpec.Builder builder) {
             builder.push("hyperMode");
@@ -120,6 +154,10 @@ public final class ModConfig implements IShadowConfig {
 
             builder.push("reverseMode");
             reverseMode.build(builder);
+            builder.pop();
+
+            builder.push("goDamageModifier");
+            goDamageModifier.build(builder);
             builder.pop();
 
             builder.push("callButton");
@@ -132,6 +170,10 @@ public final class ModConfig implements IShadowConfig {
 
             builder.push("shadowMoves");
             shadowMoves.build(builder);
+            builder.pop();
+
+            builder.push("auraScanner");
+            auraScanner.build(builder);
             builder.pop();
 
             builder.push("relicStone");
@@ -153,6 +195,205 @@ public final class ModConfig implements IShadowConfig {
             rctIntegration.build(builder);
             builder.pop();
             builder.pop();
+
+            builder.push("worldAlteration");
+            worldAlteration.build(builder);
+            builder.pop();
+        }
+    }
+
+    public static final class WorldAlterationConfig implements IWorldAlterationConfig {
+        public ModConfigSpec.BooleanValue shadowfallActive;
+        public ModConfigSpec.IntValue impactChanceOneInTicks;
+        public ModConfigSpec.IntValue civilizedHeatmapThreshold;
+        public ModConfigSpec.IntValue heatmapDecayTicks;
+        public ModConfigSpec.DoubleValue heatmapDecayAmount;
+        public ModConfigSpec.IntValue minImpactDistanceToPlayer;
+        public ModConfigSpec.IntValue maxImpactDistanceToPlayer;
+        public ModConfigSpec.IntValue minImpactDistanceToStructures;
+        public ModConfigSpec.IntValue minImpactDistanceToSpawn;
+        public ModConfigSpec.IntValue minCraterRadius;
+        public ModConfigSpec.IntValue maxCraterRadius;
+        public ModConfigSpec.IntValue heatmapPresenceRadius;
+        public ModConfigSpec.IntValue meteoroidImpactBroadcastRadius;
+        public ModConfigSpec.BooleanValue meteoroidShadowTransformationEnabled;
+        public ModConfigSpec.IntValue meteoroidShadowTransformationRadius;
+        public ModConfigSpec.IntValue meteoroidShadowTransformationCheckIntervalTicks;
+        public ModConfigSpec.DoubleValue meteoroidShadowTransformationChancePerInterval;
+        public ModConfigSpec.DoubleValue meteoroidShadowTransformationExposureIncrease;
+        public ModConfigSpec.DoubleValue meteoroidShadowTransformationExposureDecay;
+        public ModConfigSpec.DoubleValue meteoroidShadowSpawnChanceMultiplier;
+        public ModConfigSpec.BooleanValue meteoroidWorldGenEnabled;
+
+        private void build(ModConfigSpec.Builder builder) {
+            shadowfallActive = builder
+                    .comment("Whether the Shadowfall event is active, enabling meteoroid impacts.")
+                    .define("shadowfallActive", false);
+            impactChanceOneInTicks = builder
+                    .comment("The average number of ticks between impact attempts. (e.g., 12000 ticks = 10 minutes)")
+                    .defineInRange("impactChanceOneInTicks", 12000, 1, Integer.MAX_VALUE);
+            civilizedHeatmapThreshold = builder
+                    .comment("Chunks with activity heatmap above this value are considered 'civilized' and protected from impacts.")
+                    .defineInRange("civilizedHeatmapThreshold", 100, 0, Integer.MAX_VALUE);
+            heatmapDecayTicks = builder
+                    .comment("How often (in ticks) the player activity heatmap decays.")
+                    .defineInRange("heatmapDecayTicks", 1200, 1, Integer.MAX_VALUE);
+            heatmapDecayAmount = builder
+                    .comment("The amount of activity that decays from each chunk every decay cycle.")
+                    .defineInRange("heatmapDecayAmount", 1.0, 0.0, 1000.0);
+            minImpactDistanceToPlayer = builder
+                    .comment("Minimum distance (in blocks) from any player for an impact to occur.")
+                    .defineInRange("minImpactDistanceToPlayer", 64, 0, Integer.MAX_VALUE);
+            maxImpactDistanceToPlayer = builder
+                    .comment("Maximum distance (in blocks) from a player to consider for an impact.")
+                    .defineInRange("maxImpactDistanceToPlayer", 256, 1, Integer.MAX_VALUE);
+            minImpactDistanceToStructures = builder
+                    .comment("Minimum distance (in blocks) from any generated structures for an impact to occur.")
+                    .defineInRange("minImpactDistanceToStructures", 64, 0, Integer.MAX_VALUE);
+            minImpactDistanceToSpawn = builder
+                    .comment("Minimum distance (in blocks) from the world spawn point for an impact to occur.")
+                    .defineInRange("minImpactDistanceToSpawn", 128, 0, Integer.MAX_VALUE);
+            minCraterRadius = builder
+                    .comment("Minimum radius of generated craters.")
+                    .defineInRange("minCraterRadius", 8, 1, 100);
+            maxCraterRadius = builder
+                    .comment("Maximum radius of generated craters.")
+                    .defineInRange("maxCraterRadius", 16, 1, 100);
+            heatmapPresenceRadius = builder
+                    .comment("Radius (in chunks) around players where activity heatmap is increased.")
+                    .defineInRange("heatmapPresenceRadius", 2, 0, 16);
+            meteoroidImpactBroadcastRadius = builder
+                    .comment("Radius (in blocks) within which players will receive a message and hear a sound when a meteoroid impacts.")
+                    .defineInRange("meteoroidImpactBroadcastRadius", 256, 0, Integer.MAX_VALUE);
+            meteoroidShadowTransformationEnabled = builder
+                    .comment("Whether wild Pokemon near shadowfall meteoroids can become Shadow Pokemon over time.")
+                    .define("meteoroidShadowTransformationEnabled", true);
+            meteoroidShadowTransformationRadius = builder
+                    .comment("Radius around meteoroids to check for wild Pokemon.")
+                    .defineInRange("meteoroidShadowTransformationRadius", 16, 1, 64);
+            meteoroidShadowTransformationCheckIntervalTicks = builder
+                    .comment("How often (in ticks) to check for wild Pokemon near meteoroids.")
+                    .defineInRange("meteoroidShadowTransformationCheckIntervalTicks", 100, 20, 12000);
+            meteoroidShadowTransformationChancePerInterval = builder
+                    .comment("The base chance per check interval for a wild Pokemon near a meteoroid to become a Shadow Pokemon.")
+                    .defineInRange("meteoroidShadowTransformationChancePerInterval", 0.05, 0.0, 1.0);
+            meteoroidShadowTransformationExposureIncrease = builder
+                    .comment("The amount of exposure a wild Pokemon gains per check interval when near a meteoroid.")
+                    .defineInRange("meteoroidShadowTransformationExposureIncrease", 1.0, 0.0, 100.0);
+            meteoroidShadowTransformationExposureDecay = builder
+                    .comment("The amount of exposure a wild Pokemon loses per check interval when NOT near a meteoroid.")
+                    .defineInRange("meteoroidShadowTransformationExposureDecay", 0.5, 0.0, 100.0);
+            meteoroidShadowSpawnChanceMultiplier = builder
+                    .comment("The multiplier applied to the base shadow spawn chance when a Pokemon spawns near a meteoroid.")
+                    .defineInRange("meteoroidShadowSpawnChanceMultiplier", 5.0, 0.0, 100.0);
+            meteoroidWorldGenEnabled = builder
+                    .comment("Whether shadowfall meteoroids and craters are placed in the world during chunk generation.")
+                    .define("meteoroidWorldGenEnabled", true);
+        }
+
+        @Override
+        public boolean shadowfallActive() {
+            return shadowfallActive.get();
+        }
+
+        @Override
+        public int impactChanceOneInTicks() {
+            return impactChanceOneInTicks.get();
+        }
+
+        @Override
+        public int civilizedHeatmapThreshold() {
+            return civilizedHeatmapThreshold.get();
+        }
+
+        @Override
+        public int heatmapDecayTicks() {
+            return heatmapDecayTicks.get();
+        }
+
+        @Override
+        public double heatmapDecayAmount() {
+            return heatmapDecayAmount.get();
+        }
+
+        @Override
+        public int minImpactDistanceToPlayer() {
+            return minImpactDistanceToPlayer.get();
+        }
+
+        @Override
+        public int maxImpactDistanceToPlayer() {
+            return maxImpactDistanceToPlayer.get();
+        }
+
+        @Override
+        public int minImpactDistanceToStructures() {
+            return minImpactDistanceToStructures.get();
+        }
+
+        @Override
+        public int minImpactDistanceToSpawn() {
+            return minImpactDistanceToSpawn.get();
+        }
+
+        @Override
+        public int minCraterRadius() {
+            return minCraterRadius.get();
+        }
+
+        @Override
+        public int maxCraterRadius() {
+            return maxCraterRadius.get();
+        }
+
+        @Override
+        public int heatmapPresenceRadius() {
+            return heatmapPresenceRadius.get();
+        }
+
+        @Override
+        public int meteoroidImpactBroadcastRadius() {
+            return meteoroidImpactBroadcastRadius.get();
+        }
+
+        @Override
+        public boolean meteoroidShadowTransformationEnabled() {
+            return meteoroidShadowTransformationEnabled.get();
+        }
+
+        @Override
+        public int meteoroidShadowTransformationRadius() {
+            return meteoroidShadowTransformationRadius.get();
+        }
+
+        @Override
+        public int meteoroidShadowTransformationCheckIntervalTicks() {
+            return meteoroidShadowTransformationCheckIntervalTicks.get();
+        }
+
+        @Override
+        public double meteoroidShadowTransformationChancePerInterval() {
+            return meteoroidShadowTransformationChancePerInterval.get();
+        }
+
+        @Override
+        public double meteoroidShadowTransformationExposureIncrease() {
+            return meteoroidShadowTransformationExposureIncrease.get();
+        }
+
+        @Override
+        public double meteoroidShadowTransformationExposureDecay() {
+            return meteoroidShadowTransformationExposureDecay.get();
+        }
+
+        @Override
+        public double meteoroidShadowSpawnChanceMultiplier() {
+            return meteoroidShadowSpawnChanceMultiplier.get();
+        }
+
+        @Override
+        public boolean meteoroidWorldGenEnabled() {
+            return meteoroidWorldGenEnabled.get();
         }
     }
 
@@ -176,6 +417,16 @@ public final class ModConfig implements IShadowConfig {
         }
     }
 
+    public static final class GODamageModifierConfig {
+        public ModConfigSpec.BooleanValue enabled;
+
+        private void build(ModConfigSpec.Builder builder) {
+            enabled = builder
+                    .comment("Whether Shadow Pokemon do 20% more and take 20% more damage like in Pokemon GO.")
+                    .define("enabled", false);
+        }
+    }
+
     public static final class CallButtonConfig {
         public ModConfigSpec.BooleanValue reducesHeartGauge;
         public ModConfigSpec.BooleanValue accuracyBoost;
@@ -196,19 +447,27 @@ public final class ModConfig implements IShadowConfig {
 
     public static final class ScentConfig {
         public ModConfigSpec.IntValue cooldownSeconds;
+        public ModConfigSpec.BooleanValue expandedSystemEnabled;
 
         private void build(ModConfigSpec.Builder builder) {
             cooldownSeconds = builder
                     .comment("Cooldown in seconds between using Scent items on a Pokémon.")
                     .defineInRange("cooldownSeconds", 300, 0, Integer.MAX_VALUE);
+            expandedSystemEnabled = builder
+                    .comment("If true, the expanded scent system with more scents and nature affinities is enabled.")
+                    .define("expandedSystemEnabled", true);
         }
     }
 
     public static final class ShadowMovesConfig {
+        public ModConfigSpec.BooleanValue superEffectiveEnabled;
         public ModConfigSpec.ConfigValue<String> replaceCount;
         public ModConfigSpec.BooleanValue onlyShadowRush;
 
         private void build(ModConfigSpec.Builder builder) {
+            superEffectiveEnabled = builder
+                    .comment("If true, Shadow moves are super effective against non-Shadow Pokémon.")
+                    .define("superEffectiveEnabled", true);
             replaceCount = builder
                     .comment("How many moves to replace with Shadow moves. Supports single values (e.g. '1') or ranges (e.g. '1-3').")
                     .define("replaceCount", "1");
@@ -218,8 +477,24 @@ public final class ModConfig implements IShadowConfig {
         }
     }
 
+    public static final class AuraScannerConfig {
+        public ModConfigSpec.IntValue auraScannerShadowRange;
+        public ModConfigSpec.IntValue auraScannerMeteoroidRange;
+
+        private void build(ModConfigSpec.Builder builder) {
+            auraScannerShadowRange = builder
+                    .comment("The range (in blocks) at which the Aura Scanner can detect Shadow Pokemon.")
+                    .defineInRange("auraScannerShadowRange", 128, 1, 512);
+
+            auraScannerMeteoroidRange = builder
+                    .comment("The range (in blocks) at which the Aura Scanner can detect Shadowfall meteoroids.")
+                    .defineInRange("auraScannerMeteoroidRange", 256, 1, 512);
+        }
+    }
+
     public static final class RelicStoneConfig {
         public ModConfigSpec.IntValue cooldownMinutes;
+
 
         private void build(ModConfigSpec.Builder builder) {
             cooldownMinutes = builder
@@ -274,13 +549,13 @@ public final class ModConfig implements IShadowConfig {
 
         private void build(ModConfigSpec.Builder builder) {
             trainerTypes = builder.defineList("trainerTypes",
-                    isDefaultReplace ? List.of("team_rocket") : Collections.emptyList(),
+                    isDefaultReplace ? List.of("team_rocket", "team_galactic", "team_shadow") : List.of("normal"),
                     o -> o instanceof String);
 
             typePresets = builder
                     .comment("Format: type=presetId")
                     .defineList("typePresets",
-                            isDefaultReplace ? List.of("team_rocket=shadowedhearts/team_rocket") : Collections.emptyList(),
+                            isDefaultReplace ? List.of("team_rocket=shadowedhearts/team_rocket", "team_galactic=shadowedhearts/team_galactic", "team_shadow=shadowedhearts/team_shadow") : List.of("normal=shadowedhearts/normal_20"),
                             o -> o instanceof String && ((String) o).contains("="));
 
             trainerBlacklist = builder.defineList("trainerBlacklist", Collections.emptyList(), o -> o instanceof String);
@@ -288,7 +563,7 @@ public final class ModConfig implements IShadowConfig {
             trainers = builder
                     .comment("Format: id;preset;tag1,tag2...")
                     .defineList("trainers",
-                            isDefaultReplace ? List.of("team_rocket;shadowedhearts/team_rocket;") : Collections.emptyList(),
+                            isDefaultReplace ? List.of("team_rocket;shadowedhearts/team_rocket;", "team_galactic;shadowedhearts/team_galactic;", "team_shadow;shadowedhearts/team_shadow;") : List.of("normal;shadowedhearts/normal_20;"),
                             o -> o instanceof String);
         }
 
@@ -316,7 +591,7 @@ public final class ModConfig implements IShadowConfig {
     @Override
     public void load() {
         loaded = true;
-        System.out.println("[ShadowedHearts] ModConfig loaded via Forge Config API Port.");
+        Shadowedhearts.LOGGER.info("ModConfig loaded via Forge Config API Port.");
     }
 
     @Override

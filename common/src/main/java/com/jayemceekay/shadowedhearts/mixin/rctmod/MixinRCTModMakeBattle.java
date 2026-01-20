@@ -3,6 +3,7 @@ package com.jayemceekay.shadowedhearts.mixin.rctmod;
 import com.gitlab.srcmc.rctmod.api.RCTMod;
 import com.gitlab.srcmc.rctmod.api.service.TrainerManager;
 import com.gitlab.srcmc.rctmod.world.entities.TrainerMob;
+import com.jayemceekay.shadowedhearts.Shadowedhearts;
 import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs;
 import com.jayemceekay.shadowedhearts.server.NPCShadowInjector;
 import net.minecraft.world.entity.player.Player;
@@ -165,7 +166,7 @@ public abstract class MixinRCTModMakeBattle {
                     mob.addTag(NPCShadowInjector.TAG_MODE_REPLACE);
                 }
                 default -> {
-                    System.out.println("[ShadowedHearts] RCT Trainer Battle: defaulting to convert");
+                   Shadowedhearts.LOGGER.info("RCT Trainer Battle: defaulting to convert");
                 }
             }
         } catch (Throwable ignored) {

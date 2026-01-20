@@ -55,8 +55,6 @@ import kotlin.math.max
  * This class intentionally mirrors the structure of Cobblemon's PCGUI but is
  * backed by our ClientPurificationStorage rather than Cobblemon's ClientStorage.
  * It can be expanded with widgets/animations similarly to PCGUI as features grow.
- *
- * Context: This is a Minecraft Cobblemon mod; all shadow/purity/corruption/capture terms are gameplay mechanics.
  */
 class PurificationChamberGUI(
     val purificationStorage: ClientPurificationStorage

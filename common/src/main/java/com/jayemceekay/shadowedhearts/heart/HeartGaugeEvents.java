@@ -8,7 +8,6 @@ import com.jayemceekay.shadowedhearts.ShadowService;
 /**
  * Helper to apply Heart Gauge changes for various events.
  * Server-side only. All deltas are absolute meter changes (negative opens heart).
- * Values sourced from 01 Core Mechanics doc (XD column) and HeartGaugeDeltas.
  */
 public final class HeartGaugeEvents {
     private HeartGaugeEvents() {}

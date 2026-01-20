@@ -1,0 +1,26 @@
+{
+  "blend": {
+    "func": "add",
+    "srcrgb": "srcalpha",
+    "dstrgb": "1",
+    "alphafunc": "add",
+    "srcalpha": "srcalpha",
+    "dstalpha": "1"
+  },
+  "vertex": "shadowedhearts:aura_pulse",
+  "fragment": "shadowedhearts:aura_pulse",
+  "attributes": [
+    "Position",
+    "UV0"
+  ],
+  "samplers": [
+    { "name": "DiffuseSampler" },
+    { "name": "uDepth" }
+  ],
+  "uniforms": [
+    { "name": "uInvView", "type": "matrix4x4", "count": 16, "values": [ 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0 ] },
+    { "name": "uInvProj", "type": "matrix4x4", "count": 16, "values": [ 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0 ] },
+    { "name": "uThickness", "type": "float", "count": 1, "values": [ 1.0 ] },
+    { "name": "uPulseCount", "type": "float", "count": 1, "values": [ 0.0 ] }
+  ]
+}

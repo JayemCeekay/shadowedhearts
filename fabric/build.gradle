@@ -75,6 +75,10 @@ dependencies {
     //specialModelLoader
     modCompileOnly("maven.modrinth:ajFw7VkX:tbPW2bdB")
 
+    //iris shaders
+    modCompileOnly("maven.modrinth:YL57xq9U:zsoi0dso")
+
+    //forge config api port
     modImplementation "fuzs.forgeconfigapiport:forgeconfigapiport-fabric:${fcap_version}"
 }
 

@@ -4,10 +4,10 @@ import com.jayemceekay.shadowedhearts.Shadowedhearts;
 import com.jayemceekay.shadowedhearts.config.ModConfig;
 import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs;
 import com.jayemceekay.shadowedhearts.config.SnagConfig;
-import com.jayemceekay.shadowedhearts.config.TrainerSpawnConfig;
 import fuzs.forgeconfigapiport.fabric.api.neoforge.v4.NeoForgeConfigRegistry;
 import fuzs.forgeconfigapiport.fabric.api.neoforge.v4.NeoForgeModConfigEvents;
 import net.fabricmc.api.ModInitializer;
+import net.fabricmc.fabric.api.biome.v1.BiomeModifications;
 import net.neoforged.fml.config.ModConfig.Type;
 
 public final class ShadowedheartsFabric implements ModInitializer {
@@ -17,17 +17,22 @@ public final class ShadowedheartsFabric implements ModInitializer {
         // However, some things (like resources) may still be uninitialized.
         // Proceed with mild caution.
 
+        Shadowedhearts.featureAdder = (feature, step, validTag) -> {
+            BiomeModifications.addFeature(
+                    context -> validTag == null || context.hasTag(validTag),
+                    step,
+                    feature
+            );
+        };
+
         NeoForgeConfigRegistry.INSTANCE.register(Shadowedhearts.MOD_ID, Type.COMMON, ModConfig.SPEC, "shadowedhearts/common.toml");
         NeoForgeConfigRegistry.INSTANCE.register(Shadowedhearts.MOD_ID, Type.COMMON, SnagConfig.SPEC, "shadowedhearts/snag.toml");
-        NeoForgeConfigRegistry.INSTANCE.register(Shadowedhearts.MOD_ID, Type.COMMON, TrainerSpawnConfig.SPEC, "shadowedhearts/trainer_spawn.toml");
 
         NeoForgeModConfigEvents.loading(Shadowedhearts.MOD_ID).register(config -> {
             if (config.getSpec() == ModConfig.SPEC) {
                 ShadowedHeartsConfigs.getInstance().getShadowConfig().load();
             } else if (config.getSpec() == SnagConfig.SPEC) {
                 ShadowedHeartsConfigs.getInstance().getSnagConfig().load();
-            } else if (config.getSpec() == TrainerSpawnConfig.SPEC) {
-                ShadowedHeartsConfigs.getInstance().getTrainerSpawnConfig().load();
             }
         });
 
@@ -36,8 +41,6 @@ public final class ShadowedheartsFabric implements ModInitializer {
                 ShadowedHeartsConfigs.getInstance().getShadowConfig().load();
             } else if (config.getSpec() == SnagConfig.SPEC) {
                 ShadowedHeartsConfigs.getInstance().getSnagConfig().load();
-            } else if (config.getSpec() == TrainerSpawnConfig.SPEC) {
-                ShadowedHeartsConfigs.getInstance().getTrainerSpawnConfig().load();
             }
         });
 

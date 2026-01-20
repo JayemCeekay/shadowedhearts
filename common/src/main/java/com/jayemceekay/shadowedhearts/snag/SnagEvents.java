@@ -6,8 +6,11 @@ import com.cobblemon.mod.common.api.battles.model.actor.ActorType;
 import com.cobblemon.mod.common.api.battles.model.actor.BattleActor;
 import com.cobblemon.mod.common.api.events.CobblemonEvents;
 import com.cobblemon.mod.common.api.events.battles.BattleVictoryEvent;
+import com.cobblemon.mod.common.api.events.pokemon.PokemonCapturedEvent;
 import com.cobblemon.mod.common.battles.BattleRegistry;
 import com.cobblemon.mod.common.battles.actor.PlayerBattleActor;
+import com.jayemceekay.shadowedhearts.SHAspects;
+import com.jayemceekay.shadowedhearts.advancements.ModCriteriaTriggers;
 import com.jayemceekay.shadowedhearts.config.ISnagConfig;
 import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs;
 import com.jayemceekay.shadowedhearts.network.ShadowedHeartsNetwork;
@@ -38,6 +41,7 @@ public final class SnagEvents {
             int nonPlayerActorCount = 0;
             int levelSum = 0;
             int levelCount = 0;
+            boolean wildShadowDefeated = false;
             for (BattleActor loser : e.getLosers()) {
                 if (loser == null) continue;
                 if (loser.getType() == ActorType.PLAYER) continue;
@@ -52,6 +56,9 @@ public final class SnagEvents {
                             levelSum += lvl;
                             levelCount++;
                         }
+                        if (loser.getType() == ActorType.WILD && bp.getEffectedPokemon().getAspects().contains(SHAspects.SHADOW)) {
+                            wildShadowDefeated = true;
+                        }
                     } catch (Throwable ignored) {}
                 }
             }
@@ -59,6 +66,14 @@ public final class SnagEvents {
             if (nonPlayerActorCount <= 0 && !battle.isPvP()) {
                 // Nothing meaningful to scale against (e.g., empty losers); skip non-PvP edge cases
                 return kotlin.Unit.INSTANCE;
+            }
+
+            if (wildShadowDefeated) {
+                for (BattleActor winner : e.getWinners()) {
+                    if (winner instanceof PlayerBattleActor pba && pba.getEntity() != null) {
+                        ModCriteriaTriggers.triggerWildShadowDefeated(pba.getEntity());
+                    }
+                }
             }
 
             double avgLevel = levelCount > 0 ? (double) levelSum / (double) levelCount : 1.0;
@@ -87,6 +102,13 @@ public final class SnagEvents {
                             gained, after
                     ));
                 }
+            }
+            return kotlin.Unit.INSTANCE;
+        });
+
+        CobblemonEvents.POKEMON_CAPTURED.subscribe(Priority.NORMAL, (PokemonCapturedEvent e) -> {
+            if (e.getPokemon().getAspects().contains(SHAspects.SHADOW)) {
+                ModCriteriaTriggers.triggerSnagFromNpc(e.getPlayer());
             }
             return kotlin.Unit.INSTANCE;
         });

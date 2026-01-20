@@ -22,11 +22,12 @@
     "MixinStatWidget",
     "MixinStorageSlotAura",
     "MouseHandlerAccessor",
-    "RenderTargetAccessor"
+    "MovesWidgetAccessor",
+    "RenderTargetAccessor",
+    "SummaryAccessor"
   ],
   "mixins": [
     "AccessorMoveActionResponse",
-    "CobblemonBattleExtrasMoveTileTooltipMixin",
     "MixinBattleActor_SetActionResponses",
     "MixinBattleCaptureAction",
     "MixinBattleRegistry",
@@ -44,6 +45,8 @@
     "MixinShowdownInterpreter",
     "MixinShowdownMoveset",
     "MixinTypeIcon",
+    "cobblemonbattleextras.CobblemonBattleExtrasMoveTileTooltipMixin",
+    "cobblemonpartyextras.CobblemonPartyExtrasCustomTooltipRendererMixin",
     "rctmod.MixinRCTModMakeBattle"
   ],
   "injectors": {

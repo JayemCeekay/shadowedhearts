@@ -1,5 +1,6 @@
 package com.jayemceekay.shadowedhearts.config;
 
+import com.jayemceekay.shadowedhearts.Shadowedhearts;
 import net.neoforged.neoforge.common.ModConfigSpec;
 
 /**
@@ -62,6 +63,41 @@ public final class SnagConfig implements ISnagConfig {
     }
 
     @Override
+    public boolean auraReaderRechargeOnVictory() {
+        return DATA.auraReaderRechargeOnVictory.get();
+    }
+
+    @Override
+    public boolean auraReaderRechargeInPvp() {
+        return DATA.auraReaderRechargeInPvp.get();
+    }
+
+    @Override
+    public int auraReaderRechargeBase() {
+        return DATA.auraReaderRechargeBase.get();
+    }
+
+    @Override
+    public double auraReaderRechargePerLevel() {
+        return DATA.auraReaderRechargePerLevel.get();
+    }
+
+    @Override
+    public int auraReaderRechargePerNpc() {
+        return DATA.auraReaderRechargePerNpc.get();
+    }
+
+    @Override
+    public int auraReaderRechargeMin() {
+        return DATA.auraReaderRechargeMin.get();
+    }
+
+    @Override
+    public int auraReaderRechargeMax() {
+        return DATA.auraReaderRechargeMax.get();
+    }
+
+    @Override
     public ModConfigSpec getSpec() {
         return SPEC;
     }
@@ -78,6 +114,14 @@ public final class SnagConfig implements ISnagConfig {
         public ModConfigSpec.IntValue rechargeMin;
         public ModConfigSpec.IntValue rechargeMax;
 
+        public ModConfigSpec.BooleanValue auraReaderRechargeOnVictory;
+        public ModConfigSpec.BooleanValue auraReaderRechargeInPvp;
+        public ModConfigSpec.IntValue auraReaderRechargeBase;
+        public ModConfigSpec.DoubleValue auraReaderRechargePerLevel;
+        public ModConfigSpec.IntValue auraReaderRechargePerNpc;
+        public ModConfigSpec.IntValue auraReaderRechargeMin;
+        public ModConfigSpec.IntValue auraReaderRechargeMax;
+
         private void build(ModConfigSpec.Builder builder) {
             energyPerAttempt = builder.defineInRange("energy_per_attempt", 50, 0, 1000);
             toggleCooldownTicks = builder.defineInRange("toggle_cooldown_ticks", 20, 0, 1200);
@@ -91,13 +135,23 @@ public final class SnagConfig implements ISnagConfig {
             rechargeMin = builder.defineInRange("min", 5, 0, 1000);
             rechargeMax = builder.defineInRange("max", 15, 0, 1000);
             builder.pop();
+
+            builder.push("aura_reader_recharge");
+            auraReaderRechargeOnVictory = builder.define("on_victory", true);
+            auraReaderRechargeInPvp = builder.define("in_pvp", false);
+            auraReaderRechargeBase = builder.defineInRange("base", 200, 0, 12000);
+            auraReaderRechargePerLevel = builder.defineInRange("per_level", 5.0, 0.0, 1000.0);
+            auraReaderRechargePerNpc = builder.defineInRange("per_npc", 60, 0, 12000);
+            auraReaderRechargeMin = builder.defineInRange("min", 100, 0, 12000);
+            auraReaderRechargeMax = builder.defineInRange("max", 3000, 0, 12000);
+            builder.pop();
         }
     }
 
     @Override
     public void load() {
         loaded = true;
-        System.out.println("[ShadowedHearts] SnagConfig loaded via Forge Config API Port.");
+        Shadowedhearts.LOGGER.info("SnagConfig loaded...");
     }
 
     @Override

@@ -13,6 +13,7 @@ public final class AccessoriesSnagAccessoryBridge implements SnagAccessoryBridge
     public AccessoriesSnagAccessoryBridge() {
         register(ModItems.SNAG_MACHINE_PROTOTYPE.get());
         register(ModItems.SNAG_MACHINE_ADVANCED.get());
+        register(ModItems.AURA_READER.get());
     }
 
     private void register(net.minecraft.world.item.Item item) {
@@ -32,12 +33,35 @@ public final class AccessoriesSnagAccessoryBridge implements SnagAccessoryBridge
                     }
                 });
             } catch (Throwable ignored) {}
+        } else if (item == ModItems.AURA_READER.get()) {
+            try {
+                AccessoriesAPI.registerAccessory(item, new io.wispforest.accessories.api.Accessory() {});
+            } catch (Throwable ignored) {}
         }
     }
 
     @Override
     public boolean isEquipped(Player player) {
         return !getEquippedStack(player).isEmpty();
+    }
+
+    @Override
+    public boolean isAuraReaderEquipped(Player player) {
+        try {
+            AccessoriesCapability capability = AccessoriesCapability.get(player);
+            if (capability != null) {
+                for (var container : capability.getContainers().values()) {
+                    for (var accessory : container.getAccessories()) {
+                        if (accessory != null && accessory.getSecond().is(ModItems.AURA_READER.get())) {
+                            return true;
+                        }
+                    }
+                }
+            }
+        } catch (Throwable ignored) {
+        }
+
+        return player.getInventory().armor.get(3).is(ModItems.AURA_READER.get());
     }
 
 

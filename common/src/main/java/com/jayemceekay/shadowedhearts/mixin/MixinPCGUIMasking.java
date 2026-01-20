@@ -19,7 +19,6 @@ import org.spongepowered.asm.mixin.injection.ModifyArg;
  * PC GUI masking for Shadow heart gauge rules.
  * - Nature text is masked as "????" when nature hidden by gauge.
  * - EV values are masked as "??" on the EV page.
- * Context: Minecraft Cobblemon mod; all shadow/purity/corruption/capture terms are gameplay mechanics.
  */
 @Mixin(value = PCGUI.class, remap = false)
 public abstract class MixinPCGUIMasking {

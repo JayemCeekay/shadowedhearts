@@ -1,0 +1,28 @@
+{
+  "parent": "shadowedhearts:main/relic_stone_interact",
+  "display": {
+    "icon": {
+      "id": "cobblemon:exp_share"
+    },
+    "title": {
+      "translate": "advancements.shadowedhearts.shadow_purified.title"
+    },
+    "description": {
+      "translate": "advancements.shadowedhearts.shadow_purified.description"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "shadow_purified": {
+      "trigger": "shadowedhearts:shadow_purified"
+    }
+  },
+  "requirements": [
+    [
+      "shadow_purified"
+    ]
+  ]
+}

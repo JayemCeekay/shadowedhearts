@@ -22,17 +22,20 @@
     "MixinStatWidget",
     "MixinStorageSlotAura",
     "MouseHandlerAccessor",
-    "RenderTargetAccessor"
+    "MovesWidgetAccessor",
+    "RenderTargetAccessor",
+    "SummaryAccessor"
   ],
   "mixins": [
     "AccessorMoveActionResponse",
-    "CobblemonBattleExtrasMoveTileTooltipMixin",
+    "IrisRenderingPipelineAccessor",
     "MixinBattleActor_SetActionResponses",
     "MixinBattleCaptureAction",
     "MixinBattleRegistry",
     "MixinBenchMoveHandler",
     "MixinEmptyPokeBallEntity",
     "MixinGraalShowdownUnbundler",
+    "MixinIrisRenderingPipeline",
     "MixinMob_DoHurtTargetMicro",
     "MixinMob_TossGoals",
     "MixinPokeBallItem",
@@ -46,6 +49,8 @@
     "MixinShowdownInterpreter",
     "MixinShowdownMoveset",
     "MixinTypeIcon",
+    "cobblemonbattleextras.CobblemonBattleExtrasMoveTileTooltipMixin",
+    "cobblemonpartyextras.CobblemonPartyExtrasCustomTooltipRendererMixin",
     "rctmod.MixinRCTModMakeBattle",
     "simpletms.MixinPokemonSelectingItemNonBattle"
   ],

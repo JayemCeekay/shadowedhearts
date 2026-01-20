@@ -18,7 +18,6 @@ module.exports = `
             success = true;
         }
         if (config.callButton.removeSleep && pokemon.status === 'slp') {
-            // Sleep is handled by curestatus automatically when pokemon.cureStatus() is called
             pokemon.cureStatus();
             success = true;
         }

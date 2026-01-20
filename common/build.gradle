@@ -65,7 +65,14 @@ dependencies {
     //simpleTMs
     modCompileOnly("maven.modrinth:yFqR0DNc:uWiIETYV")
 
+    //iris shaders
+    modCompileOnly("maven.modrinth:YL57xq9U:zsoi0dso")
+
+    //cobblemon battle extras
     modCompileOnly("maven.modrinth:2iY8VFqL:y2ziXO9L")
+
+    //cobblemon party extras
+    modCompileOnly("maven.modrinth:x2wZP9kQ:75edwUQc")
 }
 
 // Default for all resource/copy tasks

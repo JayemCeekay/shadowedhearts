@@ -244,7 +244,7 @@ public final class BallEmitters {
 
         set1f(shader, "u_orbMode", 1.0f);
         set1f(shader, "u_time", time);
-        //System.out.println(shader.getUniform("GameTime").getFloatBuffer().get());
+
         set1f(shader, "u_rimStrength", null);
         set1f(shader, "u_pulseSpeed", 0.125f);
         set1f(shader, "u_useMask", 1.0f);

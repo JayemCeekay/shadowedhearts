@@ -5,7 +5,7 @@ import java.util.function.Supplier;
 public final class ShadowedHeartsConfigs {
     private static Supplier<ShadowedHeartsConfigs> instanceSupplier = () -> {
         var defaultInstance = new ShadowedHeartsConfigs(
-            new ClientConfig(), new ModConfig(), new SnagConfig(), new TrainerSpawnConfig());
+            new ClientConfig(), new ModConfig(), new SnagConfig());
 
         ShadowedHeartsConfigs.instanceSupplier = () -> defaultInstance;
         return defaultInstance;
@@ -14,18 +14,15 @@ public final class ShadowedHeartsConfigs {
     private final IClientConfig clientConfig;
     private final IShadowConfig shadowConfig;
     private final ISnagConfig snagConfig;
-    private final ITrainerSpawnConfig trainerSpawnConfig;
 
     private ShadowedHeartsConfigs(
         IClientConfig clientConfig,
         IShadowConfig shadowConfig,
-        ISnagConfig snagConfig,
-        ITrainerSpawnConfig trainerSpawnConfig)
+        ISnagConfig snagConfig)
     {
         this.clientConfig = clientConfig;
         this.shadowConfig = shadowConfig;
         this.snagConfig = snagConfig;
-        this.trainerSpawnConfig = trainerSpawnConfig;
     }
 
     public IClientConfig getClientConfig() {
@@ -40,9 +37,6 @@ public final class ShadowedHeartsConfigs {
         return this.snagConfig;
     }
 
-    public ITrainerSpawnConfig getTrainerSpawnConfig() {
-        return this.trainerSpawnConfig;
-    }
 
     public static ShadowedHeartsConfigs getInstance() {
         return ShadowedHeartsConfigs.instanceSupplier.get();

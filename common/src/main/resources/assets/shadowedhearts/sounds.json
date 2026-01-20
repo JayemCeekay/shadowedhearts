@@ -26,5 +26,41 @@
         "volume": 1.0
       }
     ]
+  },
+  "aura_scanner_beep": {
+    "subtitle": "subtitles.shadowedhearts.aura_scanner_beep",
+    "sounds": [
+      {
+        "name": "shadowedhearts:aura_scanner_beep",
+        "volume": 1.2
+      }
+    ]
+  },
+  "relic_shrine_loop": {
+    "subtitle": "subtitles.shadowedhearts.relic_shrine_loop",
+    "sounds": [
+      {
+        "name": "shadowedhearts:relic_shrine_loop",
+        "stream": true
+      }
+    ]
+  },
+  "aura_reader_equip": {
+    "subtitle": "subtitles.shadowedhearts.aura_reader_equip",
+    "sounds": [
+      {
+        "name": "shadowedhearts:aura_reader_equip",
+        "volume": 1.0
+      }
+    ]
+  },
+  "aura_reader_unequip": {
+    "subtitle": "subtitles.shadowedhearts.aura_reader_unequip",
+    "sounds": [
+      {
+        "name": "shadowedhearts:aura_reader_unequip",
+        "volume": 1.0
+      }
+    ]
   }
 }

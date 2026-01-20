@@ -16,9 +16,7 @@ import net.minecraft.network.chat.MutableComponent
  * Cobblemon-styled action button used by the PurificationStorageWidget.
  * Mirrors the look & feel of Cobblemon's PC ReleaseButton (texture, font, hover behavior),
  * while letting the caller supply a dynamic label and visibility predicate.
- *
- * Context: This is a Minecraft Cobblemon mod; all shadow/purity/corruption/capture terms are gameplay mechanics.
- */
+*/
 class PurificationActionButton(
     x: Int,
     y: Int,

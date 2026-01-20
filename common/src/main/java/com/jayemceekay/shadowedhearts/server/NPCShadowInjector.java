@@ -1,6 +1,5 @@
 package com.jayemceekay.shadowedhearts.server;
 
-import com.cobblemon.mod.common.Cobblemon;
 import com.cobblemon.mod.common.api.Priority;
 import com.cobblemon.mod.common.api.battles.model.actor.BattleActor;
 import com.cobblemon.mod.common.api.battles.model.actor.EntityBackedBattleActor;
@@ -17,6 +16,7 @@ import com.cobblemon.mod.common.pokemon.requirements.LevelRequirement;
 import com.jayemceekay.shadowedhearts.AspectHolder;
 import com.jayemceekay.shadowedhearts.PokemonAspectUtil;
 import com.jayemceekay.shadowedhearts.SHAspects;
+import com.jayemceekay.shadowedhearts.Shadowedhearts;
 import com.jayemceekay.shadowedhearts.config.ModConfig;
 import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs;
 import com.jayemceekay.shadowedhearts.data.ShadowAspectPresets;
@@ -106,7 +106,7 @@ public final class NPCShadowInjector {
                         final int convertChance = readConvertChance(allTraits);
                         final boolean enforceMinEvo = allTraits.contains(TAG_LVL_ENFORCE_EVO_MIN);
 
-                        System.out.println("[ShadowedHearts] Processing actor: " + ba.getName().getString() + " | Mode: " + mode + " | Count: " + count + " | Unique: " + unique);
+                        Shadowedhearts.LOGGER.info("Processing actor: " + ba.getName().getString() + " | Mode: " + mode + " | Count: " + count + " | Unique: " + unique);
 
                         switch (mode) {
                             case CONVERT -> convertExistingToShadow(ba.getPokemonList(), count, convertChance, makeRng(entity, battleSalt));
@@ -293,7 +293,7 @@ public final class NPCShadowInjector {
         if (free <= 0) return;
         int toAdd = Math.min(count, free);
         if (toAdd <= 0) return;
-        System.out.println("Attempting to add " + toAdd + " shadows to " + entity.getName().getString());
+
         // Try datapack pool first
         if (poolId != null) {
             var created = createFromPool(actor, entity, poolId, toAdd, lvl, unique, enforceMinEvo, battleSalt);
@@ -304,8 +304,6 @@ public final class NPCShadowInjector {
                 }
                 return;
             }
-            // Log a warning if pool was empty or not found
-            Cobblemon.LOGGER.warn("[ShadowedHearts] NPC {} requested shadow pool {} but it was missing or empty; falling back to cloning team.", entity.getUUID(), poolId);
         }
 
         // Fallback: Use existing team species as candidates; cycle through them
@@ -350,32 +348,23 @@ public final class NPCShadowInjector {
             if (bp.getEffectedPokemon().getAspects().contains(SHAspects.SHADOW)) continue;
             targetIndices.add(i);
         }
-        System.out.println("[ShadowedHearts] Target indices before shuffle: " + targetIndices);
         if (targetIndices.isEmpty()) {
-            System.out.println("[ShadowedHearts] No eligible target indices for replacement.");
             return;
         }
-        System.out.println("[ShadowedHearts] Target indices before shuffle: " + targetIndices);
         Collections.shuffle(targetIndices, rng);
-        System.out.println("[ShadowedHearts] Target indices after shuffle: " + targetIndices);
 
         // If a pool exists, pre-create up to 'count' candidates from pool
         List<BattlePokemon> poolCandidates = null;
         if (poolId != null) {
             poolCandidates = createFromPool(actor, entity, poolId, count, lvl, unique, enforceMinEvo, battleSalt);
             if (poolCandidates.isEmpty()) {
-                Cobblemon.LOGGER.warn("[ShadowedHearts] NPC {} requested shadow pool {} but it was missing or empty; falling back to cloning team.", entity.getUUID(), poolId);
-            } else {
-                System.out.println("[ShadowedHearts] Created " + poolCandidates.size() + " pool candidates.");
+                Shadowedhearts.LOGGER.warn("NPC {} requested shadow pool {} but it was missing or empty; falling back to cloning team.", entity.getUUID(), poolId);
             }
-        } else {
-            System.out.println("[ShadowedHearts] No shadow pool requested." + poolId);
         }
 
         int replaced = 0;
         for (int i = 0; i < targetIndices.size() && replaced < count; i++) {
             int slotIdx = targetIndices.get(i);
-            System.out.println("[ShadowedHearts] Replacing slot " + slotIdx);
             BattlePokemon bp = list.get(slotIdx);
 
             BattlePokemon replacement;
@@ -447,7 +436,7 @@ public final class NPCShadowInjector {
                         return new ResourceLocation(ns, path);
                     }
                 } catch (Exception ignored) {
-                    System.out.println("[ShadowedHearts] Invalid pool ID: " + rest);
+                    Shadowedhearts.LOGGER.error("Invalid pool ID: " + rest);
                 }
             }
         }

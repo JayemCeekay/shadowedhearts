@@ -4,6 +4,7 @@ import com.cobblemon.mod.common.Cobblemon;
 import com.cobblemon.mod.common.util.PlayerExtensionsKt;
 import com.jayemceekay.shadowedhearts.blocks.entity.PurificationChamberBlockEntity;
 import com.jayemceekay.shadowedhearts.client.net.storage.purification.OpenPurificationChamberPacket;
+import com.jayemceekay.shadowedhearts.core.ModBlockEntities;
 import com.jayemceekay.shadowedhearts.storage.purification.PurificationChamberStore;
 import com.jayemceekay.shadowedhearts.storage.purification.link.ProximityPurificationLink;
 import com.jayemceekay.shadowedhearts.storage.purification.link.PurificationLinkManager;
@@ -16,11 +17,13 @@ import net.minecraft.util.StringRepresentable;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelAccessor;
 import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.EntityBlock;
 import net.minecraft.world.level.block.HorizontalDirectionalBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
@@ -38,7 +41,6 @@ import org.jetbrains.annotations.Nullable;
 
 /**
  * Purification Chamber block: opens the Purification UI on use.
- * MVP: purely a UI container; no in-world behavior besides opening the screen.
  */
 public class PurificationChamberBlock extends Block implements EntityBlock {
 
@@ -64,18 +66,16 @@ public class PurificationChamberBlock extends Block implements EntityBlock {
                 .setValue(ON, Boolean.FALSE));
     }
 
-    @Nullable
     @Override
     public BlockEntity newBlockEntity(BlockPos pos, BlockState state) {
-        // Only the bottom half holds the BlockEntity / UI container
-        return state.getValue(PART) == Part.BOTTOM ? new PurificationChamberBlockEntity(pos, state) : null;
+        return new PurificationChamberBlockEntity(pos, state);
     }
 
     @Nullable
     @Override
     public <T extends BlockEntity> BlockEntityTicker<T> getTicker(Level level, BlockState state, BlockEntityType<T> type) {
-        // Mirror PCBlock: return our BE ticker when the type matches our BE
-        return type == com.jayemceekay.shadowedhearts.core.ModBlockEntities.PURIFICATION_CHAMBER_BE.get()
+
+        return type == ModBlockEntities.PURIFICATION_CHAMBER_BE.get()
                 ? (lvl, pos, st, be) -> {
                     if (be instanceof PurificationChamberBlockEntity chamber) {
                         PurificationChamberBlockEntity.TICKER.tick(lvl, pos, st, chamber);
@@ -94,13 +94,12 @@ public class PurificationChamberBlock extends Block implements EntityBlock {
     public BlockState getStateForPlacement(BlockPlaceContext context) {
         Level level = context.getLevel();
         BlockPos pos = context.getClickedPos();
-        // Flip the facing property (rotate 180°) relative to previous behavior
-        // Previously: used getOpposite(); now we invert that choice so the model faces the other way
+
         Direction facing = context.getHorizontalDirection();
 
         BlockPos above = pos.above();
         if (!level.getBlockState(above).canBeReplaced(context)) {
-            return null; // Not enough space for the top part
+            return null;
         }
         return this.defaultBlockState()
                 .setValue(FACING, facing)
@@ -109,8 +108,7 @@ public class PurificationChamberBlock extends Block implements EntityBlock {
     }
 
     @Override
-    public void setPlacedBy(Level level, BlockPos pos, BlockState state, @Nullable LivingEntity placer, net.minecraft.world.item.ItemStack stack) {
-        // Place matching top half automatically
+    public void setPlacedBy(Level level, BlockPos pos, BlockState state, @Nullable LivingEntity placer, ItemStack stack) {
         BlockPos above = pos.above();
         BlockState topState = state.setValue(PART, Part.TOP);
         level.setBlock(above, topState, Block.UPDATE_ALL);
@@ -134,12 +132,12 @@ public class PurificationChamberBlock extends Block implements EntityBlock {
         Part part = state.getValue(PART);
         if (part == Part.BOTTOM && dir == Direction.UP) {
             if (!(neighborState.is(this) && neighborState.getValue(PART) == Part.TOP && neighborState.getValue(FACING) == state.getValue(FACING))) {
-                return net.minecraft.world.level.block.Blocks.AIR.defaultBlockState();
+                return Blocks.AIR.defaultBlockState();
             }
         }
         if (part == Part.TOP && dir == Direction.DOWN) {
             if (!(neighborState.is(this) && neighborState.getValue(PART) == Part.BOTTOM && neighborState.getValue(FACING) == state.getValue(FACING))) {
-                return net.minecraft.world.level.block.Blocks.AIR.defaultBlockState();
+                return Blocks.AIR.defaultBlockState();
             }
         }
         return super.updateShape(state, dir, neighborState, level, pos, neighborPos);
@@ -162,7 +160,6 @@ public class PurificationChamberBlock extends Block implements EntityBlock {
 
     @Override
     public InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player, BlockHitResult hit) {
-        // If top is clicked, interact with the bottom half's BE
         if (state.getValue(PART) == Part.TOP) {
             BlockPos below = pos.below();
             BlockState belowState = level.getBlockState(below);
@@ -170,7 +167,7 @@ public class PurificationChamberBlock extends Block implements EntityBlock {
                 return this.useWithoutItem(belowState, level, below, player, hit);
             }
         }
-        // Server-side: open the BE's MenuProvider (like PC does), after battle check
+
         if (player instanceof ServerPlayer serverPlayer) {
             if (PlayerExtensionsKt.isInBattle(serverPlayer)) {
                 serverPlayer.sendSystemMessage(Component.translatable("shadowedhearts.purification_chamber.in_battle").withStyle(ChatFormatting.RED));

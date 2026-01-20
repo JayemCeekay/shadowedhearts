@@ -1,5 +1,6 @@
 package com.jayemceekay.shadowedhearts.integration.accessories;
     
+import com.jayemceekay.shadowedhearts.Shadowedhearts;
 import dev.architectury.event.events.common.LifecycleEvent;
 import dev.architectury.platform.Platform;
 
@@ -12,7 +13,7 @@ public final class SnagAccessoryBridgeHolder {
                 try {
                     INSTANCE = new AccessoriesSnagAccessoryBridge();
                 } catch (Throwable t) {
-                    System.err.println("Failed to initialize Accessories snag bridge even though mod is loaded: " + t.getMessage());
+                    Shadowedhearts.LOGGER.error("Failed to initialize Accessories snag bridge even though mod is loaded: " + t.getMessage());
                 }
             });
         }

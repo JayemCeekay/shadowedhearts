@@ -4,18 +4,6 @@ import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.minecraft.client.renderer.LightTexture;
 import org.joml.Matrix4f;
 
-/**
- * Small reusable unit cylinder mesh emitter for aura shells (Y-axis, radius=1, height=2).
- *
- * Mirrors SphereBuffers API where reasonable. Generates and caches a side-only cylinder mesh
- * with configurable LOD (segments) and provides draw helpers that emit TRIANGLES into a
- * VertexConsumer using DefaultVertexFormat.PARTICLE-compatible attributes (Position, UV0, Color, Light).
- *
- * Added: helpers to draw with variable height (scales Y) and optional top dome (hemisphere)
- * so you can create a “cylindrical pillar with rounded crown”.
- *
- * Context: Minecraft Cobblemon mod; all shadow/purity/corruption/capture terms are gameplay mechanics.
- */
 public final class CylinderBuffers {
     private CylinderBuffers() {}
 

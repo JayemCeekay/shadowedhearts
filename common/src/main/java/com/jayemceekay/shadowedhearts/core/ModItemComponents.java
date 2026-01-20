@@ -53,6 +53,22 @@ public final class ModItemComponents {
                     .build()
     );
 
+    public static final RegistrySupplier<DataComponentType<Boolean>> AURA_SCANNER_ACTIVE = COMPONENT_TYPES.register(
+            "aura_scanner_active",
+            () -> DataComponentType.<Boolean>builder()
+                    .persistent(Codec.BOOL)
+                    .networkSynchronized(ByteBufCodecs.BOOL)
+                    .build()
+    );
+
+    public static final RegistrySupplier<DataComponentType<Integer>> AURA_READER_CHARGE = COMPONENT_TYPES.register(
+            "aura_reader_charge",
+            () -> DataComponentType.<Integer>builder()
+                    .persistent(Codec.INT)
+                    .networkSynchronized(ByteBufCodecs.VAR_INT)
+                    .build()
+    );
+
     /** Call once during common init on both loaders. */
     public static void init() {
         COMPONENT_TYPES.register();

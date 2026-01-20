@@ -1,5 +1,6 @@
 package com.jayemceekay.shadowedhearts.config;
 
+import com.jayemceekay.shadowedhearts.Shadowedhearts;
 import net.neoforged.neoforge.common.ModConfigSpec;
 
 /**
@@ -18,16 +19,16 @@ public final class ClientConfig implements IClientConfig {
 
     private static final class Data {
         public ModConfigSpec.BooleanValue enableShadowAura;
-        public ModConfigSpec.BooleanValue useXdAura;
+        public ModConfigSpec.BooleanValue auraScannerEnabled;
 
         private void build(ModConfigSpec.Builder builder) {
             enableShadowAura = builder
                     .comment("Master toggle for client-side Shadow aura rendering.")
                     .define("enableShadowAura", true);
 
-            useXdAura = builder
-                    .comment("Whether to use the XD-style (filament) aura instead of the Colosseum-style (fog) aura.")
-                    .define("useXdAura", false);
+            auraScannerEnabled = builder
+                    .comment("Whether the Aura Scanner HUD is enabled.")
+                    .define("auraScannerEnabled", true);
         }
     }
 
@@ -37,8 +38,8 @@ public final class ClientConfig implements IClientConfig {
     }
 
     @Override
-    public boolean useXdAura() {
-        return DATA.useXdAura.get();
+    public boolean auraScannerEnabled() {
+        return DATA.auraScannerEnabled.get();
     }
 
     @Override
@@ -49,7 +50,7 @@ public final class ClientConfig implements IClientConfig {
     @Override
     public void load() {
         loaded = true;
-        System.out.println("[ShadowedHearts] ClientConfig loaded via Forge Config API Port.");
+        Shadowedhearts.LOGGER.info("ClientConfig loaded via Forge Config API Port.");
     }
 
     @Override

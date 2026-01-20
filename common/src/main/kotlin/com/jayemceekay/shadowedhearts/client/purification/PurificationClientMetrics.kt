@@ -8,8 +8,6 @@ import kotlin.math.ceil
 /**
  * Client-side helpers to compute Purification Chamber flow/tempo percentages
  * for the vertical bars in the GUI from the currently visible set.
- *
- * Context: Minecraft Cobblemon mod; all shadow/purity/corruption terms are gameplay mechanics.
  */
 object PurificationClientMetrics {
 

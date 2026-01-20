@@ -17,7 +17,6 @@ public class ShadowedHeartsCommands {
                             try {
                                 ShadowedHeartsConfigs.getInstance().getShadowConfig().load();
                                 ShadowedHeartsConfigs.getInstance().getSnagConfig().load();
-                                ShadowedHeartsConfigs.getInstance().getTrainerSpawnConfig().load();
                                 ShowdownRuntimePatcher.injectDynamicData();
                                 ctx.getSource().sendSuccess(() -> Component.literal("Shadowed Hearts configurations reloaded successfully."), true);
                                 return 1;

@@ -10,8 +10,6 @@ import com.jayemceekay.shadowedhearts.PokemonAspectUtil;
  * Server-side rules to restrict interactions with Shadow Pokémon until purified.
  * Implements: no leveling (battle, candies), no stone evolution, no move changes (handled elsewhere),
  * no nicknaming, no TMs (adapter provided elsewhere), and prepares for trade blocking.
- *
- * Canonical ref: 01_Core_Mechanics_Shadow_Purity (§ Shadow restrictions)
  */
 public final class ShadowRestrictions {
 

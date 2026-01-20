@@ -7,10 +7,12 @@ import com.cobblemon.mod.common.api.pokemon.experience.SidemodExperienceSource;
 import com.cobblemon.mod.common.api.pokemon.stats.Stats;
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
 import com.cobblemon.mod.common.pokemon.Pokemon;
+import com.jayemceekay.shadowedhearts.advancements.ModCriteriaTriggers;
 import com.jayemceekay.shadowedhearts.config.HeartGaugeConfig;
 import com.jayemceekay.shadowedhearts.property.EVBufferProperty;
 import com.jayemceekay.shadowedhearts.property.HeartGaugeProperty;
 import com.jayemceekay.shadowedhearts.property.XPBufferProperty;
+import net.minecraft.server.level.ServerPlayer;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
@@ -185,6 +187,11 @@ public final class ShadowService {
 
         if (live != null) {
             ShadowPokemonData.set(live, false, 0);
+            if (live.getOwner() instanceof ServerPlayer player) {
+                ModCriteriaTriggers.triggerShadowPurified(player);
+            }
+        } else if (pokemon.getOwnerPlayer() instanceof ServerPlayer player) {
+            ModCriteriaTriggers.triggerShadowPurified(player);
         }
 
         PokemonAspectUtil.syncAspects(pokemon);

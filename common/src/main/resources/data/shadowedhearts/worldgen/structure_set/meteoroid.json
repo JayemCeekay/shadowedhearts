@@ -1,0 +1,14 @@
+{
+  "structures": [
+    {
+      "structure": "shadowedhearts:meteoroid",
+      "weight": 1
+    }
+  ],
+  "placement": {
+    "type": "minecraft:random_spread",
+    "spacing": 26,
+    "separation": 11,
+    "salt": 14357621
+  }
+}

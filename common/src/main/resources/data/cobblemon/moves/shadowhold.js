@@ -18,13 +18,6 @@
         contact: 0,
 },
 
-    onEffectiveness(typeMod, target, type, move) {
-        if (!target || move.type !== "Shadow") return;
-        const targetTypes = target.getTypes();
-        if (type !== targetTypes[0]) return 0;
-        const isShadowTarget = !!(target.set && target.set.isShadow);
-        return isShadowTarget ? -1 : 1;
-},
 
     target: "allAdjacentFoes",
         type: "Shadow",

@@ -1,0 +1,28 @@
+{
+  "parent": "shadowedhearts:main/snag_machine_prototype",
+  "display": {
+    "icon": {
+      "id": "cobblemon:poke_ball"
+    },
+    "title": {
+      "translate": "advancements.shadowedhearts.snag_from_npc.title"
+    },
+    "description": {
+      "translate": "advancements.shadowedhearts.snag_from_npc.description"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "snag_from_npc": {
+      "trigger": "shadowedhearts:snag_from_npc"
+    }
+  },
+  "requirements": [
+    [
+      "snag_from_npc"
+    ]
+  ]
+}

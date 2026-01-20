@@ -1,10 +1,7 @@
 package com.jayemceekay.shadowedhearts.properties;
 
 import com.cobblemon.mod.common.api.properties.CustomPokemonProperty;
-import com.jayemceekay.shadowedhearts.property.EVBufferProperty;
-import com.jayemceekay.shadowedhearts.property.HeartGaugeProperty;
-import com.jayemceekay.shadowedhearts.property.ScentCooldownProperty;
-import com.jayemceekay.shadowedhearts.property.XPBufferProperty;
+import com.jayemceekay.shadowedhearts.property.*;
 
 import java.util.List;
 
@@ -18,6 +15,16 @@ public final class ShadowPropertyRegistration {
         try {
             // Directly register our type implementation
             CustomPokemonProperty.Companion.register(new ShadowChancePropertyType());
+
+            CustomPokemonProperty.Companion.register("shadowedhearts:exposure", true, (val) -> {
+                if (val == null) return null;
+                return new ExposureProperty(Double.parseDouble(val));
+            }, () -> List.of("0.0", "10.0", "50.0"));
+
+            CustomPokemonProperty.Companion.register("shadowedhearts:immunized", true, (val) -> {
+                if (val == null) return null;
+                return new ImmunizedProperty(Boolean.parseBoolean(val));
+            }, () -> List.of("true", "false"));
 
             CustomPokemonProperty.Companion.register("shadowedhearts:heartgauge", true, (val) -> {
                 if (val == null) return null;

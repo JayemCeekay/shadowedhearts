@@ -11,10 +11,6 @@ import org.jetbrains.annotations.NotNull;
 
 /**
  * Heart Gauge renderer for the Cobblemon summary stats screen.
- * Reads values from PokemonAspectUtil (persisted via aspects) and displays
- * a bar using placeholder textures. Min/Max represent the 0..20000 meter.
- *
- * Context: Minecraft Cobblemon mod; all shadow/purity/corruption terms are gameplay mechanics.
  */
 public class HeartGaugeFeatureRenderer extends BarSummarySpeciesFeatureRenderer {
 

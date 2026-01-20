@@ -13,8 +13,10 @@ import com.jayemceekay.shadowedhearts.config.HeartGaugeConfig;
 import com.jayemceekay.shadowedhearts.config.ModConfig;
 import com.jayemceekay.shadowedhearts.config.ShadowSpawnConfig;
 import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs;
+import com.jayemceekay.shadowedhearts.core.ModBlocks;
 import com.jayemceekay.shadowedhearts.core.ModSounds;
 import kotlin.Unit;
+import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundSource;
 
@@ -27,8 +29,6 @@ import java.util.Random;
  * based on configurable chance and blacklist. Also injects 1–2 Shadow
  * moves into slots 1 and 2 (indexes 0 and 1) and plays a spawn sound
  * audible to nearby players.
- * <p>
- * Canonical ref: 01_Core_Mechanics_Shadow_Purity; 05_Aggro_Combat_System (sound UX)
  */
 public final class WildShadowSpawnListener {
     private WildShadowSpawnListener() {
@@ -50,8 +50,15 @@ public final class WildShadowSpawnListener {
             // Respect blacklist
             if (ShadowSpawnConfig.isBlacklisted(pokemon)) return Unit.INSTANCE;
 
+            // Respect immunization
+            if (PokemonAspectUtil.isImmunized(pokemon)) return Unit.INSTANCE;
+
             // Roll chance
             double chance = ShadowSpawnConfig.getChancePercent();
+            if (isNearShadowfallMeteoroid(level, entity.blockPosition())) {
+                chance *= ShadowedHeartsConfigs.getInstance().getShadowConfig().worldAlteration().meteoroidShadowSpawnChanceMultiplier();
+            }
+
             if (chance <= 0) return Unit.INSTANCE;
             if (chance < 100) {
                 int r = RANDOM.nextInt(100);
@@ -69,9 +76,9 @@ public final class WildShadowSpawnListener {
             assignShadowMoves(pokemon);
 
             // Play spawn sound near by
-            if (ModSounds.SHADOW_SPAWN != null) {
+            if (ModSounds.SHADOW_AURA_INITIAL_BURST != null) {
                 new UnvalidatedPlaySoundS2CPacket(ModSounds.SHADOW_AURA_INITIAL_BURST.getId(), SoundSource.NEUTRAL,
-                        entity.getX(), entity.getY(), entity.getZ(), 1.0f, 1.0f).sendToPlayersAround(entity.getX(), entity.getY(), entity.getZ(), 64.0f, level.dimension(), serverPlayer -> false);
+                        entity.getX(), entity.getY(), entity.getZ(), 3.0f, 1.0f).sendToPlayersAround(entity.getX(), entity.getY(), entity.getZ(), 64.0f, level.dimension(), serverPlayer -> false);
             }
 
             // Broadcast specialized aura for wild spawn: 2.5x height for 10 seconds (200 ticks)
@@ -82,6 +89,16 @@ public final class WildShadowSpawnListener {
     }
 
     private static final Random RANDOM = new Random();
+
+    private static boolean isNearShadowfallMeteoroid(ServerLevel level, BlockPos pos) {
+        int radius = 48;
+        for (BlockPos p : BlockPos.betweenClosed(pos.offset(-radius, -8, -radius), pos.offset(radius, 8, radius))) {
+            if (level.getBlockState(p).is(ModBlocks.SHADOWFALL_METEOROID.get())) {
+                return true;
+            }
+        }
+        return false;
+    }
 
     public static void assignShadowMoves(Pokemon pokemon) {
         if (ShadowedHeartsConfigs.getInstance().getShadowConfig().shadowMovesOnlyShadowRush()) {

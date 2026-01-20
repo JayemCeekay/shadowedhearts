@@ -1,6 +1,7 @@
 package com.jayemceekay.shadowedhearts.network
 
 import com.cobblemon.mod.common.api.net.ClientNetworkPacketHandler
+import com.jayemceekay.shadowedhearts.client.sound.RelicStoneSoundManager
 import com.jayemceekay.shadowedhearts.core.ModParticleTypes
 import net.minecraft.client.Minecraft
 
@@ -9,6 +10,8 @@ object RelicStoneMoteHandler : ClientNetworkPacketHandler<RelicStoneMotePacket> 
         val level = client.level ?: return
         val pos = packet.pos
         val random = level.random
+
+        RelicStoneSoundManager.updateSound(pos)
 
         // Spawn particles (moved from server-side block entity to client-side handler)
         // Increased density: from 1-2 to 2-4

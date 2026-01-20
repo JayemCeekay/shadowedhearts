@@ -6,6 +6,7 @@ import com.jayemceekay.shadowedhearts.client.net.storage.purification.OpenPurifi
 import com.jayemceekay.shadowedhearts.client.net.storage.purification.OpenPurificationChamberPacket
 import com.jayemceekay.shadowedhearts.client.net.storage.purification.PurificationChamberSyncHandler
 import com.jayemceekay.shadowedhearts.client.net.storage.purification.PurificationChamberSyncPacket
+import com.jayemceekay.shadowedhearts.client.network.AuraScannerClientHandler
 import net.minecraft.server.level.ServerPlayer
 
 /**
@@ -27,6 +28,7 @@ object ShadowedHeartsNetwork {
         add(PacketRegisterInfo(SnagEligibilityPacket.ID, SnagEligibilityPacket::decode, SnagEligibilityHandler))
         add(PacketRegisterInfo(SnagResultPacket.ID, SnagResultPacket::decode, SnagResultHandler))
         add(PacketRegisterInfo(PokemonPropertyUpdatePacket.ID, PokemonPropertyUpdatePacket::decode, com.cobblemon.mod.common.client.net.pokemon.update.PokemonUpdatePacketHandler()))
+        add(PacketRegisterInfo(AuraScannerS2CPacket.ID, AuraScannerS2CPacket::decode, AuraScannerClientHandler))
     }
 
     /**
@@ -63,6 +65,8 @@ object ShadowedHeartsNetwork {
             )
         )
         add(PacketRegisterInfo(SnagArmPacket.ID, SnagArmPacket::decode, SnagArmHandler))
+        add(PacketRegisterInfo(AuraPulsePacket.ID, AuraPulsePacket::decode, AuraPulseHandler))
+        add(PacketRegisterInfo(AuraScannerC2SPacket.ID, AuraScannerC2SPacket::decode, AuraScannerHandler))
     }
 
     @JvmStatic

@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:block/cube_all",
+  "textures": {
+    "all": "shadowedhearts:block/shadowfall_meteoroid"
+  }
+}

@@ -13,19 +13,34 @@ public final class ModSounds {
     public static final DeferredRegister<SoundEvent> SOUNDS =
             DeferredRegister.create(Shadowedhearts.MOD_ID, Registries.SOUND_EVENT);
 
-    public static final RegistrySupplier<SoundEvent> SHADOW_SPAWN = SOUNDS.register(
-            "shadow_spawn",
-            () -> SoundEvent.createFixedRangeEvent(ResourceLocation.fromNamespaceAndPath(Shadowedhearts.MOD_ID, "shadow_spawn"), 64.0f)
-    );
-
     public static final RegistrySupplier<SoundEvent> SHADOW_AURA_INITIAL_BURST = SOUNDS.register(
             "shadow_aura_initial_burst",
-            () -> SoundEvent.createFixedRangeEvent(ResourceLocation.fromNamespaceAndPath(Shadowedhearts.MOD_ID, "shadow_aura_initial_burst"), 64.0f)
+            () -> SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath(Shadowedhearts.MOD_ID, "shadow_aura_initial_burst"))
     );
 
     public static final RegistrySupplier<SoundEvent> SHADOW_AURA_LOOP = SOUNDS.register(
             "shadow_aura_loop",
-            () -> SoundEvent.createFixedRangeEvent(ResourceLocation.fromNamespaceAndPath(Shadowedhearts.MOD_ID, "shadow_aura_loop"), 24.0f)
+            () -> SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath(Shadowedhearts.MOD_ID, "shadow_aura_loop"))
+    );
+
+    public static final RegistrySupplier<SoundEvent> AURA_SCANNER_BEEP = SOUNDS.register(
+            "aura_scanner_beep",
+            () -> SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath(Shadowedhearts.MOD_ID, "aura_scanner_beep"))
+    );
+
+    public static final RegistrySupplier<SoundEvent> RELIC_SHRINE_LOOP = SOUNDS.register(
+            "relic_shrine_loop",
+            () -> SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath(Shadowedhearts.MOD_ID, "relic_shrine_loop"))
+    );
+
+    public static RegistrySupplier<SoundEvent> AURA_READER_EQUIP = SOUNDS.register(
+            "aura_reader_equip",
+            () -> SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath(Shadowedhearts.MOD_ID, "aura_reader_equip"))
+    );
+
+    public static RegistrySupplier<SoundEvent> AURA_READER_UNEQUIP = SOUNDS.register(
+            "aura_reader_unequip",
+            () -> SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath(Shadowedhearts.MOD_ID, "aura_reader_unequip"))
     );
 
     public static void init() {

@@ -42,6 +42,12 @@ ordering = "AFTER"
 side = "BOTH"
 
 [[dependencies.shadowedhearts]]
+modId = "accessories"
+type = "optional"
+versionRange = "[1.1.0-beta.52+1.21.1,)"
+side = "BOTH"
+
+[[dependencies.shadowedhearts]]
 modId = "rctapi"
 type = "optional"
 versionRange = "[0.14.4-beta,)"

@@ -11,10 +11,7 @@ import com.jayemceekay.shadowedhearts.config.IShadowConfig;
 import com.jayemceekay.shadowedhearts.config.ModConfig;
 import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs;
 import com.jayemceekay.shadowedhearts.network.PokemonPropertyUpdatePacket;
-import com.jayemceekay.shadowedhearts.property.EVBufferProperty;
-import com.jayemceekay.shadowedhearts.property.HeartGaugeProperty;
-import com.jayemceekay.shadowedhearts.property.ScentCooldownProperty;
-import com.jayemceekay.shadowedhearts.property.XPBufferProperty;
+import com.jayemceekay.shadowedhearts.property.*;
 import kotlin.jvm.functions.Function0;
 import net.minecraft.util.Mth;
 
@@ -30,6 +27,8 @@ public final class PokemonAspectUtil {
     private static final String EVBUF_PREFIX = "shadowedhearts:evbuf:"; // pending EVs csv hp,atk,def,spa,spd,spe
 
     private static final String NBT_HEART_GAUGE = "shadowedhearts:heartgauge";
+    private static final String NBT_EXPOSURE = "shadowedhearts:exposure";
+    private static final String NBT_IMMUNIZED = "shadowedhearts:immunized";
     private static final String NBT_XP_BUF = "shadowedhearts:xpbuf";
     private static final String NBT_EV_BUF = "shadowedhearts:evbuf";
     private static final String NBT_SCENT_COOLDOWN = "shadowedhearts:scent_cooldown";
@@ -286,6 +285,36 @@ public final class PokemonAspectUtil {
                 .map(p -> ((HeartGaugeProperty) p).getValue())
                 .findFirst()
                 .orElse(-1);
+    }
+
+    public static void setExposureProperty(Pokemon pokemon, double value) {
+        pokemon.getCustomProperties().removeIf(p -> p instanceof ExposureProperty);
+        pokemon.getCustomProperties().add(new ExposureProperty(value));
+        pokemon.getPersistentData().putDouble(NBT_EXPOSURE, value);
+        syncProperties(pokemon);
+    }
+
+    public static double getExposure(Pokemon pokemon) {
+        return pokemon.getCustomProperties().stream()
+                .filter(p -> p instanceof ExposureProperty)
+                .map(p -> ((ExposureProperty) p).getValue())
+                .findFirst()
+                .orElseGet(() -> pokemon.getPersistentData().getDouble(NBT_EXPOSURE));
+    }
+
+    public static void setImmunizedProperty(Pokemon pokemon, boolean value) {
+        pokemon.getCustomProperties().removeIf(p -> p instanceof ImmunizedProperty);
+        pokemon.getCustomProperties().add(new ImmunizedProperty(value));
+        pokemon.getPersistentData().putBoolean(NBT_IMMUNIZED, value);
+        syncProperties(pokemon);
+    }
+
+    public static boolean isImmunized(Pokemon pokemon) {
+        return pokemon.getCustomProperties().stream()
+                .filter(p -> p instanceof ImmunizedProperty)
+                .map(p -> ((ImmunizedProperty) p).getValue())
+                .findFirst()
+                .orElseGet(() -> pokemon.getPersistentData().getBoolean(NBT_IMMUNIZED));
     }
 
     public static void setXPBufferProperty(Pokemon pokemon, int value) {

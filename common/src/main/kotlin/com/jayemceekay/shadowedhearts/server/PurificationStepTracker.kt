@@ -17,7 +17,6 @@ import kotlin.math.min
 /**
  * Server-side movement listener that converts player movement into Purification Chamber steps.
  * Guards against teleports by ignoring very large per-tick position deltas.
- * Context: Minecraft Cobblemon mod; all shadow/purity/corruption terms are gameplay mechanics.
  */
 object PurificationStepTracker {
     private val lastPositions: MutableMap<UUID, Vec3> = ConcurrentHashMap()

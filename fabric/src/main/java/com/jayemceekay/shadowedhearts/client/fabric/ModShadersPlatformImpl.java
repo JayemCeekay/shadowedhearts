@@ -57,6 +57,12 @@ public final class ModShadersPlatformImpl {
                         DefaultVertexFormat.NEW_ENTITY,
                         program -> ModShaders.BALL_TRAIL = program
                 );
+
+                registrationContext.register(
+                        ResourceLocation.parse("shadowedhearts:aura_pulse"),
+                        DefaultVertexFormat.POSITION_TEX,
+                        program -> ModShaders.AURA_PULSE = program
+                );
             } catch (Exception e) {
                 throw new RuntimeException("Failed to load shaders (Fabric)", e);
             }

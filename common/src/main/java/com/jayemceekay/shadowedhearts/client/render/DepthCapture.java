@@ -148,6 +148,7 @@ public final class DepthCapture {
 
     /** Copy depth from the main FBO -> our depthTex. Safe to call multiple times per frame. */
     public static void captureIfNeeded() {
+        if (Minecraft.getInstance().level == null) return;
         RenderTarget main = Minecraft.getInstance().getMainRenderTarget();
         // In MC 1.21.1 (Architectury common), RenderTarget has no enableStencil().
         // Proceed without forcing stencil; downstream code checks attachments as needed.

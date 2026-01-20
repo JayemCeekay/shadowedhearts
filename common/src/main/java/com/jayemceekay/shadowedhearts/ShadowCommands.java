@@ -10,6 +10,9 @@ import com.jayemceekay.shadowedhearts.heart.HeartGaugeEvents;
 import com.jayemceekay.shadowedhearts.server.AuraBroadcastQueue;
 import com.jayemceekay.shadowedhearts.server.WildShadowSpawnListener;
 import com.jayemceekay.shadowedhearts.storage.purification.PurificationChamberStore;
+import com.jayemceekay.shadowedhearts.worldgen.CraterGenerator;
+import com.jayemceekay.shadowedhearts.worldgen.ImpactScheduler;
+import com.jayemceekay.shadowedhearts.worldgen.PlayerActivityHeatmap;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
@@ -22,18 +25,14 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.MobSpawnType;
 import net.minecraft.world.level.Level;
 
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 
 public class ShadowCommands {
 
     public static void registerSubcommands(LiteralArgumentBuilder<CommandSourceStack> root) {
         root.then(Commands.literal("steps")
+                        .requires(src -> src.hasPermission(2))
                         .then(Commands.argument("count", IntegerArgumentType.integer(1))
                                 .executes(ctx -> {
                                     ServerPlayer player;
@@ -58,6 +57,7 @@ public class ShadowCommands {
                 // Debug: simulate overworld walking steps that affect party Pokémon
                 // Usage: /shadow partysteps <count>
                 .then(Commands.literal("partysteps")
+                        .requires(src -> src.hasPermission(2))
                         .then(Commands.argument("count", IntegerArgumentType.integer(1))
                                 .executes(ctx -> {
                                     ServerPlayer player;
@@ -100,6 +100,7 @@ public class ShadowCommands {
                                 })))
                 // Convenience: manage NPC tags for Shadow injector
                 .then(Commands.literal("npc")
+                        .requires(src -> src.hasPermission(2))
                         .then(Commands.literal("tag")
                                 .then(Commands.literal("add")
                                         .then(Commands.argument("targets", EntityArgument.entities())
@@ -144,6 +145,7 @@ public class ShadowCommands {
                         )
                 )
                 .then(Commands.literal("shadowify")
+                        .requires(src -> src.hasPermission(2))
                         .then(Commands.argument("target", EntityArgument.entity())
                                 .executes(ctx -> {
                                     Entity e = EntityArgument.getEntity(ctx, "target");
@@ -234,6 +236,7 @@ public class ShadowCommands {
                                         }))
                         ))
                 .then(Commands.literal("purify")
+                        .requires(src -> src.hasPermission(2))
                         .then(Commands.argument("target", EntityArgument.entity())
                                 .executes(ctx -> {
                                     Entity e = EntityArgument.getEntity(ctx, "target");
@@ -273,45 +276,9 @@ public class ShadowCommands {
                                             ShadowService.fullyPurify(pk, null);
                                             ctx.getSource().sendSuccess(() -> Component.literal("Purified " + pk.getSpecies().getName() + " in " + player.getScoreboardName() + "'s party"), true);
                                             return 1;
-                                        })))
-                        .then(Commands.literal("aspects")
-                                .then(Commands.argument("slot", IntegerArgumentType.integer(1, 6))
-                                        .executes(ctx -> {
-                                            ServerPlayer player;
-                                            try {
-                                                player = ctx.getSource().getPlayerOrException();
-                                            } catch (Exception ex) {
-                                                ctx.getSource().sendFailure(Component.literal("Must be a player to use this command"));
-                                                return 0;
-                                            }
-
-                                            int slot = IntegerArgumentType.getInteger(ctx, "slot") - 1;
-                                            var party = Cobblemon.INSTANCE.getStorage().getParty(player);
-                                            Pokemon pk = party.get(slot);
-                                            if (pk == null) {
-                                                ctx.getSource().sendFailure(Component.literal("No Pokemon in slot " + (slot + 1)));
-                                                return 0;
-                                            }
-
-                                            Set<String> aspects = pk.getAspects();
-                                            String filename = "aspects_" + player.getScoreboardName() + "_slot" + (slot + 1) + ".txt";
-                                            File file = new File(filename);
-
-                                            try (PrintWriter writer = new PrintWriter(new FileWriter(file))) {
-                                                writer.println("Aspects for " + pk.getSpecies().getName() + " (Slot " + (slot + 1) + ") owned by " + player.getScoreboardName());
-                                                writer.println("Total aspects: " + aspects.size());
-                                                writer.println("------------------------------------------");
-                                                for (String aspect : aspects) {
-                                                    writer.println(aspect);
-                                                }
-                                                ctx.getSource().sendSuccess(() -> Component.literal("Saved " + aspects.size() + " aspects to " + filename), true);
-                                                return 1;
-                                            } catch (IOException e) {
-                                                ctx.getSource().sendFailure(Component.literal("Failed to write to file: " + e.getMessage()));
-                                                return 0;
-                                            }
                                         }))))
                 .then(Commands.literal("spawn")
+                        .requires(src -> src.hasPermission(2))
                         .then(Commands.argument("properties", PokemonPropertiesArgumentType.Companion.properties())
                                 .executes(ctx -> {
                                     var pos = ctx.getSource().getPosition();
@@ -349,6 +316,27 @@ public class ShadowCommands {
                                         ctx.getSource().sendFailure(Component.literal("Failed to spawn: " + e.getMessage()));
                                         return 0;
                                     }
+                                })))
+                .then(Commands.literal("impact")
+                        .requires(src -> src.hasPermission(2))
+                        .then(Commands.literal("force")
+                                .executes(ctx -> {
+                                    ImpactScheduler.attemptImpact(ctx.getSource().getLevel());
+                                    ctx.getSource().sendSuccess(() -> Component.literal("Forced an impact attempt."), true);
+                                    return 1;
+                                }))
+                        .then(Commands.literal("at")
+                                .executes(ctx -> {
+                                    CraterGenerator.generateCrater(ctx.getSource().getLevel(), net.minecraft.core.BlockPos.containing(ctx.getSource().getPosition()));
+                                    ctx.getSource().sendSuccess(() -> Component.literal("Generated crater at current position."), true);
+                                    return 1;
+                                }))
+                        .then(Commands.literal("heatmap")
+                                .executes(ctx -> {
+                                    ServerPlayer player = ctx.getSource().getPlayerOrException();
+                                    double activity = PlayerActivityHeatmap.getActivity(ctx.getSource().getLevel(), player.chunkPosition());
+                                    ctx.getSource().sendSuccess(() -> Component.literal("Current chunk activity: " + activity), false);
+                                    return 1;
                                 })));
     }
 }

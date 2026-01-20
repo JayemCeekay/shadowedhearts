@@ -4,16 +4,20 @@ import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
 import com.cobblemon.mod.common.pokemon.Pokemon;
 import com.jayemceekay.shadowedhearts.PokemonAspectUtil;
 import com.jayemceekay.shadowedhearts.ShadowService;
+import com.jayemceekay.shadowedhearts.advancements.ModCriteriaTriggers;
 import com.jayemceekay.shadowedhearts.blocks.entity.RelicStoneBlockEntity;
 import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs;
 import com.jayemceekay.shadowedhearts.core.ModBlockEntities;
+import com.jayemceekay.shadowedhearts.core.ModItems;
 import com.jayemceekay.shadowedhearts.util.PlayerPersistentData;
 import com.jayemceekay.shadowedhearts.util.ShadowedHeartsPlayerData;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
+import net.minecraft.world.ItemInteractionResult;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
@@ -29,6 +33,7 @@ import net.minecraft.world.level.block.entity.BlockEntityTicker;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
+import net.minecraft.world.level.block.state.properties.BooleanProperty;
 import net.minecraft.world.level.block.state.properties.IntegerProperty;
 import net.minecraft.world.level.storage.loot.LootParams;
 import net.minecraft.world.phys.AABB;
@@ -45,6 +50,7 @@ public class RelicStoneBlock extends Block implements EntityBlock {
 
     public static final IntegerProperty PART = IntegerProperty.create("part", 0, 8);
     public static final IntegerProperty LAYER = IntegerProperty.create("layer", 0, 2);
+    public static final BooleanProperty HAS_BE = BooleanProperty.create("has_be");
 
     private static final int CENTER_PART = 4;
 
@@ -71,12 +77,13 @@ public class RelicStoneBlock extends Block implements EntityBlock {
         this.registerDefaultState(this.stateDefinition.any()
                 .setValue(PART, CENTER_PART)
                 .setValue(LAYER, 0)
+                .setValue(HAS_BE, false)
         );
     }
 
     @Override
     protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
-        builder.add(PART, LAYER);
+        builder.add(PART, LAYER, HAS_BE);
     }
 
     private static boolean isCenter(BlockState state) {
@@ -89,6 +96,13 @@ public class RelicStoneBlock extends Block implements EntityBlock {
         int dx = OFFSETS[part][0];
         int dz = OFFSETS[part][1];
         return pos.offset(-dx, -layer, -dz);
+    }
+
+    @Override
+    public boolean triggerEvent(BlockState state, Level level, BlockPos pos, int id, int param) {
+        super.triggerEvent(state, level, pos, id, param);
+        BlockEntity blockEntity = level.getBlockEntity(pos);
+        return blockEntity != null && blockEntity.triggerEvent(id, param);
     }
 
     private static double layerHeight(BlockState state) {
@@ -119,14 +133,11 @@ public class RelicStoneBlock extends Block implements EntityBlock {
             }
         }
 
-        return this.defaultBlockState().setValue(PART, CENTER_PART).setValue(LAYER, 0);
+        return this.defaultBlockState().setValue(PART, CENTER_PART).setValue(LAYER, 0).setValue(HAS_BE, true);
     }
 
     @Override
     public void setPlacedBy(Level level, BlockPos center, BlockState state, LivingEntity placer, ItemStack stack) {
-        super.setPlacedBy(level, center, state, placer, stack);
-
-        if (level.isClientSide) return;
         if (!isCenter(state)) return;
 
         // Place all dummy parts for layers 0..2, except the visible center itself.
@@ -134,7 +145,7 @@ public class RelicStoneBlock extends Block implements EntityBlock {
             for (int part = 0; part < 9; part++) {
                 if (layer == 0 && part == CENTER_PART) continue;
                 BlockPos p = center.offset(OFFSETS[part][0], layer, OFFSETS[part][1]);
-                level.setBlock(p, state.setValue(PART, part).setValue(LAYER, layer), 3);
+                level.setBlock(p, state.setValue(PART, part).setValue(LAYER, layer).setValue(HAS_BE, false), 3);
             }
         }
     }
@@ -217,17 +228,13 @@ public class RelicStoneBlock extends Block implements EntityBlock {
     }
 
     @Override
-    public @Nullable <T extends BlockEntity> BlockEntityTicker<T> getTicker(Level level, BlockState state, BlockEntityType<T> type) {
-        return createTickerHelper(type, ModBlockEntities.RELIC_STONE_BE.get(), RelicStoneBlockEntity::tick);
-    }
-
-    protected static <E extends BlockEntity, A extends BlockEntity> BlockEntityTicker<A> createTickerHelper(BlockEntityType<A> type, BlockEntityType<E> targetType, BlockEntityTicker<? super E> ticker) {
-        return targetType == type ? (BlockEntityTicker<A>) ticker : null;
+    public @Nullable BlockEntity newBlockEntity(BlockPos pos, BlockState state) {
+        return new RelicStoneBlockEntity(pos, state);
     }
 
     @Override
-    public @Nullable BlockEntity newBlockEntity(BlockPos pos, BlockState state) {
-        return isCenter(state) ? new RelicStoneBlockEntity(pos, state) : null;
+    public @Nullable <T extends BlockEntity> BlockEntityTicker<T> getTicker(Level level, BlockState state, BlockEntityType<T> type) {
+        return type == ModBlockEntities.RELIC_STONE_BE.get() ? (BlockEntityTicker<T>) (BlockEntityTicker<?>) (BlockEntityTicker<RelicStoneBlockEntity>) RelicStoneBlockEntity::tick : null;
     }
 
     @Override
@@ -236,7 +243,27 @@ public class RelicStoneBlock extends Block implements EntityBlock {
     }
 
     @Override
+    protected @NotNull ItemInteractionResult useItemOn(ItemStack stack, BlockState state, Level level, BlockPos pos, Player player, InteractionHand hand, BlockHitResult hit) {
+        if (stack.is(ModItems.SHADOW_SHARD.get()) && stack.getCount() >= 8) {
+            if (!level.isClientSide) {
+                stack.shrink(8);
+                ItemStack gem = new ItemStack(ModItems.PURIFIED_GEM.get());
+                if (!player.getInventory().add(gem)) {
+                    player.drop(gem, false);
+                }
+                level.playSound(null, pos, net.minecraft.sounds.SoundEvents.AMETHYST_BLOCK_CHIME, net.minecraft.sounds.SoundSource.BLOCKS, 1.0F, 1.0F);
+            }
+            return ItemInteractionResult.sidedSuccess(level.isClientSide);
+        }
+
+        return super.useItemOn(stack, state, level, pos, player, hand, hit);
+    }
+
+    @Override
     protected @NotNull InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player, BlockHitResult hit) {
+        if (player instanceof ServerPlayer serverPlayer) {
+            ModCriteriaTriggers.triggerRelicStoneInteract(serverPlayer);
+        }
         if (level.isClientSide) {
             return InteractionResult.SUCCESS;
         }
@@ -278,6 +305,7 @@ public class RelicStoneBlock extends Block implements EntityBlock {
 
             if (purifiedAny) {
                 PlayerPersistentData.get(serverPlayer).setLastRelicStonePurify(now);
+                level.playSound(null, pos, net.minecraft.sounds.SoundEvents.AMETHYST_BLOCK_CHIME, net.minecraft.sounds.SoundSource.BLOCKS, 1.0F, 1.0F);
             } else {
                 if (nearbyPokemon.isEmpty()) {
                     serverPlayer.displayClientMessage(Component.translatable("message.shadowedhearts.relic_stone.no_pokemon"), true);

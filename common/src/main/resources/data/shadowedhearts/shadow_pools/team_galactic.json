@@ -1,0 +1,20 @@
+{
+  "entries": [
+    { "pokemon": "stunky", "weight": 4 },
+    { "pokemon": "skuntank", "weight": 2 },
+    { "pokemon": "glameow", "weight": 4 },
+    { "pokemon": "purugly", "weight": 2 },
+    { "pokemon": "bronzor", "weight": 4 },
+    { "pokemon": "bronzong", "weight": 2 },
+    { "pokemon": "croagunk", "weight": 4 },
+    { "pokemon": "toxicroak", "weight": 2 },
+    { "pokemon": "houndour", "weight": 3 },
+    { "pokemon": "houndoom", "weight": 1 },
+    { "pokemon": "murkrow", "weight": 3 },
+    { "pokemon": "honchkrow", "weight": 1 },
+    { "pokemon": "golbat", "weight": 3 },
+    { "pokemon": "crobat", "weight": 1 },
+    { "pokemon": "weavile", "weight": 1 },
+    { "pokemon": "spiritomb", "weight": 1 }
+  ]
+}

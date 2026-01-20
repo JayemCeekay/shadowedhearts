@@ -3,6 +3,7 @@ package com.jayemceekay.shadowedhearts.client.neoforge;
 import com.jayemceekay.shadowedhearts.Shadowedhearts;
 import com.jayemceekay.shadowedhearts.client.ModKeybinds;
 import com.jayemceekay.shadowedhearts.client.ModShaders;
+import com.jayemceekay.shadowedhearts.client.aura.AuraPulseRenderer;
 import com.jayemceekay.shadowedhearts.client.particle.LuminousMoteEmitters;
 import com.jayemceekay.shadowedhearts.client.render.DepthCapture;
 import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs;
@@ -23,12 +24,15 @@ public final class ClientSetupSubscriber {
     public static void onClientSetup(final FMLClientSetupEvent event) {
         ShadowedHeartsConfigs.getInstance().getClientConfig().load();
         // Client-side common init
+        AuraPulseRenderer.init();
         DepthCapture.init();
         ModShaders.initClient();
         ModShadersPlatformImpl.registerShaders();
         // Register keybinds
         com.jayemceekay.shadowedhearts.client.ModKeybinds.init();
         ModKeybindsPlatformImpl.register(ModKeybinds.ORDER_WHEEL);
+        ModKeybindsPlatformImpl.register(ModKeybinds.AURA_SCANNER);
+        ModKeybindsPlatformImpl.register(ModKeybinds.AURA_PULSE);
 
         // Subscribe luminous mote emitters to Cobblemon events
         LuminousMoteEmitters.init();
