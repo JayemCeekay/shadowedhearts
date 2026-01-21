@@ -36,8 +36,8 @@ public interface IShadowConfig extends IModConfig {
     default int relicStoneCooldownMinutes() { return 5; }
 
     // Aura Scanner
-    default int auraScannerShadowRange() { return 128; }
-    default int auraScannerMeteoroidRange() { return 256; }
+    default int auraScannerShadowRange() { return 64; }
+    default int auraScannerMeteoroidRange() { return 128; }
 
     IRCTSection append();
     IRCTSection convert();

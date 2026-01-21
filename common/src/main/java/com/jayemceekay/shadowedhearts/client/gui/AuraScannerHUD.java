@@ -73,13 +73,14 @@ public class AuraScannerHUD {
     private static int beepTimer = 0;
     private static int pulseQueue = 0;
     private static int pulseTimer = 0;
-    private static final Map<UUID, Integer> DETECTED_SHADOWS = new HashMap<>();
-    private static final Map<UUID, Integer> PENDING_RESPONSES = new HashMap<>();
+    private static final Map<UUID, Integer> DETECTED_SHADOWS = Collections.synchronizedMap(new HashMap<>());
+    private static final Map<UUID, Integer> PENDING_RESPONSES = Collections.synchronizedMap(new HashMap<>());
     private static final int DETECTION_DURATION_POKEMON = 100; // 5 seconds
     private static final int DETECTION_DURATION_METEOROIDS = 200;
     private static final int RESPONSE_DELAY = 40; // 2 seconds
-    private static final Map<BlockPos, Integer> DETECTED_METEOROIDS = new HashMap<>();
-    private static final Map<BlockPos, Integer> PENDING_METEOROID_RESPONSES = new HashMap<>();
+    private static final Map<BlockPos, Integer> DETECTED_METEOROIDS = Collections.synchronizedMap(new HashMap<>());
+    private static final Map<BlockPos, Integer> PENDING_METEOROID_RESPONSES = Collections.synchronizedMap(new HashMap<>());
+    private static boolean isScanning = false;
 
     public static void tick() {
         Minecraft mc = Minecraft.getInstance();
@@ -101,11 +102,8 @@ public class AuraScannerHUD {
 
         if (ModKeybinds.consumeAuraScannerPress()) {
             if (hasAuraReader && ShadowedHeartsConfigs.getInstance().getClientConfig().auraScannerEnabled()) {
-                ItemStack auraReader = SnagAccessoryBridgeHolder.INSTANCE.getEquippedStack(mc.player);
-                if (auraReader.isEmpty() || !(auraReader.getItem() instanceof AuraReaderItem)) {
-                    auraReader = mc.player.getItemBySlot(net.minecraft.world.entity.EquipmentSlot.HEAD);
-                }
-                
+                ItemStack auraReader = SnagAccessoryBridgeHolder.INSTANCE.getAuraReaderStack(mc.player);
+
                 if (!auraReader.isEmpty() && AuraReaderCharge.get(auraReader) > 0) {
                     active = !active;
                     ShadowedHeartsNetwork.sendToServer(new AuraScannerC2SPacket(active));
@@ -148,12 +146,22 @@ public class AuraScannerHUD {
                 }
                 
                 // Scan for meteoroid blocks manually in a radius (client-side fallback if POI manager is unavailable)
-                BlockPos playerPos = mc.player.blockPosition();
-                int meteoroidRange = ShadowedHeartsConfigs.getInstance().getShadowConfig().auraScannerMeteoroidRange();
-                for (BlockPos p : BlockPos.betweenClosed(playerPos.offset(-meteoroidRange, -16, -meteoroidRange), playerPos.offset(meteoroidRange, 16, meteoroidRange))) {
-                    if (mc.level.getBlockState(p).is(com.jayemceekay.shadowedhearts.core.ModBlocks.SHADOWFALL_METEOROID.get())) {
-                        PENDING_METEOROID_RESPONSES.put(p.immutable(), RESPONSE_DELAY);
-                    }
+                if (!isScanning) {
+                    isScanning = true;
+                    BlockPos playerPos = mc.player.blockPosition();
+                    int meteoroidRange = ShadowedHeartsConfigs.getInstance().getShadowConfig().auraScannerMeteoroidRange();
+                    net.minecraft.client.multiplayer.ClientLevel level = mc.level;
+                    java.util.concurrent.CompletableFuture.runAsync(() -> {
+                        try {
+                            for (BlockPos p : BlockPos.betweenClosed(playerPos.offset(-meteoroidRange, -16, -meteoroidRange), playerPos.offset(meteoroidRange, 16, meteoroidRange))) {
+                                if (level.getBlockState(p).is(com.jayemceekay.shadowedhearts.core.ModBlocks.SHADOWFALL_METEOROID.get())) {
+                                    PENDING_METEOROID_RESPONSES.put(p.immutable(), RESPONSE_DELAY);
+                                }
+                            }
+                        } finally {
+                            isScanning = false;
+                        }
+                    });
                 }
             }
         }
@@ -170,57 +178,65 @@ public class AuraScannerHUD {
             }
 
             // Handle pending responses
-            Iterator<Map.Entry<UUID, Integer>> respIter = PENDING_RESPONSES.entrySet().iterator();
-            while (respIter.hasNext()) {
-                Map.Entry<UUID, Integer> entry = respIter.next();
-                entry.setValue(entry.getValue() - 1);
-                if (entry.getValue() <= 0) {
-                    Entity entity = null;
-                    // Check all entities in the level for this UUID
-                    for (Entity e : mc.level.entitiesForRendering()) {
-                        if (e.getUUID().equals(entry.getKey())) {
-                            entity = e;
-                            break;
+            synchronized (PENDING_RESPONSES) {
+                Iterator<Map.Entry<UUID, Integer>> respIter = PENDING_RESPONSES.entrySet().iterator();
+                while (respIter.hasNext()) {
+                    Map.Entry<UUID, Integer> entry = respIter.next();
+                    entry.setValue(entry.getValue() - 1);
+                    if (entry.getValue() <= 0) {
+                        Entity entity = null;
+                        // Check all entities in the level for this UUID
+                        for (Entity e : mc.level.entitiesForRendering()) {
+                            if (e.getUUID().equals(entry.getKey())) {
+                                entity = e;
+                                break;
+                            }
                         }
-                    }
 
-                    if (entity != null) {
-                        AuraPulseRenderer.spawnPulse(entity.position(), 0.6f, 0.3f, 1.0f, 128.0f); // Purple pulse
-                        DETECTED_SHADOWS.put(entity.getUUID(), DETECTION_DURATION_POKEMON);
+                        if (entity != null) {
+                            AuraPulseRenderer.spawnPulse(entity.position(), 0.6f, 0.3f, 1.0f, 128.0f); // Purple pulse
+                            DETECTED_SHADOWS.put(entity.getUUID(), DETECTION_DURATION_POKEMON);
+                        }
+                        respIter.remove();
                     }
-                    respIter.remove();
                 }
             }
 
             // Handle pending meteoroid responses
-            Iterator<Map.Entry<BlockPos, Integer>> metRespIter = PENDING_METEOROID_RESPONSES.entrySet().iterator();
-            while (metRespIter.hasNext()) {
-                Map.Entry<BlockPos, Integer> entry = metRespIter.next();
-                entry.setValue(entry.getValue() - 1);
-                if (entry.getValue() <= 0) {
-                    AuraPulseRenderer.spawnPulse(entry.getKey().getCenter(), 0.6f, 0.3f, 1.0f, 256.0f); // Purple pulse
-                    DETECTED_METEOROIDS.put(entry.getKey(), DETECTION_DURATION_METEOROIDS);
-                    metRespIter.remove();
+            synchronized (PENDING_METEOROID_RESPONSES) {
+                Iterator<Map.Entry<BlockPos, Integer>> metRespIter = PENDING_METEOROID_RESPONSES.entrySet().iterator();
+                while (metRespIter.hasNext()) {
+                    Map.Entry<BlockPos, Integer> entry = metRespIter.next();
+                    entry.setValue(entry.getValue() - 1);
+                    if (entry.getValue() <= 0) {
+                        AuraPulseRenderer.spawnPulse(entry.getKey().getCenter(), 0.6f, 0.3f, 1.0f, 256.0f); // Purple pulse
+                        DETECTED_METEOROIDS.put(entry.getKey(), DETECTION_DURATION_METEOROIDS);
+                        metRespIter.remove();
+                    }
                 }
             }
 
             // Update detections
-            Iterator<Map.Entry<UUID, Integer>> detectIter = DETECTED_SHADOWS.entrySet().iterator();
-            while (detectIter.hasNext()) {
-                Map.Entry<UUID, Integer> entry = detectIter.next();
-                entry.setValue(entry.getValue() - 1);
-                if (entry.getValue() <= 0) {
-                    detectIter.remove();
+            synchronized (DETECTED_SHADOWS) {
+                Iterator<Map.Entry<UUID, Integer>> detectIter = DETECTED_SHADOWS.entrySet().iterator();
+                while (detectIter.hasNext()) {
+                    Map.Entry<UUID, Integer> entry = detectIter.next();
+                    entry.setValue(entry.getValue() - 1);
+                    if (entry.getValue() <= 0) {
+                        detectIter.remove();
+                    }
                 }
             }
 
             // Update meteoroid detections
-            Iterator<Map.Entry<BlockPos, Integer>> metDetectIter = DETECTED_METEOROIDS.entrySet().iterator();
-            while (metDetectIter.hasNext()) {
-                Map.Entry<BlockPos, Integer> entry = metDetectIter.next();
-                entry.setValue(entry.getValue() - 1);
-                if (entry.getValue() <= 0) {
-                    metDetectIter.remove();
+            synchronized (DETECTED_METEOROIDS) {
+                Iterator<Map.Entry<BlockPos, Integer>> metDetectIter = DETECTED_METEOROIDS.entrySet().iterator();
+                while (metDetectIter.hasNext()) {
+                    Map.Entry<BlockPos, Integer> entry = metDetectIter.next();
+                    entry.setValue(entry.getValue() - 1);
+                    if (entry.getValue() <= 0) {
+                        metDetectIter.remove();
+                    }
                 }
             }
 
@@ -260,10 +276,7 @@ public class AuraScannerHUD {
             }
 
             // Deactivate if charge is empty (client side check)
-            ItemStack auraReader = SnagAccessoryBridgeHolder.INSTANCE.getEquippedStack(mc.player);
-            if (auraReader.isEmpty() || !(auraReader.getItem() instanceof AuraReaderItem)) {
-                auraReader = mc.player.getItemBySlot(net.minecraft.world.entity.EquipmentSlot.HEAD);
-            }
+            ItemStack auraReader = SnagAccessoryBridgeHolder.INSTANCE.getAuraReaderStack(mc.player);
             if (!auraReader.isEmpty() && auraReader.getItem() instanceof AuraReaderItem) {
                 if (AuraReaderCharge.get(auraReader) <= 0) {
                     active = false;
@@ -603,10 +616,7 @@ public class AuraScannerHUD {
 
     private static void renderChargeBar(GuiGraphics guiGraphics, int width, int height, float alpha) {
         Minecraft mc = Minecraft.getInstance();
-        ItemStack auraReader = SnagAccessoryBridgeHolder.INSTANCE.getEquippedStack(mc.player);
-        if (auraReader.isEmpty() || !(auraReader.getItem() instanceof AuraReaderItem)) {
-            auraReader = mc.player.getItemBySlot(net.minecraft.world.entity.EquipmentSlot.HEAD);
-        }
+        ItemStack auraReader = SnagAccessoryBridgeHolder.INSTANCE.getAuraReaderStack(mc.player);
 
         if (auraReader.isEmpty() || !(auraReader.getItem() instanceof AuraReaderItem)) return;
 

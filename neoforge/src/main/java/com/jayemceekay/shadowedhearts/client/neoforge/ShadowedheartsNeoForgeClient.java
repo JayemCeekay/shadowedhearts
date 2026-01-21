@@ -61,7 +61,7 @@ public final class ShadowedheartsNeoForgeClient {
             var cam = e.getCamera();
             AuraEmitters.onRender(cam, cam.getPartialTickTime());
             BallEmitters.onRender(cam, cam.getPartialTickTime());
-        } else if (e.getStage() == RenderLevelStageEvent.Stage.AFTER_LEVEL && (AuraPulseRenderer.IRIS_HANDLER != null && !AuraPulseRenderer.IRIS_HANDLER.isShaderPackInUse())) {
+        } else if (e.getStage() == RenderLevelStageEvent.Stage.AFTER_LEVEL && (AuraPulseRenderer.IRIS_HANDLER == null || !AuraPulseRenderer.IRIS_HANDLER.isShaderPackInUse())) {
             var cam = e.getCamera();
             AuraPulseRenderer.onRenderWorld(cam, e.getProjectionMatrix(), e.getModelViewMatrix(), cam.getPartialTickTime());
         }

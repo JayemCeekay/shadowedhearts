@@ -16,7 +16,6 @@ import com.jayemceekay.shadowedhearts.network.ShadowedHeartsNetwork;
 import dev.architectury.event.events.common.TickEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 
@@ -70,16 +69,7 @@ public final class AuraReaderEvents {
                 ServerPlayer sp = pba.getEntity();
                 if (sp == null) continue;
 
-                ItemStack auraReader = ItemStack.EMPTY;
-                ItemStack helmet = sp.getItemBySlot(EquipmentSlot.HEAD);
-                if (!helmet.isEmpty() && helmet.getItem() instanceof AuraReaderItem) {
-                    auraReader = helmet;
-                } else {
-                    ItemStack accessory = SnagAccessoryBridgeHolder.INSTANCE.getEquippedStack(sp);
-                    if (!accessory.isEmpty() && accessory.getItem() instanceof AuraReaderItem) {
-                        auraReader = accessory;
-                    }
-                }
+                ItemStack auraReader = SnagAccessoryBridgeHolder.INSTANCE.getAuraReaderStack(sp);
 
                 if (!auraReader.isEmpty()) {
                     int before = AuraReaderCharge.get(auraReader);
@@ -102,16 +92,7 @@ public final class AuraReaderEvents {
         if (player == null || player.level().isClientSide) return;
 
         // Aura Reader charge drain
-        ItemStack auraReader = ItemStack.EMPTY;
-        ItemStack helmet = player.getItemBySlot(EquipmentSlot.HEAD);
-        if (!helmet.isEmpty() && helmet.getItem() instanceof AuraReaderItem) {
-            auraReader = helmet;
-        } else {
-            ItemStack accessory = SnagAccessoryBridgeHolder.INSTANCE.getEquippedStack(player);
-            if (!accessory.isEmpty() && accessory.getItem() instanceof AuraReaderItem) {
-                auraReader = accessory;
-            }
-        }
+        ItemStack auraReader = SnagAccessoryBridgeHolder.INSTANCE.getAuraReaderStack(player);
 
         if (!auraReader.isEmpty()) {
             tickAuraReader(player, auraReader);

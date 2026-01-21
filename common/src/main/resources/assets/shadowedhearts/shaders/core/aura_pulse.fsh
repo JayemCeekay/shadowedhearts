@@ -44,7 +44,7 @@ void main() {
         // Fade out based on distance to prevent infinite pulse
         float fade = 1.0 - smoothstep(0.0, max_radius, dist);
         // Also fade out based on time/radius
-        float lifeFade = 1.0 - smoothstep(0.0, max_radius, radius);
+        float lifeFade = 1.0 - smoothstep(0.0, max_radius*0.75, radius);
 
         float alpha = pulse * fade * lifeFade;
         finalPulseColor += color * alpha;

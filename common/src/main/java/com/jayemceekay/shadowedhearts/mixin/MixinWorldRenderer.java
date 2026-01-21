@@ -1,6 +1,5 @@
 package com.jayemceekay.shadowedhearts.mixin;
 
-import com.jayemceekay.shadowedhearts.client.aura.AuraPulseRenderer;
 import net.minecraft.client.Camera;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.renderer.GameRenderer;
@@ -20,6 +19,6 @@ public abstract class MixinWorldRenderer {
             at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/LevelRenderer;renderWorldBorder(Lnet/minecraft/client/Camera;)V", shift = At.Shift.BEFORE)
     )
     private void shadowedhearts$hookPostWorldRender(DeltaTracker deltaTracker, boolean renderBlockOutline, Camera camera, GameRenderer gameRenderer, LightTexture lightTexture, Matrix4f projectionMatrix, Matrix4f modelViewMatrix, CallbackInfo ci) {
-        AuraPulseRenderer.renderIris();
+       // AuraPulseRenderer.renderIris();
     }
 }

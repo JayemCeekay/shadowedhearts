@@ -101,6 +101,12 @@ public final class ShadowedheartsFabricClient implements ClientModInitializer {
             BallEmitters.onRender(context.camera(), context.camera().getPartialTickTime());
         });
 
+        WorldRenderEvents.END.register(worldRenderContext -> {
+            if ((AuraPulseRenderer.IRIS_HANDLER == null || !AuraPulseRenderer.IRIS_HANDLER.isShaderPackInUse())) {
+                AuraPulseRenderer.onRenderWorld(worldRenderContext.camera(), worldRenderContext.projectionMatrix(), worldRenderContext.positionMatrix(), worldRenderContext.camera().getPartialTickTime());
+            }
+        });
+
         WorldRenderEvents.AFTER_ENTITIES.register(context -> {
             LuminousMoteEmitters.onRender(context.tickCounter().getGameTimeDeltaPartialTick(true));
         });
@@ -163,16 +169,17 @@ public final class ShadowedheartsFabricClient implements ClientModInitializer {
         if (dev.architectury.platform.Platform.isModLoaded("accessories")) {
             try {
                 AccessoriesRendererBridge.registerRenderers();
-            } catch (Throwable ignored) {}
+            } catch (Throwable ignored) {
+            }
         }
 
         // Register Item Colors
         ColorProviderRegistry.ITEM.register((stack, tintIndex) -> {
-            if (tintIndex == 1 && stack.getItem() instanceof ScentItem scentItem) {
-                return 0xFF000000 | scentItem.getColor();
-            }
-            return 0xFFFFFFFF;
-        },
+                    if (tintIndex == 1 && stack.getItem() instanceof ScentItem scentItem) {
+                        return 0xFF000000 | scentItem.getColor();
+                    }
+                    return 0xFFFFFFFF;
+                },
                 ModItems.JOY_SCENT.get(),
                 ModItems.EXCITE_SCENT.get(),
                 ModItems.VIVID_SCENT.get(),

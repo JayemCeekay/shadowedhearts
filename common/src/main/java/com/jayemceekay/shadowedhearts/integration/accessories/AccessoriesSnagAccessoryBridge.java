@@ -72,7 +72,7 @@ public final class AccessoriesSnagAccessoryBridge implements SnagAccessoryBridge
             if (capability != null) {
                 for (var container : capability.getContainers().values()) {
                     for (var accessory : container.getAccessories()) {
-                        if (accessory != null && accessory.getSecond().getItem() instanceof SnagMachineItem) {
+                        if (accessory != null && (accessory.getSecond().getItem() instanceof SnagMachineItem || accessory.getSecond().is(ModItems.AURA_READER.get()))) {
                             return accessory.getSecond();
                         }
                     }
