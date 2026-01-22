@@ -24,6 +24,8 @@ public class ShadowedHeartsMixinConfigPlugin implements IMixinConfigPlugin {
             case "com.jayemceekay.shadowedhearts.mixin.MixinIrisRenderingPipeline",
                  "com.jayemceekay.shadowedhearts.mixin.IrisRenderingPipelineAccessor" ->
                     Platform.isModLoaded("iris");
+            case "com.jayemceekay.shadowedhearts.mixin.MixinShowdownMoveset" ->
+                    Platform.isModLoaded("mega_showdown");
             default -> true;
         };
     }

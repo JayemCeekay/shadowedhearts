@@ -1,24 +1,15 @@
 package com.jayemceekay.shadowedhearts.mixin;
 
 import com.cobblemon.mod.common.client.gui.pc.StorageSlot;
-import com.cobblemon.mod.common.pokemon.RenderablePokemon;
-import com.jayemceekay.shadowedhearts.SHAspects;
-import com.mojang.blaze3d.vertex.PoseStack;
-import net.minecraft.client.gui.GuiGraphics;
 import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.Shadow;
-import org.spongepowered.asm.mixin.Unique;
-import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
  * Adds Shadow aura rendering to PC storage slot preview model.
  * Context: Minecraft Cobblemon mod; all shadow/purity/corruption/capture terms are gameplay mechanics.
  */
-@Mixin(value = StorageSlot.class, remap = false)
+@Mixin(value = StorageSlot.class)
 public abstract class MixinStorageSlotAura {
-
+/*
     @Shadow
     public abstract com.cobblemon.mod.common.pokemon.Pokemon getPokemon();
 
@@ -27,7 +18,7 @@ public abstract class MixinStorageSlotAura {
         return rp != null && rp.getAspects() != null && rp.getAspects().contains(SHAspects.SHADOW);
     }
 
-    @Inject(method = "renderSlot", at = @At(value = "INVOKE", target = "Lcom/mojang/blaze3d/vertex/PoseStack;popPose()V", ordinal = 0, shift = At.Shift.BEFORE))
+    @Inject(method = "renderSlot", at = @At(value = "INVOKE", target = "Lcom/cobblemon/mod/common/client/gui/PokemonGuiUtilsKt;drawProfilePokemon$default(Lcom/cobblemon/mod/common/pokemon/RenderablePokemon;Lcom/mojang/blaze3d/vertex/PoseStack;Lorg/joml/Quaternionf;Lcom/cobblemon/mod/common/entity/PoseType;Lcom/cobblemon/mod/common/client/render/models/blockbench/PosableState;FFZZFFFFFFILjava/lang/Object;)V", ordinal = 0, shift = At.Shift.AFTER, remap = false))
     private void shadowedhearts$renderAura(GuiGraphics context, int posX, int posY, float partialTicks, CallbackInfo ci) {
         var p = getPokemon();
         if (p == null) return;
@@ -41,5 +32,5 @@ public abstract class MixinStorageSlotAura {
 
         PoseStack matrices = context.pose();
         //AuraEmitters.renderInGui(matrices, context.bufferSource(), radius, halfHeight, 1.0F, partialTicks, QuaternionUtilsKt.fromEulerXYZDegrees(new Quaternionf(), new Vector3f(13F, 35F, 0F)));
-    }
+    }*/
 }

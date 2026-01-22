@@ -36,7 +36,7 @@
         }
     },
     onBeforeMove(source, target, move) {
-        if (!move || move.type === 'Shadow') return;
+        if (!move || move.type === 'shadow') return;
         const config = this.dex.data.Scripts.shadowedhearts?.Config?.hyperMode || {enabled: false};
         if (!config.enabled) return;
         if (this.randomChance(9, 10)) {

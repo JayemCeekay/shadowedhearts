@@ -21,7 +21,6 @@ import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
-import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.projectile.ThrowableItemProjectile;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.EntityHitResult;
@@ -32,7 +31,7 @@ import org.spongepowered.asm.mixin.Shadow;
 
 import static com.cobblemon.mod.common.util.LocalizationUtilsKt.lang;
 
-@Mixin(value = EmptyPokeBallEntity.class, remap = false)
+@Mixin(value = EmptyPokeBallEntity.class)
 public abstract class MixinEmptyPokeBallEntity extends ThrowableItemProjectile {
 
 
@@ -79,8 +78,8 @@ public abstract class MixinEmptyPokeBallEntity extends ThrowableItemProjectile {
                             return;
                         }
 
-                        if (battle != null && owner != null && owner instanceof LivingEntity) {
-                            if (!((EmptyPokeBallEntity) (Object) this).getAspects().contains("snag_ball")) {
+                        if (battle != null && owner != null) {
+                            if (!((EmptyPokeBallEntity) (Object) this).getAspects().contains("snag_ball") && !pokemonEntity.getPokemon().isWild()) {
                                 owner.sendSystemMessage(lang("message.shadowedhearts.snag_machine.requires_snag_ball").withStyle(ChatFormatting.RED));
                                 drop();
                                 return;

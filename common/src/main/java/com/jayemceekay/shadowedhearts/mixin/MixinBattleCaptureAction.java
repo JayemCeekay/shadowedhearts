@@ -10,7 +10,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-@Mixin(value = BattleCaptureAction.class, remap = false)
+@Mixin(value = BattleCaptureAction.class)
 public class MixinBattleCaptureAction {
 
     @Inject(method = "attach$lambda$3", at = @At(value = "INVOKE", target = "Lcom/cobblemon/mod/common/api/battles/model/PokemonBattle;writeShowdownAction([Ljava/lang/String;)V", shift = At.Shift.AFTER), require = 0, remap = false)

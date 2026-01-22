@@ -24,7 +24,9 @@
     "MouseHandlerAccessor",
     "MovesWidgetAccessor",
     "RenderTargetAccessor",
-    "SummaryAccessor"
+    "SummaryAccessor",
+    "cobblemonbattleextras.CobblemonBattleExtrasMoveTileTooltipMixin",
+    "cobblemonpartyextras.CobblemonPartyExtrasCustomTooltipRendererMixin"
   ],
   "mixins": [
     "AccessorMoveActionResponse",
@@ -45,12 +47,11 @@
     "MixinPokemonEntity",
     "MixinRequestInstruction",
     "MixinRequestMoveSwapHandler",
+    "MixinShowdownActionRequest",
     "MixinShowdownActionResponse",
     "MixinShowdownInterpreter",
     "MixinShowdownMoveset",
     "MixinTypeIcon",
-    "cobblemonbattleextras.CobblemonBattleExtrasMoveTileTooltipMixin",
-    "cobblemonpartyextras.CobblemonPartyExtrasCustomTooltipRendererMixin",
     "rctmod.MixinRCTModMakeBattle",
     "simpletms.MixinPokemonSelectingItemNonBattle"
   ],

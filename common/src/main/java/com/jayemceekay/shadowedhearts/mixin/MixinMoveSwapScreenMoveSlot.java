@@ -24,7 +24,7 @@ import org.spongepowered.asm.mixin.injection.ModifyArg;
  * when the selected Pokemon is Shadow-locked. Hides move name and stats,
  * neutralizes the colored bar, and swaps the type icon to a shadow-locked glyph.
  */
-@Mixin(value = MoveSwapScreen.MoveSlot.class, remap = false)
+@Mixin(value = MoveSwapScreen.MoveSlot.class)
 public abstract class MixinMoveSwapScreenMoveSlot {
 
     @Shadow public abstract MoveSwapScreen getPane();

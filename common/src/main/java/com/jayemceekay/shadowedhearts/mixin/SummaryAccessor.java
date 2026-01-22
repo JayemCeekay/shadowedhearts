@@ -6,7 +6,7 @@ import net.minecraft.client.gui.components.events.GuiEventListener;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.gen.Accessor;
 
-@Mixin(value = Summary.class, remap = false)
+@Mixin(value = Summary.class)
 public interface SummaryAccessor {
     @Accessor("mainScreen")
     AbstractWidget getMainScreen();

@@ -15,7 +15,7 @@ import org.jetbrains.annotations.Nullable;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 
-@Mixin(value = PokemonSelectingItemNonBattle.class, remap = false)
+@Mixin(value = PokemonSelectingItemNonBattle.class)
 public interface MixinPokemonSelectingItemNonBattle {
 
     @WrapOperation(method = "use", at = @At(value = "INVOKE", target = "Ldragomordor/simpletms/item/api/PokemonSelectingItemNonBattle;applyToPokemon(Lnet/minecraft/server/level/ServerPlayer;Lnet/minecraft/world/item/ItemStack;Lcom/cobblemon/mod/common/pokemon/Pokemon;)Lnet/minecraft/world/InteractionResultHolder;"))

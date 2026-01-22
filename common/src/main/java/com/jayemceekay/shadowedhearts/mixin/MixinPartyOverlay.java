@@ -12,7 +12,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.ModifyArg;
 
-@Mixin(value = PartyOverlay.class, remap = false)
+@Mixin(value = PartyOverlay.class)
 public class MixinPartyOverlay {
 
     ResourceLocation SHADOW_FRAME = ResourceLocation.fromNamespaceAndPath(Shadowedhearts.MOD_ID, "textures/gui/party_slot.png");

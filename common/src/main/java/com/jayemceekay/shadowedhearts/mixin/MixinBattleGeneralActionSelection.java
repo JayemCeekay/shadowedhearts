@@ -27,7 +27,7 @@ import java.util.List;
  * We redirect the specific addOption invocation for Forfeit, insert our Snag option first (same rank),
  * then call the original addOption with rank + 1 so Forfeit is placed after it.
  */
-@Mixin(value = BattleGeneralActionSelection.class, remap = false)
+@Mixin(value = BattleGeneralActionSelection.class)
 public abstract class MixinBattleGeneralActionSelection {
 
     @Shadow @Final

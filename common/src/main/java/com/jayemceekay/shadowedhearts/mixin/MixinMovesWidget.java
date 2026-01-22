@@ -20,7 +20,7 @@ import org.spongepowered.asm.mixin.injection.ModifyArg;
 import org.spongepowered.asm.mixin.injection.ModifyVariable;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-@Mixin(value = com.cobblemon.mod.common.client.gui.summary.widgets.screens.moves.MovesWidget.class, remap = false)
+@Mixin(value = com.cobblemon.mod.common.client.gui.summary.widgets.screens.moves.MovesWidget.class)
 public abstract class MixinMovesWidget {
 
     @Shadow
@@ -46,7 +46,7 @@ public abstract class MixinMovesWidget {
         return false;
     }
 
-    @Inject(method = "reorderMove", at = @At("HEAD"), cancellable = true)
+    @Inject(method = "reorderMove", at = @At("HEAD"), cancellable = true, remap = false)
     private void shadowedhearts$disableReorder(
             MoveSlotWidget move, boolean up, CallbackInfo ci
     ) {
@@ -68,7 +68,7 @@ public abstract class MixinMovesWidget {
         return moveDescription;
     }
 
-    @ModifyVariable(method = "renderWidget", at = @At(value = "STORE"), name = "movePower")
+    @ModifyVariable(method = "renderWidget(Lnet/minecraft/client/gui/GuiGraphics;IIF)V", at = @At(value = "STORE"), name = "movePower")
     private MutableComponent shadowedhearts$maskMovePower(MutableComponent value) {
         var pokemon = ((MovesWidget)(Object)this).getSummary().getSelectedPokemon$common();
         if (shadowedhearts$shouldMask(getSelectedMove(), pokemon)) {
@@ -77,7 +77,7 @@ public abstract class MixinMovesWidget {
         return value;
     }
 
-    @ModifyVariable(method = "renderWidget", at = @At(value = "STORE"), name = "moveAccuracy")
+    @ModifyVariable(method = "renderWidget(Lnet/minecraft/client/gui/GuiGraphics;IIF)V", at = @At(value = "STORE"), name = "moveAccuracy")
     private MutableComponent shadowedhearts$maskMoveAccuracy(MutableComponent value) {
         var pokemon = ((MovesWidget)(Object)this).getSummary().getSelectedPokemon$common();
         if (shadowedhearts$shouldMask(getSelectedMove(), pokemon)) {
@@ -86,7 +86,7 @@ public abstract class MixinMovesWidget {
         return value;
     }
 
-    @ModifyVariable(method = "renderWidget", at = @At(value = "STORE"), name = "moveEffect")
+    @ModifyVariable(method = "renderWidget(Lnet/minecraft/client/gui/GuiGraphics;IIF)V", at = @At(value = "STORE"), name = "moveEffect")
     private MutableComponent shadowedhearts$maskMoveEffect(MutableComponent value) {
         var pokemon = ((MovesWidget)(Object)this).getSummary().getSelectedPokemon$common();
         if (shadowedhearts$shouldMask(getSelectedMove(), pokemon)) {

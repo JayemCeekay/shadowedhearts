@@ -27,7 +27,7 @@
     this.add('sh_message', 'cobblemon.battle.reversemode.hurt', pokemon.getSlot());
   },
   onBeforeMove(source, target, move) {
-    if (!move || move.type === 'Shadow') return;
+    if (!move || move.type === 'shadow') return;
     const config = this.dex.data.Scripts.shadowedhearts?.Config?.reverseMode || { enabled: false };
     if (!config.enabled) return;
     if (this.randomChance(1, 5)) {

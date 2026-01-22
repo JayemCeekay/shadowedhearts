@@ -17,7 +17,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.ModifyArg;
 
-@Mixin(value = BattleMoveSelection.MoveTile.class, remap = false)
+@Mixin(value = BattleMoveSelection.MoveTile.class)
 public abstract class MixinBattleMoveSelectionMoveTile {
 
 

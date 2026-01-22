@@ -15,7 +15,7 @@
     this.damage(target.baseMaxhp / 16);
   },
   onEffectiveness(typeMod, target, type, move) {
-    if (!move || move.type !== "Shadow") return;
+    if (!move || move.type !== "shadow") return;
     const isShadowTarget = !!(target?.set?.isShadow);
     return isShadowTarget ? -1 : 1;
   },
@@ -29,7 +29,7 @@
     if (move?.id === "solarbeam") {
       return this.chainModify(0.5);
     }
-    if (move?.type === "Shadow") {
+    if (move?.type === "shadow") {
       return this.chainModify(1.5);
     }
   },

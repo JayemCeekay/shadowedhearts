@@ -25,7 +25,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import java.util.ArrayList;
 import java.util.List;
 
-@Mixin(value = StatWidget.class, remap = false)
+@Mixin(value = StatWidget.class)
 public abstract class MixinStatWidget {
 
     @Shadow @Final @Mutable private List<BarSummarySpeciesFeatureRenderer> universalFeatures;

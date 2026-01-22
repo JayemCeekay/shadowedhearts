@@ -24,7 +24,7 @@ import org.spongepowered.asm.mixin.injection.ModifyArg;
  * When a Pokemon is Shadow-locked, non-Shadow moves have their name and PP masked.
  * Also neutralize the colored move bar tint and swap the TypeIcon to a shadow-locked placeholder.
  */
-@Mixin(value = MoveSlotWidget.class, remap = false)
+@Mixin(value = MoveSlotWidget.class)
 public abstract class MixinMoveSlotWidget {
 
     @Shadow public abstract Move getMove();

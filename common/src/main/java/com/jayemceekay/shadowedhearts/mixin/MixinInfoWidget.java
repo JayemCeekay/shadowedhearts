@@ -18,7 +18,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.ModifyArgs;
 import org.spongepowered.asm.mixin.injection.invoke.arg.Args;
 
-@Mixin(value = InfoWidget.class, remap = false)
+@Mixin(value = InfoWidget.class)
 public class MixinInfoWidget {
 
     @Final

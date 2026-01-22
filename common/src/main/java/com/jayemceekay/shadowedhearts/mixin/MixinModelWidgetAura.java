@@ -23,7 +23,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  * Renders Shadow aura around the preview model in Summary/PC screens.
  * Context: Minecraft Cobblemon mod; all shadow/purity/corruption/capture terms are gameplay mechanics.
  */
-@Mixin(value = ModelWidget.class, remap = false)
+@Mixin(value = ModelWidget.class)
 public abstract class MixinModelWidgetAura {
 
     @Shadow @Final

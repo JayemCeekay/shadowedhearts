@@ -24,16 +24,20 @@
     "MouseHandlerAccessor",
     "MovesWidgetAccessor",
     "RenderTargetAccessor",
-    "SummaryAccessor"
+    "SummaryAccessor",
+    "cobblemonbattleextras.CobblemonBattleExtrasMoveTileTooltipMixin",
+    "cobblemonpartyextras.CobblemonPartyExtrasCustomTooltipRendererMixin"
   ],
   "mixins": [
     "AccessorMoveActionResponse",
+    "IrisRenderingPipelineAccessor",
     "MixinBattleActor_SetActionResponses",
     "MixinBattleCaptureAction",
     "MixinBattleRegistry",
     "MixinBenchMoveHandler",
     "MixinEmptyPokeBallEntity",
     "MixinGraalShowdownUnbundler",
+    "MixinIrisRenderingPipeline",
     "MixinMob_DoHurtTargetMicro",
     "MixinMob_TossGoals",
     "MixinPokeBallItem",
@@ -41,13 +45,15 @@
     "MixinPokemonBattle",
     "MixinPokemonBrain",
     "MixinPokemonEntity",
+    "MixinRequestInstruction",
     "MixinRequestMoveSwapHandler",
+    "MixinShowdownActionRequest",
+    "MixinShowdownActionResponse",
     "MixinShowdownInterpreter",
     "MixinShowdownMoveset",
     "MixinTypeIcon",
-    "cobblemonbattleextras.CobblemonBattleExtrasMoveTileTooltipMixin",
-    "cobblemonpartyextras.CobblemonPartyExtrasCustomTooltipRendererMixin",
-    "rctmod.MixinRCTModMakeBattle"
+    "rctmod.MixinRCTModMakeBattle",
+    "simpletms.MixinPokemonSelectingItemNonBattle"
   ],
   "injectors": {
     "defaultRequire": 1

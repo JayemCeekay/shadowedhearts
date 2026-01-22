@@ -57,7 +57,7 @@
     }
   },
   onAfterMove(source, target, move) {
-    if (!move || move.type !== 'Shadow') return;
+    if (!move || move.type !== 'shadow') return;
     const config = this.dex.data.Scripts.shadowedhearts?.Config?.reverseMode || { enabled: false };
     if (!config.enabled) return;
     if (!source?.set?.isShadow) return;
@@ -90,7 +90,7 @@
   onEffectiveness(typeMod, target, type, move) {
     const config = this.dex.data.Scripts.shadowedhearts?.Config?.shadowMoves || { superEffectiveEnabled: true };
     if (!config.superEffectiveEnabled) return;
-    if (!target || move.type !== 'Shadow') return;
+    if (!target || move.type !== 'shadow') return;
 
     const targetTypes = target.getTypes();
     if (type !== targetTypes[0]) return 0;

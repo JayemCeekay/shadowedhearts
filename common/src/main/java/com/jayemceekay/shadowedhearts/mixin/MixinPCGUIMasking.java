@@ -20,7 +20,7 @@ import org.spongepowered.asm.mixin.injection.ModifyArg;
  * - Nature text is masked as "????" when nature hidden by gauge.
  * - EV values are masked as "??" on the EV page.
  */
-@Mixin(value = PCGUI.class, remap = false)
+@Mixin(value = PCGUI.class)
 public abstract class MixinPCGUIMasking {
 
     // Shadow fields to detect current page and pokemon in the PC GUI

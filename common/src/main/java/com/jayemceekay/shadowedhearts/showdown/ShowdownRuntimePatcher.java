@@ -1,11 +1,10 @@
 package com.jayemceekay.shadowedhearts.showdown;
 
-import com.cobblemon.mod.common.Cobblemon;
-import com.cobblemon.mod.common.battles.runner.graal.GraalShowdownService;
+import com.cobblemon.mod.relocations.graalvm.polyglot.Context;
 import com.jayemceekay.shadowedhearts.Shadowedhearts;
 import com.jayemceekay.shadowedhearts.config.IShadowConfig;
 import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs;
-import kotlin.Unit;
+import dev.architectury.platform.Platform;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -31,93 +30,133 @@ public final class ShowdownRuntimePatcher {
     public static void applyPatches() {
         Shadowedhearts.LOGGER.info("Applying Showdown runtime patches...");
         for (Path showdown : locateShowdownDirs()) {
+            ensureModFilesExist(showdown);
             try {
                 patchDexConditions(showdown.resolve("sim").resolve("dex-conditions.js"));
             } catch (Exception e) {
+                Shadowedhearts.LOGGER.info("Failed to patch dex-conditions.js in Showdown directory: " + showdown);
             }
             try {
                 patchBattleCapture(showdown.resolve("sim").resolve("battle.js"));
             } catch (Exception e) {
+                Shadowedhearts.LOGGER.info("Failed to patch battle.js in Showdown directory: " + showdown);
             }
             try {
                 patchTeams(showdown.resolve("sim").resolve("teams.js"));
             } catch (Exception e) {
+                Shadowedhearts.LOGGER.info("Failed to patch teams.js in Showdown directory: " + showdown);
             }
             try {
                 patchBattleAddShadowEngine(showdown.resolve("sim").resolve("battle.js"));
             } catch (Exception e) {
+                Shadowedhearts.LOGGER.info("Failed to patch battle.js in Showdown directory: " + showdown);
             }
             try {
                 patchFieldAddPseudoWeatherDebug(showdown.resolve("sim").resolve("field.js"));
             } catch (Exception e) {
+                Shadowedhearts.LOGGER.info("Failed to patch field.js in Showdown directory: " + showdown);
             }
             try {
                 patchSideAddCallChoice(showdown.resolve("sim").resolve("side.js"));
             } catch (Exception e) {
+                Shadowedhearts.LOGGER.info("Failed to patch side.js in Showdown directory: " + showdown);
             }
             try {
                 patchBattleQueueAddCallOrder(showdown.resolve("sim").resolve("battle-queue.js"));
             } catch (Exception e) {
+                Shadowedhearts.LOGGER.info("Failed to patch battle-queue.js in Showdown directory: " + showdown);
             }
             try {
                 patchBattleAddCallAction(showdown.resolve("sim").resolve("battle.js"));
             } catch (Exception e) {
+                Shadowedhearts.LOGGER.info("Failed to patch battle.js in Showdown directory: " + showdown);
             }
         }
-        injectDynamicData();
     }
 
-    public static void injectDynamicData() {
-        Cobblemon.INSTANCE.getShowdownThread().queue(showdownService -> {
-            if (showdownService instanceof GraalShowdownService service) {
-                DynamicInjector.inject(service);
-            }
-            return Unit.INSTANCE;
-        });
-    }
-
-    private static class DynamicInjector {
-        private static void inject(GraalShowdownService service) {
+    public static class DynamicInjector {
+        public static void inject(Context context) {
             try {
-                // Access 'context' field via reflection
-                var contextField = GraalShowdownService.class.getDeclaredField("context");
-                contextField.setAccessible(true);
-                Object context = contextField.get(service);
                 if (context == null) {
+                    Shadowedhearts.LOGGER.info("Failed to access Showdown context object, skipping injection.");
                     return;
                 }
 
-                // Get bindings via reflection: context.getBindings("js")
-                var getBindingsMethod = context.getClass().getMethod("getBindings", String.class);
-                Object bindings = getBindingsMethod.invoke(context, "js");
 
-                // bindings.hasMember(String)
-                var hasMemberMethod = bindings.getClass().getMethod("hasMember", String.class);
-                // bindings.getMember(String)
-                var getMemberMethod = bindings.getClass().getMethod("getMember", String.class);
+                var bindings = context.getBindings("js");
 
-                if ((Boolean) hasMemberMethod.invoke(bindings, "receiveConditionData")) {
-                    Object receiveConditionDataFn = getMemberMethod.invoke(bindings, "receiveConditionData");
+                if(!Platform.isModLoaded("mega_showdown")) {
+                    context.eval("js", "if (typeof items === 'undefined') items = require('./data/mods/cobblemon/items');\n" +
+                            "if (typeof conditions === 'undefined') conditions = require('./data/mods/cobblemon/conditions');\n" +
+                            "if (typeof typechart === 'undefined') typechart = require('./data/mods/cobblemon/typechart');\n" +
+                            "if (typeof scripts === 'undefined') scripts = require('./data/mods/cobblemon/scripts');\n" +
+                            "\n" +
+                            "if (typeof receiveConditionData === 'undefined') {\n" +
+                            "    receiveConditionData = function(conditionId, conditionData) {\n" +
+                            "        const target = conditions.Conditions || conditions;\n" +
+                            "        target[conditionId] = eval(`(${conditionData})`);\n" +
+                            "    };\n" +
+                            "}\n" +
+                            "\n" +
+                            "if (typeof receiveTypeChartData === 'undefined') {\n" +
+                            "    receiveTypeChartData = function(typeChartId, typeChartData) {\n" +
+                            "        const target = typechart.TypeChart || typechart;\n" +
+                            "        target[typeChartId] = eval(`(${typeChartData})`);\n" +
+                            "    };\n" +
+                            "}\n" +
+                            "\n" +
+                            "if (typeof receiveScriptData === 'undefined') {\n" +
+                            "    receiveScriptData = function(scriptId, scriptData) {\n" +
+                            "        const newFunctions = eval(`(${scriptData})`);\n" +
+                            "        const target = scripts.Scripts || scripts;\n" +
+                            "        if (!target[scriptId]) target[scriptId] = {};\n" +
+                            "        Object.assign(target[scriptId], newFunctions);\n" +
+                            "    };\n" +
+                            "}\n" +
+                            "\n" +
+                            "if (typeof receiveHeldItemData === 'undefined') {\n" +
+                            "    receiveHeldItemData = function(itemId, itemData) {\n" +
+                            "        const target = items.Items || items;\n" +
+                            "        target[itemId] = eval(`(${itemData})`);\n" +
+                            "    };\n" +
+                            "}");
+                }
+
+                if (bindings.hasMember("receiveConditionData")) {
+                    Object receiveConditionDataFn = bindings.getMember("receiveConditionData");
                     injectCondition(receiveConditionDataFn, "shadowyaura", "/data/shadowedhearts/showdown/conditions/shadowyaura.js");
                     injectCondition(receiveConditionDataFn, "hypermode", "/data/shadowedhearts/showdown/conditions/hypermode.js");
                     injectCondition(receiveConditionDataFn, "reversemode", "/data/shadowedhearts/showdown/conditions/reversemode.js");
                     injectCondition(receiveConditionDataFn, "shadowengine", "/data/shadowedhearts/showdown/conditions/shadowengine.js");
                     Shadowedhearts.LOGGER.info("Injected custom conditions into Showdown...");
-
+                } else {
+                    Shadowedhearts.LOGGER.info("Failed to find receiveConditionData function, skipping injection.");
                 }
 
-                if ((Boolean) hasMemberMethod.invoke(bindings, "receiveTypeChartData")) {
-                    Object receiveTypeChartDataFn = getMemberMethod.invoke(bindings, "receiveTypeChartData");
+                if (bindings.hasMember("receiveTypeChartData")) {
+                    Object receiveTypeChartDataFn = bindings.getMember("receiveTypeChartData");
                     injectTypeChart(receiveTypeChartDataFn, "shadow", "/data/shadowedhearts/showdown/typecharts/shadow.js");
                     Shadowedhearts.LOGGER.info("Injected custom typechart into Showdown...");
+                } else {
+                    Shadowedhearts.LOGGER.info("Failed to find receiveTypeChartData function, skipping injection.");
                 }
 
-                if ((Boolean) hasMemberMethod.invoke(bindings, "receiveScriptData")) {
-                    Object receiveScriptDataFn = getMemberMethod.invoke(bindings, "receiveScriptData");
+                if (bindings.hasMember("receiveScriptData")) {
+                    Object receiveScriptDataFn = bindings.getMember("receiveScriptData");
                     injectScript(receiveScriptDataFn, "shadowedhearts", "/data/shadowedhearts/showdown/scripts/shadowedhearts.js");
                     Shadowedhearts.LOGGER.info("Injected custom scripts into Showdown.");
+                } else {
+                    Shadowedhearts.LOGGER.info("Failed to find receiveScriptData function, skipping injection.");
                 }
+
+                if (bindings.hasMember("receiveHeldItemData")) {
+                    Object receiveHeldItemDataFn = bindings.getMember("receiveHeldItemData");
+                    // If we had any custom items to inject, we'd do it here.
+                    // injectHeldItem(receiveHeldItemDataFn, "itemid", "/path/to/item.js");
+                }
+
             } catch (Exception e) {
+                Shadowedhearts.LOGGER.info("Failed to patch Showdown context object: " + e);
                 e.printStackTrace();
             }
         }
@@ -151,7 +190,7 @@ public final class ShowdownRuntimePatcher {
                 js = js.replace("\n", " ").replace("\r", "");
                 executeFn(fn, id, js);
             } else {
-                Shadowedhearts.LOGGER.error("Failed to find script resource: " + resourcePath);
+                Shadowedhearts.LOGGER.info("Failed to find script resource: " + resourcePath);
             }
         }
 
@@ -163,7 +202,7 @@ public final class ShowdownRuntimePatcher {
                 js = js.replace("\n", " ").replace("\r", "");
                 executeFn(fn, id, js);
             } else {
-                Shadowedhearts.LOGGER.error("Failed to find condition resource: " + resourcePath);
+                Shadowedhearts.LOGGER.info("Failed to find condition resource: " + resourcePath);
             }
         }
 
@@ -174,7 +213,7 @@ public final class ShowdownRuntimePatcher {
                 js = js.replace("\n", " ").replace("\r", "");
                 executeFn(fn, id, js);
             } else {
-                Shadowedhearts.LOGGER.error("Failed to find typechart resource: " + resourcePath);
+                Shadowedhearts.LOGGER.info("Failed to find typechart resource: " + resourcePath);
             }
         }
 
@@ -183,7 +222,7 @@ public final class ShowdownRuntimePatcher {
                 var executeMethod = fn.getClass().getMethod("execute", Object[].class);
                 executeMethod.invoke(fn, (Object) args);
             } catch (Exception e) {
-                Shadowedhearts.LOGGER.error("Failed to execute Showdown injection function for args: " + java.util.Arrays.toString(args));
+                Shadowedhearts.LOGGER.info("Failed to execute Showdown injection function for args: " + java.util.Arrays.toString(args));
             }
         }
     }
@@ -191,15 +230,7 @@ public final class ShowdownRuntimePatcher {
 
     private static List<Path> locateShowdownDirs() {
         List<Path> result = new ArrayList<>();
-        // Common dev environment paths
-        addIfDir(result, Paths.get("fabric", "run", "showdown"));
-        addIfDir(result, Paths.get("neoforge", "run", "showdown"));
-        // Dedicated/server run variants
-        addIfDir(result, Paths.get("fabric", "run", "server", "showdown"));
-        addIfDir(result, Paths.get("neoforge", "run", "server", "showdown"));
-        // Generic runtime paths
-        addIfDir(result, Paths.get("run", "showdown"));
-        addIfDir(result, Paths.get("run", "server", "showdown"));
+        addIfDir(result, Platform.getGameFolder().resolve("showdown"));
         addIfDir(result, Paths.get("showdown"));
         return result;
     }
@@ -208,6 +239,35 @@ public final class ShowdownRuntimePatcher {
         try {
             if (Files.isDirectory(p)) list.add(p.toRealPath());
         } catch (IOException ignored) {
+            Shadowedhearts.LOGGER.info("Failed to resolve directory: " + p);
+        }
+    }
+
+    private static void ensureModFilesExist(Path showdownDir) {
+        Path modDataDir = showdownDir.resolve("data").resolve("mods").resolve("cobblemon");
+        try {
+            Files.createDirectories(modDataDir);
+            yoink("/assets/shadowedhearts/showdown/mods/conditions.js", modDataDir.resolve("conditions.js"));
+            yoink("/assets/shadowedhearts/showdown/mods/typechart.js", modDataDir.resolve("typechart.js"));
+            yoink("/assets/shadowedhearts/showdown/mods/items.js", modDataDir.resolve("items.js"));
+            yoink("/assets/shadowedhearts/showdown/mods/scripts.js", modDataDir.resolve("scripts.js"));
+        } catch (IOException e) {
+            Shadowedhearts.LOGGER.error("Failed to ensure mod files exist in " + modDataDir, e);
+        }
+    }
+
+    private static void yoink(String resourcePath, Path targetPath) {
+        if (Files.exists(targetPath)) return;
+
+        try (var in = ShowdownRuntimePatcher.class.getResourceAsStream(resourcePath)) {
+            if (in == null) {
+                Shadowedhearts.LOGGER.error("Resource not found: " + resourcePath);
+                return;
+            }
+            Files.copy(in, targetPath);
+            Shadowedhearts.LOGGER.info("Extracted " + resourcePath + " to " + targetPath);
+        } catch (IOException e) {
+            Shadowedhearts.LOGGER.error("Failed to extract " + resourcePath + " to " + targetPath, e);
         }
     }
 
@@ -227,6 +287,7 @@ public final class ShowdownRuntimePatcher {
         String desired = "[\"Weather\", \"Status\", \"Field\"]";
 
         if (content.contains("\"Field\"")) {
+           // Shadowedhearts.LOGGER.info("Field already in dex-conditions.js whitelist, skipping patch");
             return;
         }
 
@@ -236,6 +297,7 @@ public final class ShowdownRuntimePatcher {
         if (content.contains(needle)) {
             String patched = content.replace(needle, replacement);
             Files.writeString(dexConditionsPath, patched, StandardCharsets.UTF_8);
+            Shadowedhearts.LOGGER.info("Patched dex-conditions.js with Field effectType whitelist");
             return;
         }
 
@@ -243,6 +305,7 @@ public final class ShowdownRuntimePatcher {
         if (content.contains(whitelistPattern)) {
             String patched = content.replace(whitelistPattern, desired);
             Files.writeString(dexConditionsPath, patched, StandardCharsets.UTF_8);
+            Shadowedhearts.LOGGER.info("Patched dex-conditions.js with Field effectType whitelist");
             return;
         }
     }
@@ -251,11 +314,13 @@ public final class ShowdownRuntimePatcher {
     private static String readResourceText(String resourcePath) {
         try {
             var in = ShowdownRuntimePatcher.class.getResourceAsStream(resourcePath);
-            if (in == null) return null;
+            if (in == null)
+                throw new IOException("Resource not found: " + resourcePath);
             try (in) {
                 return new String(in.readAllBytes(), StandardCharsets.UTF_8);
             }
         } catch (IOException e) {
+            Shadowedhearts.LOGGER.info("Failed to read resource: " + resourcePath, e);
             return null;
         }
     }
@@ -282,6 +347,7 @@ public final class ShowdownRuntimePatcher {
         String content = Files.readString(battlePath, StandardCharsets.UTF_8);
 
         if (content.contains("pokemon.side.emitRequest(req)") || content.contains("// Build and emit a new request")) {
+            Shadowedhearts.LOGGER.info("Battle already patched for request emission, skipping patch");
             return;
         }
 
@@ -311,6 +377,7 @@ public final class ShowdownRuntimePatcher {
         if (content.contains(needle)) {
             String patched = content.replace(needle, replacement);
             Files.writeString(battlePath, patched, StandardCharsets.UTF_8);
+            Shadowedhearts.LOGGER.info("Patched battle.js to emit capture request");
         }
     }
 
@@ -323,15 +390,18 @@ public final class ShowdownRuntimePatcher {
         // - If it only has the older heartGaugeBars patch, proceed to upgrade to add two more fields.
         boolean hasNewFlags = content.contains("set.isHyper") || content.contains("set.isReverse") || content.contains("misc[9]");
         if (hasNewFlags) {
+            Shadowedhearts.LOGGER.info("Teams already patched for new flags, skipping patch");
             return;
         }
 
         int packStart = content.indexOf("  pack(team) {");
         if (packStart < 0) {
+            Shadowedhearts.LOGGER.info("Teams already patched for pack function, skipping patch");
             return;
         }
         int unpackStart = content.indexOf("\n  unpack(buf) {", packStart);
         if (unpackStart < 0) {
+            Shadowedhearts.LOGGER.info("Teams already patched for unpack function, skipping patch");
             return;
         }
         int afterUnpack = content.indexOf("\n  /**", unpackStart);
@@ -584,6 +654,7 @@ public final class ShowdownRuntimePatcher {
 
         String patched = content.substring(0, packStart) + newBlock + content.substring(afterUnpack);
         Files.writeString(teamsPath, patched, StandardCharsets.UTF_8);
+        Shadowedhearts.LOGGER.info("Patched pack() in " + teamsPath.toAbsolutePath());
     }
 
     private static void patchCustomFormats(Path customFormatsPath) throws IOException {
@@ -649,6 +720,7 @@ public final class ShowdownRuntimePatcher {
         }
 
         Files.writeString(customFormatsPath, patched, StandardCharsets.UTF_8);
+        Shadowedhearts.LOGGER.info("Custom formats patch applied successfully");
     }
 
     private static void patchMicroScripts(Path scriptsPath) throws IOException {
@@ -697,23 +769,27 @@ public final class ShowdownRuntimePatcher {
                 "};\n";
 
         Files.writeString(scriptsPath, js, StandardCharsets.UTF_8);
+        Shadowedhearts.LOGGER.info("Field pseudo weather patch applied successfully");
     }
 
     private static void patchBattleAddShadowEngine(Path battlePath) throws IOException {
         if (!Files.isRegularFile(battlePath)) return;
         String content = Files.readString(battlePath, StandardCharsets.UTF_8);
         if (content.contains("addPseudoWeather('shadowengine')") || content.contains("addPseudoWeather(\"shadowengine\")")) {
+            Shadowedhearts.LOGGER.info("Battle already patched for shadowengine pseudo weather, skipping patch");
             return;
         }
         String anchor = "this.add(\"gametype\", this.gameType);";
         int idx = content.indexOf(anchor);
         if (idx < 0) {
+            Shadowedhearts.LOGGER.info("Battle patch failed to find anchor, skipping patch");
             return;
         }
         int insertPos = idx + anchor.length();
         String injected = "\n    this.field.addPseudoWeather('shadowengine');";
         String patched = content.substring(0, insertPos) + injected + content.substring(insertPos);
         Files.writeString(battlePath, patched, StandardCharsets.UTF_8);
+        Shadowedhearts.LOGGER.info("Battle patched for shadowengine pseudo weather");
     }
 
     /**
@@ -727,6 +803,7 @@ public final class ShowdownRuntimePatcher {
 
         // Skip if our modification is already present
         if (content.contains("status.id === 'shadowengine'")) {
+            Shadowedhearts.LOGGER.info("Field already patched for shadowengine pseudo weather, skipping patch");
             return;
         }
 
@@ -750,6 +827,7 @@ public final class ShowdownRuntimePatcher {
         if (content.contains(needle)) {
             String patched = content.replace(needle, replacement);
             Files.writeString(fieldPath, patched, StandardCharsets.UTF_8);
+            Shadowedhearts.LOGGER.info("Field pseudo weather patch applied successfully");
         }
     }
 
@@ -758,6 +836,7 @@ public final class ShowdownRuntimePatcher {
         String content = Files.readString(sidePath, StandardCharsets.UTF_8);
 
         if (content.contains("case \"call\":")) {
+            Shadowedhearts.LOGGER.info("Side already patched for call choice, skipping patch");
             return;
         }
 
@@ -772,6 +851,7 @@ public final class ShowdownRuntimePatcher {
         if (content.contains(needle)) {
             String patched = content.replace(needle, replacement);
             Files.writeString(sidePath, patched, StandardCharsets.UTF_8);
+            Shadowedhearts.LOGGER.info("Side call choice patch applied successfully");
         }
     }
 
@@ -780,6 +860,7 @@ public final class ShowdownRuntimePatcher {
         String content = Files.readString(queuePath, StandardCharsets.UTF_8);
 
         if (content.contains("call: 200")) {
+            Shadowedhearts.LOGGER.info("Battle queue already patched for call order, skipping patch");
             return;
         }
 
@@ -789,6 +870,7 @@ public final class ShowdownRuntimePatcher {
         if (content.contains(needle)) {
             String patched = content.replace(needle, replacement);
             Files.writeString(queuePath, patched, StandardCharsets.UTF_8);
+            Shadowedhearts.LOGGER.info("Battle queue call order patch applied successfully");
         }
     }
 
@@ -797,6 +879,7 @@ public final class ShowdownRuntimePatcher {
         String content = Files.readString(battlePath, StandardCharsets.UTF_8);
 
         if (content.contains("case \"call\":")) {
+            Shadowedhearts.LOGGER.info("Battle already patched for call action, skipping patch");
             return;
         }
 
@@ -809,6 +892,7 @@ public final class ShowdownRuntimePatcher {
         if (content.contains(needle)) {
             String patched = content.replace(needle, replacement);
             Files.writeString(battlePath, patched, StandardCharsets.UTF_8);
+            Shadowedhearts.LOGGER.info("Battle call action patch applied successfully");
         }
     }
 }

@@ -6,6 +6,7 @@ import com.gitlab.srcmc.rctmod.world.entities.TrainerMob;
 import com.jayemceekay.shadowedhearts.Shadowedhearts;
 import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs;
 import com.jayemceekay.shadowedhearts.server.NPCShadowInjector;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -19,13 +20,13 @@ import java.util.Locale;
 /**
  * Battle-time conversions — add tags before RCTMod.makeBattle() starts the battle.
  * If the trainer type is "team_rocket":
- *  - If their party has space (<6), append exactly 1 Shadow Pokémon for this battle.
- *  - Else convert exactly 1 existing Pokémon (random pick happens in injector) to Shadow.
- *
+ * - If their party has space (<6), append exactly 1 Shadow Pokémon for this battle.
+ * - Else convert exactly 1 existing Pokémon (random pick happens in injector) to Shadow.
+ * <p>
  * We leverage the existing NPCShadowInjector, which listens to BATTLE_STARTED_PRE and applies
  * APPEND or CONVERT based on entity tags. This keeps all mutations scoped to the battle instance.
  */
-@Mixin(value = RCTMod.class, remap = false)
+@Mixin(value = RCTMod.class)
 public abstract class MixinRCTModMakeBattle {
 
     @Inject(method = "makeBattle", at = @At("HEAD"))
@@ -37,136 +38,145 @@ public abstract class MixinRCTModMakeBattle {
 
             TrainerManager tm = RCTMod.getInstance().getTrainerManager();
             var tmd = tm.getData(mob);
-
-            // Resolve trainer type and id (be defensive against API changes)
-            String typeId = null;
-            try { var type = tmd.getType(); typeId = type != null ? type.id() : null; } catch (Throwable ignored) {}
-            if (typeId == null) return;
-            String trainerId = resolveTrainerIdentifier(tmd);
-
-            String typeIdLc = typeId.toLowerCase(Locale.ROOT);
-            String trainerIdLc = trainerId == null ? null : trainerId.toLowerCase(Locale.ROOT);
-
-            // Determine which section applies: specific trainer entry has priority; otherwise type-based lists.
-            String section = null; // one of: append, replace, convert
-            String typePreset = null;
-
-            // 1) replace section
-            if (cfg.replace() != null) {
-                // trainers first
-                if (trainerIdLc != null) {
-                    for (String tRaw : cfg.replace().trainers()) {
-                        String[] parts = tRaw.split(";");
-                        if (parts.length >= 1 && trainerIdLc.equalsIgnoreCase(parts[0])) {
-                            section = "replace";
-                        }
-                    }
+            if (mob instanceof Entity mobEntity) {
+                // Resolve trainer type and id (be defensive against API changes)
+                String typeId = null;
+                try {
+                    var type = tmd.getType();
+                    typeId = type != null ? type.id() : null;
+                } catch (Throwable ignored) {
                 }
-                if (section == null) {
-                    boolean listed = cfg.replace().typePresets().stream().anyMatch(s -> s.startsWith(typeIdLc + "=")) ||
-                                     cfg.replace().trainerTypes().stream().anyMatch(s -> s != null && s.equalsIgnoreCase(typeIdLc));
-                    boolean blocked = cfg.replace().trainerBlacklist().stream().anyMatch(s -> s != null && s.equalsIgnoreCase(typeIdLc));
-                    if (listed && !blocked) section = "replace";
-                }
-            }
+                if (typeId == null) return;
+                String trainerId = resolveTrainerIdentifier(tmd);
 
-            // 2) append section
-            if (section == null && cfg.append() != null) {
-                if (trainerIdLc != null) {
-                    for (String tRaw : cfg.append().trainers()) {
-                        String[] parts = tRaw.split(";");
-                        if (parts.length >= 1 && trainerIdLc.equalsIgnoreCase(parts[0])) {
-                            section = "append";
-                        }
-                    }
-                }
-                if (section == null) {
-                    typePreset = cfg.append().typePresets().stream()
-                            .filter(s -> s.startsWith(typeIdLc + "="))
-                            .map(s -> s.substring(typeIdLc.length() + 1))
-                            .findFirst().orElse(null);
-                    boolean listed = typePreset != null || cfg.append().trainerTypes().stream().anyMatch(s -> s != null && s.equalsIgnoreCase(typeIdLc));
-                    boolean blocked = cfg.append().trainerBlacklist().stream().anyMatch(s -> s != null && s.equalsIgnoreCase(typeIdLc));
-                    if (listed && !blocked) section = "append";
-                    else typePreset = null;
-                }
-            }
+                String typeIdLc = typeId.toLowerCase(Locale.ROOT);
+                String trainerIdLc = trainerId == null ? null : trainerId.toLowerCase(Locale.ROOT);
 
-            // 3) convert section
-            if (section == null && cfg.convert() != null) {
-                if (trainerIdLc != null) {
-                    for (String tRaw : cfg.convert().trainers()) {
-                        String[] parts = tRaw.split(";");
-                        if (parts.length >= 1 && trainerIdLc.equalsIgnoreCase(parts[0])) {
-                            section = "convert";
-                        }
-                    }
-                }
-                if (section == null) {
-                    typePreset = cfg.convert().typePresets().stream()
-                            .filter(s -> s.startsWith(typeIdLc + "="))
-                            .map(s -> s.substring(typeIdLc.length() + 1))
-                            .findFirst().orElse(null);
-                    boolean listed = typePreset != null || cfg.convert().trainerTypes().stream().anyMatch(s -> s != null && s.equalsIgnoreCase(typeIdLc));
-                    boolean blocked = cfg.convert().trainerBlacklist().stream().anyMatch(s -> s != null && s.equalsIgnoreCase(typeIdLc));
-                    if (listed && !blocked) section = "convert";
-                    else typePreset = null;
-                }
-            }
+                // Determine which section applies: specific trainer entry has priority; otherwise type-based lists.
+                String section = null; // one of: append, replace, convert
+                String typePreset = null;
 
-            if (section == null) return; // nothing to do
-
-            // Apply tags to the trainer entity according to the selected section
-            mob.addTag(NPCShadowInjector.TAG_ENABLE);
-            // Default to converting/adding a single mon unless the config's custom tags override this
-            boolean hasCount = false;
-            
-            // Re-resolve chosen trainer tags/presets from raw strings if specific trainer matched
-            if (trainerIdLc != null) {
-                List<? extends String> rawTrainers = Collections.emptyList();
-                if ("replace".equals(section)) rawTrainers = cfg.replace().trainers();
-                else if ("append".equals(section)) rawTrainers = cfg.append().trainers();
-                else if ("convert".equals(section)) rawTrainers = cfg.convert().trainers();
-
-                for (String tRaw : rawTrainers) {
-                    String[] parts = tRaw.split(";");
-                    if (parts.length >= 1 && trainerIdLc.equalsIgnoreCase(parts[0])) {
-                        if (parts.length >= 2 && !parts[1].isBlank()) {
-                            mob.addTag(NPCShadowInjector.TAG_PRESET_PREFIX + parts[1]);
-                            hasCount = true;
-                        }
-                        if (parts.length >= 3 && !parts[2].isBlank()) {
-                            for (String tag : parts[2].split(",")) {
-                                if (!tag.isBlank()) {
-                                    mob.addTag(tag);
-                                    if (tag.startsWith(NPCShadowInjector.TAG_COUNT_PREFIX)) hasCount = true;
-                                }
+                // 1) replace section
+                if (cfg.replace() != null) {
+                    // trainers first
+                    if (trainerIdLc != null) {
+                        for (String tRaw : cfg.replace().trainers()) {
+                            String[] parts = tRaw.split(";");
+                            if (parts.length >= 1 && trainerIdLc.equalsIgnoreCase(parts[0])) {
+                                section = "replace";
                             }
                         }
-                        break;
+                    }
+                    if (section == null) {
+                        boolean listed = cfg.replace().typePresets().stream().anyMatch(s -> s.startsWith(typeIdLc + "=")) ||
+                                cfg.replace().trainerTypes().stream().anyMatch(s -> s != null && s.equalsIgnoreCase(typeIdLc));
+                        boolean blocked = cfg.replace().trainerBlacklist().stream().anyMatch(s -> s != null && s.equalsIgnoreCase(typeIdLc));
+                        if (listed && !blocked) section = "replace";
                     }
                 }
-            }
 
-            if (!hasCount && typePreset != null) {
-                mob.addTag(NPCShadowInjector.TAG_PRESET_PREFIX + typePreset);
-                hasCount = true;
-            }
-
-            if (!hasCount) {
-                mob.addTag(NPCShadowInjector.TAG_COUNT_PREFIX + 1);
-            }
-
-            // Ensure mode tag is present based on the section
-            switch (section) {
-                case "append" -> {
-                        mob.addTag(NPCShadowInjector.TAG_MODE_APPEND);
+                // 2) append section
+                if (section == null && cfg.append() != null) {
+                    if (trainerIdLc != null) {
+                        for (String tRaw : cfg.append().trainers()) {
+                            String[] parts = tRaw.split(";");
+                            if (parts.length >= 1 && trainerIdLc.equalsIgnoreCase(parts[0])) {
+                                section = "append";
+                            }
+                        }
+                    }
+                    if (section == null) {
+                        typePreset = cfg.append().typePresets().stream()
+                                .filter(s -> s.startsWith(typeIdLc + "="))
+                                .map(s -> s.substring(typeIdLc.length() + 1))
+                                .findFirst().orElse(null);
+                        boolean listed = typePreset != null || cfg.append().trainerTypes().stream().anyMatch(s -> s != null && s.equalsIgnoreCase(typeIdLc));
+                        boolean blocked = cfg.append().trainerBlacklist().stream().anyMatch(s -> s != null && s.equalsIgnoreCase(typeIdLc));
+                        if (listed && !blocked) section = "append";
+                        else typePreset = null;
+                    }
                 }
-                case "replace" -> {
-                    mob.addTag(NPCShadowInjector.TAG_MODE_REPLACE);
+
+                // 3) convert section
+                if (section == null && cfg.convert() != null) {
+                    if (trainerIdLc != null) {
+                        for (String tRaw : cfg.convert().trainers()) {
+                            String[] parts = tRaw.split(";");
+                            if (parts.length >= 1 && trainerIdLc.equalsIgnoreCase(parts[0])) {
+                                section = "convert";
+                            }
+                        }
+                    }
+                    if (section == null) {
+                        typePreset = cfg.convert().typePresets().stream()
+                                .filter(s -> s.startsWith(typeIdLc + "="))
+                                .map(s -> s.substring(typeIdLc.length() + 1))
+                                .findFirst().orElse(null);
+                        boolean listed = typePreset != null || cfg.convert().trainerTypes().stream().anyMatch(s -> s != null && s.equalsIgnoreCase(typeIdLc));
+                        boolean blocked = cfg.convert().trainerBlacklist().stream().anyMatch(s -> s != null && s.equalsIgnoreCase(typeIdLc));
+                        if (listed && !blocked) section = "convert";
+                        else typePreset = null;
+                    }
                 }
-                default -> {
-                   Shadowedhearts.LOGGER.info("RCT Trainer Battle: defaulting to convert");
+
+                if (section == null) return; // nothing to do
+
+                // Apply tags to the trainer entity according to the selected section
+                ((Entity) mobEntity).addTag(NPCShadowInjector.TAG_ENABLE);
+                // Default to converting/adding a single mon unless the config's custom tags override this
+                boolean hasCount = false;
+
+                // Re-resolve chosen trainer tags/presets from raw strings if specific trainer matched
+                if (trainerIdLc != null) {
+                    List<? extends String> rawTrainers = Collections.emptyList();
+                    if ("replace".equals(section))
+                        rawTrainers = cfg.replace().trainers();
+                    else if ("append".equals(section))
+                        rawTrainers = cfg.append().trainers();
+                    else if ("convert".equals(section))
+                        rawTrainers = cfg.convert().trainers();
+
+                    for (String tRaw : rawTrainers) {
+                        String[] parts = tRaw.split(";");
+                        if (parts.length >= 1 && trainerIdLc.equalsIgnoreCase(parts[0])) {
+                            if (parts.length >= 2 && !parts[1].isBlank()) {
+                                mobEntity.addTag(NPCShadowInjector.TAG_PRESET_PREFIX + parts[1]);
+                                hasCount = true;
+                            }
+                            if (parts.length >= 3 && !parts[2].isBlank()) {
+                                for (String tag : parts[2].split(",")) {
+                                    if (!tag.isBlank()) {
+                                        mobEntity.addTag(tag);
+                                        if (tag.startsWith(NPCShadowInjector.TAG_COUNT_PREFIX))
+                                            hasCount = true;
+                                    }
+                                }
+                            }
+                            break;
+                        }
+                    }
+                }
+
+                if (!hasCount && typePreset != null) {
+                    mobEntity.addTag(NPCShadowInjector.TAG_PRESET_PREFIX + typePreset);
+                    hasCount = true;
+                }
+
+                if (!hasCount) {
+                    mobEntity.addTag(NPCShadowInjector.TAG_COUNT_PREFIX + 1);
+                }
+
+                // Ensure mode tag is present based on the section
+                switch (section) {
+                    case "append" -> {
+                        mobEntity.addTag(NPCShadowInjector.TAG_MODE_APPEND);
+                    }
+                    case "replace" -> {
+                        mobEntity.addTag(NPCShadowInjector.TAG_MODE_REPLACE);
+                    }
+                    default -> {
+                        Shadowedhearts.LOGGER.info("RCT Trainer Battle: defaulting to convert");
+                    }
                 }
             }
         } catch (Throwable ignored) {
@@ -174,6 +184,7 @@ public abstract class MixinRCTModMakeBattle {
             // Be fail-safe: never block battles if anything goes wrong here.
         }
     }
+
     private String resolveTrainerIdentifier(Object tmd) {
         if (tmd == null) return null;
         try {
@@ -189,7 +200,8 @@ public abstract class MixinRCTModMakeBattle {
                 } catch (NoSuchMethodException ignored) {
                 }
             }
-        } catch (Throwable ignored) {}
+        } catch (Throwable ignored) {
+        }
         return null;
     }
 }
