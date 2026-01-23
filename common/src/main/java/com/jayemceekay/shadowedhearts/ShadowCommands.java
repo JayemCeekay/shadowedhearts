@@ -19,14 +19,19 @@ import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.EntityArgument;
+import net.minecraft.commands.arguments.UuidArgument;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.MobSpawnType;
 import net.minecraft.world.level.Level;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.UUID;
 
 public class ShadowCommands {
 
@@ -337,6 +342,73 @@ public class ShadowCommands {
                                     double activity = PlayerActivityHeatmap.getActivity(ctx.getSource().getLevel(), player.chunkPosition());
                                     ctx.getSource().sendSuccess(() -> Component.literal("Current chunk activity: " + activity), false);
                                     return 1;
-                                })));
+                                })))
+                .then(Commands.literal("inspect")
+                        .requires(src -> src.hasPermission(2))
+                        .then(Commands.argument("uuid", UuidArgument.uuid())
+                                .executes(ctx -> {
+                                    UUID uuid = UuidArgument.getUuid(ctx, "uuid");
+                                    ServerLevel level = ctx.getSource().getLevel();
+                                    Entity entity = level.getEntity(uuid);
+
+                                    if (entity == null) {
+                                        ctx.getSource().sendFailure(Component.literal("No entity found with UUID: " + uuid));
+                                        return 0;
+                                    }
+
+                                    inspectEntity(ctx.getSource(), entity);
+                                    return 1;
+                                }))
+                        .then(Commands.argument("target", EntityArgument.player())
+                                .then(Commands.argument("slot", IntegerArgumentType.integer(1, 6))
+                                        .executes(ctx -> {
+                                            ServerPlayer player = EntityArgument.getPlayer(ctx, "target");
+                                            int slot = IntegerArgumentType.getInteger(ctx, "slot") - 1;
+                                            var party = Cobblemon.INSTANCE.getStorage().getParty(player);
+                                            Pokemon pokemon = party.get(slot);
+
+                                            if (pokemon == null) {
+                                                ctx.getSource().sendFailure(Component.literal("No Pokemon found in slot " + (slot + 1) + " of " + player.getScoreboardName() + "'s party."));
+                                                return 0;
+                                            }
+
+                                            inspectPokemon(ctx.getSource(), pokemon);
+                                            return 1;
+                                        }))));
+    }
+
+    private static void inspectEntity(CommandSourceStack source, Entity entity) {
+        source.sendSuccess(() -> Component.literal("--- Entity Inspection: " + entity.getName().getString() + " ---"), false);
+        source.sendSuccess(() -> Component.literal("UUID: " + entity.getUUID()), false);
+        source.sendSuccess(() -> Component.literal("Type: " + entity.getType().getDescription().getString()), false);
+
+        if (entity instanceof PokemonEntity pe) {
+            Pokemon pk = pe.getPokemon();
+            outputPokemonData(source, pk);
+        }
+
+        CompoundTag nbt = entity.saveWithoutId(new CompoundTag());
+        source.sendSuccess(() -> Component.literal("--- NBT Data ---"), false);
+        source.sendSuccess(() -> Component.literal(nbt.toString()), false);
+    }
+
+    private static void inspectPokemon(CommandSourceStack source, Pokemon pokemon) {
+        source.sendSuccess(() -> Component.literal("--- Pokemon Inspection: " + pokemon.getDisplayName(false).getString() + " ---"), false);
+        source.sendSuccess(() -> Component.literal("UUID: " + pokemon.getUuid()), false);
+
+        outputPokemonData(source, pokemon);
+
+        CompoundTag nbt = pokemon.saveToNBT(source.registryAccess(), new CompoundTag());
+        source.sendSuccess(() -> Component.literal("--- NBT Data ---"), false);
+        source.sendSuccess(() -> Component.literal(nbt.toString()), false);
+    }
+
+    private static void outputPokemonData(CommandSourceStack source, Pokemon pk) {
+        source.sendSuccess(() -> Component.literal("--- Pokemon Data ---"), false);
+        source.sendSuccess(() -> Component.literal("Species: " + pk.getSpecies().getName()), false);
+        source.sendSuccess(() -> Component.literal("Aspects: " + pk.getAspects()), false);
+        source.sendSuccess(() -> Component.literal("Heart Gauge: " + PokemonAspectUtil.getHeartGaugePercent(pk) + "% (" + PokemonAspectUtil.getHeartGaugeMeter(pk) + "/" + HeartGaugeConfig.getMax(pk) + ")"), false);
+        source.sendSuccess(() -> Component.literal("Buffered EXP: " + PokemonAspectUtil.getBufferedExp(pk)), false);
+        source.sendSuccess(() -> Component.literal("Buffered EVs: " + Arrays.toString(PokemonAspectUtil.getBufferedEvs(pk))), false);
     }
 }
