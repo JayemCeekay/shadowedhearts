@@ -82,7 +82,7 @@ dependencies {
     modCompileOnly("maven.modrinth:ccKDOlHs:NMCHU6DZ")
 
     //accessories
-    modCompileOnly("io.wispforest:accessories-neoforge:${project.accessories_version}")
+    modImplementation("io.wispforest:accessories-neoforge:${project.accessories_version}")
 
     forgeRuntimeLibrary("io.wispforest:endec:0.1.5.1")
     forgeRuntimeLibrary("io.wispforest.endec:gson:0.1.3.1")
