@@ -11,11 +11,11 @@ public final class ModShadersPlatformImpl {
         CoreShaderRegistrationCallback.EVENT.register((registrationContext) -> {
             try {
                 // Register base and variant aura fog shaders; trail reuses the same program per-mode
-                registrationContext.register(
+                /*registrationContext.register(
                         ResourceLocation.parse("shadowedhearts:shadow_aura_fog"),
                         DefaultVertexFormat.NEW_ENTITY,
                         program -> { ModShaders.SHADOW_AURA_FOG = program; ModShaders.SHADOW_AURA_FOG_UNIFORMS = com.jayemceekay.shadowedhearts.client.ShadowFogUniforms.from(program); }
-                );
+                );*/
                 // Cylinder variant for pillar-style aura bounds
                 registrationContext.register(
                         ResourceLocation.parse("shadowedhearts:shadow_aura_fog_cylinder"),

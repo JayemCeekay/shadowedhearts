@@ -115,7 +115,7 @@ float hash31(vec3 p){
     p += dot(p, p.yzx + 33.33);
     return fract((p.x+p.y)*p.z);
 }
-float noise3(vec3 p){
+float sh_noise3(vec3 p){
     vec3 i = floor(p), f = fract(p);
     vec3 u = f*f*(3.0-2.0*f);
     float n000 = hash31(i+vec3(0, 0, 0));
@@ -137,7 +137,7 @@ float noise3(vec3 p){
 float fbm(vec3 p){
     float a = 0.5, f = 0.0;
     for (int i=0;i<FBM_OCTAVES;++i){
-        f += a * noise3(p);
+        f += a * sh_noise3(p);
         p = p*2.02 + vec3(31.416, 47.0, 19.19);
         a *= 0.5;
     }
@@ -147,12 +147,12 @@ float fbm(vec3 p){
 // Approximate curl of noise field (normalized)
 vec3 curl(vec3 p){
     float e = 0.10;
-    float nx1 = noise3(p + vec3(e, 0, 0));
-    float nx0 = noise3(p - vec3(e, 0, 0));
-    float ny1 = noise3(p + vec3(0, e, 0));
-    float ny0 = noise3(p - vec3(0, e, 0));
-    float nz1 = noise3(p + vec3(0, 0, e));
-    float nz0 = noise3(p - vec3(0, 0, e));
+    float nx1 = sh_noise3(p + vec3(e, 0, 0));
+    float nx0 = sh_noise3(p - vec3(e, 0, 0));
+    float ny1 = sh_noise3(p + vec3(0, e, 0));
+    float ny0 = sh_noise3(p - vec3(0, e, 0));
+    float nz1 = sh_noise3(p + vec3(0, 0, e));
+    float nz0 = sh_noise3(p - vec3(0, 0, e));
     vec3 g = vec3(nx1 - nx0, ny1 - ny0, nz1 - nz0);
     // Curl from gradient differences, avoid zero vector
     vec3 c = vec3(g.y - g.z, g.z - g.x, g.x - g.y);
@@ -361,7 +361,7 @@ vec3 quantize3D(vec3 p, float voxelsPerRad) {
     return q;
 }
 
-float posterize01(float v, float steps, float ditherAmt) {
+float posterize01f(float v, float steps, float ditherAmt) {
     if (steps <= 0.5) return v;
     float t = clamp(ditherAmt, 0.0, 1.0) * bayer4x4(gl_FragCoord.xy);
     return floor(v * steps + t) / steps;
@@ -492,7 +492,7 @@ void main() {
         float patchStrength = clamp(uPatchStrengthTop * patchH, 0.0, 1.0);
         float patchThresh = mix(uPatchThreshBase, uPatchThreshTop, patchH);
         vec3 pwPatch = (pPix * uPatchScaleRel) - (advRel + advScrollRel) * uPatchScaleRel + shearRel * uPatchScaleRel;
-        float nPatch = noise3(pwPatch);
+        float nPatch = sh_noise3(pwPatch);
         float patchMask = smoothstep(patchThresh - uPatchSharpness, patchThresh + uPatchSharpness, nPatch);
         float patchMix = mix(1.0, patchMask, patchStrength);
 
@@ -501,7 +501,7 @@ void main() {
 
         // quantize the noise and its brightness
         float n = fbm(pw);// 0..1
-        n = posterize01(n, uPosterizeSteps, uDitherAmount);
+        n = posterize01f(n, uPosterizeSteps, uDitherAmount);
 
         // Brightness shaping
         float bright = saturate((n - uBlackPoint) / (1.0 - uBlackPoint));

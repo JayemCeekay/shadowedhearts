@@ -22,11 +22,11 @@ public class ModShadersPlatformImpl {
     public static void registerShaders(RegisterShadersEvent evt) {
         try {
             // Base and variants — register and link to router modes
-            evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:shadow_aura_fog", DefaultVertexFormat.NEW_ENTITY),
+            /*evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:shadow_aura_fog", DefaultVertexFormat.NEW_ENTITY),
                     shader -> {
                         ModShaders.SHADOW_AURA_FOG = shader;
                         ModShaders.SHADOW_AURA_FOG_UNIFORMS = com.jayemceekay.shadowedhearts.client.ShadowFogUniforms.from(shader);
-                    });
+                    });*/
 
             // Cylinder variant for pillar-style aura bounds
             evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:shadow_aura_fog_cylinder", DefaultVertexFormat.NEW_ENTITY),

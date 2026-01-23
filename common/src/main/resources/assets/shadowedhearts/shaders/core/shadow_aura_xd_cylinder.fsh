@@ -421,7 +421,7 @@ vec3 quantize3D(vec3 p, float voxelsPerRad) {
     return q;
 }
 
-float posterize01(float v, float steps, float ditherAmt) {
+float posterize01f(float v, float steps, float ditherAmt) {
     if (steps <= 0.5) return v;
     float t = clamp(ditherAmt, 0.0, 1.0) * bayer4x4(gl_FragCoord.xy);
     return floor(v * steps + t) / steps;

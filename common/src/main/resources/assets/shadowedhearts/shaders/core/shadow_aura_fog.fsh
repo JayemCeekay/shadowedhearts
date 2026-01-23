@@ -275,7 +275,7 @@ vec3 quantize3D(vec3 p, float voxelsPerRad) {
 }
 
 
-float posterize01(float v, float steps, float ditherAmt) {
+float posterize01f(float v, float steps, float ditherAmt) {
     if (steps <= 0.5) return v;
     float t = clamp(ditherAmt, 0.0, 1.0) * bayer4x4(gl_FragCoord.xy);
     return floor(v * steps + t) / steps;
@@ -473,7 +473,7 @@ void main(){
         // Posterizing the noise (with ordered dithering) yields cleaner, stylized bands that compress better
         // and avoid subtle banding. Set uPosterizeSteps=0 to disable; increase uDitherAmount to reduce contouring.
         float n = fbm(pw);// 0..1
-        n = posterize01(n, uPosterizeSteps, uDitherAmount);
+        n = posterize01f(n, uPosterizeSteps, uDitherAmount);
 
         // Brightness shaping:
         // - uBlackPoint lifts the darkest noise values toward 0 to get inkier shadows.

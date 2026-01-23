@@ -5,8 +5,8 @@ import net.minecraft.client.renderer.ShaderInstance;
 public final class ModShaders {
 
     // Active shaders used by RenderTypes (dynamic supplier reads these each draw)
-    public static ShaderInstance SHADOW_AURA_FOG;
-    public static ShadowFogUniforms SHADOW_AURA_FOG_UNIFORMS;
+    //public static ShaderInstance SHADOW_AURA_FOG;
+    //public static ShadowFogUniforms SHADOW_AURA_FOG_UNIFORMS;
 
     // Cylinder variant for vertical pillar auras
     public static ShaderInstance SHADOW_AURA_FOG_CYLINDER;
