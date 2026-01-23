@@ -4,7 +4,7 @@ import com.jayemceekay.shadowedhearts.Shadowedhearts;
 import com.jayemceekay.shadowedhearts.client.particle.LuminousMoteEmitters;
 import com.jayemceekay.shadowedhearts.client.particle.LuminousMoteParticle;
 import com.jayemceekay.shadowedhearts.client.render.HeldBallSnagGlowRenderer;
-import com.jayemceekay.shadowedhearts.config.ClientConfig;
+import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs;
 import com.jayemceekay.shadowedhearts.core.ModParticleTypes;
 import com.jayemceekay.shadowedhearts.util.HeldItemAnchorCache;
 import com.mojang.blaze3d.vertex.PoseStack;
@@ -14,7 +14,7 @@ import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.fml.config.ModConfig.Type;
+import net.neoforged.fml.config.ModConfig;
 import net.neoforged.neoforge.client.event.RegisterParticleProvidersEvent;
 import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
 
@@ -27,7 +27,8 @@ public final class ClientInit {
     }
 
     public static void init(ModContainer container) {
-        container.registerConfig(Type.CLIENT, ClientConfig.SPEC, "shadowedhearts/client.toml");
+        container.registerConfig(ModConfig.Type.CLIENT, ShadowedHeartsConfigs.getInstance().getClientConfig().getSpec(), "shadowedhearts/client.toml");
+
     }
 
     @SubscribeEvent

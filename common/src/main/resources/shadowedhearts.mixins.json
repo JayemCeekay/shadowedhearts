@@ -10,6 +10,7 @@
     "MixinItemInHandLayer",
     "MixinItemInHandRenderer",
     "MixinLivingEntityRenderer",
+    "MixinMinecraft",
     "MixinModelWidgetAura",
     "MixinMouseHandler",
     "MixinMoveSlotWidget",

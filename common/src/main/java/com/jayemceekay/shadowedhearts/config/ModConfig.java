@@ -128,6 +128,17 @@ public final class ModConfig implements IShadowConfig {
     }
 
     @Override
+    public boolean skipIrisWarning() {
+        return DATA.skipIrisWarning.get();
+    }
+
+    @Override
+    public void setSkipIrisWarning(boolean value) {
+        DATA.skipIrisWarning.set(value);
+        DATA.skipIrisWarning.save();
+    }
+
+    @Override
     public ModConfigSpec getSpec() {
         return SPEC;
     }
@@ -135,6 +146,7 @@ public final class ModConfig implements IShadowConfig {
     private static final class Data {
         public ModConfigSpec.DoubleValue shadowSpawnChancePercent;
         public ModConfigSpec.ConfigValue<List<? extends String>> shadowSpawnBlacklist;
+        public ModConfigSpec.BooleanValue skipIrisWarning;
 
         public final HyperModeConfig hyperMode = new HyperModeConfig();
         public final ReverseModeConfig reverseMode = new ReverseModeConfig();
@@ -189,6 +201,10 @@ public final class ModConfig implements IShadowConfig {
                     .comment("List of Pokémon species or tags that cannot spawn as Shadow Pokémon.")
                     .defineList("blacklist", List.of("#shadowedhearts:legendaries", "#shadowedhearts:mythical"), o -> o instanceof String);
             builder.pop();
+
+            skipIrisWarning = builder
+                    .comment("Whether to skip the Iris shader warning screen.")
+                    .define("skipIrisWarning", false);
 
             builder.push("modIntegrations");
             builder.push("rctmod");

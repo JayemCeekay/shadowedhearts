@@ -20,6 +20,7 @@ public final class ClientConfig implements IClientConfig {
     private static final class Data {
         public ModConfigSpec.BooleanValue enableShadowAura;
         public ModConfigSpec.BooleanValue auraScannerEnabled;
+        public ModConfigSpec.BooleanValue skipIrisWarning;
 
         private void build(ModConfigSpec.Builder builder) {
             enableShadowAura = builder
@@ -29,6 +30,10 @@ public final class ClientConfig implements IClientConfig {
             auraScannerEnabled = builder
                     .comment("Whether the Aura Scanner HUD is enabled.")
                     .define("auraScannerEnabled", true);
+
+            skipIrisWarning = builder
+                    .comment("Whether to skip the Iris shader warning screen.")
+                    .define("skipIrisWarning", false);
         }
     }
 
@@ -40,6 +45,17 @@ public final class ClientConfig implements IClientConfig {
     @Override
     public boolean auraScannerEnabled() {
         return DATA.auraScannerEnabled.get();
+    }
+
+    @Override
+    public boolean skipIrisWarning() {
+        return DATA.skipIrisWarning.get();
+    }
+
+    @Override
+    public void setSkipIrisWarning(boolean value) {
+        DATA.skipIrisWarning.set(value);
+        DATA.skipIrisWarning.save();
     }
 
     @Override
