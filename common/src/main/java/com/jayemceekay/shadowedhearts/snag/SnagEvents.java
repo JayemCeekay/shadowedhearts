@@ -109,6 +109,8 @@ public final class SnagEvents {
         CobblemonEvents.POKEMON_CAPTURED.subscribe(Priority.NORMAL, (PokemonCapturedEvent e) -> {
             if (e.getPokemon().getAspects().contains(SHAspects.SHADOW)) {
                 ModCriteriaTriggers.triggerSnagFromNpc(e.getPlayer());
+                // Remove battleClone and uncatchable properties so the Pokemon is functional for the player
+                e.getPokemon().getCustomProperties().removeIf(p -> p.asString().equals("battleClone") || p.asString().equals("uncatchable"));
             }
             return kotlin.Unit.INSTANCE;
         });
