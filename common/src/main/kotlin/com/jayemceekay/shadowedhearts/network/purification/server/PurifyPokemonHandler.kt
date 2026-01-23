@@ -4,6 +4,7 @@ import com.cobblemon.mod.common.Cobblemon
 import com.cobblemon.mod.common.api.net.ServerNetworkPacketHandler
 import com.jayemceekay.shadowedhearts.PokemonAspectUtil
 import com.jayemceekay.shadowedhearts.ShadowService
+import com.jayemceekay.shadowedhearts.network.purification.PokemonPurifiedPacket
 import com.jayemceekay.shadowedhearts.network.purification.PurifyPokemonPacket
 import com.jayemceekay.shadowedhearts.storage.purification.PurificationChamberPosition
 import com.jayemceekay.shadowedhearts.storage.purification.PurificationChamberStore
@@ -30,6 +31,11 @@ object PurifyPokemonHandler : ServerNetworkPacketHandler<PurifyPokemonPacket> {
         // Verify it's actually ready for purification (heart gauge 0)
         if (PokemonAspectUtil.getHeartGauge(pokemon) == 0F) {
             ShadowService.fullyPurify(pokemon, null)
+            PokemonPurifiedPacket(
+                purificationStoreID = packet.purificationStoreID,
+                setIndex = packet.setIndex,
+                slotIndex = 0
+            ).sendToPlayer(player)
         }
     }
 }

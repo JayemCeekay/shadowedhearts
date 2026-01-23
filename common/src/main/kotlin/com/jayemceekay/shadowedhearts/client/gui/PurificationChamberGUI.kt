@@ -33,12 +33,14 @@ import com.jayemceekay.shadowedhearts.PokemonAspectUtil
 import com.jayemceekay.shadowedhearts.ShadowGate
 import com.jayemceekay.shadowedhearts.Shadowedhearts
 import com.jayemceekay.shadowedhearts.client.gui.summary.widgets.screens.stats.features.HeartGaugeFeatureRenderer
+import com.jayemceekay.shadowedhearts.client.purification.PurificationClientMetrics
 import com.jayemceekay.shadowedhearts.client.storage.ClientPurificationStorage
 import com.jayemceekay.shadowedhearts.client.storage.ClientPurificationStorage.PurificationPosition
 import com.jayemceekay.shadowedhearts.network.purification.MovePCToPurificationPacket
 import com.jayemceekay.shadowedhearts.network.purification.MovePurificationToPCPacket
 import com.jayemceekay.shadowedhearts.network.purification.PurifyPokemonPacket
 import com.jayemceekay.shadowedhearts.network.purification.UnlinkPlayerFromPurificationChamberPacket
+import com.jayemceekay.shadowedhearts.storage.purification.PurificationMath
 import com.mojang.blaze3d.platform.InputConstants
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphics
@@ -315,14 +317,18 @@ class PurificationChamberGUI(
 
         this.purifyButton = PurificationActionButton(
             x = x + (BASE_WIDTH / 2) - 27, // WIDTH is 54, so -27 centers it
-            y = y + BASE_HEIGHT - 25,
+            y = y + BASE_HEIGHT - 21,
             labelSupplier = { Component.literal("Purify") },
             visibleSupplier = {
                 val centerPokemon = purificationStorage.get(PurificationPosition(0))
-                centerPokemon != null && PokemonAspectUtil.getHeartGauge(centerPokemon) == 0F
+                centerPokemon != null && PokemonAspectUtil.hasShadowAspect(centerPokemon) && PokemonAspectUtil.getHeartGauge(centerPokemon) == 0F
             }
         ) {
             PurifyPokemonPacket(purificationStorage.uuid, currentSet()).sendToServer()
+            /*val centerPokemon = purificationStorage.get(PurificationPosition(0))
+            if (centerPokemon != null) {
+                PokemonAspectUtil.setShadowAspect(centerPokemon, false)
+            }*/
         }
         this.addRenderableWidget(purifyButton!!)
 
@@ -836,7 +842,22 @@ class PurificationChamberGUI(
 
         super.render(context, mouseX, mouseY, partialTick)
 
+        val centerPokemon = purificationStorage.get(PurificationPosition(0))
+        if (centerPokemon != null && !PokemonAspectUtil.hasShadowAspect(centerPokemon)) {
+            drawScaledText(
+                context = context,
+                text = Component.literal("This Pokemon has been purified!"),
+                x = x + (BASE_WIDTH / 2),
+                y = y + BASE_HEIGHT - 18,
+                centered = true,
+                shadow = true,
+                scale = 0.6F
+            )
+        }
+
         if (pokemon != null) {
+
+
             val displayedItem =
                 if (showCosmeticItem) pokemon.cosmeticItem else pokemon.heldItem()
             val itemX = x + 3
@@ -865,15 +886,19 @@ class PurificationChamberGUI(
 
                 val hovered = mouseX in renderX..(renderX + barWidth) && mouseY in bottomY..(bottomY + barHeight)
                 if (hovered) {
-                    val value = max(0, PokemonAspectUtil.getHeartGaugeValue(centerPokemon))
-                    val message = when {
-                        value >= 100 -> "The door to its heart is tightly shut."
-                        value >= 80 -> "The door to its heart is starting to open."
-                        value >= 60 -> "The door to its heart is opening up."
-                        value >= 40 -> "The door to its heart is opening wider."
-                        value >= 20 -> "The door to its heart is nearly open."
-                        value >= 1 -> "The door to its heart is almost fully open."
-                        else -> "The door to its heart is about to open. Undo the final lock!"
+                    val message = if (PokemonAspectUtil.hasShadowAspect(centerPokemon)) {
+                        val value = max(0, PokemonAspectUtil.getHeartGaugeValue(centerPokemon))
+                        when {
+                            value >= 100 -> "The door to its heart is tightly shut."
+                            value >= 80 -> "The door to its heart is starting to open."
+                            value >= 60 -> "The door to its heart is opening up."
+                            value >= 40 -> "The door to its heart is opening wider."
+                            value >= 20 -> "The door to its heart is nearly open."
+                            value >= 1 -> "The door to its heart is almost fully open."
+                            else -> "The door to its heart is about to open. Undo the final lock!"
+                        }
+                    } else {
+                        "This Pokemon has been purified!"
                     }
                     com.cobblemon.mod.common.client.gui.pokedex.renderTooltip(
                         context,
@@ -915,6 +940,56 @@ class PurificationChamberGUI(
 
     override fun tick() {
         ticksElapsed++
+
+        val center = getPokemonAt(0)
+        val supports = arrayOf(
+            getPokemonAt(1),
+            getPokemonAt(2),
+            getPokemonAt(3),
+            getPokemonAt(4)
+        )
+
+        val currentSetEmpty = center == null && supports.all { it == null }
+
+        if (currentSetEmpty) {
+           /* val soundEvent = ModSounds.PURIFICATION_CHAMBER.get()
+            if (loopSound == null || loopSound!!.isStopped || loopSound!!.event != soundEvent) {
+                loopSound?.fadeOutAndStop()
+                loopSound = PurificationChamberLoopSoundInstance(soundEvent)
+                Minecraft.getInstance().soundManager.play(loopSound!!)
+            }*/
+        } else {
+            // Compute tempo/flow
+            var perfectSets = 0
+            var anySetMissingMember = false
+            for (setIdx in 0 until ClientPurificationStorage.TOTAL_SETS) {
+                val s1g = purificationStorage.getAt(setIdx, PurificationPosition(1))
+                val s2g = purificationStorage.getAt(setIdx, PurificationPosition(2))
+                val s3g = purificationStorage.getAt(setIdx, PurificationPosition(3))
+                val s4g = purificationStorage.getAt(setIdx, PurificationPosition(4))
+                val ringList = listOfNotNull(s1g, s2g, s3g, s4g)
+                if (ringList.size < 4) anySetMissingMember = true
+                if (PurificationMath.isPerfectSet(ringList)) perfectSets++
+            }
+
+            val metrics = PurificationClientMetrics.compute(center, supports, perfectSets, anySetMissingMember)
+            val tempoPct = metrics.tempoPct
+
+            /*val soundEvent = when {
+                tempoPct >= 1.0f -> ModSounds.PURIFICATION_CHAMBER_PERFECT.get()
+                tempoPct >= 0.70f -> ModSounds.PURIFICATION_CHAMBER_VERY_GOOD.get()
+                tempoPct >= 0.5f -> ModSounds.PURIFICATION_CHAMBER_GOOD.get()
+                tempoPct > 0.0f -> ModSounds.PURIFICATION_CHAMBER_BAD.get()
+                else -> ModSounds.PURIFICATION_CHAMBER.get()
+            }
+
+            if (loopSound == null || loopSound!!.isStopped || loopSound!!.event != soundEvent) {
+                loopSound?.fadeOutAndStop()
+                loopSound = PurificationChamberLoopSoundInstance(soundEvent)
+                //Minecraft.getInstance().soundManager.play(loopSound!!)
+            }*/
+        }
+
         // Animate select pointer just like PCGUI
         val delayFactor = 3
         if (ticksElapsed % (2 * delayFactor) == 0) selectPointerOffsetIncrement =
@@ -982,5 +1057,9 @@ class PurificationChamberGUI(
 
     override fun isPauseScreen() = false
 
-
+    override fun removed() {
+        //loopSound?.fadeOutAndStop()
+        //loopSound = null
+        super.removed()
+    }
 }

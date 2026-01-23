@@ -3,7 +3,6 @@ package com.jayemceekay.shadowedhearts.client.purification
 import com.cobblemon.mod.common.api.types.ElementalType
 import com.cobblemon.mod.common.pokemon.Pokemon
 import com.jayemceekay.shadowedhearts.storage.purification.PurificationMath
-import kotlin.math.ceil
 
 /**
  * Client-side helpers to compute Purification Chamber flow/tempo percentages
@@ -98,74 +97,66 @@ object PurificationClientMetrics {
     }
 
     /**
-     * Computes a tempo percent [0,1] by mapping the purification step value (without global perfect-set bonus)
-     * to a theoretical min/max range for the current ring size:
-     * - min assumes all edges NVE and center NVE (x2/3)
-     * - max assumes all edges SE and center SE (x4/3)
+     * Computes a tempo percent [0,1] based on the number of support Pokémon and their effectiveness.
+     * Mapping per design guidance:
+     * - 0: 0%
+     * - 1: 10-15%
+     * - 2: 25-35%
+     * - 3: 50-65%
+     * - 4 (non-perfect): 70-85%
+     * - 4 (perfect flow): 100%
      */
     private fun computeTempo(shadow: Pokemon?, supportsArray: Array<Pokemon?>): Float {
         val ring = supportsArray.filterNotNull()
         if (shadow == null || ring.isEmpty()) return 0f
 
-        // 1) Base by ring size
-        val base = when (ring.size) {
-            1 -> 10
-            2 -> 27
-            3 -> 49
-            else -> 96
+        val baseRange = when (ring.size) {
+            1 -> 0.10f..0.15f
+            2 -> 0.25f..0.35f
+            3 -> 0.50f..0.65f
+            else -> 0.70f..0.85f // 4 supports
         }
 
-        // 2) Edges sum from actual ring
+        // Within each tier, we vary the tempo based on clockwise flow and center matchup.
+        // For 1 Pokémon, clockwise flow is 0, so it depends only on center matchup.
+        
+        // Use the same score logic as computeFlow but without normalization to [0,1] yet.
         val edges = PurificationMath.clockwiseSupportMatchups(ring)
-        var sum = 0
+        var edgeScore = 0
         for (m in edges) {
-            when (m) {
-                PurificationMath.Matchup.SUPER_EFFECTIVE -> sum += 6
-                PurificationMath.Matchup.NOT_VERY_EFFECTIVE -> sum -= 3
-                else -> {}
+            edgeScore += when (m) {
+                PurificationMath.Matchup.SUPER_EFFECTIVE -> 3
+                PurificationMath.Matchup.NEUTRAL -> 2
+                PurificationMath.Matchup.NOT_VERY_EFFECTIVE -> 1
             }
         }
-        if (ring.size == 4) sum *= 2
-        val pre = base + sum
+        val maxEdgeScore = edges.size * 3
+        var edgePct = if (maxEdgeScore > 0) edgeScore.toFloat() / maxEdgeScore.toFloat() else 0.5f
 
-        // 3) Center vs facing support multiplier (best of shadow types vs faced defender)
-        val faceIdx = PurificationMath.facingSupportIndex(supportsArray)
-        var value = pre
-        if (faceIdx >= 0) {
-            val defTypes = pokemonTypes(supportsArray[faceIdx])
+        // Center matchup influence
+        val defTypes = pokemonTypes(supportsArray[PurificationMath.facingSupportIndex(supportsArray)])
+        if (defTypes.isNotEmpty()) {
             var best = 1.0
             for (atk in pokemonTypes(shadow)) {
                 val m = PurificationMath.effectiveness(atk, defTypes)
                 if (m > best) best = m
             }
-            value = when (PurificationMath.toMatchup(best)) {
-                PurificationMath.Matchup.SUPER_EFFECTIVE -> ceil(value * (4.0 / 3.0)).toInt()
-                PurificationMath.Matchup.NOT_VERY_EFFECTIVE -> ceil(value * (2.0 / 3.0)).toInt()
-                else -> value
+            edgePct = when (PurificationMath.toMatchup(best)) {
+                PurificationMath.Matchup.SUPER_EFFECTIVE -> (edgePct * (4.0f / 3.0f)).coerceIn(0f, 1f)
+                PurificationMath.Matchup.NOT_VERY_EFFECTIVE -> (edgePct * (2.0f / 3.0f)).coerceIn(0f, 1f)
+                else -> edgePct
             }
         }
 
-        // 4) Normalize to theoretical min/max for this ring size (ignoring perfect-set global bonuses)
-        val maxEdges = when (ring.size) {
-            1 -> +6
-            2 -> +12
-            3 -> +18
-            else -> +48 // 4 edges, doubled
-        }
-        val minEdges = when (ring.size) {
-            1 -> -3
-            2 -> -6
-            3 -> -9
-            else -> -24
-        }
-        val preMin = base + minEdges
-        val preMax = base + maxEdges
-        val minVal = ceil(preMin * (2.0 / 3.0)).toInt()
-        val maxVal = ceil(preMax * (4.0 / 3.0)).toInt()
+        // Interpolate within the range
+        var tempo = baseRange.start + (baseRange.endInclusive - baseRange.start) * edgePct
 
-        val denom = (maxVal - minVal).coerceAtLeast(1)
-        val pct = ((value - minVal).toFloat() / denom.toFloat()).coerceIn(0f, 1f)
-        return pct
+        // Special case: 4 supports + Perfect Flow = 100%
+        if (ring.size == 4 && PurificationMath.isPerfectSet(ring)) {
+            tempo = 1.0f
+        }
+
+        return tempo.coerceIn(0f, 1.0f)
     }
 
     /** Public entry: compute metrics for a set. */

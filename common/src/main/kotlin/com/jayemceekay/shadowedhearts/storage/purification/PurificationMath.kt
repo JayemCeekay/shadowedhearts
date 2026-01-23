@@ -60,7 +60,7 @@ object PurificationMath {
      * though we evaluate with both attacker types by using the more effective of the attacker's two STAB types.
      */
     fun clockwiseSupportMatchups(supports: List<Pokemon>): List<Matchup> {
-        if (supports.isEmpty()) return emptyList()
+        if (supports.size < 2) return emptyList()
         val res = ArrayList<Matchup>(supports.size)
         for (i in supports.indices) {
             val a = supports[i]

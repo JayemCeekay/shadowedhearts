@@ -2,11 +2,9 @@ package com.jayemceekay.shadowedhearts.network
 
 import com.cobblemon.mod.common.api.net.NetworkPacket
 import com.cobblemon.mod.common.net.PacketRegisterInfo
-import com.jayemceekay.shadowedhearts.client.net.storage.purification.OpenPurificationChamberHandler
-import com.jayemceekay.shadowedhearts.client.net.storage.purification.OpenPurificationChamberPacket
-import com.jayemceekay.shadowedhearts.client.net.storage.purification.PurificationChamberSyncHandler
-import com.jayemceekay.shadowedhearts.client.net.storage.purification.PurificationChamberSyncPacket
+import com.jayemceekay.shadowedhearts.client.net.storage.purification.*
 import com.jayemceekay.shadowedhearts.client.network.AuraScannerClientHandler
+import com.jayemceekay.shadowedhearts.network.purification.PokemonPurifiedPacket
 import net.minecraft.server.level.ServerPlayer
 
 /**
@@ -20,6 +18,7 @@ object ShadowedHeartsNetwork {
     val s2cPayloads: List<PacketRegisterInfo<*>> = buildList {
         add(PacketRegisterInfo(OpenPurificationChamberPacket.ID, OpenPurificationChamberPacket::decode, OpenPurificationChamberHandler))
         add(PacketRegisterInfo(PurificationChamberSyncPacket.ID, PurificationChamberSyncPacket::decode, PurificationChamberSyncHandler))
+        add(PacketRegisterInfo(PokemonPurifiedPacket.ID, PokemonPurifiedPacket::decode, PokemonPurifiedHandler))
         add(PacketRegisterInfo(AuraStatePacket.ID, AuraStatePacket::decode, AuraStateHandler))
         add(PacketRegisterInfo(AuraLifecyclePacket.ID, AuraLifecyclePacket::decode, AuraLifecycleHandler))
         add(PacketRegisterInfo(LuminousMotePacket.ID, LuminousMotePacket::decode, LuminousMoteHandler))

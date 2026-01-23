@@ -863,15 +863,19 @@ class PurificationStorageWidget(
                                     mouseY.toFloat() >= hoverY0 && mouseY.toFloat() <= hoverY1
 
                         if (hovered) {
-                            val value = kotlin.math.max(0, PokemonAspectUtil.getHeartGaugeValue(centerPokemon))
-                            val message = when {
-                                value >= 100 -> "The door to its heart is tightly shut."
-                                value >= 80 -> "The door to its heart is starting to open."
-                                value >= 60 -> "The door to its heart is opening up."
-                                value >= 40 -> "The door to its heart is opening wider."
-                                value >= 20 -> "The door to its heart is nearly open."
-                                value >= 1 -> "The door to its heart is almost fully open."
-                                else -> "The door to its heart is about to open. Undo the final lock!"
+                            val message = if (PokemonAspectUtil.hasShadowAspect(centerPokemon)) {
+                                val value = kotlin.math.max(0, PokemonAspectUtil.getHeartGaugeValue(centerPokemon))
+                                when {
+                                    value >= 100 -> "The door to its heart is tightly shut."
+                                    value >= 80 -> "The door to its heart is starting to open."
+                                    value >= 60 -> "The door to its heart is opening up."
+                                    value >= 40 -> "The door to its heart is opening wider."
+                                    value >= 20 -> "The door to its heart is nearly open."
+                                    value >= 1 -> "The door to its heart is almost fully open."
+                                    else -> "The door to its heart is about to open. Undo the final lock!"
+                                }
+                            } else {
+                                "This Pokemon has been purified!"
                             }
                             com.cobblemon.mod.common.client.gui.pokedex.renderTooltip(
                                 guiGraphics,
