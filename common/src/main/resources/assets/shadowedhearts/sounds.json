@@ -14,7 +14,7 @@
       {
         "name": "shadowedhearts:shadow_aura_loop",
         "stream": false,
-        "volume": 1.0
+        "volume": 0.9
       }
     ]
   },
@@ -23,7 +23,7 @@
     "sounds": [
       {
         "name": "shadowedhearts:shadow_aura_initial_burst",
-        "volume": 1.0
+        "volume": 0.9
       }
     ]
   },
