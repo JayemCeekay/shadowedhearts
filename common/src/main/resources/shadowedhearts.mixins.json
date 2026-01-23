@@ -50,7 +50,6 @@
     "MixinShowdownActionRequest",
     "MixinShowdownActionResponse",
     "MixinShowdownInterpreter",
-    "MixinShowdownMoveset",
     "MixinTypeIcon",
     "MixinWorldRenderer",
     "rctmod.MixinRCTModMakeBattle",
