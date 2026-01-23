@@ -60,7 +60,7 @@ public final class NPCShadowInjector {
     public static final String TAG_POOL_PREFIX = "shadowedhearts:pool/"; // + <ns>/<id>
     public static final String TAG_UNIQUE = "shadowedhearts:unique"; // avoid duplicates when injecting
     public static final String TAG_CONVERT_CHANCE_PREFIX = "shadowedhearts:convert_chance_"; // + percent 0-100
-    public static final String TAG_PRESET_PREFIX = "shadowedhearts:preset/"; // + <preset id>
+    public static final String TAG_PRESET_PREFIX = "shadowedhearts:shadow_presets/"; // + <preset id>
     public static final String TAG_LVL_ENFORCE_EVO_MIN = "shadowedhearts:lvl_enforce_evo_min";
 
     private enum Mode { APPEND, CONVERT, REPLACE }
@@ -87,7 +87,6 @@ public final class NPCShadowInjector {
                             return;
                         }
                         // Expand any preset aspects present on the NPC into their concrete lists
-
                         expandPresetAspects(entity);
                         Set<String> allTraits = new HashSet<>(entity.getTags());
                         if (entity instanceof AspectHolder holder) {
@@ -143,23 +142,36 @@ public final class NPCShadowInjector {
                 var list = ShadowAspectPresets.get(server, id);
                 if (!list.isEmpty()) {
                     toAdd.addAll(list);
+                    Shadowedhearts.LOGGER.info("Expanded aspect preset {} into {} tags", id, list.size());
+                } else {
+                    Shadowedhearts.LOGGER.warn("Aspect preset {} was empty or not found", id);
                 }
                 toRemove.add(aspect);
             }
 
-            // Also allow preset request via entity tag: shadowedhearts:preset/<presetId>
+            // Also allow preset request via entity tag: shadowedhearts:shadow_presets/<presetId>
             for (String tag : entity.getTags()) {
                 if (!tag.startsWith(TAG_PRESET_PREFIX)) continue;
                 String presetId = tag.substring(TAG_PRESET_PREFIX.length());
                 if (presetId.isBlank()) continue;
-                String presetKey = "shadowedhearts:shadow_presets/" + presetId;
-                if (!ShadowAspectPresets.isPresetKey(presetKey)) continue;
+                String presetKey = tag; // Use the tag itself as the key since it now starts with shadowedhearts:shadow_presets/
+                if (!ShadowAspectPresets.isPresetKey(presetKey)) {
+                    Shadowedhearts.LOGGER.warn("Not a valid preset key: " + presetKey);
+                    continue;
+                }
                 var id = ShadowAspectPresets.toPresetId(presetKey);
-                if (id == null) continue;
+                if (id == null) {
+                    Shadowedhearts.LOGGER.warn("Failed to convert tag to preset ID: " + tag);
+                    continue;
+                }
                 var list = ShadowAspectPresets.get(server, id);
                 if (!list.isEmpty()) {
                     toAdd.addAll(list);
+                    Shadowedhearts.LOGGER.info("Expanded preset {} into {} tags", id, list.size());
+                } else {
+                    Shadowedhearts.LOGGER.warn("Preset {} was empty or not found", id);
                 }
+                toRemove.add(tag); // Remove the tag after it's been expanded
             }
 
             if (!toRemove.isEmpty() || !toAdd.isEmpty()) {
@@ -447,9 +459,15 @@ public final class NPCShadowInjector {
         try {
             Entity e = entity;
             MinecraftServer server = entity.level().getServer();
-            if (server == null) return List.of();
+            if (server == null) {
+                Shadowedhearts.LOGGER.error("Failed to create shadow pool " + poolId + " for NPC " + entity.getUUID() + " because server is null");
+                return List.of();
+            }
             var entries = ShadowPools.get(server, poolId);
-            if (entries.isEmpty()) return List.of();
+            if (entries.isEmpty()) {
+                Shadowedhearts.LOGGER.error("Failed to create shadow pool " + poolId + " for NPC " + entity.getUUID() + " because pool is empty");
+                return List.of();
+            }
             // Seed RNG for determinism per NPC + world + battle
             Random rng = makeRng(e, battleSalt);
 
@@ -485,7 +503,9 @@ public final class NPCShadowInjector {
                 PokemonProperties copy = props.copy();
                 try {
                     if (copy.getLevel() == null || copy.getLevel() <= 0) copy.setLevel(Math.max(1, lvl.resolve()));
-                } catch (Throwable ignored) {}
+                } catch (Throwable ignored) {
+                    Shadowedhearts.LOGGER.debug("Failed to set level for shadow copy, using default level 1");
+                }
                 var created = copy.create();
                 BattlePokemon bp = BattlePokemon.Companion.safeCopyOf(created);
                 Pokemon p = bp.getEffectedPokemon();
@@ -497,6 +517,8 @@ public final class NPCShadowInjector {
             }
             return out;
         } catch (Throwable t) {
+            Shadowedhearts.LOGGER.error("Failed to create shadow pool " + poolId + " for NPC " + entity.getUUID(), t);
+            t.printStackTrace();
             return List.of();
         }
     }

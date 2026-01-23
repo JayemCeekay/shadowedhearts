@@ -38,7 +38,6 @@ public abstract class MixinRCTModMakeBattle {
 
             TrainerManager tm = RCTMod.getInstance().getTrainerManager();
             var tmd = tm.getData(mob);
-            if (mob instanceof Entity mobEntity) {
                 // Resolve trainer type and id (be defensive against API changes)
                 String typeId = null;
                 try {
@@ -68,10 +67,16 @@ public abstract class MixinRCTModMakeBattle {
                         }
                     }
                     if (section == null) {
-                        boolean listed = cfg.replace().typePresets().stream().anyMatch(s -> s.startsWith(typeIdLc + "=")) ||
+                        typePreset = cfg.replace().typePresets().stream()
+                                .filter(s -> s.startsWith(typeIdLc + "="))
+                                .map(s -> s.substring(typeIdLc.length() + 1))
+                                .findFirst().orElse(null);
+
+                        boolean listed = typePreset != null ||
                                 cfg.replace().trainerTypes().stream().anyMatch(s -> s != null && s.equalsIgnoreCase(typeIdLc));
                         boolean blocked = cfg.replace().trainerBlacklist().stream().anyMatch(s -> s != null && s.equalsIgnoreCase(typeIdLc));
                         if (listed && !blocked) section = "replace";
+                        else typePreset = null;
                     }
                 }
 
@@ -122,9 +127,9 @@ public abstract class MixinRCTModMakeBattle {
                 if (section == null) return; // nothing to do
 
                 // Apply tags to the trainer entity according to the selected section
-                ((Entity) mobEntity).addTag(NPCShadowInjector.TAG_ENABLE);
                 // Default to converting/adding a single mon unless the config's custom tags override this
                 boolean hasCount = false;
+                boolean hasPreset = false;
 
                 // Re-resolve chosen trainer tags/presets from raw strings if specific trainer matched
                 if (trainerIdLc != null) {
@@ -139,16 +144,24 @@ public abstract class MixinRCTModMakeBattle {
                     for (String tRaw : rawTrainers) {
                         String[] parts = tRaw.split(";");
                         if (parts.length >= 1 && trainerIdLc.equalsIgnoreCase(parts[0])) {
-                            if (parts.length >= 2 && !parts[1].isBlank()) {
-                                mobEntity.addTag(NPCShadowInjector.TAG_PRESET_PREFIX + parts[1]);
-                                hasCount = true;
-                            }
+                                if (parts.length >= 2 && !parts[1].isBlank()) {
+                                    String preset = parts[1];
+                                    if (!preset.contains(":")) {
+                                        preset = "shadowedhearts:" + preset;
+                                    }
+
+                                    ((Entity)mob).addTag(NPCShadowInjector.TAG_PRESET_PREFIX + preset);
+                                    hasPreset = true;
+                                    hasCount = true;
+                                }
                             if (parts.length >= 3 && !parts[2].isBlank()) {
                                 for (String tag : parts[2].split(",")) {
                                     if (!tag.isBlank()) {
-                                        mobEntity.addTag(tag);
+                                        ((Entity)mob).addTag(tag);
                                         if (tag.startsWith(NPCShadowInjector.TAG_COUNT_PREFIX))
                                             hasCount = true;
+                                        if (tag.startsWith(NPCShadowInjector.TAG_PRESET_PREFIX))
+                                            hasPreset = true;
                                     }
                                 }
                             }
@@ -158,27 +171,31 @@ public abstract class MixinRCTModMakeBattle {
                 }
 
                 if (!hasCount && typePreset != null) {
-                    mobEntity.addTag(NPCShadowInjector.TAG_PRESET_PREFIX + typePreset);
+                    ((Entity)mob).addTag(NPCShadowInjector.TAG_PRESET_PREFIX + typePreset);
+                    hasPreset = true;
                     hasCount = true;
                 }
 
-                if (!hasCount) {
-                    mobEntity.addTag(NPCShadowInjector.TAG_COUNT_PREFIX + 1);
-                }
+                if (!hasPreset) {
+                    ((Entity)mob).addTag(NPCShadowInjector.TAG_ENABLE);
 
-                // Ensure mode tag is present based on the section
-                switch (section) {
-                    case "append" -> {
-                        mobEntity.addTag(NPCShadowInjector.TAG_MODE_APPEND);
+                    if (!hasCount) {
+                        ((Entity)mob).addTag(NPCShadowInjector.TAG_COUNT_PREFIX + 1);
                     }
-                    case "replace" -> {
-                        mobEntity.addTag(NPCShadowInjector.TAG_MODE_REPLACE);
-                    }
-                    default -> {
-                        Shadowedhearts.LOGGER.info("RCT Trainer Battle: defaulting to convert");
+
+                    // Ensure mode tag is present based on the section
+                    switch (section) {
+                        case "append" -> {
+                            ((Entity)mob).addTag(NPCShadowInjector.TAG_MODE_APPEND);
+                        }
+                        case "replace" -> {
+                            ((Entity)mob).addTag(NPCShadowInjector.TAG_MODE_REPLACE);
+                        }
+                        default -> {
+                            Shadowedhearts.LOGGER.info("RCT Trainer Battle: defaulting to convert");
+                        }
                     }
                 }
-            }
         } catch (Throwable ignored) {
             ignored.printStackTrace();
             // Be fail-safe: never block battles if anything goes wrong here.
