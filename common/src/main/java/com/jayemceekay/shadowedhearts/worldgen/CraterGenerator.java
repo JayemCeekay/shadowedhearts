@@ -10,6 +10,8 @@ import net.minecraft.world.level.LevelAccessor;
 import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.levelgen.Heightmap;
+import net.minecraft.world.level.material.Fluids;
 
 import java.util.Random;
 
@@ -69,7 +71,13 @@ public class CraterGenerator {
                         if (yOffset <= 0) {
                             BlockState currentState = safeGetBlockState(level, pos);
                             if (currentState.getFluidState().isEmpty()) {
-                                safeSetBlock(level, pos, Blocks.AIR.defaultBlockState(), 3);
+                                if (pos.getY() < level.getHeight(Heightmap.Types.OCEAN_FLOOR, pos.getX(), pos.getZ())) {
+                                    safeSetBlock(level, pos, Blocks.WATER.defaultBlockState(), 3);
+                                } else {
+                                    safeSetBlock(level, pos, Blocks.AIR.defaultBlockState(), 3);
+                                }
+                            } else {
+                                level.scheduleTick(pos, Fluids.WATER, Fluids.WATER.getTickDelay(level));
                             }
 
                             // Clear terrain above following the impact angle
@@ -96,7 +104,13 @@ public class CraterGenerator {
                                         }
 
                                         if (!stateAbove.isAir() && stateAbove.getFluidState().isEmpty()) {
-                                            safeSetBlock(level, abovePos, Blocks.AIR.defaultBlockState(), 3);
+                                            if (abovePos.getY() < level.getHeight(Heightmap.Types.OCEAN_FLOOR, abovePos.getX(), abovePos.getZ())) {
+                                                safeSetBlock(level, abovePos, Blocks.WATER.defaultBlockState(), 3);
+                                            } else {
+                                                safeSetBlock(level, abovePos, Blocks.AIR.defaultBlockState(), 3);
+                                            }
+                                        } else if (!stateAbove.getFluidState().isEmpty()) {
+                                            level.scheduleTick(abovePos, Fluids.WATER, Fluids.WATER.getTickDelay(level));
                                         }
                                     }
                                 }
@@ -119,6 +133,8 @@ public class CraterGenerator {
                                     BlockState currentState = safeGetBlockState(level, pos);
                                     if (currentState.getFluidState().isEmpty() && safeGetBlockState(level, below).isSolid()) {
                                         safeSetBlock(level, pos, RandomSource.create((long) x * 7 + (long) z * 23).nextBoolean() ? Blocks.COARSE_DIRT.defaultBlockState() : Blocks.GRAVEL.defaultBlockState(), 3);
+                                    } else if (!currentState.getFluidState().isEmpty()) {
+                                        level.scheduleTick(pos, Fluids.WATER, Fluids.WATER.getTickDelay(level));
                                     }
                                 }
                             }
@@ -172,6 +188,8 @@ public class CraterGenerator {
                         BlockState currentState = safeGetBlockState(level, pos);
                         if (currentState.getFluidState().isEmpty()) {
                             safeSetBlock(level, pos, coreBlock, 3);
+                        } else {
+                            level.scheduleTick(pos, Fluids.WATER, Fluids.WATER.getTickDelay(level));
                         }
                     }
                 }
