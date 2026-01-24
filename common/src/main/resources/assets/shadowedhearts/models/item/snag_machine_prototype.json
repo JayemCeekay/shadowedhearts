@@ -66,8 +66,8 @@
 			"translation": [-3.25, -1.75, -4]
 		},
 		"thirdperson_lefthand": {
-			"rotation": [90, -180, 0],
-			"translation": [-3.25, -1.75, -4]
+			"rotation": [90, 0, 0],
+			"translation": [-6.25, -1.75, -4]
 		},
 		"firstperson_righthand": {
 			"rotation": [0, 45, 0],
