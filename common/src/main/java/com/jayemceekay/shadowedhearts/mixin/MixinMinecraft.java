@@ -24,7 +24,7 @@ public class MixinMinecraft {
     private void shadowedhearts$onSetScreen(Screen screen, CallbackInfo ci) {
         if (screen instanceof TitleScreen && !shadowedhearts$checkedIris) {
             shadowedhearts$checkedIris = true;
-            if (ShadowedHeartsConfigs.getInstance().getClientConfig().skipIrisWarning() || ShadowedHeartsConfigs.getInstance().getShadowConfig().skipIrisWarning()) {
+            if (ShadowedHeartsConfigs.getInstance().getClientConfig().skipIrisWarning()) {
                 return;
             }
 

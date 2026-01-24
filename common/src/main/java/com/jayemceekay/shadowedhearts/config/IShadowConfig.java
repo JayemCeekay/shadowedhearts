@@ -45,9 +45,6 @@ public interface IShadowConfig extends IModConfig {
 
     IWorldAlterationConfig worldAlteration();
 
-    default boolean skipIrisWarning() { return false; }
-    void setSkipIrisWarning(boolean value);
-
     interface IRCTSection {
         List<? extends String> trainerTypes();
         List<? extends String> typePresets();

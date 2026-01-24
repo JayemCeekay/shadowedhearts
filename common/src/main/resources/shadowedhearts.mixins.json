@@ -40,6 +40,7 @@
     "MixinPokeBallItem",
     "MixinPokemon",
     "MixinPokemonEntity",
+    "MixinRandomSpreadStructurePlacement",
     "MixinRequestInstruction",
     "MixinRequestMoveSwapHandler",
     "MixinShowdownActionRequest",

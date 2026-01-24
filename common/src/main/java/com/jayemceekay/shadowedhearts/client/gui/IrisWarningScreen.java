@@ -46,7 +46,6 @@ public class IrisWarningScreen extends Screen {
 
         this.addRenderableWidget(Button.builder(Component.literal("Don't ask me again"), button -> {
             ShadowedHeartsConfigs.getInstance().getClientConfig().setSkipIrisWarning(true);
-            ShadowedHeartsConfigs.getInstance().getShadowConfig().setSkipIrisWarning(true);
             this.minecraft.setScreen(new TitleScreen());
         }).bounds(this.width / 2 - buttonWidth / 2, startY + 48, buttonWidth, 20).build());
     }

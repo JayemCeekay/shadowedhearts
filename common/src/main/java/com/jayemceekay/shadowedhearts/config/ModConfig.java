@@ -128,17 +128,6 @@ public final class ModConfig implements IShadowConfig {
     }
 
     @Override
-    public boolean skipIrisWarning() {
-        return DATA.skipIrisWarning.get();
-    }
-
-    @Override
-    public void setSkipIrisWarning(boolean value) {
-        DATA.skipIrisWarning.set(value);
-        DATA.skipIrisWarning.save();
-    }
-
-    @Override
     public ModConfigSpec getSpec() {
         return SPEC;
     }
@@ -146,7 +135,6 @@ public final class ModConfig implements IShadowConfig {
     private static final class Data {
         public ModConfigSpec.DoubleValue shadowSpawnChancePercent;
         public ModConfigSpec.ConfigValue<List<? extends String>> shadowSpawnBlacklist;
-        public ModConfigSpec.BooleanValue skipIrisWarning;
 
         public final HyperModeConfig hyperMode = new HyperModeConfig();
         public final ReverseModeConfig reverseMode = new ReverseModeConfig();
@@ -201,10 +189,6 @@ public final class ModConfig implements IShadowConfig {
                     .comment("List of Pokémon species or tags that cannot spawn as Shadow Pokémon.")
                     .defineList("blacklist", List.of("#shadowedhearts:legendaries", "#shadowedhearts:mythical"), o -> o instanceof String);
             builder.pop();
-            builder.comment("");
-            skipIrisWarning = builder
-                    .comment("Whether to skip the Iris shader warning screen.")
-                    .define("skipIrisWarning", false);
 
             builder.push("modIntegrations");
             builder.push("rctmod");
@@ -241,6 +225,8 @@ public final class ModConfig implements IShadowConfig {
         public ModConfigSpec.DoubleValue meteoroidShadowTransformationExposureDecay;
         public ModConfigSpec.DoubleValue meteoroidShadowSpawnChanceMultiplier;
         public ModConfigSpec.BooleanValue meteoroidWorldGenEnabled;
+        public ModConfigSpec.IntValue meteoroidSpacing;
+        public ModConfigSpec.IntValue meteoroidSeparation;
         public ModConfigSpec.ConfigValue<List<? extends String>> meteoroidBiomeBlacklist;
         public ModConfigSpec.ConfigValue<List<? extends String>> meteoroidBiomeWhitelist;
 
@@ -332,6 +318,14 @@ public final class ModConfig implements IShadowConfig {
             meteoroidWorldGenEnabled = builder
                     .comment("Whether shadowfall meteoroids and craters are placed in the world during chunk generation.")
                     .define("meteoroidWorldGenEnabled", true);
+            builder.comment("");
+            meteoroidSpacing = builder
+                    .comment("Average distance (in chunks) between meteoroid structure placement attempts.")
+                    .defineInRange("meteoroidSpacing", 26, 0, 4096);
+            builder.comment("");
+            meteoroidSeparation = builder
+                    .comment("Minimum distance (in chunks) between meteoroid structure placement attempts. Must be less than spacing.")
+                    .defineInRange("meteoroidSeparation", 11, 0, 4096);
             builder.comment("");
             meteoroidBiomeBlacklist = builder
                     .comment("A list of biomes where shadowfall meteoroids cannot impact. Biome Tags, such as #minecraft:is_forest are also acceptable.")
@@ -450,6 +444,16 @@ public final class ModConfig implements IShadowConfig {
         @Override
         public boolean meteoroidWorldGenEnabled() {
             return meteoroidWorldGenEnabled.get();
+        }
+
+        @Override
+        public int meteoroidSpacing() {
+            return meteoroidSpacing.get();
+        }
+
+        @Override
+        public int meteoroidSeparation() {
+            return meteoroidSeparation.get();
         }
 
         @Override
