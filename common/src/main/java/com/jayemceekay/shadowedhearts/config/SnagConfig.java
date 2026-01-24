@@ -126,68 +126,68 @@ public final class SnagConfig implements ISnagConfig {
             energyPerAttempt = builder
                     .comment("The amount of energy consumed by the Snag Machine for each snag attempt.")
                     .defineInRange("energy_per_attempt", 50, 0, 1000);
-            builder.comment("");
+            
             toggleCooldownTicks = builder
                     .comment("Cooldown in ticks (20 ticks = 1 second) between toggling the Snag Machine on or off.")
                     .defineInRange("toggle_cooldown_ticks", 20, 0, 1200);
-            builder.comment("");
+            
 
             builder.push("recharge");
             rechargeOnVictory = builder
                     .comment("If true, the Snag Machine recharges energy when the player wins a battle.")
                     .define("on_victory", true);
-            builder.comment("");
+            
             rechargeInPvp = builder
                     .comment("If true, the Snag Machine recharges energy when the player wins a PvP battle.")
                     .define("in_pvp", false);
-            builder.comment("");
+            
             rechargeBase = builder
                     .comment("The base amount of energy recharged on victory.")
                     .defineInRange("base", 10, 0, 1000);
-            builder.comment("");
+            
             rechargePerLevel = builder
                     .comment("Additional energy recharged per level of the defeated Pokémon.")
                     .defineInRange("per_level", 0.25, 0.0, 100.0);
-            builder.comment("");
+            
             rechargePerNpc = builder
                     .comment("Additional energy recharged per Pokémon in the NPC's party.")
                     .defineInRange("per_npc", 3, 0, 100);
-            builder.comment("");
+            
             rechargeMin = builder
                     .comment("The minimum energy recharged on victory.")
                     .defineInRange("min", 5, 0, 1000);
-            builder.comment("");
+            
             rechargeMax = builder
                     .comment("The maximum energy recharged on victory.")
                     .defineInRange("max", 15, 0, 1000);
             builder.pop();
-            builder.comment("");
+            
 
             builder.push("aura_reader_recharge");
             auraReaderRechargeOnVictory = builder
                     .comment("If true, the Aura Reader recharges energy when the player wins a battle.")
                     .define("on_victory", true);
-            builder.comment("");
+            
             auraReaderRechargeInPvp = builder
                     .comment("If true, the Aura Reader recharges energy when the player wins a PvP battle.")
                     .define("in_pvp", false);
-            builder.comment("");
+            
             auraReaderRechargeBase = builder
                     .comment("The base amount of energy recharged for the Aura Reader on victory.")
                     .defineInRange("base", 200, 0, 12000);
-            builder.comment("");
+            
             auraReaderRechargePerLevel = builder
                     .comment("Additional energy recharged for the Aura Reader per level of the defeated Pokémon.")
                     .defineInRange("per_level", 5.0, 0.0, 1000.0);
-            builder.comment("");
+            
             auraReaderRechargePerNpc = builder
                     .comment("Additional energy recharged for the Aura Reader per Pokémon in the NPC's party.")
                     .defineInRange("per_npc", 60, 0, 12000);
-            builder.comment("");
+            
             auraReaderRechargeMin = builder
                     .comment("The minimum energy recharged for the Aura Reader on victory.")
                     .defineInRange("min", 100, 0, 12000);
-            builder.comment("");
+            
             auraReaderRechargeMax = builder
                     .comment("The maximum energy recharged for the Aura Reader on victory.")
                     .defineInRange("max", 3000, 0, 12000);

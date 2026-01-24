@@ -26,12 +26,12 @@ public final class ClientConfig implements IClientConfig {
             enableShadowAura = builder
                     .comment("Master toggle for client-side Shadow aura rendering.")
                     .define("enableShadowAura", true);
-            builder.comment("");
+            
 
             auraScannerEnabled = builder
                     .comment("Whether the Aura Scanner HUD is enabled.")
                     .define("auraScannerEnabled", true);
-            builder.comment("");
+            
 
             skipIrisWarning = builder
                     .comment("Whether to skip the Iris shader warning screen.")

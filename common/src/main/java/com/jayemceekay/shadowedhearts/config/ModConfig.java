@@ -184,7 +184,7 @@ public final class ModConfig implements IShadowConfig {
             shadowSpawnChancePercent = builder
                     .comment("The percentage chance (0.0-100.0) for a wild Pokémon to spawn as a Shadow Pokémon.")
                     .defineInRange("chancePercent", 0.78125, 0.0, 100.0);
-            builder.comment("");
+            
             shadowSpawnBlacklist = builder
                     .comment("List of Pokémon species or tags that cannot spawn as Shadow Pokémon.")
                     .defineList("blacklist", List.of("#shadowedhearts:legendaries", "#shadowedhearts:mythical"), o -> o instanceof String);
@@ -234,103 +234,103 @@ public final class ModConfig implements IShadowConfig {
             shadowfallActive = builder
                     .comment("Whether the Shadowfall event is active, enabling meteoroid impacts.")
                     .define("shadowfallActive", false);
-            builder.comment("");
+            
             impactChanceOneInTicks = builder
                     .comment("The average number of ticks between impact attempts. (e.g., 12000 ticks = 10 minutes)")
                     .defineInRange("impactChanceOneInTicks", 12000, 1, Integer.MAX_VALUE);
-            builder.comment("");
+            
             civilizedHeatmapThreshold = builder
                     .comment("Chunks with activity heatmap above this value are considered 'civilized' and protected from impacts.")
                     .defineInRange("civilizedHeatmapThreshold", 100, 0, Integer.MAX_VALUE);
-            builder.comment("");
+            
             heatmapDecayTicks = builder
                     .comment("How often (in ticks) the player activity heatmap decays.")
                     .defineInRange("heatmapDecayTicks", 1200, 1, Integer.MAX_VALUE);
-            builder.comment("");
+            
             heatmapDecayAmount = builder
                     .comment("The amount of activity that decays from each chunk every decay cycle.")
                     .defineInRange("heatmapDecayAmount", 1.0, 0.0, 1000.0);
-            builder.comment("");
+            
             minImpactDistanceToPlayer = builder
                     .comment("Minimum distance (in blocks) from any player for an impact to occur.")
                     .defineInRange("minImpactDistanceToPlayer", 64, 0, Integer.MAX_VALUE);
-            builder.comment("");
+            
             maxImpactDistanceToPlayer = builder
                     .comment("Maximum distance (in blocks) from a player to consider for an impact.")
                     .defineInRange("maxImpactDistanceToPlayer", 256, 1, Integer.MAX_VALUE);
-            builder.comment("");
+            
             minImpactDistanceToStructures = builder
                     .comment("Minimum distance (in blocks) from any generated structures for an impact to occur.")
                     .defineInRange("minImpactDistanceToStructures", 64, 0, Integer.MAX_VALUE);
-            builder.comment("");
+            
             minImpactDistanceToSpawn = builder
                     .comment("Minimum distance (in blocks) from the world spawn point for an impact to occur.")
                     .defineInRange("minImpactDistanceToSpawn", 128, 0, Integer.MAX_VALUE);
-            builder.comment("");
+            
             minCraterRadius = builder
                     .comment("Minimum radius of generated craters.")
                     .defineInRange("minCraterRadius", 8, 1, 100);
-            builder.comment("");
+            
             maxCraterRadius = builder
                     .comment("Maximum radius of generated craters.")
                     .defineInRange("maxCraterRadius", 16, 1, 100);
-            builder.comment("");
+            
             heatmapPresenceRadius = builder
                     .comment("Radius (in chunks) around players where activity heatmap is increased.")
                     .defineInRange("heatmapPresenceRadius", 2, 0, 16);
-            builder.comment("");
+            
             heatmapFlushIntervalTicks = builder
                     .comment("How often (in ticks) the activity heatmap is flushed to disk.")
                     .defineInRange("heatmapFlushIntervalTicks", 1200, 1, Integer.MAX_VALUE);
-            builder.comment("");
+            
             meteoroidImpactBroadcastRadius = builder
                     .comment("Radius (in blocks) within which players will receive a message and hear a sound when a meteoroid impacts.")
                     .defineInRange("meteoroidImpactBroadcastRadius", 256, 0, Integer.MAX_VALUE);
-            builder.comment("");
+            
             meteoroidShadowTransformationEnabled = builder
                     .comment("Whether wild Pokemon near shadowfall meteoroids can become Shadow Pokemon over time.")
                     .define("meteoroidShadowTransformationEnabled", true);
-            builder.comment("");
+            
             meteoroidShadowTransformationRadius = builder
                     .comment("Radius around meteoroids to check for wild Pokemon.")
                     .defineInRange("meteoroidShadowTransformationRadius", 16, 1, 64);
-            builder.comment("");
+            
             meteoroidShadowTransformationCheckIntervalTicks = builder
                     .comment("How often (in ticks) to check for wild Pokemon near meteoroids.")
                     .defineInRange("meteoroidShadowTransformationCheckIntervalTicks", 100, 20, 12000);
-            builder.comment("");
+            
             meteoroidShadowTransformationChancePerInterval = builder
                     .comment("The base chance per check interval for a wild Pokemon near a meteoroid to become a Shadow Pokemon.")
                     .defineInRange("meteoroidShadowTransformationChancePerInterval", 0.05, 0.0, 1.0);
-            builder.comment("");
+            
             meteoroidShadowTransformationExposureIncrease = builder
                     .comment("The amount of exposure a wild Pokemon gains per check interval when near a meteoroid.")
                     .defineInRange("meteoroidShadowTransformationExposureIncrease", 1.0, 0.0, 100.0);
-            builder.comment("");
+            
             meteoroidShadowTransformationExposureDecay = builder
                     .comment("The amount of exposure a wild Pokemon loses per check interval when NOT near a meteoroid.")
                     .defineInRange("meteoroidShadowTransformationExposureDecay", 0.5, 0.0, 100.0);
-            builder.comment("");
+            
             meteoroidShadowSpawnChanceMultiplier = builder
                     .comment("The multiplier applied to the base shadow spawn chance when a Pokemon spawns near a meteoroid.")
                     .defineInRange("meteoroidShadowSpawnChanceMultiplier", 5.0, 0.0, 100.0);
-            builder.comment("");
+            
             meteoroidWorldGenEnabled = builder
                     .comment("Whether shadowfall meteoroids and craters are placed in the world during chunk generation.")
                     .define("meteoroidWorldGenEnabled", true);
-            builder.comment("");
+            
             meteoroidSpacing = builder
                     .comment("Average distance (in chunks) between meteoroid structure placement attempts.")
                     .defineInRange("meteoroidSpacing", 26, 0, 4096);
-            builder.comment("");
+            
             meteoroidSeparation = builder
                     .comment("Minimum distance (in chunks) between meteoroid structure placement attempts. Must be less than spacing.")
                     .defineInRange("meteoroidSeparation", 11, 0, 4096);
-            builder.comment("");
+            
             meteoroidBiomeBlacklist = builder
                     .comment("A list of biomes where shadowfall meteoroids cannot impact. Biome Tags, such as #minecraft:is_forest are also acceptable.")
                     .defineList("meteoroidBiomeBlacklist", Collections.emptyList(), o -> o instanceof String);
-            builder.comment("");
+            
             meteoroidBiomeWhitelist = builder
                     .comment("A list of biomes where shadowfall meteoroids can impact. If not empty, only these biomes will be allowed.  Biome Tags, such as #minecraft:is_forest are also acceptable.")
                     .defineList("meteoroidBiomeWhitelist", Collections.emptyList(), o -> o instanceof String);
@@ -506,11 +506,11 @@ public final class ModConfig implements IShadowConfig {
             reducesHeartGauge = builder
                     .comment("If true, the Call button in battle reduces the Heart Gauge of Shadow Pokémon when snapping them out of Hyper Mode or Reverse Mode.")
                     .define("reducesHeartGauge", true);
-            builder.comment("");
+            
             accuracyBoost = builder
                     .comment("If true, the Call button provides an accuracy boost to the Pokémon if they are not in Hyper Mode or Reverse Mode.")
                     .define("accuracyBoost", true);
-            builder.comment("");
+            
             removeSleep = builder
                     .comment("If true, the Call button can wake up a sleeping Pokémon.")
                     .define("removeSleep", true);
@@ -525,7 +525,7 @@ public final class ModConfig implements IShadowConfig {
             cooldownSeconds = builder
                     .comment("Cooldown in seconds between using Scent items on a Pokémon.")
                     .defineInRange("cooldownSeconds", 300, 0, Integer.MAX_VALUE);
-            builder.comment("");
+            
             expandedSystemEnabled = builder
                     .comment("If true, the expanded scent system with more scents and nature affinities is enabled.")
                     .define("expandedSystemEnabled", true);
@@ -541,11 +541,11 @@ public final class ModConfig implements IShadowConfig {
             superEffectiveEnabled = builder
                     .comment("If true, Shadow moves are super effective against non-Shadow Pokémon.")
                     .define("superEffectiveEnabled", true);
-            builder.comment("");
+            
             replaceCount = builder
                     .comment("How many moves to replace with Shadow moves. Supports single values (e.g. '1') or ranges (e.g. '1-3').")
                     .define("replaceCount", "1");
-            builder.comment("");
+            
             onlyShadowRush = builder
                     .comment("If true, only 'Shadow Rush' will be assigned, even if replaceCount > 1.")
                     .define("onlyShadowRush", false);
@@ -560,7 +560,7 @@ public final class ModConfig implements IShadowConfig {
             auraScannerShadowRange = builder
                     .comment("The range (in blocks) at which the Aura Scanner can detect Shadow Pokemon.")
                     .defineInRange("auraScannerShadowRange", 128, 1, 512);
-            builder.comment("");
+            
             auraScannerMeteoroidRange = builder
                     .comment("The range (in blocks) at which the Aura Scanner can detect Shadowfall meteoroids.")
                     .defineInRange("auraScannerMeteoroidRange", 256, 1, 512);
@@ -588,17 +588,17 @@ public final class ModConfig implements IShadowConfig {
             enabled = builder
                     .comment("Enables integration with Radical Cobblemon Trainers.")
                     .define("enabled", Platform.isModLoaded("rctmod"));
-            builder.comment("");
+            
             builder.push("append");
             append = new RCTSection();
             append.build(builder);
             builder.pop();
-            builder.comment("");
+            
             builder.push("convert");
             convert = new RCTSection();
             convert.build(builder);
             builder.pop();
-            builder.comment("");
+            
             builder.push("replace");
             replace = new RCTSection(true);
             replace.build(builder);
@@ -628,17 +628,17 @@ public final class ModConfig implements IShadowConfig {
                     .defineList("trainerTypes",
                     isDefaultReplace ? List.of("team_rocket", "team_galactic", "team_shadow") : List.of("normal"),
                     o -> o instanceof String);
-            builder.comment("");
+            
             typePresets = builder
                     .comment("Format: type=presetId. Mapping of trainer types to their respective Shadow Pokémon presets.")
                     .defineList("typePresets",
                             isDefaultReplace ? List.of("team_rocket=shadowedhearts/team_rocket", "team_galactic=shadowedhearts/team_galactic", "team_shadow=shadowedhearts/team_shadow") : List.of("normal=shadowedhearts/normal_20"),
                             o -> o instanceof String && ((String) o).contains("="));
-            builder.comment("");
+            
             trainerBlacklist = builder
                     .comment("List of specific trainer IDs that should be excluded from Shadow Pokémon injection.")
                     .defineList("trainerBlacklist", Collections.emptyList(), o -> o instanceof String);
-            builder.comment("");
+            
             trainers = builder
                     .comment("Format: id;preset;tag1,tag2... Specific trainer definitions with presets and optional tags.")
                     .defineList("trainers",
