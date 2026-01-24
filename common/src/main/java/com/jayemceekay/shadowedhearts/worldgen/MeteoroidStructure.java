@@ -1,5 +1,6 @@
 package com.jayemceekay.shadowedhearts.worldgen;
 
+import com.jayemceekay.shadowedhearts.config.IWorldAlterationConfig;
 import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs;
 import com.mojang.serialization.MapCodec;
 import net.minecraft.core.BlockPos;
@@ -20,13 +21,27 @@ public class MeteoroidStructure extends Structure {
 
     @Override
     public Optional<Structure.GenerationStub> findGenerationPoint(Structure.GenerationContext context) {
-        if (!ShadowedHeartsConfigs.getInstance().getShadowConfig().worldAlteration().meteoroidWorldGenEnabled()) {
+        IWorldAlterationConfig config = ShadowedHeartsConfigs.getInstance().getShadowConfig().worldAlteration();
+        if (!config.meteoroidWorldGenEnabled()) {
             return Optional.empty();
         }
 
         ChunkPos chunkPos = context.chunkPos();
         int x = chunkPos.getMiddleBlockX();
         int z = chunkPos.getMiddleBlockZ();
+
+        net.minecraft.core.Holder<net.minecraft.world.level.biome.Biome> biome = context.biomeSource().getNoiseBiome(x >> 2, context.chunkGenerator().getMinY() >> 2, z >> 2, context.randomState().sampler());
+        net.minecraft.resources.ResourceLocation biomeLocation = context.registryAccess().registryOrThrow(net.minecraft.core.registries.Registries.BIOME).getKey(biome.value());
+        if (biomeLocation != null) {
+            String biomeId = biomeLocation.toString();
+            if (!config.meteoroidBiomeWhitelist().isEmpty() && !config.meteoroidBiomeWhitelist().contains(biomeId)) {
+                return Optional.empty();
+            }
+            if (config.meteoroidBiomeBlacklist().contains(biomeId)) {
+                return Optional.empty();
+            }
+        }
+
         int y = context.chunkGenerator().getFirstOccupiedHeight(x, z, Heightmap.Types.OCEAN_FLOOR_WG, context.heightAccessor(), context.randomState());
 
         BlockPos pos = new BlockPos(x, y, z);

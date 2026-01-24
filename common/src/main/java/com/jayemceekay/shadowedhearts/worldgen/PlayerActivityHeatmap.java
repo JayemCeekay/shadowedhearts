@@ -1,37 +1,39 @@
 package com.jayemceekay.shadowedhearts.worldgen;
 
-import com.google.gson.GsonBuilder;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
+import com.jayemceekay.shadowedhearts.Shadowedhearts;
 import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs;
 import dev.architectury.event.EventResult;
 import dev.architectury.event.events.common.BlockEvent;
 import dev.architectury.event.events.common.InteractionEvent;
 import dev.architectury.event.events.common.LifecycleEvent;
 import dev.architectury.event.events.common.TickEvent;
+import it.unimi.dsi.fastutil.longs.Long2FloatMap;
+import it.unimi.dsi.fastutil.longs.Long2FloatOpenHashMap;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.storage.LevelResource;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.sql.*;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class PlayerActivityHeatmap {
-    private static final Map<ResourceKey<Level>, Map<ChunkPos, Double>> HEATMAP = new ConcurrentHashMap<>();
+    private static final Map<ResourceKey<Level>, Long2FloatOpenHashMap> HEATMAPS = new ConcurrentHashMap<>();
+    private static final Map<ResourceKey<Level>, Long2FloatOpenHashMap> DIRTY_ENTRIES = new ConcurrentHashMap<>();
     private static int decayTimer = 0;
+    private static int flushTimer = 0;
 
     public static void init() {
-        load();
+        LifecycleEvent.SERVER_STARTED.register(server -> {
+            loadAll(server);
+        });
 
         TickEvent.SERVER_LEVEL_POST.register(level -> {
             if (level instanceof ServerLevel serverLevel) {
@@ -40,7 +42,6 @@ public class PlayerActivityHeatmap {
                 if (++decayTimer >= decayTicks) {
                     decayTimer = 0;
                     decay(serverLevel);
-                    save();
                 }
 
                 // Presence activity
@@ -52,121 +53,168 @@ public class PlayerActivityHeatmap {
                             double distance = Math.sqrt(dx * dx + dz * dz);
                             if (distance > range) continue;
 
-                            double amount = 0.1 * (1.0 - (distance / (range + 1)));
+                            float amount = (float) (0.1 * (1.0 - (distance / (range + 1))));
                             if (amount > 0) {
-                                addActivity(serverLevel, new ChunkPos(center.x + dx, center.z + dz), amount);
+                                addActivity(serverLevel, center.x + dx, center.z + dz, amount);
                             }
                         }
                     }
+                }
+
+                if (++flushTimer >= ShadowedHeartsConfigs.getInstance().getShadowConfig().worldAlteration().heatmapFlushIntervalTicks()) {
+                    flushTimer = 0;
+                    flushDirty(serverLevel.getServer());
                 }
             }
         });
 
         BlockEvent.PLACE.register((level, pos, state, entity) -> {
             if (level instanceof ServerLevel serverLevel) {
-                addActivity(serverLevel, new ChunkPos(pos), 1.0);
+                addActivity(serverLevel, pos.getX() >> 4, pos.getZ() >> 4, 1.0f);
             }
             return EventResult.pass();
         });
 
         BlockEvent.BREAK.register((level, pos, state, player, xp) -> {
             if (level instanceof ServerLevel serverLevel) {
-                addActivity(serverLevel, new ChunkPos(pos), 1.0);
+                addActivity(serverLevel, pos.getX() >> 4, pos.getZ() >> 4, 1.0f);
             }
             return EventResult.pass();
         });
 
         InteractionEvent.RIGHT_CLICK_BLOCK.register((player, hand, pos, direction) -> {
             if (player instanceof ServerPlayer sp && sp.level() instanceof ServerLevel serverLevel) {
-                addActivity(serverLevel, new ChunkPos(pos), 0.5);
+                addActivity(serverLevel, pos.getX() >> 4, pos.getZ() >> 4, 0.5f);
             }
             return EventResult.pass();
         });
 
-        LifecycleEvent.SERVER_STOPPING.register(server -> save());
+        LifecycleEvent.SERVER_STOPPING.register(server -> {
+            flushDirty(server);
+        });
     }
 
-    public static void addActivity(ServerLevel level, ChunkPos pos, double amount) {
-        HEATMAP.computeIfAbsent(level.dimension(), k -> new ConcurrentHashMap<>())
-                .merge(pos, amount, Double::sum);
+    private static long packPos(int x, int z) {
+        return ChunkPos.asLong(x, z);
+    }
+
+    public static void addActivity(ServerLevel level, int chunkX, int chunkZ, float amount) {
+        long pos = packPos(chunkX, chunkZ);
+        Long2FloatOpenHashMap map = HEATMAPS.computeIfAbsent(level.dimension(), k -> new Long2FloatOpenHashMap());
+        float newVal = map.get(pos) + amount;
+        map.put(pos, newVal);
+
+        Long2FloatOpenHashMap dirtyMap = DIRTY_ENTRIES.computeIfAbsent(level.dimension(), k -> new Long2FloatOpenHashMap());
+        dirtyMap.put(pos, newVal);
     }
 
     private static void decay(ServerLevel level) {
-        Map<ChunkPos, Double> levelMap = HEATMAP.get(level.dimension());
-        if (levelMap == null) return;
+        Long2FloatOpenHashMap levelMap = HEATMAPS.get(level.dimension());
+        if (levelMap == null || levelMap.isEmpty()) return;
 
-        double decayAmount = ShadowedHeartsConfigs.getInstance().getShadowConfig().worldAlteration().heatmapDecayAmount();
-        levelMap.replaceAll((pos, val) -> val - decayAmount);
-        levelMap.values().removeIf(val -> val <= 0);
-    }
+        float decayAmount = (float) ShadowedHeartsConfigs.getInstance().getShadowConfig().worldAlteration().heatmapDecayAmount();
+        Long2FloatOpenHashMap dirtyMap = DIRTY_ENTRIES.computeIfAbsent(level.dimension(), k -> new Long2FloatOpenHashMap());
 
-    public static double getActivity(ServerLevel level, ChunkPos pos) {
-        Map<ChunkPos, Double> levelMap = HEATMAP.get(level.dimension());
-        return levelMap == null ? 0 : levelMap.getOrDefault(pos, 0.0);
-    }
-
-    public static boolean isCivilized(ServerLevel level, ChunkPos pos) {
-        return getActivity(level, pos) >= ShadowedHeartsConfigs.getInstance().getShadowConfig().worldAlteration().civilizedHeatmapThreshold();
-    }
-
-    private static Path configPath() {
-        return Path.of("config", "shadowedhearts", "player_activity_heatmap.json");
-    }
-
-    public static void save() {
-        Path path = configPath();
-        try {
-            Path parent = path.getParent();
-            if (parent != null && !Files.isDirectory(parent)) {
-                Files.createDirectories(parent);
+        Long2FloatMap.FastEntrySet entries = levelMap.long2FloatEntrySet();
+        var iterator = entries.iterator();
+        while (iterator.hasNext()) {
+            var entry = iterator.next();
+            float newVal = entry.getFloatValue() - decayAmount;
+            if (newVal <= 0) {
+                iterator.remove();
+                // For SQLite, we might want to delete or just set to 0. 
+                // Let's set to 0 and we can prune occasionally, or just put 0.
+                dirtyMap.put(entry.getLongKey(), 0.0f);
+            } else {
+                entry.setValue(newVal);
+                dirtyMap.put(entry.getLongKey(), newVal);
             }
-
-            JsonObject root = new JsonObject();
-            for (Map.Entry<ResourceKey<Level>, Map<ChunkPos, Double>> levelEntry : HEATMAP.entrySet()) {
-                JsonObject levelObj = new JsonObject();
-                for (Map.Entry<ChunkPos, Double> chunkEntry : levelEntry.getValue().entrySet()) {
-                    levelObj.addProperty(chunkEntry.getKey().x + "," + chunkEntry.getKey().z, chunkEntry.getValue());
-                }
-                root.add(levelEntry.getKey().location().toString(), levelObj);
-            }
-
-            try (BufferedWriter writer = Files.newBufferedWriter(path, StandardCharsets.UTF_8)) {
-                new GsonBuilder().setPrettyPrinting().create().toJson(root, writer);
-            }
-        } catch (IOException ignored) {
         }
     }
 
-    public static void load() {
-        Path path = configPath();
-        if (!Files.exists(path)) return;
+    public static double getActivity(ServerLevel level, int chunkX, int chunkZ) {
+        Long2FloatOpenHashMap levelMap = HEATMAPS.get(level.dimension());
+        return levelMap == null ? 0 : levelMap.get(packPos(chunkX, chunkZ));
+    }
 
-        try (BufferedReader reader = Files.newBufferedReader(path, StandardCharsets.UTF_8)) {
-            JsonElement rootElement = JsonParser.parseReader(reader);
-            if (rootElement == null || !rootElement.isJsonObject()) return;
+    public static boolean isCivilized(ServerLevel level, int chunkX, int chunkZ) {
+        return getActivity(level, chunkX, chunkZ) >= ShadowedHeartsConfigs.getInstance().getShadowConfig().worldAlteration().civilizedHeatmapThreshold();
+    }
 
-            JsonObject root = rootElement.getAsJsonObject();
-            for (Map.Entry<String, JsonElement> levelEntry : root.entrySet()) {
-                ResourceKey<Level> levelKey = ResourceKey.create(net.minecraft.core.registries.Registries.DIMENSION, ResourceLocation.parse(levelEntry.getKey()));
-                Map<ChunkPos, Double> levelMap = HEATMAP.computeIfAbsent(levelKey, k -> new ConcurrentHashMap<>());
+    private static Path getDatabasePath(MinecraftServer server, ResourceKey<Level> dimension) {
+        Path basePath = server.getWorldPath(LevelResource.ROOT).resolve("config").resolve("shadowedhearts").resolve("heatmap");
+        String dimName = dimension.location().getPath();
+        if (!dimension.location().getNamespace().equals("minecraft")) {
+            dimName = dimension.location().getNamespace() + "_" + dimName;
+        }
+        return basePath.resolve(dimName).resolve("heatmap.db");
+    }
 
-                if (levelEntry.getValue().isJsonObject()) {
-                    JsonObject levelObj = levelEntry.getValue().getAsJsonObject();
-                    for (Map.Entry<String, JsonElement> chunkEntry : levelObj.entrySet()) {
-                        String[] parts = chunkEntry.getKey().split(",");
-                        if (parts.length == 2) {
-                            try {
-                                int x = Integer.parseInt(parts[0]);
-                                int z = Integer.parseInt(parts[1]);
-                                double value = chunkEntry.getValue().getAsDouble();
-                                levelMap.put(new ChunkPos(x, z), value);
-                            } catch (NumberFormatException ignored) {
+    private static Connection getConnection(Path dbPath) throws SQLException {
+        try {
+            Files.createDirectories(dbPath.getParent());
+        } catch (IOException e) {
+            throw new SQLException("Could not create directories for database", e);
+        }
+        String url = "jdbc:sqlite:" + dbPath.toAbsolutePath();
+        Connection conn = DriverManager.getConnection(url);
+        try (Statement stmt = conn.createStatement()) {
+            stmt.execute("PRAGMA journal_mode=WAL;");
+            stmt.execute("CREATE TABLE IF NOT EXISTS heatmap (pos INTEGER PRIMARY KEY, value REAL);");
+        }
+        return conn;
+    }
+
+    private static void flushDirty(MinecraftServer server) {
+        for (Map.Entry<ResourceKey<Level>, Long2FloatOpenHashMap> entry : DIRTY_ENTRIES.entrySet()) {
+            ResourceKey<Level> dimension = entry.getKey();
+            Long2FloatOpenHashMap dirtyMap = entry.getValue();
+            if (dirtyMap.isEmpty()) continue;
+
+            Path dbPath = getDatabasePath(server, dimension);
+            try (Connection conn = getConnection(dbPath)) {
+                conn.setAutoCommit(false);
+                try (PreparedStatement upsertStmt = conn.prepareStatement(
+                        "INSERT INTO heatmap(pos, value) VALUES(?, ?) ON CONFLICT(pos) DO UPDATE SET value=excluded.value")) {
+                    try (PreparedStatement deleteStmt = conn.prepareStatement("DELETE FROM heatmap WHERE pos = ?")) {
+                        for (var dirtyEntry : dirtyMap.long2FloatEntrySet()) {
+                            if (dirtyEntry.getFloatValue() <= 0) {
+                                deleteStmt.setLong(1, dirtyEntry.getLongKey());
+                                deleteStmt.addBatch();
+                            } else {
+                                upsertStmt.setLong(1, dirtyEntry.getLongKey());
+                                upsertStmt.setFloat(2, dirtyEntry.getFloatValue());
+                                upsertStmt.addBatch();
                             }
                         }
+                        upsertStmt.executeBatch();
+                        deleteStmt.executeBatch();
                     }
                 }
+                conn.commit();
+                dirtyMap.clear();
+            } catch (SQLException e) {
+                Shadowedhearts.LOGGER.error("Failed to flush heatmap for dimension {}", dimension.location(), e);
             }
-        } catch (IOException ignored) {
+        }
+    }
+
+    private static void loadAll(MinecraftServer server) {
+        for (ServerLevel level : server.getAllLevels()) {
+            ResourceKey<Level> dimension = level.dimension();
+            Path dbPath = getDatabasePath(server, dimension);
+            if (!Files.exists(dbPath)) continue;
+
+            Long2FloatOpenHashMap map = HEATMAPS.computeIfAbsent(dimension, k -> new Long2FloatOpenHashMap());
+            try (Connection conn = getConnection(dbPath);
+                 Statement stmt = conn.createStatement();
+                 ResultSet rs = stmt.executeQuery("SELECT pos, value FROM heatmap")) {
+                while (rs.next()) {
+                    map.put(rs.getLong("pos"), rs.getFloat("value"));
+                }
+            } catch (SQLException e) {
+                Shadowedhearts.LOGGER.error("Failed to load heatmap for dimension {}", dimension.location(), e);
+            }
         }
     }
 }

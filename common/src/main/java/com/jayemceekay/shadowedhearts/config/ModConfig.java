@@ -240,6 +240,8 @@ public final class ModConfig implements IShadowConfig {
         public ModConfigSpec.DoubleValue meteoroidShadowTransformationExposureDecay;
         public ModConfigSpec.DoubleValue meteoroidShadowSpawnChanceMultiplier;
         public ModConfigSpec.BooleanValue meteoroidWorldGenEnabled;
+        public ModConfigSpec.ConfigValue<List<? extends String>> meteoroidBiomeBlacklist;
+        public ModConfigSpec.ConfigValue<List<? extends String>> meteoroidBiomeWhitelist;
 
         private void build(ModConfigSpec.Builder builder) {
             shadowfallActive = builder
@@ -305,6 +307,12 @@ public final class ModConfig implements IShadowConfig {
             meteoroidWorldGenEnabled = builder
                     .comment("Whether shadowfall meteoroids and craters are placed in the world during chunk generation.")
                     .define("meteoroidWorldGenEnabled", true);
+            meteoroidBiomeBlacklist = builder
+                    .comment("A list of biomes where shadowfall meteoroids cannot impact.")
+                    .defineList("meteoroidBiomeBlacklist", Collections.emptyList(), o -> o instanceof String);
+            meteoroidBiomeWhitelist = builder
+                    .comment("A list of biomes where shadowfall meteoroids can impact. If not empty, only these biomes will be allowed.")
+                    .defineList("meteoroidBiomeWhitelist", Collections.emptyList(), o -> o instanceof String);
         }
 
         @Override
@@ -410,6 +418,16 @@ public final class ModConfig implements IShadowConfig {
         @Override
         public boolean meteoroidWorldGenEnabled() {
             return meteoroidWorldGenEnabled.get();
+        }
+
+        @Override
+        public List<? extends String> meteoroidBiomeBlacklist() {
+            return meteoroidBiomeBlacklist.get();
+        }
+
+        @Override
+        public List<? extends String> meteoroidBiomeWhitelist() {
+            return meteoroidBiomeWhitelist.get();
         }
     }
 

@@ -13,8 +13,11 @@ public interface IWorldAlterationConfig {
     default int minCraterRadius() { return 4; }
     default int maxCraterRadius() { return 12; }
     default boolean meteoroidWorldGenEnabled() { return true; }
+    default java.util.List<? extends String> meteoroidBiomeBlacklist() { return java.util.Collections.emptyList(); }
+    default java.util.List<? extends String> meteoroidBiomeWhitelist() { return java.util.Collections.emptyList(); }
 
     default int heatmapPresenceRadius() { return 2; }
+    default int heatmapFlushIntervalTicks() { return 1200; }
 
     default int meteoroidImpactBroadcastRadius() { return 256; }
 

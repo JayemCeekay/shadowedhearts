@@ -339,7 +339,7 @@ public class ShadowCommands {
                         .then(Commands.literal("heatmap")
                                 .executes(ctx -> {
                                     ServerPlayer player = ctx.getSource().getPlayerOrException();
-                                    double activity = PlayerActivityHeatmap.getActivity(ctx.getSource().getLevel(), player.chunkPosition());
+                                    double activity = PlayerActivityHeatmap.getActivity(ctx.getSource().getLevel(), player.chunkPosition().x, player.chunkPosition().z);
                                     ctx.getSource().sendSuccess(() -> Component.literal("Current chunk activity: " + activity), false);
                                     return 1;
                                 })))

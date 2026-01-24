@@ -68,8 +68,9 @@ public class CraterGenerator {
                         BlockPos pos = center.offset((int) relX, yOffset, (int) relZ);
                         if (yOffset <= 0) {
                             BlockState currentState = safeGetBlockState(level, pos);
-                            BlockState replacement = currentState.getFluidState().isEmpty() ? Blocks.AIR.defaultBlockState() : currentState.getFluidState().createLegacyBlock();
-                            safeSetBlock(level, pos, replacement, 3);
+                            if (currentState.getFluidState().isEmpty()) {
+                                safeSetBlock(level, pos, Blocks.AIR.defaultBlockState(), 3);
+                            }
 
                             // Clear terrain above following the impact angle
                             // We use a wider clearing cone as we go up to ensure no floating bits
@@ -77,7 +78,7 @@ public class CraterGenerator {
                                 // Calculate the slant at this specific height above the impact point
                                 double slantX = (yOffset + moveUp) * angleX;
                                 double slantZ = (yOffset + moveUp) * angleZ;
-                                
+
                                 // To prevent floating terrain, we also check a small radius around the slanted path
                                 // especially as we move further up.
                                 int clearRange = 1 + (moveUp / 4); // Wider clearing as it goes up
@@ -94,7 +95,7 @@ public class CraterGenerator {
                                             // Optional: stop if we've cleared enough air, but for safety with overhangs we keep going a bit
                                         }
 
-                                        if (!stateAbove.isAir()) {
+                                        if (!stateAbove.isAir() && stateAbove.getFluidState().isEmpty()) {
                                             safeSetBlock(level, abovePos, Blocks.AIR.defaultBlockState(), 3);
                                         }
                                     }
@@ -115,7 +116,8 @@ public class CraterGenerator {
                             if (distSq > 0.7 && RandomSource.create((long) x * 13 + (long) z * 19 + seed).nextDouble() > 0.3) {
                                 BlockPos below = pos.below();
                                 if (chunkPos == null || isWithinChunk(below, chunkPos)) {
-                                    if (safeGetBlockState(level, below).isSolid()) {
+                                    BlockState currentState = safeGetBlockState(level, pos);
+                                    if (currentState.getFluidState().isEmpty() && safeGetBlockState(level, below).isSolid()) {
                                         safeSetBlock(level, pos, RandomSource.create((long) x * 7 + (long) z * 23).nextBoolean() ? Blocks.COARSE_DIRT.defaultBlockState() : Blocks.GRAVEL.defaultBlockState(), 3);
                                     }
                                 }
@@ -167,7 +169,10 @@ public class CraterGenerator {
                     double threshold = targetRadius * noiseFactor;
 
                     if (dist <= threshold) {
-                        safeSetBlock(level, pos, coreBlock, 3);
+                        BlockState currentState = safeGetBlockState(level, pos);
+                        if (currentState.getFluidState().isEmpty()) {
+                            safeSetBlock(level, pos, coreBlock, 3);
+                        }
                     }
                 }
             }

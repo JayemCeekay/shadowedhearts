@@ -89,7 +89,21 @@ public class ImpactLocationSelector {
             }
 
             // Heatmap
-            if (PlayerActivityHeatmap.isCivilized(serverLevel, chunkPos)) return false;
+            if (PlayerActivityHeatmap.isCivilized(serverLevel, chunkPos.x, chunkPos.z)) return false;
+
+            // Biome Filtering
+            IWorldAlterationConfig config = ShadowedHeartsConfigs.getInstance().getShadowConfig().worldAlteration();
+            net.minecraft.core.Holder<net.minecraft.world.level.biome.Biome> biome = serverLevel.getBiome(pos);
+            net.minecraft.resources.ResourceLocation biomeLocation = serverLevel.registryAccess().registryOrThrow(net.minecraft.core.registries.Registries.BIOME).getKey(biome.value());
+            if (biomeLocation != null) {
+                String biomeId = biomeLocation.toString();
+                if (!config.meteoroidBiomeWhitelist().isEmpty() && !config.meteoroidBiomeWhitelist().contains(biomeId)) {
+                    return false;
+                }
+                if (config.meteoroidBiomeBlacklist().contains(biomeId)) {
+                    return false;
+                }
+            }
 
             // Proximity to other players
             for (ServerPlayer player : serverLevel.players()) {
