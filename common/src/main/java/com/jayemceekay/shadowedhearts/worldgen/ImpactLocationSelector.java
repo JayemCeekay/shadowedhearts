@@ -94,15 +94,9 @@ public class ImpactLocationSelector {
             // Biome Filtering
             IWorldAlterationConfig config = ShadowedHeartsConfigs.getInstance().getShadowConfig().worldAlteration();
             net.minecraft.core.Holder<net.minecraft.world.level.biome.Biome> biome = serverLevel.getBiome(pos);
-            net.minecraft.resources.ResourceLocation biomeLocation = serverLevel.registryAccess().registryOrThrow(net.minecraft.core.registries.Registries.BIOME).getKey(biome.value());
-            if (biomeLocation != null) {
-                String biomeId = biomeLocation.toString();
-                if (!config.meteoroidBiomeWhitelist().isEmpty() && !config.meteoroidBiomeWhitelist().contains(biomeId)) {
-                    return false;
-                }
-                if (config.meteoroidBiomeBlacklist().contains(biomeId)) {
-                    return false;
-                }
+
+            if (!isBiomeAllowed(biome, config.meteoroidBiomeWhitelist(), config.meteoroidBiomeBlacklist())) {
+                return false;
             }
 
             // Proximity to other players
@@ -127,5 +121,38 @@ public class ImpactLocationSelector {
         }
 
         return true;
+    }
+
+    public static boolean isBiomeAllowed(net.minecraft.core.Holder<net.minecraft.world.level.biome.Biome> biome, java.util.List<? extends String> whitelist, java.util.List<? extends String> blacklist) {
+        if (!whitelist.isEmpty()) {
+            boolean whitelisted = false;
+            for (String entry : whitelist) {
+                if (matches(biome, entry)) {
+                    whitelisted = true;
+                    break;
+                }
+            }
+            if (!whitelisted) return false;
+        }
+
+        for (String entry : blacklist) {
+            if (matches(biome, entry)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private static boolean matches(net.minecraft.core.Holder<net.minecraft.world.level.biome.Biome> biome, String entry) {
+        if (entry.startsWith("#")) {
+            net.minecraft.resources.ResourceLocation tagId = net.minecraft.resources.ResourceLocation.tryParse(entry.substring(1));
+            if (tagId != null) {
+                return biome.is(net.minecraft.tags.TagKey.create(net.minecraft.core.registries.Registries.BIOME, tagId));
+            }
+        } else {
+            return biome.unwrapKey().map(key -> key.location().toString().equals(entry)).orElse(false);
+        }
+        return false;
     }
 }

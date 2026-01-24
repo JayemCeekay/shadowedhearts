@@ -41,7 +41,10 @@ dependencies {
     modImplementation "net.fabricmc:fabric-loader:$rootProject.fabric_loader_version"
 
     modImplementation "dev.architectury:architectury:$rootProject.architectury_api_version"
-    implementation "org.xerial:sqlite-jdbc:3.46.0.0"
+    // We use implementation so it can be picked up by the shadowBundle in platform modules
+    implementation("org.xerial:sqlite-jdbc:3.46.0.0") {
+        exclude group: 'org.slf4j'
+    }
 
     modImplementation("com.cobblemon:mod:${project.property('cobblemon_version')}")
     modCompileOnly( "com.cobblemon:fabric:${cobblemon_version}")

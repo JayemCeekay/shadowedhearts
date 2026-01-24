@@ -80,6 +80,10 @@ dependencies {
 
     //forge config api port
     modImplementation "fuzs.forgeconfigapiport:forgeconfigapiport-fabric:${fcap_version}"
+
+    shadowBundle ("org.xerial:sqlite-jdbc:3.46.0.0") {
+        exclude group: 'org.slf4j'
+    }
 }
 
 processResources {

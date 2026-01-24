@@ -142,7 +142,7 @@ public class PlayerActivityHeatmap {
     }
 
     private static Path getDatabasePath(MinecraftServer server, ResourceKey<Level> dimension) {
-        Path basePath = server.getWorldPath(LevelResource.ROOT).resolve("config").resolve("shadowedhearts").resolve("heatmap");
+        Path basePath = server.getWorldPath(LevelResource.ROOT).resolve("shadowedhearts").resolve("heatmap");
         String dimName = dimension.location().getPath();
         if (!dimension.location().getNamespace().equals("minecraft")) {
             dimName = dimension.location().getNamespace() + "_" + dimName;
@@ -156,6 +156,14 @@ public class PlayerActivityHeatmap {
         } catch (IOException e) {
             throw new SQLException("Could not create directories for database", e);
         }
+
+        try {
+            // Register the driver
+            Class.forName("org.sqlite.JDBC");
+        } catch (Exception e) {
+            throw new SQLException("SQLite JDBC driver could not be initialized", e);
+        }
+
         String url = "jdbc:sqlite:" + dbPath.toAbsolutePath();
         Connection conn = DriverManager.getConnection(url);
         try (Statement stmt = conn.createStatement()) {

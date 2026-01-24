@@ -231,6 +231,7 @@ public final class ModConfig implements IShadowConfig {
         public ModConfigSpec.IntValue minCraterRadius;
         public ModConfigSpec.IntValue maxCraterRadius;
         public ModConfigSpec.IntValue heatmapPresenceRadius;
+        public ModConfigSpec.IntValue heatmapFlushIntervalTicks;
         public ModConfigSpec.IntValue meteoroidImpactBroadcastRadius;
         public ModConfigSpec.BooleanValue meteoroidShadowTransformationEnabled;
         public ModConfigSpec.IntValue meteoroidShadowTransformationRadius;
@@ -280,6 +281,9 @@ public final class ModConfig implements IShadowConfig {
             heatmapPresenceRadius = builder
                     .comment("Radius (in chunks) around players where activity heatmap is increased.")
                     .defineInRange("heatmapPresenceRadius", 2, 0, 16);
+            heatmapFlushIntervalTicks = builder
+                    .comment("How often (in ticks) the activity heatmap is flushed to disk.")
+                    .defineInRange("heatmapFlushIntervalTicks", 1200, 1, Integer.MAX_VALUE);
             meteoroidImpactBroadcastRadius = builder
                     .comment("Radius (in blocks) within which players will receive a message and hear a sound when a meteoroid impacts.")
                     .defineInRange("meteoroidImpactBroadcastRadius", 256, 0, Integer.MAX_VALUE);
@@ -308,10 +312,10 @@ public final class ModConfig implements IShadowConfig {
                     .comment("Whether shadowfall meteoroids and craters are placed in the world during chunk generation.")
                     .define("meteoroidWorldGenEnabled", true);
             meteoroidBiomeBlacklist = builder
-                    .comment("A list of biomes where shadowfall meteoroids cannot impact.")
+                    .comment("A list of biomes where shadowfall meteoroids cannot impact. Biome Tags, such as #minecraft:is_forest are also acceptable.")
                     .defineList("meteoroidBiomeBlacklist", Collections.emptyList(), o -> o instanceof String);
             meteoroidBiomeWhitelist = builder
-                    .comment("A list of biomes where shadowfall meteoroids can impact. If not empty, only these biomes will be allowed.")
+                    .comment("A list of biomes where shadowfall meteoroids can impact. If not empty, only these biomes will be allowed.  Biome Tags, such as #minecraft:is_forest are also acceptable.")
                     .defineList("meteoroidBiomeWhitelist", Collections.emptyList(), o -> o instanceof String);
         }
 
@@ -373,6 +377,11 @@ public final class ModConfig implements IShadowConfig {
         @Override
         public int heatmapPresenceRadius() {
             return heatmapPresenceRadius.get();
+        }
+
+        @Override
+        public int heatmapFlushIntervalTicks() {
+            return heatmapFlushIntervalTicks.get();
         }
 
         @Override

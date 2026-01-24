@@ -31,15 +31,8 @@ public class MeteoroidStructure extends Structure {
         int z = chunkPos.getMiddleBlockZ();
 
         net.minecraft.core.Holder<net.minecraft.world.level.biome.Biome> biome = context.biomeSource().getNoiseBiome(x >> 2, context.chunkGenerator().getMinY() >> 2, z >> 2, context.randomState().sampler());
-        net.minecraft.resources.ResourceLocation biomeLocation = context.registryAccess().registryOrThrow(net.minecraft.core.registries.Registries.BIOME).getKey(biome.value());
-        if (biomeLocation != null) {
-            String biomeId = biomeLocation.toString();
-            if (!config.meteoroidBiomeWhitelist().isEmpty() && !config.meteoroidBiomeWhitelist().contains(biomeId)) {
-                return Optional.empty();
-            }
-            if (config.meteoroidBiomeBlacklist().contains(biomeId)) {
-                return Optional.empty();
-            }
+        if (!ImpactLocationSelector.isBiomeAllowed(biome, config.meteoroidBiomeWhitelist(), config.meteoroidBiomeBlacklist())) {
+            return Optional.empty();
         }
 
         int y = context.chunkGenerator().getFirstOccupiedHeight(x, z, Heightmap.Types.OCEAN_FLOOR_WG, context.heightAccessor(), context.randomState());
