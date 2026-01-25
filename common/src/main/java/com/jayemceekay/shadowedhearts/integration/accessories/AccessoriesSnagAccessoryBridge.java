@@ -35,7 +35,32 @@ public final class AccessoriesSnagAccessoryBridge implements SnagAccessoryBridge
             } catch (Throwable ignored) {}
         } else if (item == ModItems.AURA_READER.get()) {
             try {
-                AccessoriesAPI.registerAccessory(item, new io.wispforest.accessories.api.Accessory() {});
+                AccessoriesAPI.registerAccessory(item, new io.wispforest.accessories.api.Accessory() {
+                    @Override
+                    public boolean canEquip(ItemStack stack, SlotReference reference) {
+                        if (!(reference.entity() instanceof Player player)) return true;
+                        // Prevent equipping as accessory if already in vanilla head slot
+                        if (player.getItemBySlot(net.minecraft.world.entity.EquipmentSlot.HEAD).is(ModItems.AURA_READER.get())) {
+                            return false;
+                        }
+                        
+                        // Prevent equipping multiple in accessory slots (if there are multiple face slots)
+                        try {
+                            AccessoriesCapability capability = AccessoriesCapability.get(player);
+                            if (capability != null) {
+                                for (var container : capability.getContainers().values()) {
+                                    for (var accessory : container.getAccessories()) {
+                                        if (accessory != null && accessory.getSecond() != stack && accessory.getSecond().is(ModItems.AURA_READER.get())) {
+                                            return false;
+                                        }
+                                    }
+                                }
+                            }
+                        } catch (Throwable ignored) {}
+
+                        return true;
+                    }
+                });
             } catch (Throwable ignored) {}
         }
     }

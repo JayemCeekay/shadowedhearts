@@ -145,7 +145,7 @@ public class RelicStoneBlock extends Block implements EntityBlock {
             for (int part = 0; part < 9; part++) {
                 if (layer == 0 && part == CENTER_PART) continue;
                 BlockPos p = center.offset(OFFSETS[part][0], layer, OFFSETS[part][1]);
-                level.setBlock(p, state.setValue(PART, part).setValue(LAYER, layer).setValue(HAS_BE, false), 3);
+                level.setBlock(p, this.defaultBlockState().setValue(PART, part).setValue(LAYER, layer).setValue(HAS_BE, false), 3);
             }
         }
     }

@@ -37,7 +37,19 @@ public final class ShadowedheartsNeoForgeClient {
     public ShadowedheartsNeoForgeClient(ModContainer modContainer) {
         modContainer.getEventBus().addListener(ShadowedheartsNeoForgeClient::onClientSetup);
         modContainer.getEventBus().addListener(ShadowedheartsNeoForgeClient::registerItemColors);
+        modContainer.getEventBus().addListener(ShadowedheartsNeoForgeClient::onAddLayers);
         ClientInit.init(modContainer);
+    }
+
+    public static void onAddLayers(net.neoforged.neoforge.client.event.EntityRenderersEvent.AddLayers event) {
+        net.minecraft.client.renderer.entity.player.PlayerRenderer defaultRenderer = event.getSkin(net.minecraft.client.resources.PlayerSkin.Model.WIDE);
+        if (defaultRenderer != null) {
+            defaultRenderer.addLayer(new com.jayemceekay.shadowedhearts.client.render.armor.AuraReaderArmorLayer(defaultRenderer, event.getEntityModels()));
+        }
+        net.minecraft.client.renderer.entity.player.PlayerRenderer slimRenderer = event.getSkin(net.minecraft.client.resources.PlayerSkin.Model.SLIM);
+        if (slimRenderer != null) {
+            slimRenderer.addLayer(new com.jayemceekay.shadowedhearts.client.render.armor.AuraReaderArmorLayer(slimRenderer, event.getEntityModels()));
+        }
     }
 
     @SubscribeEvent

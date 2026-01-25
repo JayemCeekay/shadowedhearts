@@ -83,6 +83,21 @@ public final class ShadowedheartsFabricClient implements ClientModInitializer {
         // Set RenderType for Relic Stone
         BlockRenderLayerMap.INSTANCE.putBlock(ModBlocks.RELIC_STONE.get(), RenderType.cutout());
 
+        com.jayemceekay.shadowedhearts.client.ShadowedHeartsClient.init();
+
+        net.fabricmc.fabric.api.client.rendering.v1.LivingEntityFeatureRendererRegistrationCallback.EVENT.register(
+            (entityType, renderer, helper, context) -> {
+                if (renderer instanceof net.minecraft.client.renderer.entity.player.PlayerRenderer playerRenderer) {
+                    playerRenderer.addLayer(
+                        new com.jayemceekay.shadowedhearts.client.render.armor.AuraReaderArmorLayer(
+                            playerRenderer,
+                            context.getModelSet()
+                        )
+                    );
+                }
+            }
+        );
+
         // Particle factory for luminous motes
         ParticleFactoryRegistry.getInstance().register(
                 ModParticleTypes.LUMINOUS_MOTE.get(),

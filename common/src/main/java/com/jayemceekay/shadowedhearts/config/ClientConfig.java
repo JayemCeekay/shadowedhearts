@@ -21,6 +21,7 @@ public final class ClientConfig implements IClientConfig {
         public ModConfigSpec.BooleanValue enableShadowAura;
         public ModConfigSpec.BooleanValue auraScannerEnabled;
         public ModConfigSpec.BooleanValue skipIrisWarning;
+        public ModConfigSpec.DoubleValue auraReaderYOffset;
 
         private void build(ModConfigSpec.Builder builder) {
             enableShadowAura = builder
@@ -36,6 +37,10 @@ public final class ClientConfig implements IClientConfig {
             skipIrisWarning = builder
                     .comment("Whether to skip the Iris shader warning screen.")
                     .define("skipIrisWarning", false);
+
+            auraReaderYOffset = builder
+                    .comment("The Y offset for the Aura Reader model.")
+                    .defineInRange("auraReaderYOffset", -0.15, -10.0, 10.0);
         }
     }
 
@@ -58,6 +63,11 @@ public final class ClientConfig implements IClientConfig {
     public void setSkipIrisWarning(boolean value) {
         DATA.skipIrisWarning.set(value);
         DATA.skipIrisWarning.save();
+    }
+
+    @Override
+    public float auraReaderYOffset() {
+        return DATA.auraReaderYOffset.get().floatValue();
     }
 
     @Override

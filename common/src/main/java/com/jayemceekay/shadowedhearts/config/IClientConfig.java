@@ -5,4 +5,5 @@ public interface IClientConfig extends IModConfig {
     default boolean auraScannerEnabled() { return true; }
     default boolean skipIrisWarning() { return false; }
     void setSkipIrisWarning(boolean value);
+    default float auraReaderYOffset() { return -0.15f; }
 }

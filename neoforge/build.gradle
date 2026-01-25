@@ -82,7 +82,7 @@ dependencies {
     modCompileOnly("maven.modrinth:ccKDOlHs:NMCHU6DZ")
 
     //accessories
-    modCompileOnlyApi("io.wispforest:accessories-neoforge:${project.accessories_version}")
+    modImplementation("io.wispforest:accessories-neoforge:${project.accessories_version}")
 
     shadowBundle ("org.xerial:sqlite-jdbc:3.46.0.0") {
         exclude group: 'org.slf4j'

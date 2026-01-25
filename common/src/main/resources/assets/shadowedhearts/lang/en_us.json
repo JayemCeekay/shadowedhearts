@@ -25,7 +25,7 @@
   "item.shadowedhearts.shadow_shard": "Shadow Shard",
   "item.shadowedhearts.purified_gem": "Purified Gem",
   "item.shadowedhearts.aura_reader": "Aura Reader",
-  "item.shadowedhearts.aura_reader.tooltip": "A device that detects and visualizes shadow auras.",
+  "item.shadowedhearts.aura_reader.tooltip": "A device that detects and tracks shadow signatures in the environment.",
   "tooltip.shadowedhearts.aura_reader.charge": "Charge: %d / %d",
   "key.shadowedhearts.order_wheel": "Order Wheel",
   "key.shadowedhearts.aura_scanner": "Toggle Aura Scanner",

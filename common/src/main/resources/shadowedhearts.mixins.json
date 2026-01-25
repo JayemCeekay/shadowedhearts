@@ -9,6 +9,7 @@
     "MixinInfoWidget",
     "MixinItemInHandLayer",
     "MixinItemInHandRenderer",
+    "MixinItemRenderer",
     "MixinLivingEntityRenderer",
     "MixinMinecraft",
     "MixinModelWidgetAura",
@@ -29,6 +30,7 @@
   "mixins": [
     "AccessorMoveActionResponse",
     "IrisRenderingPipelineAccessor",
+    "MixinAuraReaderEquip",
     "MixinBattleCaptureAction",
     "MixinBattleRegistry",
     "MixinBenchMoveHandler",

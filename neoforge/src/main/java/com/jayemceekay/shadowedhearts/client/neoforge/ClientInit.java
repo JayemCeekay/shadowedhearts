@@ -1,6 +1,7 @@
 package com.jayemceekay.shadowedhearts.client.neoforge;
 
 import com.jayemceekay.shadowedhearts.Shadowedhearts;
+import com.jayemceekay.shadowedhearts.client.ShadowedHeartsClient;
 import com.jayemceekay.shadowedhearts.client.particle.LuminousMoteEmitters;
 import com.jayemceekay.shadowedhearts.client.particle.LuminousMoteParticle;
 import com.jayemceekay.shadowedhearts.client.render.HeldBallSnagGlowRenderer;
@@ -28,7 +29,7 @@ public final class ClientInit {
 
     public static void init(ModContainer container) {
         container.registerConfig(ModConfig.Type.CLIENT, ShadowedHeartsConfigs.getInstance().getClientConfig().getSpec(), "shadowedhearts/client.toml");
-
+        ShadowedHeartsClient.init();
     }
 
     @SubscribeEvent
