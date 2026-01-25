@@ -120,14 +120,15 @@ public class PlayerActivityHeatmap {
         while (iterator.hasNext()) {
             var entry = iterator.next();
             float newVal = entry.getFloatValue() - decayAmount;
+            long key = entry.getLongKey();
             if (newVal <= 0) {
                 iterator.remove();
                 // For SQLite, we might want to delete or just set to 0. 
                 // Let's set to 0 and we can prune occasionally, or just put 0.
-                dirtyMap.put(entry.getLongKey(), 0.0f);
+                dirtyMap.put(key, 0.0f);
             } else {
                 entry.setValue(newVal);
-                dirtyMap.put(entry.getLongKey(), newVal);
+                dirtyMap.put(key, newVal);
             }
         }
     }
