@@ -162,7 +162,7 @@ public class RelicStoneBlock extends Block implements EntityBlock {
     }
 
     @Override
-    public BlockState playerWillDestroy(Level level, BlockPos pos, BlockState state, Player player) {
+    public @NotNull BlockState playerWillDestroy(Level level, BlockPos pos, BlockState state, Player player) {
         if (!level.isClientSide) {
             BlockPos center = getCenterPos(pos, state);
             if (!pos.equals(center)) {
@@ -175,6 +175,27 @@ public class RelicStoneBlock extends Block implements EntityBlock {
         }
         super.playerWillDestroy(level, pos, state, player);
         return state;
+    }
+
+    private void checkAndFixBroken(BlockState state, Level level, BlockPos pos) {
+        if (!level.isClientSide && isCenter(state) && !state.getValue(HAS_BE)) {
+            level.setBlock(pos, state.setValue(HAS_BE, true), 3);
+            if (level.getBlockEntity(pos) == null) {
+                level.setBlockEntity(new RelicStoneBlockEntity(pos, state.setValue(HAS_BE, true)));
+            }
+        }
+    }
+
+    @Override
+    public void onPlace(BlockState state, Level level, BlockPos pos, BlockState oldState, boolean isMoving) {
+        super.onPlace(state, level, pos, oldState, isMoving);
+        checkAndFixBroken(state, level, pos);
+    }
+
+    @Override
+    public void neighborChanged(BlockState state, Level level, BlockPos pos, Block block, BlockPos fromPos, boolean isMoving) {
+        super.neighborChanged(state, level, pos, block, fromPos, isMoving);
+        checkAndFixBroken(state, level, pos);
     }
 
     @Override
@@ -234,16 +255,17 @@ public class RelicStoneBlock extends Block implements EntityBlock {
 
     @Override
     public @Nullable <T extends BlockEntity> BlockEntityTicker<T> getTicker(Level level, BlockState state, BlockEntityType<T> type) {
-        return type == ModBlockEntities.RELIC_STONE_BE.get() ? (BlockEntityTicker<T>) (BlockEntityTicker<?>) (BlockEntityTicker<RelicStoneBlockEntity>) RelicStoneBlockEntity::tick : null;
+        return type == ModBlockEntities.RELIC_STONE_BE.get() ? (BlockEntityTicker<T>) (BlockEntityTicker<RelicStoneBlockEntity>) RelicStoneBlockEntity::tick : null;
     }
 
     @Override
-    public List<ItemStack> getDrops(BlockState state, LootParams.Builder params) {
+    public @NotNull List<ItemStack> getDrops(BlockState state, LootParams.Builder params) {
         return isCenter(state) ? super.getDrops(state, params) : List.of();
     }
 
     @Override
     protected @NotNull ItemInteractionResult useItemOn(ItemStack stack, BlockState state, Level level, BlockPos pos, Player player, InteractionHand hand, BlockHitResult hit) {
+        checkAndFixBroken(state, level, pos);
         if (stack.is(ModItems.SHADOW_SHARD.get()) && stack.getCount() >= 8) {
             if (!level.isClientSide) {
                 stack.shrink(8);
@@ -261,6 +283,7 @@ public class RelicStoneBlock extends Block implements EntityBlock {
 
     @Override
     protected @NotNull InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player, BlockHitResult hit) {
+        checkAndFixBroken(state, level, pos);
         if (player instanceof ServerPlayer serverPlayer) {
             ModCriteriaTriggers.triggerRelicStoneInteract(serverPlayer);
         }
@@ -269,7 +292,7 @@ public class RelicStoneBlock extends Block implements EntityBlock {
         }
 
         if(player instanceof ServerPlayer serverPlayer) {
-            long lastPurify = 0; // Fallback
+            long lastPurify; // Fallback
             long now = level.getGameTime();
             long cooldownTicks = (long) ShadowedHeartsConfigs.getInstance().getShadowConfig().relicStoneCooldownMinutes() * 60 * 20;
 
@@ -290,7 +313,7 @@ public class RelicStoneBlock extends Block implements EntityBlock {
             AABB area = new AABB(pos).inflate(5.0);
             List<PokemonEntity> nearbyPokemon = level.getEntitiesOfClass(PokemonEntity.class, area, pe -> {
                 Pokemon p = pe.getPokemon();
-                return p != null && serverPlayer.getUUID().equals(p.getOwnerUUID()) && PokemonAspectUtil.hasShadowAspect(p);
+                return serverPlayer.getUUID().equals(p.getOwnerUUID()) && PokemonAspectUtil.hasShadowAspect(p);
             });
 
             boolean purifiedAny = false;
