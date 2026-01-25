@@ -30,33 +30,51 @@ public final class ShadowService {
      * @param shadow true to set shadow, false to clear
      */
     public static void setShadow(Pokemon pokemon, @Nullable PokemonEntity live, boolean shadow) {
-        PokemonAspectUtil.setShadowAspect(pokemon, shadow);
+        setShadow(pokemon, live, shadow, true);
+    }
+
+    public static void setShadow(Pokemon pokemon, @Nullable PokemonEntity live, boolean shadow, boolean sync) {
+        PokemonAspectUtil.setShadowAspect(pokemon, shadow, sync);
         // Ensure required supporting aspects exist when shadowed
         PokemonAspectUtil.ensureRequiredShadowAspects(pokemon);
         if (live != null) {
             ShadowPokemonData.set(live, shadow, PokemonAspectUtil.getHeartGauge(pokemon));
         }
-        // Proactively sync aspect changes to observing players (party/PC/chamber UI) and mark store dirty.
-        // This ensures client UIs (e.g., Summary screen) update immediately without requiring a PC swap.
-        PokemonAspectUtil.syncAspects(pokemon);
-        PokemonAspectUtil.syncBenchedMoves(pokemon);
-        PokemonAspectUtil.syncMoveSet(pokemon);
-        // If live == null but is in world somewhere, optionally locate it to sync (handled by store observers above).
+        if (sync) {
+            // Proactively sync aspect changes to observing players (party/PC/chamber UI) and mark store dirty.
+            // This ensures client UIs (e.g., Summary screen) update immediately without requiring a PC swap.
+            PokemonAspectUtil.syncAspects(pokemon);
+            PokemonAspectUtil.syncBenchedMoves(pokemon);
+            PokemonAspectUtil.syncMoveSet(pokemon);
+        }
     }
 
     /** Set heart gauge absolute meter [0..speciesMax from config]. */
     public static void setHeartGauge(Pokemon pokemon, @Nullable PokemonEntity live, int meter) {
+        setHeartGauge(pokemon, live, meter, true);
+    }
+
+    public static void setHeartGauge(Pokemon pokemon, @Nullable PokemonEntity live, int meter, boolean sync) {
         int max = HeartGaugeConfig.getMax(pokemon);
         int clamped = Math.max(0, Math.min(max, meter));
-        PokemonAspectUtil.setHeartGaugeValue(pokemon, clamped);
+        PokemonAspectUtil.setHeartGaugeValue(pokemon, clamped, sync);
         // Ensure required supporting aspects exist when shadowed (no-op if not shadowed)
         PokemonAspectUtil.ensureRequiredShadowAspects(pokemon);
         if (live != null) ShadowPokemonData.set(live, ShadowPokemonData.isShadow(live), PokemonAspectUtil.getHeartGauge(pokemon));
 
         applyMoveUnlocks(pokemon);
 
-        // Proactively sync aspect changes to observing players and mark store dirty so client UI updates live.
+        if (sync) {
+            // Proactively sync aspect changes to observing players and mark store dirty so client UI updates live.
+            PokemonAspectUtil.syncAspects(pokemon);
+            PokemonAspectUtil.syncBenchedMoves(pokemon);
+            PokemonAspectUtil.syncMoveSet(pokemon);
+        }
+    }
+
+    public static void syncAll(Pokemon pokemon) {
         PokemonAspectUtil.syncAspects(pokemon);
+        PokemonAspectUtil.syncProperties(pokemon);
         PokemonAspectUtil.syncBenchedMoves(pokemon);
         PokemonAspectUtil.syncMoveSet(pokemon);
     }
@@ -194,11 +212,7 @@ public final class ShadowService {
             ModCriteriaTriggers.triggerShadowPurified(player);
         }
 
-        PokemonAspectUtil.syncAspects(pokemon);
-        PokemonAspectUtil.syncProperties(pokemon);
-        PokemonAspectUtil.syncBenchedMoves(pokemon);
-        PokemonAspectUtil.syncMoveSet(pokemon);
-
+        syncAll(pokemon);
     }
 
     private static void restoreAllMoves(Pokemon pokemon) {
@@ -261,12 +275,20 @@ public final class ShadowService {
 
     /** Convenience: corrupted and shadow with specific heart gauge value. */
     public static void corrupt(Pokemon pokemon, @Nullable PokemonEntity live, int value) {
-        setShadow(pokemon, live, true);
-        setHeartGauge(pokemon, live, value);
+        corrupt(pokemon, live, value, true);
+    }
+
+    public static void corrupt(Pokemon pokemon, @Nullable PokemonEntity live, int value, boolean sync) {
+        setShadow(pokemon, live, true, sync);
+        setHeartGauge(pokemon, live, value, sync);
     }
 
     /** Convenience: fully corrupted (speciesMax) and shadow. */
     public static void fullyCorrupt(Pokemon pokemon, @Nullable PokemonEntity live) {
-        corrupt(pokemon, live, HeartGaugeConfig.getMax(pokemon));
+        fullyCorrupt(pokemon, live, true);
+    }
+
+    public static void fullyCorrupt(Pokemon pokemon, @Nullable PokemonEntity live, boolean sync) {
+        corrupt(pokemon, live, HeartGaugeConfig.getMax(pokemon), sync);
     }
 }

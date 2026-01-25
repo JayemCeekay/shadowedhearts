@@ -28,10 +28,7 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.MobSpawnType;
 import net.minecraft.world.level.Level;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 
 public class ShadowCommands {
 
@@ -87,13 +84,19 @@ public class ShadowCommands {
                                     for (Pokemon mon : party) snapshot.add(mon);
 
                                     int affected = 0;
+                                    Set<Pokemon> affectedMons = new HashSet<>();
                                     for (int i = 0; i < intervals; i++) {
                                         for (Pokemon mon : snapshot) {
                                             if (PokemonAspectUtil.hasShadowAspect(mon)) {
-                                                HeartGaugeEvents.onPartyStep(mon, null);
+                                                HeartGaugeEvents.onPartyStep(mon, null, false);
+                                                affectedMons.add(mon);
                                                 affected++;
                                             }
                                         }
+                                    }
+
+                                    for (Pokemon mon : affectedMons) {
+                                        ShadowService.syncAll(mon);
                                     }
                                     final int affectedFinal = affected;
                                     final int intervalsFinal = intervals;

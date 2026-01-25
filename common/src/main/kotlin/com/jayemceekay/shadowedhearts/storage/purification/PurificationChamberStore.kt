@@ -197,14 +197,16 @@ class PurificationChamberStore(
     fun advanceSteps(steps: Int) {
         if (steps <= 0) return
         stepAccumulator += steps
+        val affectedPokemon = mutableSetOf<Pokemon>()
         while (stepAccumulator >= 161) {
             stepAccumulator -= 161
-            applyChamberTick()
+            applyChamberTick(affectedPokemon)
         }
+        affectedPokemon.forEach { ShadowService.syncAll(it) }
     }
 
     /** Compute perfect-set count and apply purification delta to each shadow per formula. */
-    private fun applyChamberTick() {
+    private fun applyChamberTick(affectedPokemon: MutableSet<Pokemon>? = null) {
         // Count perfect sets first
         val perfectCount = sets.count { set ->
             val ring = set.supports.filterNotNull()
@@ -219,7 +221,12 @@ class PurificationChamberStore(
                 val p = set.shadow!!
                 val cur = PokemonAspectUtil.getHeartGaugeMeter(p)
                 val next = cur + delta // delta negative opens heart
-                ShadowService.setHeartGauge(p, null, next)
+                if (affectedPokemon != null) {
+                    ShadowService.setHeartGauge(p, null, next, false)
+                    affectedPokemon.add(p)
+                } else {
+                    ShadowService.setHeartGauge(p, null, next)
+                }
                 anyChanged = true
             }
         }

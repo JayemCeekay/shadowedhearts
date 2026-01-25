@@ -13,12 +13,16 @@ public final class HeartGaugeEvents {
     private HeartGaugeEvents() {}
 
     private static void apply(Pokemon pokemon, PokemonEntity live, int delta) {
+        apply(pokemon, live, delta, true);
+    }
+
+    private static void apply(Pokemon pokemon, PokemonEntity live, int delta, boolean sync) {
         if (pokemon == null || !PokemonAspectUtil.hasShadowAspect(pokemon)) return;
         // Ensure required aspects are present before we modify the gauge
         PokemonAspectUtil.ensureRequiredShadowAspects(pokemon);
         int cur = PokemonAspectUtil.getHeartGaugeMeter(pokemon);
         int next = cur + delta; // delta negative reduces meter
-        ShadowService.setHeartGauge(pokemon, live, next);
+        ShadowService.setHeartGauge(pokemon, live, next, sync);
         // Post-application validation (idempotent) to keep aspects consistent
         PokemonAspectUtil.ensureRequiredShadowAspects(pokemon);
     }
@@ -37,13 +41,21 @@ public final class HeartGaugeEvents {
 
     /** Apply walking/party step tick. Recommended to call every N blocks/steps moved. */
     public static void onPartyStep(Pokemon pokemon, PokemonEntity live) {
+        onPartyStep(pokemon, live, true);
+    }
+
+    public static void onPartyStep(Pokemon pokemon, PokemonEntity live, boolean sync) {
         int d = HeartGaugeDeltas.getDelta(pokemon, HeartGaugeDeltas.EventType.PARTY);
-        apply(pokemon, live, d);
+        apply(pokemon, live, d, sync);
     }
 
     /** Apply walking step reduction while in Purification Chamber. */
     public static void onChamberStep(Pokemon pokemon, PokemonEntity live) {
+        onChamberStep(pokemon, live, true);
+    }
+
+    public static void onChamberStep(Pokemon pokemon, PokemonEntity live, boolean sync) {
         int d = HeartGaugeDeltas.getDelta(pokemon, HeartGaugeDeltas.EventType.CHAMBER);
-        apply(pokemon, live, d);
+        apply(pokemon, live, d, sync);
     }
 }

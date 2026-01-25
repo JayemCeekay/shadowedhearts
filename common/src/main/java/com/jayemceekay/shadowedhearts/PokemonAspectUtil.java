@@ -4,6 +4,7 @@ import com.cobblemon.mod.common.api.moves.*;
 import com.cobblemon.mod.common.api.pokemon.stats.Stat;
 import com.cobblemon.mod.common.api.pokemon.stats.Stats;
 import com.cobblemon.mod.common.net.messages.client.pokemon.update.AspectsUpdatePacket;
+import com.cobblemon.mod.common.net.messages.client.pokemon.update.BenchedMovesUpdatePacket;
 import com.cobblemon.mod.common.net.messages.client.pokemon.update.MoveSetUpdatePacket;
 import com.cobblemon.mod.common.pokemon.Pokemon;
 import com.jayemceekay.shadowedhearts.config.HeartGaugeConfig;
@@ -37,6 +38,10 @@ public final class PokemonAspectUtil {
      * Add/remove the Shadow aspect on the Pokemon’s stored data.
      */
     public static void setShadowAspect(Pokemon pokemon, boolean isShadow) {
+        setShadowAspect(pokemon, isShadow, true);
+    }
+
+    public static void setShadowAspect(Pokemon pokemon, boolean isShadow, boolean sync) {
         // Work on a defensive copy to avoid mutating the live Set while it may be iterated elsewhere
         Set<String> aspectsCopy = new HashSet<>(pokemon.getAspects());
         if (isShadow) {
@@ -47,9 +52,11 @@ public final class PokemonAspectUtil {
         }
         pokemon.setForcedAspects(aspectsCopy);
         pokemon.updateAspects();
-        syncAspects(pokemon);
-        syncBenchedMoves(pokemon);
-        syncMoveSet(pokemon);
+        if (sync) {
+            syncAspects(pokemon);
+            syncBenchedMoves(pokemon);
+            syncMoveSet(pokemon);
+        }
     }
 
     private static void replaceMovesWithShadowMoves(Pokemon pokemon) {
@@ -215,6 +222,7 @@ public final class PokemonAspectUtil {
         if (pokemon == null) return;
         try {
             final Pokemon pk = pokemon;
+            Function0<Pokemon> supplier = () -> pk;
             BenchedMoves snapshot = new BenchedMoves();
             snapshot.doWithoutEmitting(() -> {
                 for (BenchedMove bm : pk.getBenchedMoves()) {
@@ -222,7 +230,7 @@ public final class PokemonAspectUtil {
                 }
                 return null;
             });
-            pokemon.setBenchedMoves$common(snapshot);
+            pokemon.onChange(new BenchedMovesUpdatePacket(supplier, snapshot));
         } catch (Throwable t) {
             // Fallback
         } finally {
@@ -267,16 +275,24 @@ public final class PokemonAspectUtil {
      * Any previous meter aspects are removed to keep only one stored value.
      */
     public static void setHeartGaugeValue(Pokemon pokemon, int meter) {
+        setHeartGaugeValue(pokemon, meter, true);
+    }
+
+    public static void setHeartGaugeValue(Pokemon pokemon, int meter, boolean sync) {
         int max = HeartGaugeConfig.getMax(pokemon);
         int clamped = Math.max(0, Math.min(max, meter));
-        setHeartGaugeProperty(pokemon, clamped);
+        setHeartGaugeProperty(pokemon, clamped, sync);
     }
 
     public static void setHeartGaugeProperty(Pokemon pokemon, int value) {
+        setHeartGaugeProperty(pokemon, value, true);
+    }
+
+    public static void setHeartGaugeProperty(Pokemon pokemon, int value, boolean sync) {
         pokemon.getCustomProperties().removeIf(p -> p instanceof HeartGaugeProperty);
         pokemon.getCustomProperties().add(new HeartGaugeProperty(value));
         pokemon.getPersistentData().putInt(NBT_HEART_GAUGE, value);
-        syncProperties(pokemon);
+        if (sync) syncProperties(pokemon);
     }
 
     public static int getHeartGaugeValueFromProperty(Pokemon pokemon) {
