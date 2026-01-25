@@ -76,9 +76,7 @@ public final class ShadowedheartsFabricClient implements ClientModInitializer {
         HudRenderCallback.EVENT.register((guiGraphics, tickCounter) -> AuraScannerHUD.render(guiGraphics, tickCounter.getGameTimeDeltaPartialTick(true)));
 
         // Special Model Loader registration
-        SpecialModelLoaderEvents.LOAD_SCOPE.register(() -> {
-            return (resourceManager, location) -> Shadowedhearts.MOD_ID.equals(location.getNamespace());
-        });
+        SpecialModelLoaderEvents.LOAD_SCOPE.register(() -> (resourceManager, location) -> Shadowedhearts.MOD_ID.equals(location.getNamespace()));
 
         // Set RenderType for Relic Stone
         BlockRenderLayerMap.INSTANCE.putBlock(ModBlocks.RELIC_STONE.get(), RenderType.cutout());
@@ -122,9 +120,7 @@ public final class ShadowedheartsFabricClient implements ClientModInitializer {
             }
         });
 
-        WorldRenderEvents.AFTER_ENTITIES.register(context -> {
-            LuminousMoteEmitters.onRender(context.tickCounter().getGameTimeDeltaPartialTick(true));
-        });
+        WorldRenderEvents.AFTER_ENTITIES.register(context -> LuminousMoteEmitters.onRender(context.tickCounter().getGameTimeDeltaPartialTick(true)));
 
         WorldRenderEvents.LAST.register(context -> {
             var mc = Minecraft.getInstance();
