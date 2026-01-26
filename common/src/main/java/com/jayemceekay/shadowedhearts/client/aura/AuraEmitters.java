@@ -8,7 +8,6 @@ import com.cobblemon.mod.common.util.math.QuaternionUtilsKt;
 import com.jayemceekay.shadowedhearts.SHAspects;
 import com.jayemceekay.shadowedhearts.client.ModShaders;
 import com.jayemceekay.shadowedhearts.client.render.AuraRenderTypes;
-import com.jayemceekay.shadowedhearts.client.render.DepthCapture;
 import com.jayemceekay.shadowedhearts.client.render.geom.CylinderBuffers;
 import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs;
 import com.jayemceekay.shadowedhearts.network.AuraLifecyclePacket;
@@ -647,13 +646,6 @@ public final class AuraEmitters {
         var activeUniforms = useXd ? ModShaders.SHADOW_AURA_XD_CYLINDER_UNIFORMS : ModShaders.SHADOW_AURA_FOG_CYLINDER_UNIFORMS;
 
         // Keep depth available for the aura shader's soft intersection
-        DepthCapture.captureIfNeeded();
-        if (activeShader != null) {
-            try {
-                activeShader.setSampler("uDepth", DepthCapture.textureId());
-            } catch (Throwable ignored) {
-            }
-        }
 
         // Cache per-frame matrices and projection parameters
         Matrix4f view = RenderSystem.getModelViewMatrix();
