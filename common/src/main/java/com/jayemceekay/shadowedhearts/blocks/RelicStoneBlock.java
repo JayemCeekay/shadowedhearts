@@ -9,11 +9,13 @@ import com.jayemceekay.shadowedhearts.blocks.entity.RelicStoneBlockEntity;
 import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs;
 import com.jayemceekay.shadowedhearts.core.ModBlockEntities;
 import com.jayemceekay.shadowedhearts.core.ModItems;
+import com.jayemceekay.shadowedhearts.network.RelicStoneMotePacket;
 import com.jayemceekay.shadowedhearts.util.PlayerPersistentData;
 import com.jayemceekay.shadowedhearts.util.ShadowedHeartsPlayerData;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
@@ -204,6 +206,14 @@ public class RelicStoneBlock extends Block implements EntityBlock {
             if (!state.is(newState.getBlock())) {
                 BlockPos center = getCenterPos(pos, state);
                 removeAllParts(level, center);
+
+                // Send stop sound packet
+                RelicStoneMotePacket stopPacket = new RelicStoneMotePacket(center, true);
+                ((ServerLevel) level).players().forEach(player -> {
+                    if (player.distanceToSqr(center.getX() + 0.5, center.getY() + 0.5, center.getZ() + 0.5) < 32 * 32) {
+                        stopPacket.sendToPlayer(player);
+                    }
+                });
             }
         }
         super.onRemove(state, level, pos, newState, isMoving);

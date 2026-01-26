@@ -30,7 +30,7 @@ public class RelicStoneBlockEntity extends BlockEntity {
             Player closestPlayer = level.getNearestPlayer(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5, 16.0, false);
             if (closestPlayer != null) {
                 // Send packet to nearby players to spawn particles and play sound
-                RelicStoneMotePacket packet = new RelicStoneMotePacket(pos);
+                RelicStoneMotePacket packet = new RelicStoneMotePacket(pos, false);
                 ((ServerLevel) level).players().forEach(player -> {
                     if (player.distanceToSqr(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5) < 32 * 32) {
                         packet.sendToPlayer(player);

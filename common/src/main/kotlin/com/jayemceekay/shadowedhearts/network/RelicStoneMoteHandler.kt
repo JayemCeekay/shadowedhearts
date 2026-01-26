@@ -9,6 +9,12 @@ object RelicStoneMoteHandler : ClientNetworkPacketHandler<RelicStoneMotePacket> 
     override fun handle(packet: RelicStoneMotePacket, client: Minecraft) {
         val level = client.level ?: return
         val pos = packet.pos
+
+        if (packet.shouldStop) {
+            RelicStoneSoundManager.stopSound(pos)
+            return
+        }
+
         val random = level.random
 
         RelicStoneSoundManager.updateSound(pos)

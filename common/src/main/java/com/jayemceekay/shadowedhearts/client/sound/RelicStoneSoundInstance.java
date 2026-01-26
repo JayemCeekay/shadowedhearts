@@ -1,6 +1,8 @@
 package com.jayemceekay.shadowedhearts.client.sound;
 
+import com.jayemceekay.shadowedhearts.core.ModBlocks;
 import com.jayemceekay.shadowedhearts.core.ModSounds;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.resources.sounds.AbstractTickableSoundInstance;
 import net.minecraft.core.BlockPos;
 import net.minecraft.sounds.SoundSource;
@@ -29,6 +31,11 @@ public class RelicStoneSoundInstance extends AbstractTickableSoundInstance {
     public void tick() {
         tickCount++;
         if (this.player != null && this.player.isAlive()) {
+            if (Minecraft.getInstance().level != null && !Minecraft.getInstance().level.getBlockState(pos).is(ModBlocks.RELIC_STONE.get())) {
+                this.stop();
+                return;
+            }
+
             double distSq = this.player.distanceToSqr(this.x, this.y, this.z);
             float maxDist = 16.0F;
             float maxDistSq = maxDist * maxDist;
@@ -49,5 +56,9 @@ public class RelicStoneSoundInstance extends AbstractTickableSoundInstance {
 
     public BlockPos getPos() {
         return pos;
+    }
+
+    public void stopSound() {
+        this.stop();
     }
 }

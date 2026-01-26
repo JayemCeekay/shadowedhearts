@@ -6,13 +6,15 @@ import net.minecraft.core.BlockPos
 import net.minecraft.network.RegistryFriendlyByteBuf
 import net.minecraft.resources.ResourceLocation
 
-data class RelicStoneMotePacket(
-    val pos: BlockPos
+data class RelicStoneMotePacket @JvmOverloads constructor(
+    val pos: BlockPos,
+    val shouldStop: Boolean = false
 ) : NetworkPacket<RelicStoneMotePacket> {
     override val id: ResourceLocation = ID
 
     override fun encode(buf: RegistryFriendlyByteBuf) {
         buf.writeBlockPos(pos)
+        buf.writeBoolean(shouldStop)
     }
 
     companion object {
@@ -20,7 +22,8 @@ data class RelicStoneMotePacket(
 
         fun decode(buf: RegistryFriendlyByteBuf): RelicStoneMotePacket {
             return RelicStoneMotePacket(
-                buf.readBlockPos()
+                buf.readBlockPos(),
+                buf.readBoolean()
             )
         }
     }

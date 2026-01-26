@@ -13,10 +13,19 @@ public class RelicStoneSoundManager {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null) return;
 
-        if (!ACTIVE_SOUNDS.containsKey(pos) || ACTIVE_SOUNDS.get(pos).isStopped()) {
+        ACTIVE_SOUNDS.entrySet().removeIf(entry -> entry.getValue().isStopped());
+
+        if (!ACTIVE_SOUNDS.containsKey(pos)) {
             RelicStoneSoundInstance sound = new RelicStoneSoundInstance(pos, mc.player);
             ACTIVE_SOUNDS.put(pos, sound);
             mc.getSoundManager().play(sound);
+        }
+    }
+
+    public static void stopSound(BlockPos pos) {
+        RelicStoneSoundInstance sound = ACTIVE_SOUNDS.remove(pos);
+        if (sound != null) {
+            sound.stopSound();
         }
     }
 
