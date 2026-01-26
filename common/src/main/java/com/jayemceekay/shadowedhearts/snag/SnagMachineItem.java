@@ -3,7 +3,9 @@ package com.jayemceekay.shadowedhearts.snag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResultHolder;
+import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.Equipable;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
@@ -14,7 +16,7 @@ import java.util.List;
 /**
  * Unique wearable/held item that toggles an "armed" state for snagging.
  */
-public class SnagMachineItem extends Item {
+public class SnagMachineItem extends Item implements Equipable {
     private final int capacity;
     private final int costOnUse;
 
@@ -22,6 +24,11 @@ public class SnagMachineItem extends Item {
         super(p.stacksTo(1));
         this.capacity = Math.max(0, capacity);
         this.costOnUse = Math.max(0, costOnUse);
+    }
+
+    @Override
+    public EquipmentSlot getEquipmentSlot() {
+        return EquipmentSlot.OFFHAND;
     }
 
     public String getAttributePath() {

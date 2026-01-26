@@ -17,7 +17,7 @@ public final class AccessoriesSnagAccessoryBridge implements SnagAccessoryBridge
     }
 
     private void register(net.minecraft.world.item.Item item) {
-        if (item instanceof SnagMachineItem) {
+        if (item == ModItems.SNAG_MACHINE_ADVANCED.get()) {
             try {
                 AccessoriesAPI.registerAccessory(item, new io.wispforest.accessories.api.Accessory() {
                     @Override

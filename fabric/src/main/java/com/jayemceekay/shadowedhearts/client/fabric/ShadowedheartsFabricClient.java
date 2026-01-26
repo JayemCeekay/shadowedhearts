@@ -92,6 +92,18 @@ public final class ShadowedheartsFabricClient implements ClientModInitializer {
                             context.getModelSet()
                         )
                     );
+                    playerRenderer.addLayer(
+                        new com.jayemceekay.shadowedhearts.client.render.armor.SnagMachineAdvancedArmorLayer(
+                            playerRenderer,
+                            context.getModelSet()
+                        )
+                    );
+                    playerRenderer.addLayer(
+                        new com.jayemceekay.shadowedhearts.client.render.armor.SnagMachinePrototypeArmorLayer(
+                            playerRenderer,
+                            context.getModelSet()
+                        )
+                    );
                 }
             }
         );

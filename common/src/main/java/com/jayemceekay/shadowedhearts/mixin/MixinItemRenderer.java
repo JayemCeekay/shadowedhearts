@@ -1,6 +1,7 @@
 package com.jayemceekay.shadowedhearts.mixin;
 
 import com.jayemceekay.shadowedhearts.items.AuraReaderItem;
+import com.jayemceekay.shadowedhearts.snag.SnagMachineItem;
 import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.entity.ItemRenderer;
@@ -27,6 +28,11 @@ public abstract class MixinItemRenderer {
         // Only suppress HEAD rendering
         if (itemDisplayContext == ItemDisplayContext.HEAD
                 && itemStack.getItem() instanceof AuraReaderItem) {
+            ci.cancel();
+        }
+
+        // Suppress Snag Machine Advanced rendering when in offhand slot
+        if(itemStack.getItem() instanceof SnagMachineItem && livingEntity.getOffhandItem().is(itemStack.getItem())) {
             ci.cancel();
         }
     }
