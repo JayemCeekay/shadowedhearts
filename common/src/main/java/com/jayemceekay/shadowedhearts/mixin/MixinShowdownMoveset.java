@@ -3,6 +3,7 @@ package com.jayemceekay.shadowedhearts.mixin;
 import com.cobblemon.mod.common.battles.InBattleGimmickMove;
 import com.cobblemon.mod.common.battles.InBattleMove;
 import com.cobblemon.mod.common.battles.ShowdownMoveset;
+import com.jayemceekay.shadowedhearts.ShadowGate;
 import kotlin.Unit;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -15,7 +16,7 @@ import java.util.List;
 @Mixin(value = ShowdownMoveset.class, remap = false)
 public abstract class MixinShowdownMoveset {
     @Shadow
-    private List<InBattleMove> moves;
+    public List<InBattleMove> moves;
 
     @Shadow
     private List<InBattleGimmickMove> canZMove;
@@ -27,11 +28,15 @@ public abstract class MixinShowdownMoveset {
     private void shadowedhearts$safeSetGimmickMapping(CallbackInfoReturnable<Unit> cir) {
         List<InBattleGimmickMove> gimmickMoves = canZMove != null ? canZMove : maxMoves;
         if (gimmickMoves != null && moves != null) {
-            int size = Math.min(moves.size(), gimmickMoves.size());
-            for (int i = 0; i < size; i++) {
-                InBattleMove move = moves.get(i);
-                if (move != null) {
-                    move.setGimmickMove(gimmickMoves.get(i));
+            int gimmickIndex = 0;
+            for (InBattleMove move : moves) {
+                if (move == null) continue;
+                if (ShadowGate.isShadowMoveId(move.getId())) {
+                    continue;
+                }
+                if (gimmickIndex < gimmickMoves.size()) {
+                    move.setGimmickMove(gimmickMoves.get(gimmickIndex));
+                    gimmickIndex++;
                 }
             }
         }
