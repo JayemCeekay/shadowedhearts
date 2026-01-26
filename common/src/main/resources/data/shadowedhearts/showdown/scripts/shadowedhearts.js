@@ -8,12 +8,10 @@ module.exports = `
         };
   
         if (pokemon.volatiles['hypermode']) {
-            this.add('sh_message', 'cobblemon.battle.hypermode.calm', pokemon.getSlot());
             pokemon.removeVolatile('hypermode');
             success = true;
         }
         if (pokemon.volatiles['reversemode']) {
-            this.add('sh_message', 'cobblemon.battle.reversemode.calm', pokemon.getSlot());
             pokemon.removeVolatile('reversemode');
             success = true;
         }

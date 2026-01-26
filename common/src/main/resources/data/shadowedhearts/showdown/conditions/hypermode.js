@@ -3,16 +3,18 @@
     effectType: "VolatileStatus",
     onStart(pokemon) {
         const config = this.dex.data.Scripts.shadowedhearts?.Config?.hyperMode || {enabled: false};
-        this.add('-start', pokemon, 'Hyper Mode');
-        if (pokemon.volatiles['reversemode']) {
-            pokemon.removeVolatile('reversemode');
-        }
-        if (this.turn && this.turn >= 1) {
-            if (!config.enabled) {
-                delete pokemon.volatiles['hypermode'];
-                return;
+        if (pokemon?.set?.isShadow) {
+            this.add('-start', pokemon, 'Hyper Mode');
+            if (pokemon.volatiles['reversemode']) {
+                pokemon.removeVolatile('reversemode');
             }
-            this.add('hyper', 'start', pokemon.getSlot());
+            if (this.turn && this.turn >= 1) {
+                if (!config.enabled) {
+                    delete pokemon.volatiles['hypermode'];
+                    return;
+                }
+                this.add('hyper', 'start', pokemon.getSlot());
+            }
         }
     },
     onEnd(pokemon) {
@@ -36,9 +38,9 @@
         }
     },
     onBeforeMove(source, target, move) {
-        if (!move || move.type === 'shadow') return;
         const config = this.dex.data.Scripts.shadowedhearts?.Config?.hyperMode || {enabled: false};
         if (!config.enabled) return;
+        if (!move || move.type === 'Shadow') return;
         if (this.randomChance(9, 10)) {
             const outcomes = ['otherMove', 'attackAlly', 'selfHurt', 'heldItem', 'yellAtTrainer', 'returnBall'];
             const pick = outcomes[this.random(outcomes.length)];
@@ -72,7 +74,7 @@
                 }
                 case 'heldItem': {
                     const item = source.getItem();
-                    if(item.exists) {
+                    if (item.exists) {
                         this.add('sh_message', 'cobblemon.battle.hypermode.helditem', source.getSlot());
                     } else {
                         this.add('sh_message', 'cobblemon.battle.hypermode.helditem_fail', source.getSlot());
