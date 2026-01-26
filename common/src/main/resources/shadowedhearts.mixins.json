@@ -48,6 +48,7 @@
     "MixinShowdownActionRequest",
     "MixinShowdownActionResponse",
     "MixinShowdownInterpreter",
+    "MixinShowdownMovesetAdapter",
     "MixinTypeIcon",
     "rctmod.MixinRCTModMakeBattle",
     "simpletms.MixinPokemonSelectingItemNonBattle"
