@@ -50,6 +50,7 @@ public final class ShadowedheartsNeoForgeClient {
         modContainer.getEventBus().addListener(ShadowedheartsNeoForgeClient::registerItemColors);
         modContainer.getEventBus().addListener(ShadowedheartsNeoForgeClient::onAddLayers);
         modContainer.getEventBus().addListener(ShadowedheartsNeoForgeClient::registerParticles);
+        ShadowedHeartsConfigs.getInstance().getClientConfig().load();
         modContainer.registerConfig(ModConfig.Type.CLIENT, ShadowedHeartsConfigs.getInstance().getClientConfig().getSpec(), "shadowedhearts/client.toml");
         ShadowedHeartsClient.init();
     }

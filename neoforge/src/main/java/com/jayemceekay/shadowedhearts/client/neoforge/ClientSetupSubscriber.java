@@ -5,7 +5,6 @@ import com.jayemceekay.shadowedhearts.client.ModShaders;
 import com.jayemceekay.shadowedhearts.client.aura.AuraPulseRenderer;
 import com.jayemceekay.shadowedhearts.client.particle.LuminousMoteEmitters;
 import com.jayemceekay.shadowedhearts.client.render.DepthCapture;
-import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
@@ -21,7 +20,6 @@ public final class ClientSetupSubscriber {
 
     @SubscribeEvent
     public static void onClientSetup(final FMLClientSetupEvent event) {
-        ShadowedHeartsConfigs.getInstance().getClientConfig().load();
         // Client-side common init
         AuraPulseRenderer.init();
         DepthCapture.init();

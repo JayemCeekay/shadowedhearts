@@ -42,7 +42,7 @@ dependencies {
 
     modImplementation "dev.architectury:architectury:$rootProject.architectury_api_version"
     // We use implementation so it can be picked up by the shadowBundle in platform modules
-    implementation("org.xerial:sqlite-jdbc:3.46.0.0") {
+    compileOnly("org.xerial:sqlite-jdbc:3.46.0.0") {
         exclude group: 'org.slf4j'
     }
 

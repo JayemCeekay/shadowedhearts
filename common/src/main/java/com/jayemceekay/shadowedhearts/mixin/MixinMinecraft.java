@@ -16,13 +16,20 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 
-@Mixin(Minecraft.class)
+@Mixin(value = Minecraft.class, priority = 1001)
 public class MixinMinecraft {
     private static boolean shadowedhearts$checkedIris = false;
 
     @Inject(method = "setScreen", at = @At("HEAD"), cancellable = true)
     private void shadowedhearts$onSetScreen(Screen screen, CallbackInfo ci) {
-        if (screen instanceof TitleScreen && !shadowedhearts$checkedIris) {
+        if (ci.isCancelled()) return;
+
+        Screen checkScreen = screen;
+        if (checkScreen == null && Minecraft.getInstance().level == null) {
+            checkScreen = new TitleScreen();
+        }
+
+        if (checkScreen instanceof TitleScreen && !shadowedhearts$checkedIris) {
             shadowedhearts$checkedIris = true;
             if (ShadowedHeartsConfigs.getInstance().getClientConfig().skipIrisWarning()) {
                 return;

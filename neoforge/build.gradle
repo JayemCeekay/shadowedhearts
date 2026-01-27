@@ -84,9 +84,12 @@ dependencies {
     //accessories
     modImplementation("io.wispforest:accessories-neoforge:${project.accessories_version}")
 
-    shadowBundle ("org.xerial:sqlite-jdbc:3.46.0.0") {
+    implementation ("org.xerial:sqlite-jdbc:3.46.0.0") {
         exclude group: 'org.slf4j'
-    }// Remove from shadowBundle if using forgeRuntimeLibrary to avoid duplication
+    }
+    include("org.xerial:sqlite-jdbc:3.46.0.0")
+
+    // Remove from shadowBundle if using forgeRuntimeLibrary to avoid duplication
     //forgeRuntimeLibrary "org.xerial:sqlite-jdbc:3.46.0.0"
 
     forgeRuntimeLibrary("io.wispforest:endec:0.1.5.1")
