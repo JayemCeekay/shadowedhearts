@@ -88,6 +88,11 @@ public final class ModConfig implements IShadowConfig {
     }
 
     @Override
+    public String shadowMaxIVCount() {
+        return DATA.shadowStatChanges.maxIVCount.get();
+    }
+
+    @Override
     public boolean rctIntegrationEnabled() {
         return DATA.rctIntegration.enabled.get();
     }
@@ -142,6 +147,7 @@ public final class ModConfig implements IShadowConfig {
         public final CallButtonConfig callButton = new CallButtonConfig();
         public final ScentConfig scent = new ScentConfig();
         public final ShadowMovesConfig shadowMoves = new ShadowMovesConfig();
+        public final ShadowStatConfig shadowStatChanges = new ShadowStatConfig();
         public final AuraScannerConfig auraScanner = new AuraScannerConfig();
         public final RelicStoneConfig relicStone = new RelicStoneConfig();
         public final RCTIntegrationConfig rctIntegration = new RCTIntegrationConfig();
@@ -170,6 +176,10 @@ public final class ModConfig implements IShadowConfig {
 
             builder.push("shadowMoves");
             shadowMoves.build(builder);
+            builder.pop();
+
+            builder.push("shadowStatChanges");
+            shadowStatChanges.build(builder);
             builder.pop();
 
             builder.push("auraScanner");
@@ -552,6 +562,17 @@ public final class ModConfig implements IShadowConfig {
         }
     }
 
+    public static final class ShadowStatConfig {
+
+        public ModConfigSpec.ConfigValue<String> maxIVCount;
+
+        private void build(ModConfigSpec.Builder builder) {
+            maxIVCount = builder
+                    .comment("The maximum number of IVs a Shadow Pokémon can have. Supports single values (e.g. '3') or ranges (e.g. '1-3').")
+                    .define("maxIVCount", "3");
+        }
+    }
+
     public static final class AuraScannerConfig {
         public ModConfigSpec.IntValue auraScannerShadowRange;
         public ModConfigSpec.IntValue auraScannerMeteoroidRange;
@@ -681,7 +702,17 @@ public final class ModConfig implements IShadowConfig {
     public static int resolveReplaceCount(Random rng) {
         IShadowConfig cfg = ShadowedHeartsConfigs.getInstance().getShadowConfig();
         String raw = cfg.shadowMovesReplaceCount();
-        if (raw == null || raw.isBlank()) return 1;
+        return resolveConfigRange(raw, rng, 1);
+    }
+
+    public static int resolveMaxIVCount(Random rng) {
+        IShadowConfig cfg = ShadowedHeartsConfigs.getInstance().getShadowConfig();
+        String raw = cfg.shadowMaxIVCount();
+        return resolveConfigRange(raw, rng, 3);
+    }
+
+    private static int resolveConfigRange(String raw, Random rng, int defaultValue) {
+        if (raw == null || raw.isBlank()) return defaultValue;
         try {
             if (raw.contains("-")) {
                 String[] parts = raw.split("-");
@@ -698,7 +729,7 @@ public final class ModConfig implements IShadowConfig {
             }
             return Integer.parseInt(raw.trim());
         } catch (Exception e) {
-            return 1;
+            return defaultValue;
         }
     }
 }

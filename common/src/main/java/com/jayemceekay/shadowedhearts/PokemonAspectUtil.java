@@ -168,6 +168,8 @@ public final class PokemonAspectUtil {
         if (heartGauge != -1) setHeartGaugeProperty(pokemon, heartGauge);
         if (xpBuf != -1) setXPBufferProperty(pokemon, xpBuf);
         if (evBuf != null) setEVBufferProperty(pokemon, evBuf);
+        
+        ensureShadowMaxIVs(pokemon);
 
         // Ensure defaults if missing both in properties and aspects
         if (getHeartGaugeValueFromProperty(pokemon) == -1) {
@@ -659,5 +661,32 @@ public final class PokemonAspectUtil {
             case SPEED -> 5;
             default -> -1;
         };
+    }
+
+    private static void ensureShadowMaxIVs(Pokemon pokemon) {
+        Random rng = new Random(pokemon.getUuid().getLeastSignificantBits());
+        int requiredMaxIVs = ModConfig.resolveMaxIVCount(rng);
+        if (requiredMaxIVs <= 0) return;
+
+        var ivs = pokemon.getIvs();
+        List<Stats> stats = new ArrayList<>(List.of(Stats.HP, Stats.ATTACK, Stats.DEFENCE, Stats.SPECIAL_ATTACK, Stats.SPECIAL_DEFENCE, Stats.SPEED));
+
+        int currentMaxIVs = 0;
+        for (Stats stat : stats) {
+            if (ivs.get(stat) >= 31) {
+                currentMaxIVs++;
+            }
+        }
+
+        if (currentMaxIVs < requiredMaxIVs) {
+            Collections.shuffle(stats, rng);
+            for (Stats stat : stats) {
+                if (ivs.get(stat) < 31) {
+                    ivs.set(stat, 31);
+                    currentMaxIVs++;
+                }
+                if (currentMaxIVs >= requiredMaxIVs) break;
+            }
+        }
     }
 }

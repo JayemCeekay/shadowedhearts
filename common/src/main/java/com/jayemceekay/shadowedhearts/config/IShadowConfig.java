@@ -29,6 +29,9 @@ public interface IShadowConfig extends IModConfig {
     default String shadowMovesReplaceCount() { return "1"; }
     default boolean shadowMovesOnlyShadowRush() { return false; }
 
+    // Shadow Stat Changes
+    default String shadowMaxIVCount() { return "3"; }
+
     // RCT Integration
     default boolean rctIntegrationEnabled() { return false; }
 
