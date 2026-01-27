@@ -64,7 +64,6 @@ public final class ShadowedheartsFabricClient implements ClientModInitializer {
         ModShadersPlatformImpl.registerShaders();
         // Register keybinds
         ModKeybinds.init();
-        ModKeybindsPlatformImpl.register(ModKeybinds.ORDER_WHEEL);
         ModKeybindsPlatformImpl.register(ModKeybinds.AURA_SCANNER);
         ModKeybindsPlatformImpl.register(ModKeybinds.AURA_PULSE);
 

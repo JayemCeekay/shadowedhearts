@@ -27,7 +27,6 @@
   "item.shadowedhearts.aura_reader": "Aura Reader",
   "item.shadowedhearts.aura_reader.tooltip": "A device that detects and tracks shadow signatures in the environment.",
   "tooltip.shadowedhearts.aura_reader.charge": "Charge: %d / %d",
-  "key.shadowedhearts.order_wheel": "Order Wheel",
   "key.shadowedhearts.aura_scanner": "Toggle Aura Scanner",
   "key.shadowedhearts.aura_pulse": "Aura Pulse",
   "key.categories.shadowedhearts": "Shadowed Hearts",

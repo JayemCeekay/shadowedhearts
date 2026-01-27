@@ -3,6 +3,7 @@ package com.jayemceekay.shadowedhearts.client.neoforge;
 
 import com.cobblemon.mod.common.entity.pokeball.EmptyPokeBallEntity;
 import com.jayemceekay.shadowedhearts.Shadowedhearts;
+import com.jayemceekay.shadowedhearts.client.ModKeybinds;
 import com.jayemceekay.shadowedhearts.client.ShadowedHeartsClient;
 import com.jayemceekay.shadowedhearts.client.aura.AuraEmitters;
 import com.jayemceekay.shadowedhearts.client.aura.AuraPulseRenderer;
@@ -28,10 +29,7 @@ import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.config.ModConfig;
 import net.neoforged.fml.event.config.ModConfigEvent;
 import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
-import net.neoforged.neoforge.client.event.ModelEvent;
-import net.neoforged.neoforge.client.event.RegisterColorHandlersEvent;
-import net.neoforged.neoforge.client.event.RegisterParticleProvidersEvent;
-import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
+import net.neoforged.neoforge.client.event.*;
 import net.neoforged.neoforge.client.model.obj.ObjLoader;
 import net.neoforged.neoforge.event.entity.EntityLeaveLevelEvent;
 
@@ -43,16 +41,23 @@ public final class ShadowedheartsNeoForgeClient {
     @SubscribeEvent
     public static void onClientSetup(final FMLClientSetupEvent event) {
         // Client-side common init
-        ClientSetupSubscriber.onClientSetup(null);
+        ClientSetupSubscriber.onClientSetup(event);
     }
 
     public ShadowedheartsNeoForgeClient(ModContainer modContainer) {
+        modContainer.getEventBus().addListener(ShadowedheartsNeoForgeClient::registerKeybinds);
         modContainer.getEventBus().addListener(ShadowedheartsNeoForgeClient::onClientSetup);
         modContainer.getEventBus().addListener(ShadowedheartsNeoForgeClient::registerItemColors);
         modContainer.getEventBus().addListener(ShadowedheartsNeoForgeClient::onAddLayers);
         modContainer.getEventBus().addListener(ShadowedheartsNeoForgeClient::registerParticles);
         modContainer.registerConfig(ModConfig.Type.CLIENT, ShadowedHeartsConfigs.getInstance().getClientConfig().getSpec(), "shadowedhearts/client.toml");
         ShadowedHeartsClient.init();
+    }
+
+    public static void registerKeybinds(RegisterKeyMappingsEvent event) {
+        ModKeybinds.init();
+        event.register(ModKeybinds.AURA_SCANNER);
+        event.register(ModKeybinds.AURA_PULSE);
     }
 
     public static void registerParticles(RegisterParticleProvidersEvent evt) {
