@@ -88,8 +88,33 @@ public final class ModConfig implements IShadowConfig {
     }
 
     @Override
-    public String shadowMaxIVCount() {
-        return DATA.shadowStatChanges.maxIVCount.get();
+    public String shadowIVMode() {
+        return DATA.shadowStatChanges.ivMode.get();
+    }
+
+    @Override
+    public int shadowFixedPerfectIVs() {
+        return DATA.shadowStatChanges.fixedPerfectIVs.get();
+    }
+
+    @Override
+    public int shadowMaxPerfectIVs() {
+        return DATA.shadowStatChanges.maxPerfectIVs.get();
+    }
+
+    @Override
+    public boolean shadowCatchRateScaleEnabled() {
+        return DATA.shadowStatChanges.catchRateScaleEnabled.get();
+    }
+
+    @Override
+    public double shadowCatchRateMinMultiplier() {
+        return DATA.shadowStatChanges.catchRateMinMultiplier.get();
+    }
+
+    @Override
+    public double shadowCatchRateExponent() {
+        return DATA.shadowStatChanges.catchRateExponent.get();
     }
 
     @Override
@@ -564,12 +589,37 @@ public final class ModConfig implements IShadowConfig {
 
     public static final class ShadowStatConfig {
 
-        public ModConfigSpec.ConfigValue<String> maxIVCount;
+        public ModConfigSpec.ConfigValue<String> ivMode;
+        public ModConfigSpec.IntValue fixedPerfectIVs;
+        public ModConfigSpec.IntValue maxPerfectIVs;
+        public ModConfigSpec.BooleanValue catchRateScaleEnabled;
+        public ModConfigSpec.DoubleValue catchRateMinMultiplier;
+        public ModConfigSpec.DoubleValue catchRateExponent;
 
         private void build(ModConfigSpec.Builder builder) {
-            maxIVCount = builder
-                    .comment("The maximum number of IVs a Shadow Pokémon can have. Supports single values (e.g. '3') or ranges (e.g. '1-3').")
-                    .define("maxIVCount", "3");
+            ivMode = builder
+                    .comment("The mode for determining perfect IVs for Shadow Pokémon. Options: OFF, FIXED, SCALED")
+                    .define("ivMode", "SCALED");
+
+            fixedPerfectIVs = builder
+                    .comment("The number of perfect IVs for Shadow Pokémon when ivMode is FIXED.")
+                    .defineInRange("fixedPerfectIVs", 3, 0, 6);
+
+            maxPerfectIVs = builder
+                    .comment("The maximum number of perfect IVs for Shadow Pokémon when ivMode is SCALED.")
+                    .defineInRange("maxPerfectIVs", 5, 0, 6);
+
+            catchRateScaleEnabled = builder
+                    .comment("If true, the catch rate of Shadow Pokémon scales with their maximum heart gauge.")
+                    .define("catchRateScaleEnabled", true);
+
+            catchRateMinMultiplier = builder
+                    .comment("The minimum catch rate multiplier for Shadow Pokémon at maximum heart gauge.")
+                    .defineInRange("catchRateMinMultiplier", 0.25, 0.0, 1.0);
+
+            catchRateExponent = builder
+                    .comment("The exponent for the catch rate scaling curve.")
+                    .defineInRange("catchRateExponent", 1.4, 0.0, 10.0);
         }
     }
 
@@ -703,12 +753,6 @@ public final class ModConfig implements IShadowConfig {
         IShadowConfig cfg = ShadowedHeartsConfigs.getInstance().getShadowConfig();
         String raw = cfg.shadowMovesReplaceCount();
         return resolveConfigRange(raw, rng, 1);
-    }
-
-    public static int resolveMaxIVCount(Random rng) {
-        IShadowConfig cfg = ShadowedHeartsConfigs.getInstance().getShadowConfig();
-        String raw = cfg.shadowMaxIVCount();
-        return resolveConfigRange(raw, rng, 3);
     }
 
     private static int resolveConfigRange(String raw, Random rng, int defaultValue) {

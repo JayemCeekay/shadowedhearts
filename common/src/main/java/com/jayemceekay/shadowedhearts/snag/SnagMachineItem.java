@@ -1,5 +1,6 @@
 package com.jayemceekay.shadowedhearts.snag;
 
+import com.jayemceekay.shadowedhearts.core.ModItemComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResultHolder;
@@ -13,17 +14,17 @@ import net.minecraft.world.level.Level;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
+import java.util.function.IntSupplier;
+
 /**
  * Unique wearable/held item that toggles an "armed" state for snagging.
  */
 public class SnagMachineItem extends Item implements Equipable {
-    private final int capacity;
-    private final int costOnUse;
+    private final IntSupplier capacity;
 
-    public SnagMachineItem(Properties p, int capacity, int costOnUse) {
+    public SnagMachineItem(Properties p, IntSupplier capacity) {
         super(p.stacksTo(1));
-        this.capacity = Math.max(0, capacity);
-        this.costOnUse = Math.max(0, costOnUse);
+        this.capacity = capacity;
     }
 
     @Override
@@ -39,15 +40,14 @@ public class SnagMachineItem extends Item implements Equipable {
         return "hand";
     }
 
-    public int capacity() { return capacity; }
-    public int costOnUse() { return costOnUse; }
+    public int capacity() { return capacity.getAsInt(); }
 
     @Override
     public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
         ItemStack held = player.getItemInHand(hand);
         if (level.isClientSide) return InteractionResultHolder.success(held);
         // Initialize energy store
-        SnagEnergy.ensureInitialized(held, capacity);
+        SnagEnergy.ensureInitialized(held, capacity.getAsInt());
         PlayerSnagData cap = SnagCaps.get(player);
         if (!cap.hasSnagMachine()) return InteractionResultHolder.fail(held);
         if (cap.cooldown() > 0) return InteractionResultHolder.fail(held);
@@ -63,7 +63,10 @@ public class SnagMachineItem extends Item implements Equipable {
     public void inventoryTick(@NotNull ItemStack stack, Level level, @NotNull net.minecraft.world.entity.Entity entity, int slot, boolean selected) {
         // ensure energy component exists
         if (!level.isClientSide) {
-            SnagEnergy.ensureInitialized(stack, capacity);
+            SnagEnergy.ensureInitialized(stack, capacity.getAsInt());
+            if (!stack.has(ModItemComponents.SNAG_FAIL_ATTEMPTS.get())) {
+                stack.set(ModItemComponents.SNAG_FAIL_ATTEMPTS.get(), 0);
+            }
         }
         super.inventoryTick(stack, level, entity, slot, selected);
     }
@@ -71,7 +74,7 @@ public class SnagMachineItem extends Item implements Equipable {
     @Override
     public void appendHoverText(ItemStack stack, Item.TooltipContext context, List<Component> tooltip, TooltipFlag flag) {
         int cur = SnagEnergy.get(stack);
-        tooltip.add(Component.translatable("tooltip.shadowedhearts.snag_machine.energy", cur, capacity));
+        tooltip.add(Component.translatable("tooltip.shadowedhearts.snag_machine.energy", cur, capacity.getAsInt()));
         tooltip.add(Component.translatable("tooltip.shadowedhearts.snag_machine.equippable.hand").withStyle(net.minecraft.ChatFormatting.GRAY));
         super.appendHoverText(stack, context, tooltip, flag);
     }

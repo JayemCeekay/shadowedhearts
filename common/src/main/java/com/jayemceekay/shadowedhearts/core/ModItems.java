@@ -1,6 +1,7 @@
 package com.jayemceekay.shadowedhearts.core;
 
 import com.jayemceekay.shadowedhearts.Shadowedhearts;
+import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs;
 import com.jayemceekay.shadowedhearts.items.AuraReaderItem;
 import com.jayemceekay.shadowedhearts.items.PurifiedGemItem;
 import com.jayemceekay.shadowedhearts.items.ScentItem;
@@ -24,11 +25,13 @@ public final class ModItems {
     // Snag Machines: Prototype and Advanced
     public static final RegistrySupplier<Item> SNAG_MACHINE_PROTOTYPE = ITEMS.register(
             "snag_machine_prototype",
-            () -> new SnagMachineItem(new Item.Properties().arch$tab(ModCreativeTabs.SHADOWED_HEARTS_TAB).stacksTo(1), 50, 10));
+            () -> new SnagMachineItem(new Item.Properties().arch$tab(ModCreativeTabs.SHADOWED_HEARTS_TAB).stacksTo(1),
+                    ShadowedHeartsConfigs.getInstance().getSnagConfig()::prototypeCapacity));
 
     public static final RegistrySupplier<Item> SNAG_MACHINE_ADVANCED = ITEMS.register(
             "snag_machine_advanced",
-            () -> new SnagMachineItem(new Item.Properties().arch$tab(ModCreativeTabs.SHADOWED_HEARTS_TAB).stacksTo(1), 100, 5));
+            () -> new SnagMachineItem(new Item.Properties().arch$tab(ModCreativeTabs.SHADOWED_HEARTS_TAB).stacksTo(1),
+                    ShadowedHeartsConfigs.getInstance().getSnagConfig()::advancedCapacity));
 
     public static final RegistrySupplier<Item> PURIFICATION_PC_ITEM = ITEMS.register(
             "purification_pc",

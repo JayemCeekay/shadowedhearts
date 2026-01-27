@@ -53,6 +53,14 @@ public final class ModItemComponents {
                     .build()
     );
 
+    public static final RegistrySupplier<DataComponentType<Integer>> SNAG_FAIL_ATTEMPTS = COMPONENT_TYPES.register(
+            "snag_fail_attempts",
+            () -> DataComponentType.<Integer>builder()
+                    .persistent(Codec.INT)
+                    .networkSynchronized(ByteBufCodecs.VAR_INT)
+                    .build()
+    );
+
     public static final RegistrySupplier<DataComponentType<Boolean>> AURA_SCANNER_ACTIVE = COMPONENT_TYPES.register(
             "aura_scanner_active",
             () -> DataComponentType.<Boolean>builder()

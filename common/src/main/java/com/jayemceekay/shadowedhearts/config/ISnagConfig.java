@@ -1,7 +1,7 @@
 package com.jayemceekay.shadowedhearts.config;
 
 public interface ISnagConfig extends IModConfig {
-    default int energyPerAttempt() { return 50; }
+    default int energyPerAttempt() { return 10; }
     default int toggleCooldownTicks() { return 20; }
 
     // Recharge
@@ -21,4 +21,15 @@ public interface ISnagConfig extends IModConfig {
     default int auraReaderRechargePerNpc() { return 60; }
     default int auraReaderRechargeMin() { return 100; }
     default int auraReaderRechargeMax() { return 3000; }
+
+    // Prototype Snag Machine
+    default int prototypeCapacity() { return 150; }
+
+    // Advanced Snag Machine
+    default int advancedCapacity() { return 300; }
+
+    // Snagging Pity
+    default boolean failStackingBonus() { return true; }
+    default double failBonusPerAttempt() { return 0.05; }
+    default double maxFailBonus() { return 0.25; }
 }

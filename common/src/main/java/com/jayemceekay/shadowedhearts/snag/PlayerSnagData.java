@@ -16,4 +16,8 @@ public interface PlayerSnagData {
     void setCooldown(int ticks);
     boolean lastSyncedEligibility();
     void setLastSyncedEligibility(boolean v);
+
+    int failedSnagAttempts();
+    void incrementFailedSnagAttempts();
+    void resetFailedSnagAttempts();
 }

@@ -98,6 +98,31 @@ public final class SnagConfig implements ISnagConfig {
     }
 
     @Override
+    public int prototypeCapacity() {
+        return DATA.prototypeCapacity.get();
+    }
+
+    @Override
+    public int advancedCapacity() {
+        return DATA.advancedCapacity.get();
+    }
+
+    @Override
+    public boolean failStackingBonus() {
+        return DATA.snaggingPity.failStackingBonus.get();
+    }
+
+    @Override
+    public double failBonusPerAttempt() {
+        return DATA.snaggingPity.failBonusPerAttempt.get();
+    }
+
+    @Override
+    public double maxFailBonus() {
+        return DATA.snaggingPity.maxFailBonus.get();
+    }
+
+    @Override
     public ModConfigSpec getSpec() {
         return SPEC;
     }
@@ -105,6 +130,9 @@ public final class SnagConfig implements ISnagConfig {
     private static final class Data {
         public ModConfigSpec.IntValue energyPerAttempt;
         public ModConfigSpec.IntValue toggleCooldownTicks;
+
+        public ModConfigSpec.IntValue prototypeCapacity;
+        public ModConfigSpec.IntValue advancedCapacity;
 
         public ModConfigSpec.BooleanValue rechargeOnVictory;
         public ModConfigSpec.BooleanValue rechargeInPvp;
@@ -122,6 +150,8 @@ public final class SnagConfig implements ISnagConfig {
         public ModConfigSpec.IntValue auraReaderRechargeMin;
         public ModConfigSpec.IntValue auraReaderRechargeMax;
 
+        public final SnaggingPityConfig snaggingPity = new SnaggingPityConfig();
+
         private void build(ModConfigSpec.Builder builder) {
             energyPerAttempt = builder
                     .comment("The amount of energy consumed by the Snag Machine for each snag attempt.")
@@ -130,6 +160,18 @@ public final class SnagConfig implements ISnagConfig {
             toggleCooldownTicks = builder
                     .comment("Cooldown in ticks (20 ticks = 1 second) between toggling the Snag Machine on or off.")
                     .defineInRange("toggle_cooldown_ticks", 20, 0, 1200);
+
+            builder.push("prototype_snag_machine");
+            prototypeCapacity = builder
+                    .comment("The energy capacity of the Prototype Snag Machine.")
+                    .defineInRange("capacity", 50, 1, 10000);
+            builder.pop();
+
+            builder.push("advanced_snag_machine");
+            advancedCapacity = builder
+                    .comment("The energy capacity of the Advanced Snag Machine.")
+                    .defineInRange("capacity", 100, 1, 10000);
+            builder.pop();
             
 
             builder.push("recharge");
@@ -192,6 +234,30 @@ public final class SnagConfig implements ISnagConfig {
                     .comment("The maximum energy recharged for the Aura Reader on victory.")
                     .defineInRange("max", 3000, 0, 12000);
             builder.pop();
+
+            builder.push("snagging_pity");
+            snaggingPity.build(builder);
+            builder.pop();
+        }
+    }
+
+    public static final class SnaggingPityConfig {
+        public ModConfigSpec.BooleanValue failStackingBonus;
+        public ModConfigSpec.DoubleValue failBonusPerAttempt;
+        public ModConfigSpec.DoubleValue maxFailBonus;
+
+        private void build(ModConfigSpec.Builder builder) {
+            failStackingBonus = builder
+                    .comment("If true, each failed snag attempt increases the success chance of the next attempt.")
+                    .define("failStackingBonus", true);
+
+            failBonusPerAttempt = builder
+                    .comment("The bonus added to the catch rate for each failed snag attempt.")
+                    .defineInRange("failBonusPerAttempt", 0.05, 0.0, 1.0);
+
+            maxFailBonus = builder
+                    .comment("The maximum bonus that can be accumulated from failed snag attempts.")
+                    .defineInRange("maxFailBonus", 0.25, 0.0, 1.0);
         }
     }
 

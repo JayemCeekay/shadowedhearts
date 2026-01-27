@@ -1087,6 +1087,13 @@ public final class HeartGaugeConfig {
         }
     }
 
+    private static int globalMax = 30000;
+
+    public static int getGlobalMax() {
+        ensureLoaded();
+        return globalMax;
+    }
+
     public static void ensureLoaded() {
         if (loaded) return;
         synchronized (HeartGaugeConfig.class) {
@@ -1118,6 +1125,17 @@ public final class HeartGaugeConfig {
                 overrides.putAll(DEFAULTS);
                 save();
             }
+
+            // Calculate global max
+            int max = 30000;
+            for (int v : DEFAULTS.values()) {
+                if (v > max) max = v;
+            }
+            for (int v : overrides.values()) {
+                if (v > max) max = v;
+            }
+            globalMax = max;
+
             loaded = true;
         }
     }

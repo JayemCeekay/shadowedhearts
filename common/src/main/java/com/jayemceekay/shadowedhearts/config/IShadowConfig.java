@@ -30,7 +30,14 @@ public interface IShadowConfig extends IModConfig {
     default boolean shadowMovesOnlyShadowRush() { return false; }
 
     // Shadow Stat Changes
-    default String shadowMaxIVCount() { return "3"; }
+    default String shadowIVMode() { return "SCALED"; }
+    default int shadowFixedPerfectIVs() { return 3; }
+    default int shadowMaxPerfectIVs() { return 5; }
+
+    // Catch Rate
+    default boolean shadowCatchRateScaleEnabled() { return true; }
+    default double shadowCatchRateMinMultiplier() { return 0.25; }
+    default double shadowCatchRateExponent() { return 1.4; }
 
     // RCT Integration
     default boolean rctIntegrationEnabled() { return false; }

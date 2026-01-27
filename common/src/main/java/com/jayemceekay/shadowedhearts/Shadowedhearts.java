@@ -15,6 +15,7 @@ import com.jayemceekay.shadowedhearts.integration.accessories.SnagAccessoryBridg
 import com.jayemceekay.shadowedhearts.properties.ShadowPropertyRegistration;
 import com.jayemceekay.shadowedhearts.restrictions.ShadowRestrictions;
 import com.jayemceekay.shadowedhearts.server.*;
+import com.jayemceekay.shadowedhearts.server.listeners.ShadowCatchRateListener;
 import com.jayemceekay.shadowedhearts.showdown.ShowdownRuntimePatcher;
 import com.jayemceekay.shadowedhearts.snag.SnagEvents;
 import com.jayemceekay.shadowedhearts.util.ShadowedHeartsPlayerData;
@@ -80,6 +81,7 @@ public final class Shadowedhearts {
         PurificationStepTracker.INSTANCE.init();
         BattleSentOnceListener.INSTANCE.init();
         WildShadowSpawnListener.init();
+        ShadowCatchRateListener.init();
         AuraBroadcastQueue.init();
         ShadowDropListener.init();
         NPCShadowInjector.init();

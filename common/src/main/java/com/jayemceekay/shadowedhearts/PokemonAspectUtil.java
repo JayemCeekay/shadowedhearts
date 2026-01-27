@@ -664,28 +664,39 @@ public final class PokemonAspectUtil {
     }
 
     private static void ensureShadowMaxIVs(Pokemon pokemon) {
-        Random rng = new Random(pokemon.getUuid().getLeastSignificantBits());
-        int requiredMaxIVs = ModConfig.resolveMaxIVCount(rng);
-        if (requiredMaxIVs <= 0) return;
+        IShadowConfig config = ShadowedHeartsConfigs.getInstance().getShadowConfig();
+        String mode = config.shadowIVMode();
 
-        var ivs = pokemon.getIvs();
-        List<Stats> stats = new ArrayList<>(List.of(Stats.HP, Stats.ATTACK, Stats.DEFENCE, Stats.SPECIAL_ATTACK, Stats.SPECIAL_DEFENCE, Stats.SPEED));
-
-        int currentMaxIVs = 0;
-        for (Stats stat : stats) {
-            if (ivs.get(stat) >= 31) {
-                currentMaxIVs++;
-            }
+        int perfectIVs = 0;
+        if (mode.equalsIgnoreCase("FIXED")) {
+            perfectIVs = config.shadowFixedPerfectIVs();
+        } else if (mode.equalsIgnoreCase("SCALED")) {
+            int maxHeartGauge = HeartGaugeConfig.getMax(pokemon);
+            float normalized = Math.min(1.0f, (float) maxHeartGauge / (float) HeartGaugeConfig.getGlobalMax());
+            perfectIVs = Math.round((float) Mth.lerp(normalized, 1.0, config.shadowMaxPerfectIVs()));
         }
 
-        if (currentMaxIVs < requiredMaxIVs) {
-            Collections.shuffle(stats, rng);
+        if (perfectIVs > 0) {
+            var ivs = pokemon.getIvs();
+            List<Stats> stats = new ArrayList<>(List.of(Stats.HP, Stats.ATTACK, Stats.DEFENCE, Stats.SPECIAL_ATTACK, Stats.SPECIAL_DEFENCE, Stats.SPEED));
+
+            int currentMaxIVs = 0;
             for (Stats stat : stats) {
-                if (ivs.get(stat) < 31) {
-                    ivs.set(stat, 31);
+                if (ivs.get(stat) >= 31) {
                     currentMaxIVs++;
                 }
-                if (currentMaxIVs >= requiredMaxIVs) break;
+            }
+
+            if (currentMaxIVs < perfectIVs) {
+                Random rng = new Random(pokemon.getUuid().getLeastSignificantBits());
+                Collections.shuffle(stats, rng);
+                for (Stats stat : stats) {
+                    if (ivs.get(stat) < 31) {
+                        ivs.set(stat, 31);
+                        currentMaxIVs++;
+                    }
+                    if (currentMaxIVs >= perfectIVs) break;
+                }
             }
         }
     }

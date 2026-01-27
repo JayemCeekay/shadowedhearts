@@ -110,4 +110,29 @@ public class SimplePlayerSnagData implements PlayerSnagData {
         if (machine.isEmpty()) return;
         machine.set(ModItemComponents.SNAG_ELIGIBLE.get(), v);
     }
+
+    @Override
+    public int failedSnagAttempts() {
+        ItemStack machine = findMachine();
+        if (machine.isEmpty()) return 0;
+        Integer attempts = machine.get(ModItemComponents.SNAG_FAIL_ATTEMPTS.get());
+        return attempts != null ? attempts : 0;
+    }
+
+    @Override
+    public void incrementFailedSnagAttempts() {
+        if (player != null && player.level().isClientSide) return;
+        ItemStack machine = findMachine();
+        if (machine.isEmpty()) return;
+        int current = failedSnagAttempts();
+        machine.set(ModItemComponents.SNAG_FAIL_ATTEMPTS.get(), current + 1);
+    }
+
+    @Override
+    public void resetFailedSnagAttempts() {
+        if (player != null && player.level().isClientSide) return;
+        ItemStack machine = findMachine();
+        if (machine.isEmpty()) return;
+        machine.set(ModItemComponents.SNAG_FAIL_ATTEMPTS.get(), 0);
+    }
 }
