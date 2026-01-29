@@ -113,7 +113,7 @@ public final class WildShadowSpawnListener {
         for (String id : SHADOW_IDS) pool.add(id);
 
         for (int i = 0; i < Math.min(count, 4); i++) {
-            String moveId = (i == 0) ? "shadowrush" : pickShadow(pool, null);
+            String moveId = pickShadow(pool, null);
             if (moveId != null) {
                 var tmpl = Moves.INSTANCE.getByNameOrDummy(moveId);
                 pokemon.getMoveSet().setMove(i, tmpl.create(tmpl.getPp(), 0));

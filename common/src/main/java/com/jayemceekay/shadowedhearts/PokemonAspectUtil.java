@@ -88,7 +88,7 @@ public final class PokemonAspectUtil {
                     continue; // Only allow shadowrush in the first slot if onlyShadowRush is enabled
                 }
             } else {
-                shadowMoveName = (i == 0) ? "shadowrush" : getRandomShadowMove(pokemon, i);
+                shadowMoveName = getRandomShadowMove(pokemon, i);
             }
 
             var template = Moves.getByName(shadowMoveName);
@@ -102,8 +102,10 @@ public final class PokemonAspectUtil {
 
     private static String getRandomShadowMove(Pokemon pokemon, int seed) {
         String[] shadowMoves = {
-                "shadowblast", "shadowblitz", "shadowbolt", "shadowbreak",
-                "shadowchill", "shadowfire", "shadowrave", "shadowstorm", "shadowwave"
+                "shadowblast", "shadowblitz", "shadowbolt", "shadowbreak", "shadowchill",
+                "shadowdown", "shadowend", "shadowfire", "shadowhalf", "shadowhold",
+                "shadowmist", "shadowpanic", "shadowrave", "shadowrush", "shadowshed",
+                "shadowsky", "shadowstorm", "shadowwave"
         };
         long salt = pokemon.getUuid().getLeastSignificantBits() ^ seed;
         Random rng = new Random(salt);
