@@ -143,17 +143,4 @@ public abstract class MixinMoveSlotWidget {
     private ElementalType shadowedhearts$swapType(ElementalType original) {
         return shadowedhearts$shouldMask() ? ElementalTypes.get("shadow-locked") : original;
     }
-
-   /* @WrapMethod(method = "renderMoveTooltipWithIcons")
-    private void shadowedhearts$cancelShadowTooltip(
-            GuiGraphics context, int tooltipX, int tooltipY, Operation<Void> original
-    ) {
-        if (shadowedhearts$shouldMask()) {
-            // Cancel the call to prevent the tooltip from rendering
-            return;
-        }
-        original.call(context, tooltipX, tooltipY);
-    }*/
-
-
 }

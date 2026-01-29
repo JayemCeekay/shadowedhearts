@@ -6,9 +6,12 @@ import com.cobblemon.mod.common.client.gui.summary.widgets.screens.stats.StatWid
 import com.cobblemon.mod.common.pokemon.Pokemon;
 import com.jayemceekay.shadowedhearts.PokemonAspectUtil;
 import com.jayemceekay.shadowedhearts.client.gui.summary.widgets.screens.stats.features.HeartGaugeFeatureRenderer;
+import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.llamalad7.mixinextras.sugar.Local;
+import com.mojang.blaze3d.vertex.PoseStack;
+import kotlin.Pair;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
@@ -28,10 +31,21 @@ import java.util.List;
 @Mixin(value = StatWidget.class)
 public abstract class MixinStatWidget {
 
-    @Shadow @Final @Mutable private List<BarSummarySpeciesFeatureRenderer> universalFeatures;
-    @Shadow @Final private Pokemon pokemon;
-    @Shadow @Final private List<String> statOptions;
-    @Shadow private boolean statLabelsHovered(List<kotlin.Pair<Double, Double>> labelOffsets, int mouseX, int mouseY) { return false; }
+    @Shadow
+    @Final
+    @Mutable
+    private List<BarSummarySpeciesFeatureRenderer> universalFeatures;
+    @Shadow
+    @Final
+    private Pokemon pokemon;
+    @Shadow
+    @Final
+    private List<String> statOptions;
+
+    @Shadow
+    private boolean statLabelsHovered(List<kotlin.Pair<Double, Double>> labelOffsets, int mouseX, int mouseY) {
+        return false;
+    }
 
     @Shadow
     public abstract int getStatTabIndex();
@@ -72,17 +86,19 @@ public abstract class MixinStatWidget {
             if (("evs".equals(tab) && PokemonAspectUtil.isEVHiddenByGauge(pokemon))
                     || ("ivs".equals(tab) && PokemonAspectUtil.isIVHiddenByGauge(pokemon))) {
                 List<MutableComponent> masked = new ArrayList<>(list.size());
-                for (int i = 0; i < list.size(); i++) masked.add(Component.literal("??"));
+                for (int i = 0; i < list.size(); i++)
+                    masked.add(Component.literal("??"));
                 return masked;
             }
-        } catch (Throwable ignored) { }
+        } catch (Throwable ignored) {
+        }
         return list;
     }
 
     @ModifyArg(method = "renderWidget", at = @At(value = "INVOKE", target = "Lcom/cobblemon/mod/common/client/gui/summary/widgets/screens/stats/StatWidget;renderPolygonLabels$default(Lcom/cobblemon/mod/common/client/gui/summary/widgets/screens/stats/StatWidget;Lnet/minecraft/client/gui/GuiGraphics;Ljava/util/List;Ljava/util/List;DZILjava/lang/Object;)V", ordinal = 2), index = 2)
     public List<MutableComponent> shadowedhearts$maskLabels(List<MutableComponent> par3, @Local(name = "labelsHovered") boolean labelsHovered) {
-        if(labelsHovered && (statOptions.get(getStatTabIndex()).equalsIgnoreCase("ivs") || statOptions.get(getStatTabIndex()).equalsIgnoreCase("evs"))) {
-            if(PokemonAspectUtil.isEVHiddenByGauge(pokemon) || PokemonAspectUtil.isIVHiddenByGauge(pokemon))
+        if (labelsHovered && (statOptions.get(getStatTabIndex()).equalsIgnoreCase("ivs") || statOptions.get(getStatTabIndex()).equalsIgnoreCase("evs"))) {
+            if (PokemonAspectUtil.isEVHiddenByGauge(pokemon) || PokemonAspectUtil.isIVHiddenByGauge(pokemon))
                 return List.of(Component.literal("??/??"), Component.literal("??/??"), Component.literal("??/??"), Component.literal("??/??"), Component.literal("??/??"), Component.literal("??/??"));
         }
 
@@ -91,15 +107,32 @@ public abstract class MixinStatWidget {
 
     @WrapOperation(method = "renderWidget", at = @At(value = "INVOKE", target = "Lcom/cobblemon/mod/common/client/gui/summary/widgets/screens/stats/StatWidget;drawStatPolygon(Ljava/util/List;Lorg/joml/Vector3f;)V", ordinal = 2))
     private void shadowedhearts$maskIVPolygon(StatWidget instance, List list, Vector3f vector3f, Operation<Void> original) {
-        if(!statOptions.get(getStatTabIndex()).equalsIgnoreCase("ivs") && PokemonAspectUtil.isIVHiddenByGauge(pokemon)) {
+        if (!statOptions.get(getStatTabIndex()).equalsIgnoreCase("ivs") && PokemonAspectUtil.isIVHiddenByGauge(pokemon)) {
             original.call(instance, list, vector3f);
         }
     }
 
     @WrapOperation(method = "renderWidget", at = @At(value = "INVOKE", target = "Lcom/cobblemon/mod/common/client/gui/summary/widgets/screens/stats/StatWidget;drawStatPolygon(Ljava/util/List;Lorg/joml/Vector3f;)V", ordinal = 3))
     private void shadowedhearts$maskEVPolygon(StatWidget instance, List list, Vector3f vector3f, Operation<Void> original) {
-        if(!statOptions.get(getStatTabIndex()).equalsIgnoreCase("evs") && PokemonAspectUtil.isEVHiddenByGauge(pokemon)) {
+        if (!statOptions.get(getStatTabIndex()).equalsIgnoreCase("evs") && PokemonAspectUtil.isEVHiddenByGauge(pokemon)) {
             original.call(instance, list, vector3f);
         }
+    }
+
+    @WrapMethod(method = "renderModifiedStatIcon")
+    private void shadowedhearts$maskStatIcons(PoseStack pPoseStack, Stat stat, boolean increasedStat, Operation<Void> original) {
+        if (PokemonAspectUtil.hasShadowAspect(pokemon)) {
+            return;
+        }
+        original.call(pPoseStack, stat, increasedStat);
+    }
+
+    @WrapMethod(method = "renderPolygonLabels")
+    private void shadowedhearts$maskLabels(GuiGraphics context, List<? extends MutableComponent> labels, List<Pair<Double, Double>> verticesOffset, double offsetY, boolean enableColour, Operation<Void> original) {
+        if (enableColour && PokemonAspectUtil.hasShadowAspect(pokemon) && statOptions.get(getStatTabIndex()).equalsIgnoreCase("stats")) {
+            original.call(context, labels, verticesOffset, offsetY, false);
+            return;
+        }
+        original.call(context, labels, verticesOffset, offsetY, enableColour);
     }
 }
