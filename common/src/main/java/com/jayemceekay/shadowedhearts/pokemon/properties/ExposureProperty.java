@@ -17,7 +17,7 @@ public class ExposureProperty implements CustomPokemonProperty {
 
     @Override
     public String asString() {
-        return "shadowedhearts:exposure=" + value;
+        return "sh_exposure=" + value;
     }
 
     @Override

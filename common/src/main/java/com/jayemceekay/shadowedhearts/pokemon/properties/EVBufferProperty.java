@@ -23,7 +23,7 @@ public class EVBufferProperty implements CustomPokemonProperty {
 
     @Override
     public String asString() {
-        return "shadowedhearts:ev_buf=" + Arrays.stream(values).mapToObj(String::valueOf).collect(Collectors.joining(","));
+        return "sh_ev_buf=" + Arrays.stream(values).mapToObj(String::valueOf).collect(Collectors.joining(","));
     }
 
     @Override

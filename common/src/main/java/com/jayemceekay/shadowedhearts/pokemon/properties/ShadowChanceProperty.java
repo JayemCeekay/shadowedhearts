@@ -3,10 +3,8 @@ package com.jayemceekay.shadowedhearts.pokemon.properties;
 import com.cobblemon.mod.common.api.properties.CustomPokemonProperty;
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
 import com.cobblemon.mod.common.pokemon.Pokemon;
-import com.jayemceekay.shadowedhearts.SHAspects;
+import com.jayemceekay.shadowedhearts.ShadowService;
 
-import java.util.HashSet;
-import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
 
 /**
@@ -32,12 +30,7 @@ public final class ShadowChanceProperty implements CustomPokemonProperty {
     public void apply(Pokemon pokemon) {
         if (percent <= 0) return;
         if (percent >= 100 || roll(percent)) {
-            // Merge into existing forcedAspects
-            Set<String> merged = new HashSet<>(pokemon.getForcedAspects());
-            merged.add(SHAspects.SHADOW);
-            pokemon.setForcedAspects(merged);
-            // Let Cobblemon recompute effective aspects if needed
-            pokemon.updateAspects();
+            ShadowService.setShadow(pokemon, null, true, true);
         }
     }
 
@@ -53,14 +46,10 @@ public final class ShadowChanceProperty implements CustomPokemonProperty {
 
     @Override
     public boolean matches(Pokemon pokemon) {
-        // This property is not intended for reverse-derivation; return false to avoid implying presence.
-        // If you want to treat existing shadow mons as matching a 100% chance, adjust accordingly.
         return false;
     }
 
     private static boolean roll(int percent) {
-        // ThreadLocalRandom current is fine for server-side deterministic-enough RNG per creation
-        // Value in [0,100)
         int r = ThreadLocalRandom.current().nextInt(100);
         return r < percent;
     }

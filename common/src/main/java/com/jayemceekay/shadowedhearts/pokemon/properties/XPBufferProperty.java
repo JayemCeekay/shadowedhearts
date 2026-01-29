@@ -17,7 +17,7 @@ public class XPBufferProperty implements CustomPokemonProperty {
 
     @Override
     public String asString() {
-        return "shadowedhearts:xp_buf=" + value;
+        return "sh_xp_buf=" + value;
     }
 
     @Override

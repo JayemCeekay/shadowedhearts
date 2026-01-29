@@ -13,9 +13,7 @@ import java.util.Set;
 public final class ShadowChancePropertyType implements CustomPokemonPropertyType<com.jayemceekay.shadowedhearts.pokemon.properties.ShadowChanceProperty> {
 
     private static final Set<String> KEYS = Set.of(
-            "shadow_chance",
-            "force_shadow_chance",
-            "shadowedhearts:shadow_chance"
+            "sh_shadow_chance"
     );
 
     @Override

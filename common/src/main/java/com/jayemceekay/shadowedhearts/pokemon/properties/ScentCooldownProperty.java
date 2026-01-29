@@ -17,7 +17,7 @@ public class ScentCooldownProperty implements CustomPokemonProperty {
 
     @Override
     public String asString() {
-        return "shadowedhearts:scent_cooldown=" + lastUseTime;
+        return "sh_scent_cooldown=" + lastUseTime;
     }
 
     @Override

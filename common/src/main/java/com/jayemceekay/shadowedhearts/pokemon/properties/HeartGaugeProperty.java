@@ -17,7 +17,7 @@ public class HeartGaugeProperty implements CustomPokemonProperty {
 
     @Override
     public String asString() {
-        return "shadowedhearts:heartgauge=" + value;
+        return "sh_heartgauge=" + value;
     }
 
     @Override

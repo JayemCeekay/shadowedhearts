@@ -3,6 +3,7 @@ package com.jayemceekay.shadowedhearts.pokemon.properties;
 import com.cobblemon.mod.common.api.properties.CustomPokemonProperty;
 import com.cobblemon.mod.common.pokemon.Pokemon;
 import com.jayemceekay.shadowedhearts.PokemonAspectUtil;
+import org.jetbrains.annotations.NotNull;
 
 public class ImmunizedProperty implements CustomPokemonProperty {
     private final boolean value;
@@ -16,12 +17,12 @@ public class ImmunizedProperty implements CustomPokemonProperty {
     }
 
     @Override
-    public String asString() {
-        return "shadowedhearts:immunized=" + value;
+    public @NotNull String asString() {
+        return "sh_immunized=" + value;
     }
 
     @Override
-    public void apply(Pokemon pokemon) {
+    public void apply(@NotNull Pokemon pokemon) {
         PokemonAspectUtil.setImmunizedProperty(pokemon, value);
     }
 
