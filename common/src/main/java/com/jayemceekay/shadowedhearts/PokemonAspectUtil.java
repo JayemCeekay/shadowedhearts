@@ -12,7 +12,7 @@ import com.jayemceekay.shadowedhearts.config.IShadowConfig;
 import com.jayemceekay.shadowedhearts.config.ModConfig;
 import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs;
 import com.jayemceekay.shadowedhearts.network.PokemonPropertyUpdatePacket;
-import com.jayemceekay.shadowedhearts.property.*;
+import com.jayemceekay.shadowedhearts.pokemon.properties.*;
 import kotlin.jvm.functions.Function0;
 import net.minecraft.util.Mth;
 

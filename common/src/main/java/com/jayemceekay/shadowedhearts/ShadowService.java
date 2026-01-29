@@ -9,9 +9,9 @@ import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
 import com.cobblemon.mod.common.pokemon.Pokemon;
 import com.jayemceekay.shadowedhearts.advancements.ModCriteriaTriggers;
 import com.jayemceekay.shadowedhearts.config.HeartGaugeConfig;
-import com.jayemceekay.shadowedhearts.property.EVBufferProperty;
-import com.jayemceekay.shadowedhearts.property.HeartGaugeProperty;
-import com.jayemceekay.shadowedhearts.property.XPBufferProperty;
+import com.jayemceekay.shadowedhearts.pokemon.properties.EVBufferProperty;
+import com.jayemceekay.shadowedhearts.pokemon.properties.HeartGaugeProperty;
+import com.jayemceekay.shadowedhearts.pokemon.properties.XPBufferProperty;
 import net.minecraft.server.level.ServerPlayer;
 import org.jetbrains.annotations.Nullable;
 

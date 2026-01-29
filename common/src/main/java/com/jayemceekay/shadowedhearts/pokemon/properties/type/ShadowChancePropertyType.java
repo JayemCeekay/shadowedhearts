@@ -1,4 +1,4 @@
-package com.jayemceekay.shadowedhearts.properties;
+package com.jayemceekay.shadowedhearts.pokemon.properties.type;
 
 import com.cobblemon.mod.common.api.properties.CustomPokemonPropertyType;
 
@@ -10,7 +10,7 @@ import java.util.Set;
  * Direct CustomPokemonPropertyType implementation for ShadowChanceProperty.
  * No reflection; uses Cobblemon's public API.
  */
-public final class ShadowChancePropertyType implements CustomPokemonPropertyType<ShadowChanceProperty> {
+public final class ShadowChancePropertyType implements CustomPokemonPropertyType<com.jayemceekay.shadowedhearts.pokemon.properties.ShadowChanceProperty> {
 
     private static final Set<String> KEYS = Set.of(
             "shadow_chance",
@@ -29,7 +29,7 @@ public final class ShadowChancePropertyType implements CustomPokemonPropertyType
     }
 
     @Override
-    public ShadowChanceProperty fromString(String value) {
+    public com.jayemceekay.shadowedhearts.pokemon.properties.ShadowChanceProperty fromString(String value) {
         if (value == null) return null;
         String s = value.trim();
         if (s.isEmpty()) return null;
@@ -44,7 +44,7 @@ public final class ShadowChancePropertyType implements CustomPokemonPropertyType
                 percent = Integer.parseInt(s);
             }
             percent = Math.max(0, Math.min(100, percent));
-            return new ShadowChanceProperty(percent);
+            return new com.jayemceekay.shadowedhearts.pokemon.properties.ShadowChanceProperty(percent);
         } catch (NumberFormatException ex) {
             return null;
         }

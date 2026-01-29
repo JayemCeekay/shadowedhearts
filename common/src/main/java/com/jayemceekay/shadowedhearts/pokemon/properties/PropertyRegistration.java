@@ -1,15 +1,15 @@
-package com.jayemceekay.shadowedhearts.properties;
+package com.jayemceekay.shadowedhearts.pokemon.properties;
 
 import com.cobblemon.mod.common.api.properties.CustomPokemonProperty;
-import com.jayemceekay.shadowedhearts.property.*;
+import com.jayemceekay.shadowedhearts.pokemon.properties.type.ShadowChancePropertyType;
 
 import java.util.List;
 
 /**
  * Registers the ShadowChanceProperty parser with Cobblemon using the public API (no reflection).
  */
-public final class ShadowPropertyRegistration {
-    private ShadowPropertyRegistration() {}
+public final class PropertyRegistration {
+    private PropertyRegistration() {}
 
     public static void register() {
         try {

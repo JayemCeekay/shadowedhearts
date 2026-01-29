@@ -1,33 +1,33 @@
-package com.jayemceekay.shadowedhearts.property;
+package com.jayemceekay.shadowedhearts.pokemon.properties;
 
 import com.cobblemon.mod.common.api.properties.CustomPokemonProperty;
 import com.cobblemon.mod.common.pokemon.Pokemon;
 import com.jayemceekay.shadowedhearts.PokemonAspectUtil;
 
-public class ExposureProperty implements CustomPokemonProperty {
-    private final double value;
+public class HeartGaugeProperty implements CustomPokemonProperty {
+    private final int value;
 
-    public ExposureProperty(double value) {
+    public HeartGaugeProperty(int value) {
         this.value = value;
     }
 
-    public double getValue() {
+    public int getValue() {
         return value;
     }
 
     @Override
     public String asString() {
-        return "shadowedhearts:exposure=" + value;
+        return "shadowedhearts:heartgauge=" + value;
     }
 
     @Override
     public void apply(Pokemon pokemon) {
-        PokemonAspectUtil.setExposureProperty(pokemon, value);
+        PokemonAspectUtil.setHeartGaugeProperty(pokemon, value);
     }
 
     @Override
     public boolean matches(Pokemon pokemon) {
         return pokemon.getCustomProperties().stream()
-                .anyMatch(p -> p instanceof ExposureProperty && ((ExposureProperty) p).value == this.value);
+                .anyMatch(p -> p instanceof HeartGaugeProperty && ((HeartGaugeProperty) p).value == this.value);
     }
 }

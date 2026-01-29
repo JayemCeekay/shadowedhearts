@@ -12,7 +12,7 @@ import com.jayemceekay.shadowedhearts.client.particle.LuminousMoteEmitters;
 import com.jayemceekay.shadowedhearts.config.HeartGaugeConfig;
 import com.jayemceekay.shadowedhearts.core.*;
 import com.jayemceekay.shadowedhearts.integration.accessories.SnagAccessoryBridgeHolder;
-import com.jayemceekay.shadowedhearts.properties.ShadowPropertyRegistration;
+import com.jayemceekay.shadowedhearts.pokemon.properties.PropertyRegistration;
 import com.jayemceekay.shadowedhearts.restrictions.ShadowRestrictions;
 import com.jayemceekay.shadowedhearts.server.*;
 import com.jayemceekay.shadowedhearts.server.listeners.ShadowCatchRateListener;
@@ -75,7 +75,7 @@ public final class Shadowedhearts {
         SnagEvents.init();
         ModCommands.init();
         ModParticleTypes.register();
-        ShadowPropertyRegistration.register();
+        PropertyRegistration.register();
         ShadowProgressionManager.init();
         ShadowRestrictions.init();
         PurificationStepTracker.INSTANCE.init();

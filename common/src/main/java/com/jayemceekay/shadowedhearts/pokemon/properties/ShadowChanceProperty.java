@@ -1,4 +1,4 @@
-package com.jayemceekay.shadowedhearts.properties;
+package com.jayemceekay.shadowedhearts.pokemon.properties;
 
 import com.cobblemon.mod.common.api.properties.CustomPokemonProperty;
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
