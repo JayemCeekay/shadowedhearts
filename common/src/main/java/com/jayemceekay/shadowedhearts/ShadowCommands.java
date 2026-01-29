@@ -183,6 +183,7 @@ public class ShadowCommands {
                                             if (e instanceof PokemonEntity pe) {
                                                 Pokemon pk = pe.getPokemon();
                                                 ShadowService.corrupt(pk, pe, val);
+                                                PokemonAspectUtil.ensureRequiredShadowAspects(pk);
                                                 ctx.getSource().sendSuccess(() -> Component.literal("Shadowified " + pk.getSpecies().getName() + " with heart gauge " + val), true);
                                                 return 1;
                                             } else if (e instanceof ServerPlayer player) {
@@ -215,6 +216,7 @@ public class ShadowCommands {
                                                         return 0;
                                                     }
                                                     ShadowService.corrupt(pk, null, value);
+                                                    PokemonAspectUtil.ensureRequiredShadowAspects(pk);
                                                     ctx.getSource().sendSuccess(() -> Component.literal("Shadowified " + pk.getSpecies().getName() + " in " + player.getScoreboardName() + "'s party with heart gauge " + value), true);
                                                     return 1;
                                                 })))
@@ -225,6 +227,7 @@ public class ShadowCommands {
                                             if (e instanceof PokemonEntity pe) {
                                                 Pokemon pk = pe.getPokemon();
                                                 ShadowService.corrupt(pk, pe, value);
+                                                PokemonAspectUtil.ensureRequiredShadowAspects(pk);
                                                 ctx.getSource().sendSuccess(() -> Component.literal("Shadowified " + pk.getSpecies().getName() + " with heart gauge " + value), true);
                                                 return 1;
                                             } else if (e instanceof ServerPlayer player) {
@@ -232,6 +235,7 @@ public class ShadowCommands {
                                                 int count = 0;
                                                 for (Pokemon pk : party) {
                                                     ShadowService.corrupt(pk, null, value);
+                                                    PokemonAspectUtil.ensureRequiredShadowAspects(pk);
                                                     count++;
                                                 }
                                                 final int countFinal = count;
