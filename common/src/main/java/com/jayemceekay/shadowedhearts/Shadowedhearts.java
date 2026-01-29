@@ -75,7 +75,7 @@ public final class Shadowedhearts {
         SnagEvents.init();
         ModCommands.init();
         ModParticleTypes.register();
-        PropertyRegistration.register();
+        LifecycleEvent.SETUP.register(PropertyRegistration::register);
         ShadowProgressionManager.init();
         ShadowRestrictions.init();
         PurificationStepTracker.INSTANCE.init();
