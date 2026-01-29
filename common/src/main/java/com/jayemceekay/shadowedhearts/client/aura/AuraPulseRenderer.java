@@ -31,6 +31,10 @@ public class AuraPulseRenderer {
         PULSES.add(new PulseInstance(origin, r, g, b, distance));
     }
 
+    public static void clearPulses() {
+        PULSES.clear();
+    }
+
     public static void tick() {
         PULSES.removeIf(PulseInstance::tick);
     }
@@ -60,7 +64,7 @@ public class AuraPulseRenderer {
         if (PULSES.isEmpty()) return;
         if (ModShaders.AURA_PULSE == null) return;
         Minecraft mc = Minecraft.getInstance();
-        // DepthCapture.captureIfNeeded(); // Removed because we capture in the mixin right before invoking this
+         DepthCapture.captureIfNeeded();
 
         Matrix4f proj = projectionMatrix;
         Matrix4f view = modelViewMatrix;

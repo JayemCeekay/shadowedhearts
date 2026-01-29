@@ -37,7 +37,7 @@ public class IrisWarningScreen extends Screen {
 
         this.addRenderableWidget(Button.builder(Component.literal("Do this for me"), button -> {
             doThisForMe();
-            this.minecraft.setScreen(new TitleScreen());
+            this.minecraft.setScreen(new IrisRestartScreen());
         }).bounds(this.width / 2 - buttonWidth / 2, startY, buttonWidth, 20).build());
 
         this.addRenderableWidget(Button.builder(Component.literal("Okay"), button -> {

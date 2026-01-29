@@ -343,8 +343,11 @@ public class AuraScannerHUD {
             maxIntensity = 0;
             pulseQueue = 0;
             pulseTimer = 0;
+            AuraPulseRenderer.clearPulses();
             DETECTED_SHADOWS.clear();
             PENDING_RESPONSES.clear();
+            DETECTED_METEOROIDS.clear();
+            PENDING_METEOROID_RESPONSES.clear();
         }
     }
 
