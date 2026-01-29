@@ -5,7 +5,7 @@ import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs;
 import com.jayemceekay.shadowedhearts.items.AuraReaderItem;
 import com.jayemceekay.shadowedhearts.items.PurifiedGemItem;
 import com.jayemceekay.shadowedhearts.items.ScentItem;
-import com.jayemceekay.shadowedhearts.snag.SnagMachineItem;
+import com.jayemceekay.shadowedhearts.items.SnagMachineItem;
 import dev.architectury.registry.registries.DeferredRegister;
 import dev.architectury.registry.registries.RegistrySupplier;
 import net.minecraft.core.registries.Registries;

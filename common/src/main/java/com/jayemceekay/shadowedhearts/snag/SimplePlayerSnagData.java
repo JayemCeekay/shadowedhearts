@@ -2,6 +2,7 @@ package com.jayemceekay.shadowedhearts.snag;
 import com.jayemceekay.shadowedhearts.core.ModItemComponents;
 import com.jayemceekay.shadowedhearts.core.ModItems;
 import com.jayemceekay.shadowedhearts.integration.accessories.SnagAccessoryBridgeHolder;
+import com.jayemceekay.shadowedhearts.items.SnagMachineItem;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;

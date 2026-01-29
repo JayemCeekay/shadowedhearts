@@ -1,7 +1,7 @@
 package com.jayemceekay.shadowedhearts.mixin;
 
 import com.jayemceekay.shadowedhearts.items.AuraReaderItem;
-import com.jayemceekay.shadowedhearts.snag.SnagMachineItem;
+import com.jayemceekay.shadowedhearts.items.SnagMachineItem;
 import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.entity.ItemRenderer;

@@ -2,7 +2,11 @@ package com.jayemceekay.shadowedhearts.network
 
 import com.cobblemon.mod.common.api.net.ServerNetworkPacketHandler
 import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs
-import com.jayemceekay.shadowedhearts.snag.*
+import com.jayemceekay.shadowedhearts.items.SnagMachineItem
+import com.jayemceekay.shadowedhearts.snag.SimplePlayerSnagData
+import com.jayemceekay.shadowedhearts.snag.SnagBattleUtil
+import com.jayemceekay.shadowedhearts.snag.SnagCaps
+import com.jayemceekay.shadowedhearts.snag.SnagEnergy
 import net.minecraft.network.chat.Component
 import net.minecraft.server.MinecraftServer
 import net.minecraft.server.level.ServerPlayer

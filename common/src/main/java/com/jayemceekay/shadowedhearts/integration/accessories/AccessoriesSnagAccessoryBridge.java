@@ -1,7 +1,7 @@
 package com.jayemceekay.shadowedhearts.integration.accessories;
 
 import com.jayemceekay.shadowedhearts.core.ModItems;
-import com.jayemceekay.shadowedhearts.snag.SnagMachineItem;
+import com.jayemceekay.shadowedhearts.items.SnagMachineItem;
 import io.wispforest.accessories.api.AccessoriesAPI;
 import io.wispforest.accessories.api.AccessoriesCapability;
 import io.wispforest.accessories.api.slot.SlotReference;

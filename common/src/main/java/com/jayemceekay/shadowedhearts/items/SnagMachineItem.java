@@ -1,6 +1,10 @@
-package com.jayemceekay.shadowedhearts.snag;
+package com.jayemceekay.shadowedhearts.items;
 
 import com.jayemceekay.shadowedhearts.core.ModItemComponents;
+import com.jayemceekay.shadowedhearts.snag.PlayerSnagData;
+import com.jayemceekay.shadowedhearts.snag.SnagBattleUtil;
+import com.jayemceekay.shadowedhearts.snag.SnagCaps;
+import com.jayemceekay.shadowedhearts.snag.SnagEnergy;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResultHolder;
