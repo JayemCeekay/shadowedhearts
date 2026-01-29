@@ -41,7 +41,7 @@ public final class ShadowChanceProperty implements CustomPokemonProperty {
 
     @Override
     public String asString() {
-        return "shadow_chance=" + percent;
+        return "sh_shadow_chance=" + percent;
     }
 
     @Override
