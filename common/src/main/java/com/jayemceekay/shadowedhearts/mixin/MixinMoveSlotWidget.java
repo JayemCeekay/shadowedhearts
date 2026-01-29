@@ -37,6 +37,7 @@ public abstract class MixinMoveSlotWidget {
     private boolean shadowedhearts$shouldMask() {
         Move m = this.getMove();
         if (m == null || pokemon == null) return false;
+        if (!PokemonAspectUtil.hasShadowAspect(pokemon)) return false;
         if (ShadowGate.isShadowMoveId(m.getName())) return false; // Shadow moves always visible
 
         // Compute this move's index among non-Shadow moves in move order
