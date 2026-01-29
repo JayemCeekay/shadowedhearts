@@ -331,6 +331,9 @@ public class RelicStoneBlock extends Block implements EntityBlock {
                 Pokemon p = pe.getPokemon();
                 if (PokemonAspectUtil.getHeartGaugePercent(p) == 0) {
                     ShadowService.fullyPurify(p, pe);
+                    if (p.getOwnerPlayer() instanceof ServerPlayer serverPlayer1) {
+                        ModCriteriaTriggers.triggerShadowPurified(serverPlayer1);
+                    }
                     purifiedAny = true;
                     serverPlayer.displayClientMessage(Component.translatable("message.shadowedhearts.relic_stone.purified", p.getDisplayName(false)).withStyle(ChatFormatting.GREEN), false);
                 }
