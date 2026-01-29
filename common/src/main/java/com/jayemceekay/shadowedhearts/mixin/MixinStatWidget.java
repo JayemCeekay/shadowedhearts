@@ -107,16 +107,18 @@ public abstract class MixinStatWidget {
 
     @WrapOperation(method = "renderWidget", at = @At(value = "INVOKE", target = "Lcom/cobblemon/mod/common/client/gui/summary/widgets/screens/stats/StatWidget;drawStatPolygon(Ljava/util/List;Lorg/joml/Vector3f;)V", ordinal = 2))
     private void shadowedhearts$maskIVPolygon(StatWidget instance, List list, Vector3f vector3f, Operation<Void> original) {
-        if (!statOptions.get(getStatTabIndex()).equalsIgnoreCase("ivs") && PokemonAspectUtil.isIVHiddenByGauge(pokemon)) {
-            original.call(instance, list, vector3f);
+        if (statOptions.get(getStatTabIndex()).equalsIgnoreCase("ivs") && PokemonAspectUtil.hasShadowAspect(pokemon) && PokemonAspectUtil.isIVHiddenByGauge(pokemon)) {
+        return;
         }
+        original.call(instance, list, vector3f);
     }
 
     @WrapOperation(method = "renderWidget", at = @At(value = "INVOKE", target = "Lcom/cobblemon/mod/common/client/gui/summary/widgets/screens/stats/StatWidget;drawStatPolygon(Ljava/util/List;Lorg/joml/Vector3f;)V", ordinal = 3))
     private void shadowedhearts$maskEVPolygon(StatWidget instance, List list, Vector3f vector3f, Operation<Void> original) {
-        if (!statOptions.get(getStatTabIndex()).equalsIgnoreCase("evs") && PokemonAspectUtil.isEVHiddenByGauge(pokemon)) {
-            original.call(instance, list, vector3f);
+        if (statOptions.get(getStatTabIndex()).equalsIgnoreCase("evs") && PokemonAspectUtil.hasShadowAspect(pokemon) && PokemonAspectUtil.isEVHiddenByGauge(pokemon) ) {
+            return;
         }
+        original.call(instance, list, vector3f);
     }
 
     @WrapMethod(method = "renderModifiedStatIcon")
