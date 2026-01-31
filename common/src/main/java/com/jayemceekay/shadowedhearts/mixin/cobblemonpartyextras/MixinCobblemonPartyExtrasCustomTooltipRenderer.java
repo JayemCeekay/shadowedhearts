@@ -28,7 +28,7 @@ import java.util.List;
 
 @Pseudo
 @Mixin(targets = "party.extras.cobblemon.client.CustomTooltipRenderer")
-public abstract class CobblemonPartyExtrasCustomTooltipRendererMixin {
+public abstract class MixinCobblemonPartyExtrasCustomTooltipRenderer {
 
     @WrapMethod(method = "renderMoveTooltip(Lnet/minecraft/client/gui/GuiGraphics;Ljava/util/List;III)V")
     private static void shadowedhearts$blockRenderMoveTooltip(
