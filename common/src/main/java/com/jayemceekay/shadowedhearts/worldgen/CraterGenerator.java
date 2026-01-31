@@ -78,7 +78,7 @@ public class CraterGenerator {
 
                             // Clear terrain above following the impact angle
                             // We use a wider clearing cone as we go up to ensure no floating bits
-                            for (int moveUp = 1; center.getY() + yOffset + moveUp <= level.getMaxBuildHeight(); moveUp++) {
+                            for (int moveUp = 1; center.getY() + yOffset + moveUp <= center.getY()+(2*radius); moveUp++) {
                                 // Calculate the slant at this specific height above the impact point
                                 double slantX = (yOffset + moveUp) * angleX;
                                 double slantZ = (yOffset + moveUp) * angleZ;
