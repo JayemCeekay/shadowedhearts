@@ -74,10 +74,11 @@ dependencies {
     modCompileOnly("maven.modrinth:YL57xq9U:zsoi0dso")
 
     //cobblemon battle extras
-    modCompileOnly("maven.modrinth:2iY8VFqL:y2ziXO9L")
-
+    modCompileOnly("maven.modrinth:2iY8VFqL:ZpKo8bef")
     //cobblemon party extras
-    modCompileOnly("maven.modrinth:x2wZP9kQ:75edwUQc")
+    modCompileOnly("maven.modrinth:x2wZP9kQ:wxVvkEmX")
+
+
 }
 
 // Default for all resource/copy tasks

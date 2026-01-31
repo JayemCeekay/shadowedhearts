@@ -109,7 +109,14 @@ dependencies {
     //concentration
     //modRuntimeOnly("maven.modrinth:QyvWSZ5S:E7K9ZMD2")
 
-    //modRuntimeOnly("maven.modrinth:2iY8VFqL:y2ziXO9L")
+    //cobblemon battle extras
+    modImplementation("maven.modrinth:2iY8VFqL:ZpKo8bef")
+
+    //cobblemon party extras
+    modImplementation("maven.modrinth:x2wZP9kQ:wxVvkEmX")
+
+    //cobblemon tim core
+    modRuntimeOnly("maven.modrinth:lVP9aUaY:YhsWrN4q")
 
     //simpleTMs
     modCompileOnly("maven.modrinth:yFqR0DNc:uaKfPMYS")
