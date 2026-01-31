@@ -1,5 +1,7 @@
 package com.jayemceekay.shadowedhearts.blocks;
 
+import com.cobblemon.mod.common.api.mark.Mark;
+import com.cobblemon.mod.common.api.mark.Marks;
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
 import com.cobblemon.mod.common.pokemon.Pokemon;
 import com.jayemceekay.shadowedhearts.PokemonAspectUtil;
@@ -15,6 +17,7 @@ import com.jayemceekay.shadowedhearts.util.ShadowedHeartsPlayerData;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
@@ -62,8 +65,8 @@ public class RelicStoneBlock extends Block implements EntityBlock {
     // 6 7 8
     private static final int[][] OFFSETS = {
             {-1, -1}, {0, -1}, {1, -1},
-            {-1,  0}, {0,  0}, {1,  0},
-            {-1,  1}, {0,  1}, {1,  1},
+            {-1, 0}, {0, 0}, {1, 0},
+            {-1, 1}, {0, 1}, {1, 1},
     };
 
     // Total visual height in "pixels" (1/16 block units).
@@ -112,15 +115,37 @@ public class RelicStoneBlock extends Block implements EntityBlock {
     }
 
     // Half/quarter collision cells (coordinates are 0..16 per block cell, height depends on layer).
-    private static VoxelShape westHalf(double h)  { return Block.box(0, 0, 0, 8,  h, 16); }
-    private static VoxelShape eastHalf(double h)  { return Block.box(8, 0, 0, 16, h, 16); }
-    private static VoxelShape northHalf(double h) { return Block.box(0, 0, 0, 16, h, 8); }
-    private static VoxelShape southHalf(double h) { return Block.box(0, 0, 8, 16, h, 16); }
+    private static VoxelShape westHalf(double h) {
+        return Block.box(0, 0, 0, 8, h, 16);
+    }
 
-    private static VoxelShape nwQuarter(double h) { return Block.box(0, 0, 0, 8,  h, 8); }
-    private static VoxelShape neQuarter(double h) { return Block.box(8, 0, 0, 16, h, 8); }
-    private static VoxelShape swQuarter(double h) { return Block.box(0, 0, 8, 8,  h, 16); }
-    private static VoxelShape seQuarter(double h) { return Block.box(8, 0, 8, 16, h, 16); }
+    private static VoxelShape eastHalf(double h) {
+        return Block.box(8, 0, 0, 16, h, 16);
+    }
+
+    private static VoxelShape northHalf(double h) {
+        return Block.box(0, 0, 0, 16, h, 8);
+    }
+
+    private static VoxelShape southHalf(double h) {
+        return Block.box(0, 0, 8, 16, h, 16);
+    }
+
+    private static VoxelShape nwQuarter(double h) {
+        return Block.box(0, 0, 0, 8, h, 8);
+    }
+
+    private static VoxelShape neQuarter(double h) {
+        return Block.box(8, 0, 0, 16, h, 8);
+    }
+
+    private static VoxelShape swQuarter(double h) {
+        return Block.box(0, 0, 8, 8, h, 16);
+    }
+
+    private static VoxelShape seQuarter(double h) {
+        return Block.box(8, 0, 8, 16, h, 16);
+    }
 
     @Override
     public @Nullable BlockState getStateForPlacement(BlockPlaceContext ctx) {
@@ -180,10 +205,12 @@ public class RelicStoneBlock extends Block implements EntityBlock {
     }
 
     private void checkAndFixBroken(BlockState state, Level level, BlockPos pos) {
-        if (!level.isClientSide && isCenter(state) && !state.getValue(HAS_BE)) {
-            level.setBlock(pos, state.setValue(HAS_BE, true), 3);
+        if (!level.isClientSide && isCenter(state)) {
             if (level.getBlockEntity(pos) == null) {
                 level.setBlockEntity(new RelicStoneBlockEntity(pos, state.setValue(HAS_BE, true)));
+            }
+            if (!state.getValue(HAS_BE)) {
+                level.setBlock(pos, state.setValue(HAS_BE, true), 3);
             }
         }
     }
@@ -275,7 +302,12 @@ public class RelicStoneBlock extends Block implements EntityBlock {
 
     @Override
     protected @NotNull ItemInteractionResult useItemOn(ItemStack stack, BlockState state, Level level, BlockPos pos, Player player, InteractionHand hand, BlockHitResult hit) {
-        checkAndFixBroken(state, level, pos);
+        BlockPos center = getCenterPos(pos, state);
+        BlockState centerState = level.getBlockState(center);
+        if (centerState.is(this)) {
+            checkAndFixBroken(centerState, level, center);
+        }
+
         if (stack.is(ModItems.SHADOW_SHARD.get()) && stack.getCount() >= 8) {
             if (!level.isClientSide) {
                 stack.shrink(8);
@@ -283,7 +315,7 @@ public class RelicStoneBlock extends Block implements EntityBlock {
                 if (!player.getInventory().add(gem)) {
                     player.drop(gem, false);
                 }
-                level.playSound(null, pos, net.minecraft.sounds.SoundEvents.AMETHYST_BLOCK_CHIME, net.minecraft.sounds.SoundSource.BLOCKS, 1.0F, 1.0F);
+                level.playSound(null, center, net.minecraft.sounds.SoundEvents.AMETHYST_BLOCK_CHIME, net.minecraft.sounds.SoundSource.BLOCKS, 1.0F, 1.0F);
             }
             return ItemInteractionResult.sidedSuccess(level.isClientSide);
         }
@@ -293,15 +325,20 @@ public class RelicStoneBlock extends Block implements EntityBlock {
 
     @Override
     protected @NotNull InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player, BlockHitResult hit) {
-        checkAndFixBroken(state, level, pos);
+        BlockPos center = getCenterPos(pos, state);
+        BlockState centerState = level.getBlockState(center);
+        if (centerState.is(this)) {
+            checkAndFixBroken(centerState, level, center);
+        }
+
         if (player instanceof ServerPlayer serverPlayer) {
             ModCriteriaTriggers.triggerRelicStoneInteract(serverPlayer);
         }
         if (level.isClientSide) {
-            return InteractionResult.SUCCESS;
+            return InteractionResult.PASS;
         }
 
-        if(player instanceof ServerPlayer serverPlayer) {
+        if (player instanceof ServerPlayer serverPlayer) {
             long lastPurify; // Fallback
             long now = level.getGameTime();
             long cooldownTicks = (long) ShadowedHeartsConfigs.getInstance().getShadowConfig().relicStoneCooldownMinutes() * 60 * 20;
@@ -310,7 +347,7 @@ public class RelicStoneBlock extends Block implements EntityBlock {
             ShadowedHeartsPlayerData data = PlayerPersistentData.get(serverPlayer);
             lastPurify = data.getLastRelicStonePurify();
 
-            if (now - lastPurify < cooldownTicks) {
+            if (now - lastPurify < cooldownTicks && lastPurify != 0) {
                 long remainingTicks = cooldownTicks - (now - lastPurify);
                 long remainingSeconds = remainingTicks / 20;
                 long minutes = remainingSeconds / 60;
@@ -320,7 +357,7 @@ public class RelicStoneBlock extends Block implements EntityBlock {
             }
 
             // Search for nearby PokemonEntities owned by the serverPlayer
-            AABB area = new AABB(pos).inflate(5.0);
+            AABB area = new AABB(center).inflate(5.0);
             List<PokemonEntity> nearbyPokemon = level.getEntitiesOfClass(PokemonEntity.class, area, pe -> {
                 Pokemon p = pe.getPokemon();
                 return serverPlayer.getUUID().equals(p.getOwnerUUID()) && PokemonAspectUtil.hasShadowAspect(p);
@@ -331,6 +368,8 @@ public class RelicStoneBlock extends Block implements EntityBlock {
                 Pokemon p = pe.getPokemon();
                 if (PokemonAspectUtil.getHeartGaugePercent(p) == 0) {
                     ShadowService.fullyPurify(p, pe);
+                    Mark nationalRibbon = Marks.getByIdentifier(ResourceLocation.fromNamespaceAndPath("cobblemon", "ribbon_event_national"));
+                    p.exchangeMark(nationalRibbon, true);
                     if (p.getOwnerPlayer() instanceof ServerPlayer serverPlayer1) {
                         ModCriteriaTriggers.triggerShadowPurified(serverPlayer1);
                     }
@@ -341,12 +380,14 @@ public class RelicStoneBlock extends Block implements EntityBlock {
 
             if (purifiedAny) {
                 PlayerPersistentData.get(serverPlayer).setLastRelicStonePurify(now);
-                level.playSound(null, pos, net.minecraft.sounds.SoundEvents.AMETHYST_BLOCK_CHIME, net.minecraft.sounds.SoundSource.BLOCKS, 1.0F, 1.0F);
+                level.playSound(null, center, net.minecraft.sounds.SoundEvents.AMETHYST_BLOCK_CHIME, net.minecraft.sounds.SoundSource.BLOCKS, 1.0F, 1.0F);
             } else {
                 if (nearbyPokemon.isEmpty()) {
                     serverPlayer.displayClientMessage(Component.translatable("message.shadowedhearts.relic_stone.no_pokemon"), true);
+                    return InteractionResult.SUCCESS;
                 } else {
                     serverPlayer.displayClientMessage(Component.translatable("message.shadowedhearts.relic_stone.not_ready"), true);
+                    return InteractionResult.SUCCESS;
                 }
             }
         }

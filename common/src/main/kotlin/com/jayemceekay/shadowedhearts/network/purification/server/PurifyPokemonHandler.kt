@@ -1,6 +1,7 @@
 package com.jayemceekay.shadowedhearts.network.purification.server
 
 import com.cobblemon.mod.common.Cobblemon
+import com.cobblemon.mod.common.api.mark.Marks
 import com.cobblemon.mod.common.api.net.ServerNetworkPacketHandler
 import com.jayemceekay.shadowedhearts.PokemonAspectUtil
 import com.jayemceekay.shadowedhearts.ShadowService
@@ -9,6 +10,7 @@ import com.jayemceekay.shadowedhearts.network.purification.PokemonPurifiedPacket
 import com.jayemceekay.shadowedhearts.network.purification.PurifyPokemonPacket
 import com.jayemceekay.shadowedhearts.storage.purification.PurificationChamberPosition
 import com.jayemceekay.shadowedhearts.storage.purification.PurificationChamberStore
+import net.minecraft.resources.ResourceLocation
 import net.minecraft.server.MinecraftServer
 import net.minecraft.server.level.ServerPlayer
 
@@ -35,6 +37,8 @@ object PurifyPokemonHandler : ServerNetworkPacketHandler<PurifyPokemonPacket> {
             if (pokemon.getOwnerPlayer() is ServerPlayer) {
                 ModCriteriaTriggers.triggerShadowPurified(player)
             }
+            Marks.getByIdentifier(ResourceLocation.fromNamespaceAndPath("cobblemon", "ribbon_event_national"))
+                ?.let { pokemon.exchangeMark(it, true) };
             PokemonPurifiedPacket(
                 purificationStoreID = packet.purificationStoreID,
                 setIndex = packet.setIndex,
