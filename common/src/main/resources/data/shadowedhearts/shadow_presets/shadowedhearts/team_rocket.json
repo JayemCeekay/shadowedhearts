@@ -1,9 +1,9 @@
 [
-  "shadowedhearts:shadow_party",
-  "shadowedhearts:shadow_mode_replace",
-  "shadowedhearts:shadow_n1",
-  "shadowedhearts:pool/shadowedhearts:team_rocket",
-  "shadowedhearts:lvl_match",
-  "shadowedhearts:lvl_enforce_evo_min",
-  "shadowedhearts:unique"
+  "sh_shadow_party",
+  "sh_shadow_mode_replace",
+  "sh_shadow_n1",
+  "sh_pool/shadowedhearts:team_rocket",
+  "sh_lvl_match",
+  "sh_lvl_enforce_evo_min",
+  "sh_unique"
 ]

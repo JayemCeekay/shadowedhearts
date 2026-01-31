@@ -147,7 +147,7 @@ public abstract class MixinRCTModMakeBattle {
                                 if (parts.length >= 2 && !parts[1].isBlank()) {
                                     String preset = parts[1];
                                     if (!preset.contains(":")) {
-                                        preset = "shadowedhearts:" + preset;
+                                        preset = "sh_" + preset;
                                     }
 
                                     ((Entity)mob).addTag(NPCShadowInjector.TAG_PRESET_PREFIX + preset);

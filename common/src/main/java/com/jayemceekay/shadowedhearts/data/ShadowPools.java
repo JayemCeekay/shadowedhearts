@@ -2,18 +2,19 @@ package com.jayemceekay.shadowedhearts.data;
 
 import com.cobblemon.mod.common.api.npc.NPCClasses;
 import com.cobblemon.mod.common.api.pokemon.PokemonProperties;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
+import com.google.gson.*;
+import dev.architectury.platform.Platform;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.packs.resources.Resource;
 import net.minecraft.server.packs.resources.ResourceManager;
 
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.*;
 
 /**
@@ -39,13 +40,114 @@ public final class ShadowPools {
             this.props = props;
             this.weight = Math.max(1, weight);
         }
+
+        public JsonElement toJson() {
+            JsonObject obj = new JsonObject();
+            obj.addProperty("pokemon", props.toString());
+            if (weight != 1) {
+                obj.addProperty("weight", weight);
+            }
+            return obj;
+        }
     }
 
     private static final Map<ResourceLocation, List<WeightedEntry>> CACHE = new HashMap<>();
+    private static final Map<ResourceLocation, List<WeightedEntry>> RUNTIME_POOLS = new HashMap<>();
+    private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 
     public static List<WeightedEntry> get(MinecraftServer server, ResourceLocation id) {
-        if (id == null || server == null) return Collections.emptyList();
+        if (id == null) return Collections.emptyList();
+
+        if (RUNTIME_POOLS.containsKey(id)) {
+            return RUNTIME_POOLS.get(id);
+        }
+
+        if (server == null) return Collections.emptyList();
         return CACHE.computeIfAbsent(id, key -> load(server.getResourceManager(), key));
+    }
+
+    public static void savePool(MinecraftServer server, ResourceLocation id, List<WeightedEntry> entries) {
+        RUNTIME_POOLS.put(id, new ArrayList<>(entries));
+        saveToDisk(id, entries);
+        CACHE.remove(id);
+    }
+
+    public static void deletePool(MinecraftServer server, ResourceLocation id) {
+        RUNTIME_POOLS.remove(id);
+        deleteFromDisk(id);
+        CACHE.remove(id);
+    }
+
+    public static Map<ResourceLocation, List<WeightedEntry>> getRuntimePools() {
+        return Collections.unmodifiableMap(RUNTIME_POOLS);
+    }
+
+    public static void init() {
+        loadFromDisk();
+    }
+
+    private static Path getPoolsDir() {
+        Path configDir = Platform.getConfigFolder();
+        return configDir.resolve("shadowedhearts").resolve("shadow_pools");
+    }
+
+    private static void saveToDisk(ResourceLocation id, List<WeightedEntry> entries) {
+        try {
+            Path dir = getPoolsDir();
+            Files.createDirectories(dir);
+            Path file = dir.resolve(id.getNamespace() + "_" + id.getPath() + ".json");
+
+            JsonObject root = new JsonObject();
+            JsonArray arr = new JsonArray();
+            for (WeightedEntry entry : entries) {
+                arr.add(entry.toJson());
+            }
+            root.add("entries", arr);
+
+            try (BufferedWriter writer = Files.newBufferedWriter(file, StandardCharsets.UTF_8)) {
+                GSON.toJson(root, writer);
+            }
+        } catch (Throwable t) {
+            t.printStackTrace();
+        }
+    }
+
+    private static void deleteFromDisk(ResourceLocation id) {
+        try {
+            Path dir = getPoolsDir();
+            Path file = dir.resolve(id.getNamespace() + "_" + id.getPath() + ".json");
+            Files.deleteIfExists(file);
+        } catch (Throwable t) {
+            t.printStackTrace();
+        }
+    }
+
+    private static void loadFromDisk() {
+        try {
+            Path dir = getPoolsDir();
+            if (!Files.exists(dir)) return;
+
+            Files.list(dir).forEach(file -> {
+                if (file.toString().endsWith(".json")) {
+                    try (BufferedReader reader = Files.newBufferedReader(file, StandardCharsets.UTF_8)) {
+                        String filename = file.getFileName().toString();
+                        filename = filename.substring(0, filename.length() - 5);
+                        int underscore = filename.indexOf('_');
+                        if (underscore <= 0) return;
+                        String ns = filename.substring(0, underscore);
+                        String idStr = filename.substring(underscore + 1);
+                        ResourceLocation id = new ResourceLocation(ns, idStr);
+
+                        JsonElement root = JsonParser.parseReader(reader);
+                        RUNTIME_POOLS.put(id, parsePool(root));
+                    } catch (Throwable t) {
+                        t.printStackTrace();
+                    }
+                }
+            });
+        } catch (Throwable t) {
+            t.printStackTrace();
+        }
     }
 
     private static List<WeightedEntry> load(ResourceManager rm, ResourceLocation id) {

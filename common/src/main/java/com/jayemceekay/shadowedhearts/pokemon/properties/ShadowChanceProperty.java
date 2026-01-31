@@ -14,7 +14,7 @@ import java.util.concurrent.ThreadLocalRandom;
  *   shadow_chance=25%       // 25% chance (percent sign optional)
  *   shadow_chance=0.25      // 25% chance (0..1 decimal format)
  *
- * Key: "shadow_chance" (aliases: "shadowedhearts:shadow_chance", "force_shadow_chance")
+ * Key: "shadow_chance" (aliases: "sh_shadow_chance", "force_shadow_chance")
  */
 public final class ShadowChanceProperty implements CustomPokemonProperty {
 

@@ -7,6 +7,7 @@ import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
 import com.cobblemon.mod.common.pokemon.Pokemon;
 import com.jayemceekay.shadowedhearts.config.HeartGaugeConfig;
 import com.jayemceekay.shadowedhearts.data.ShadowAspectPresets;
+import com.jayemceekay.shadowedhearts.data.ShadowPools;
 import com.jayemceekay.shadowedhearts.heart.HeartGaugeEvents;
 import com.jayemceekay.shadowedhearts.server.AuraBroadcastQueue;
 import com.jayemceekay.shadowedhearts.server.WildShadowSpawnListener;
@@ -20,6 +21,7 @@ import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.EntityArgument;
+import net.minecraft.commands.arguments.ResourceLocationArgument;
 import net.minecraft.commands.arguments.UuidArgument;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
@@ -154,15 +156,10 @@ public class ShadowCommands {
                                 )
                                 .then(Commands.literal("preset")
                                         .then(Commands.literal("define")
-                                                .then(Commands.argument("presetId", StringArgumentType.string())
+                                                .then(Commands.argument("presetId", ResourceLocationArgument.id())
                                                         .then(Commands.argument("aspects", StringArgumentType.greedyString())
                                                                 .executes(ctx -> {
-                                                                    String idStr = StringArgumentType.getString(ctx, "presetId");
-                                                                    ResourceLocation presetId = ResourceLocation.tryParse(idStr);
-                                                                    if (presetId == null || !idStr.contains(":")) {
-                                                                        ctx.getSource().sendFailure(Component.literal("Invalid preset ID. Use namespace:path format."));
-                                                                        return 0;
-                                                                    }
+                                                                    ResourceLocation presetId = ResourceLocationArgument.getId(ctx, "presetId");
                                                                     String aspectsStr = StringArgumentType.getString(ctx, "aspects");
                                                                     List<String> aspects = Arrays.stream(aspectsStr.split(" "))
                                                                             .filter(s -> !s.isBlank())
@@ -179,14 +176,9 @@ public class ShadowCommands {
                                                 )
                                         )
                                         .then(Commands.literal("delete")
-                                                .then(Commands.argument("presetId", StringArgumentType.string())
+                                                .then(Commands.argument("presetId", ResourceLocationArgument.id())
                                                         .executes(ctx -> {
-                                                            String idStr = StringArgumentType.getString(ctx, "presetId");
-                                                            ResourceLocation presetId = ResourceLocation.tryParse(idStr);
-                                                            if (presetId == null) {
-                                                                ctx.getSource().sendFailure(Component.literal("Invalid preset ID."));
-                                                                return 0;
-                                                            }
+                                                            ResourceLocation presetId = ResourceLocationArgument.getId(ctx, "presetId");
                                                             ShadowAspectPresets.deletePreset(ctx.getSource().getServer(), presetId);
                                                             ctx.getSource().sendSuccess(() -> Component.literal("Deleted preset: " + presetId), true);
                                                             return 1;
@@ -205,14 +197,9 @@ public class ShadowCommands {
                                                 })
                                         )
                                         .then(Commands.literal("show")
-                                                .then(Commands.argument("presetId", StringArgumentType.string())
+                                                .then(Commands.argument("presetId", ResourceLocationArgument.id())
                                                         .executes(ctx -> {
-                                                            String idStr = StringArgumentType.getString(ctx, "presetId");
-                                                            ResourceLocation presetId = ResourceLocation.tryParse(idStr);
-                                                            if (presetId == null) {
-                                                                ctx.getSource().sendFailure(Component.literal("Invalid preset ID."));
-                                                                return 0;
-                                                            }
+                                                            ResourceLocation presetId = ResourceLocationArgument.getId(ctx, "presetId");
                                                             List<String> aspects = ShadowAspectPresets.get(ctx.getSource().getServer(), presetId);
                                                             if (aspects.isEmpty()) {
                                                                 ctx.getSource().sendFailure(Component.literal("Preset not found or empty: " + presetId));
@@ -224,15 +211,10 @@ public class ShadowCommands {
                                                 )
                                         )
                                         .then(Commands.literal("add")
-                                                .then(Commands.argument("presetId", StringArgumentType.string())
+                                                .then(Commands.argument("presetId", ResourceLocationArgument.id())
                                                         .then(Commands.argument("aspects", StringArgumentType.greedyString())
                                                                 .executes(ctx -> {
-                                                                    String idStr = StringArgumentType.getString(ctx, "presetId");
-                                                                    ResourceLocation presetId = ResourceLocation.tryParse(idStr);
-                                                                    if (presetId == null) {
-                                                                        ctx.getSource().sendFailure(Component.literal("Invalid preset ID."));
-                                                                        return 0;
-                                                                    }
+                                                                    ResourceLocation presetId = ResourceLocationArgument.getId(ctx, "presetId");
                                                                     List<String> existing = new ArrayList<>(ShadowAspectPresets.get(ctx.getSource().getServer(), presetId));
                                                                     String aspectsStr = StringArgumentType.getString(ctx, "aspects");
                                                                     List<String> toAdd = Arrays.stream(aspectsStr.split(" "))
@@ -262,15 +244,10 @@ public class ShadowCommands {
                                                 )
                                         )
                                         .then(Commands.literal("remove")
-                                                .then(Commands.argument("presetId", StringArgumentType.string())
+                                                .then(Commands.argument("presetId", ResourceLocationArgument.id())
                                                         .then(Commands.argument("aspects", StringArgumentType.greedyString())
                                                                 .executes(ctx -> {
-                                                                    String idStr = StringArgumentType.getString(ctx, "presetId");
-                                                                    ResourceLocation presetId = ResourceLocation.tryParse(idStr);
-                                                                    if (presetId == null) {
-                                                                        ctx.getSource().sendFailure(Component.literal("Invalid preset ID."));
-                                                                        return 0;
-                                                                    }
+                                                                    ResourceLocation presetId = ResourceLocationArgument.getId(ctx, "presetId");
                                                                     List<String> existing = new ArrayList<>(ShadowAspectPresets.get(ctx.getSource().getServer(), presetId));
                                                                     if (existing.isEmpty()) {
                                                                         ctx.getSource().sendFailure(Component.literal("Preset not found or empty: " + presetId));
@@ -304,16 +281,11 @@ public class ShadowCommands {
                                         )
                                         .then(Commands.literal("apply")
                                                 .then(Commands.argument("targets", EntityArgument.entities())
-                                                        .then(Commands.argument("presetId", StringArgumentType.string())
+                                                        .then(Commands.argument("presetId", ResourceLocationArgument.id())
                                                                 .executes(ctx -> {
                                                                     var entities = EntityArgument.getEntities(ctx, "targets");
-                                                                    String presetIdStr = StringArgumentType.getString(ctx, "presetId");
-                                                                    ResourceLocation presetId = ResourceLocation.tryParse(presetIdStr);
-                                                                    if (presetId == null) {
-                                                                        ctx.getSource().sendFailure(Component.literal("Invalid preset ID."));
-                                                                        return 0;
-                                                                    }
-                                                                    String fullTag = "shadowedhearts:shadow_presets/" + presetId.getNamespace() + "/" + presetId.getPath();
+                                                                    ResourceLocation presetId = ResourceLocationArgument.getId(ctx, "presetId");
+                                                                    String fullTag = "sh_shadow_presets/" + presetId.getNamespace() + "/" + presetId.getPath();
                                                                     int applied = 0;
                                                                     for (Entity e : entities) {
                                                                         if (e instanceof NPCEntity npc) {
@@ -328,6 +300,89 @@ public class ShadowCommands {
                                                         )
                                                 )
                                         )
+                                )
+                        )
+                )
+                .then(Commands.literal("shadowpool")
+                        .requires(src -> src.hasPermission(2))
+                        .then(Commands.literal("define")
+                                .then(Commands.argument("poolId", ResourceLocationArgument.id())
+                                        .then(Commands.argument("entries", StringArgumentType.greedyString())
+                                                .executes(ctx -> {
+                                                    ResourceLocation poolId = ResourceLocationArgument.getId(ctx, "poolId");
+                                                    String entriesStr = StringArgumentType.getString(ctx, "entries");
+                                                    String[] entryParts = entriesStr.split(",");
+                                                    List<ShadowPools.WeightedEntry> entries = new ArrayList<>();
+                                                    for (String part : entryParts) {
+                                                        part = part.trim();
+                                                        if (part.isEmpty()) continue;
+                                                        int weight = 1;
+                                                        String propsStr = part;
+                                                        if (part.contains("|")) {
+                                                            String[] split = part.split("\\|");
+                                                            propsStr = split[0].trim();
+                                                            try {
+                                                                weight = Integer.parseInt(split[1].trim());
+                                                            } catch (NumberFormatException e) {
+                                                                ctx.getSource().sendFailure(Component.literal("Invalid weight for entry: " + part));
+                                                                return 0;
+                                                            }
+                                                        }
+                                                        try {
+                                                            var props = com.cobblemon.mod.common.api.pokemon.PokemonProperties.Companion.parse(propsStr);
+                                                            entries.add(new ShadowPools.WeightedEntry(props, weight));
+                                                        } catch (Exception e) {
+                                                            ctx.getSource().sendFailure(Component.literal("Invalid Pokémon properties: " + propsStr));
+                                                            return 0;
+                                                        }
+                                                    }
+                                                    if (entries.isEmpty()) {
+                                                        ctx.getSource().sendFailure(Component.literal("At least one entry must be provided. Format: 'prop1|weight, prop2|weight'"));
+                                                        return 0;
+                                                    }
+                                                    ShadowPools.savePool(ctx.getSource().getServer(), poolId, entries);
+                                                    ctx.getSource().sendSuccess(() -> Component.literal("Defined and saved shadow pool: " + poolId + " with " + entries.size() + " entries."), true);
+                                                    return 1;
+                                                })
+                                        )
+                                )
+                        )
+                        .then(Commands.literal("delete")
+                                .then(Commands.argument("poolId", ResourceLocationArgument.id())
+                                        .executes(ctx -> {
+                                            ResourceLocation poolId = ResourceLocationArgument.getId(ctx, "poolId");
+                                            ShadowPools.deletePool(ctx.getSource().getServer(), poolId);
+                                            ctx.getSource().sendSuccess(() -> Component.literal("Deleted shadow pool: " + poolId), true);
+                                            return 1;
+                                        })
+                                )
+                        )
+                        .then(Commands.literal("list")
+                                .executes(ctx -> {
+                                    var pools = ShadowPools.getRuntimePools();
+                                    if (pools.isEmpty()) {
+                                        ctx.getSource().sendSuccess(() -> Component.literal("No runtime shadow pools defined."), false);
+                                    } else {
+                                        ctx.getSource().sendSuccess(() -> Component.literal("Runtime shadow pools: " + String.join(", ", pools.keySet().stream().map(ResourceLocation::toString).toList())), false);
+                                    }
+                                    return pools.size();
+                                })
+                        )
+                        .then(Commands.literal("show")
+                                .then(Commands.argument("poolId", ResourceLocationArgument.id())
+                                        .executes(ctx -> {
+                                            ResourceLocation poolId = ResourceLocationArgument.getId(ctx, "poolId");
+                                            List<ShadowPools.WeightedEntry> entries = ShadowPools.get(ctx.getSource().getServer(), poolId);
+                                            if (entries.isEmpty()) {
+                                                ctx.getSource().sendFailure(Component.literal("Pool not found or empty: " + poolId));
+                                                return 0;
+                                            }
+                                            ctx.getSource().sendSuccess(() -> Component.literal("Shadow Pool " + poolId + " entries:"), false);
+                                            for (ShadowPools.WeightedEntry entry : entries) {
+                                                ctx.getSource().sendSuccess(() -> Component.literal("- " + entry.props.toString() + " (weight: " + entry.weight + ")"), false);
+                                            }
+                                            return 1;
+                                        })
                                 )
                         )
                 )

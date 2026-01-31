@@ -26,7 +26,7 @@ import java.util.*;
  * or
  * { "aspects": [ "aspect-a", "aspect-b" ] }
  * <p>
- * Access via a pseudo-aspect on NPCs: "shadowedhearts:shadow_presets/<ns>/<id>"
+ * Access via a pseudo-aspect on NPCs: "sh_shadow_presets/<ns>/<id>"
  */
 public final class ShadowAspectPresets {
     private ShadowAspectPresets() {
@@ -37,16 +37,16 @@ public final class ShadowAspectPresets {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 
     public static boolean isPresetKey(String aspect) {
-        return aspect != null && aspect.startsWith("shadowedhearts:shadow_presets/");
+        return aspect != null && aspect.startsWith("sh_shadow_presets/");
     }
 
     /**
      * Extracts the preset id from a preset aspect string.
-     * Example: shadowedhearts:shadow_presets/mymod/my_preset -> new ResourceLocation("mymod", "my_preset")
+     * Example: sh_shadow_presets/mymod/my_preset -> new ResourceLocation("mymod", "my_preset")
      */
     public static ResourceLocation toPresetId(String presetAspect) {
         if (!isPresetKey(presetAspect)) return null;
-        String path = presetAspect.substring("shadowedhearts:shadow_presets/".length());
+        String path = presetAspect.substring("sh_shadow_presets/".length());
         int slash = path.indexOf('/');
         if (slash <= 0) return null;
         String ns = path.substring(0, slash);

@@ -37,10 +37,10 @@ import java.util.*;
  * mutates up to N of their party members for this battle by applying the Shadow aspect.
  *
  * Minimal MVP behaviors implemented:
- * - Enable via entity tag "shadowedhearts:shadow_party".
- * - Mode: only "convert" supported at the moment (default). If tag "shadowedhearts:shadow_mode_convert" is present,
+ * - Enable via entity tag "sh_shadow_party".
+ * - Mode: only "convert" supported at the moment (default). If tag "sh_shadow_mode_convert" is present,
  *   behavior is the same; other modes are ignored for MVP to keep the footprint small.
- * - Count via tag "shadowedhearts:shadow_n1".."shadowedhearts:shadow_n6". Defaults to 1 if unspecified.
+ * - Count via tag "sh_shadow_n1".."sh_shadow_n6". Defaults to 1 if unspecified.
  *
  * The mutation acts on the BattlePokemon's effected Pokemon so it's scoped to this battle instance and
  * doesn’t require altering existing datapacks or party providers.
@@ -48,20 +48,20 @@ import java.util.*;
 public final class NPCShadowInjector {
     private NPCShadowInjector() {}
 
-    public static final String TAG_ENABLE = "shadowedhearts:shadow_party";
-    public static final String TAG_MODE_CONVERT = "shadowedhearts:shadow_mode_convert";
-    public static final String TAG_MODE_APPEND = "shadowedhearts:shadow_mode_append";
-    public static final String TAG_MODE_REPLACE = "shadowedhearts:shadow_mode_replace";
-    public static final String TAG_COUNT_PREFIX = "shadowedhearts:shadow_n"; // followed by [1-6]
+    public static final String TAG_ENABLE = "sh_shadow_party";
+    public static final String TAG_MODE_CONVERT = "sh_shadow_mode_convert";
+    public static final String TAG_MODE_APPEND = "sh_shadow_mode_append";
+    public static final String TAG_MODE_REPLACE = "sh_shadow_mode_replace";
+    public static final String TAG_COUNT_PREFIX = "sh_shadow_n"; // followed by [1-6]
     // Level policy tags
-    public static final String TAG_LVL_MATCH = "shadowedhearts:lvl_match";
-    public static final String TAG_LVL_FIXED_PREFIX = "shadowedhearts:lvl_fixed_"; // + number
-    public static final String TAG_LVL_PLUS_PREFIX = "shadowedhearts:lvl_plus_"; // + number
-    public static final String TAG_POOL_PREFIX = "shadowedhearts:pool/"; // + <ns>/<id>
-    public static final String TAG_UNIQUE = "shadowedhearts:unique"; // avoid duplicates when injecting
-    public static final String TAG_CONVERT_CHANCE_PREFIX = "shadowedhearts:convert_chance_"; // + percent 0-100
-    public static final String TAG_PRESET_PREFIX = "shadowedhearts:shadow_presets/"; // + <preset id>
-    public static final String TAG_LVL_ENFORCE_EVO_MIN = "shadowedhearts:lvl_enforce_evo_min";
+    public static final String TAG_LVL_MATCH = "sh_lvl_match";
+    public static final String TAG_LVL_FIXED_PREFIX = "sh_lvl_fixed_"; // + number
+    public static final String TAG_LVL_PLUS_PREFIX = "sh_lvl_plus_"; // + number
+    public static final String TAG_POOL_PREFIX = "sh_pool/"; // + <ns>/<id>
+    public static final String TAG_UNIQUE = "sh_unique"; // avoid duplicates when injecting
+    public static final String TAG_CONVERT_CHANCE_PREFIX = "sh_convert_chance_"; // + percent 0-100
+    public static final String TAG_PRESET_PREFIX = "sh_shadow_presets/"; // + <preset id>
+    public static final String TAG_LVL_ENFORCE_EVO_MIN = "sh_lvl_enforce_evo_min";
 
     private enum Mode { APPEND, CONVERT, REPLACE }
 
@@ -149,12 +149,12 @@ public final class NPCShadowInjector {
                 toRemove.add(aspect);
             }
 
-            // Also allow preset request via entity tag: shadowedhearts:shadow_presets/<presetId>
+            // Also allow preset request via entity tag: sh_shadow_presets/<presetId>
             for (String tag : entity.getTags()) {
                 if (!tag.startsWith(TAG_PRESET_PREFIX)) continue;
                 String presetId = tag.substring(TAG_PRESET_PREFIX.length());
                 if (presetId.isBlank()) continue;
-                String presetKey = tag; // Use the tag itself as the key since it now starts with shadowedhearts:shadow_presets/
+                String presetKey = tag; // Use the tag itself as the key since it now starts with sh_shadow_presets/
                 if (!ShadowAspectPresets.isPresetKey(presetKey)) {
                     Shadowedhearts.LOGGER.warn("Not a valid preset key: " + presetKey);
                     continue;
