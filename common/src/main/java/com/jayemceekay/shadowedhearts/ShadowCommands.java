@@ -6,6 +6,7 @@ import com.cobblemon.mod.common.entity.npc.NPCEntity;
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
 import com.cobblemon.mod.common.pokemon.Pokemon;
 import com.jayemceekay.shadowedhearts.config.HeartGaugeConfig;
+import com.jayemceekay.shadowedhearts.data.ShadowAspectPresets;
 import com.jayemceekay.shadowedhearts.heart.HeartGaugeEvents;
 import com.jayemceekay.shadowedhearts.server.AuraBroadcastQueue;
 import com.jayemceekay.shadowedhearts.server.WildShadowSpawnListener;
@@ -22,6 +23,7 @@ import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.commands.arguments.UuidArgument;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
@@ -148,6 +150,183 @@ public class ShadowCommands {
                                                             ctx.getSource().sendSuccess(() -> Component.literal("Removed tag '" + tagFinal + "' from " + removedFinal + " NPC(s)."), true);
                                                             return removedFinal;
                                                         }))
+                                        )
+                                )
+                                .then(Commands.literal("preset")
+                                        .then(Commands.literal("define")
+                                                .then(Commands.argument("presetId", StringArgumentType.string())
+                                                        .then(Commands.argument("aspects", StringArgumentType.greedyString())
+                                                                .executes(ctx -> {
+                                                                    String idStr = StringArgumentType.getString(ctx, "presetId");
+                                                                    ResourceLocation presetId = ResourceLocation.tryParse(idStr);
+                                                                    if (presetId == null || !idStr.contains(":")) {
+                                                                        ctx.getSource().sendFailure(Component.literal("Invalid preset ID. Use namespace:path format."));
+                                                                        return 0;
+                                                                    }
+                                                                    String aspectsStr = StringArgumentType.getString(ctx, "aspects");
+                                                                    List<String> aspects = Arrays.stream(aspectsStr.split(" "))
+                                                                            .filter(s -> !s.isBlank())
+                                                                            .toList();
+                                                                    if (aspects.isEmpty()) {
+                                                                        ctx.getSource().sendFailure(Component.literal("At least one aspect must be provided."));
+                                                                        return 0;
+                                                                    }
+                                                                    ShadowAspectPresets.savePreset(ctx.getSource().getServer(), presetId, aspects);
+                                                                    ctx.getSource().sendSuccess(() -> Component.literal("Defined and saved preset: " + presetId + " with " + aspects.size() + " aspects."), true);
+                                                                    return 1;
+                                                                })
+                                                        )
+                                                )
+                                        )
+                                        .then(Commands.literal("delete")
+                                                .then(Commands.argument("presetId", StringArgumentType.string())
+                                                        .executes(ctx -> {
+                                                            String idStr = StringArgumentType.getString(ctx, "presetId");
+                                                            ResourceLocation presetId = ResourceLocation.tryParse(idStr);
+                                                            if (presetId == null) {
+                                                                ctx.getSource().sendFailure(Component.literal("Invalid preset ID."));
+                                                                return 0;
+                                                            }
+                                                            ShadowAspectPresets.deletePreset(ctx.getSource().getServer(), presetId);
+                                                            ctx.getSource().sendSuccess(() -> Component.literal("Deleted preset: " + presetId), true);
+                                                            return 1;
+                                                        })
+                                                )
+                                        )
+                                        .then(Commands.literal("list")
+                                                .executes(ctx -> {
+                                                    var presets = ShadowAspectPresets.getRuntimePresets();
+                                                    if (presets.isEmpty()) {
+                                                        ctx.getSource().sendSuccess(() -> Component.literal("No runtime presets defined."), false);
+                                                    } else {
+                                                        ctx.getSource().sendSuccess(() -> Component.literal("Runtime presets: " + String.join(", ", presets.keySet().stream().map(ResourceLocation::toString).toList())), false);
+                                                    }
+                                                    return presets.size();
+                                                })
+                                        )
+                                        .then(Commands.literal("show")
+                                                .then(Commands.argument("presetId", StringArgumentType.string())
+                                                        .executes(ctx -> {
+                                                            String idStr = StringArgumentType.getString(ctx, "presetId");
+                                                            ResourceLocation presetId = ResourceLocation.tryParse(idStr);
+                                                            if (presetId == null) {
+                                                                ctx.getSource().sendFailure(Component.literal("Invalid preset ID."));
+                                                                return 0;
+                                                            }
+                                                            List<String> aspects = ShadowAspectPresets.get(ctx.getSource().getServer(), presetId);
+                                                            if (aspects.isEmpty()) {
+                                                                ctx.getSource().sendFailure(Component.literal("Preset not found or empty: " + presetId));
+                                                                return 0;
+                                                            }
+                                                            ctx.getSource().sendSuccess(() -> Component.literal("Preset " + presetId + " aspects: " + String.join(", ", aspects)), false);
+                                                            return 1;
+                                                        })
+                                                )
+                                        )
+                                        .then(Commands.literal("add")
+                                                .then(Commands.argument("presetId", StringArgumentType.string())
+                                                        .then(Commands.argument("aspects", StringArgumentType.greedyString())
+                                                                .executes(ctx -> {
+                                                                    String idStr = StringArgumentType.getString(ctx, "presetId");
+                                                                    ResourceLocation presetId = ResourceLocation.tryParse(idStr);
+                                                                    if (presetId == null) {
+                                                                        ctx.getSource().sendFailure(Component.literal("Invalid preset ID."));
+                                                                        return 0;
+                                                                    }
+                                                                    List<String> existing = new ArrayList<>(ShadowAspectPresets.get(ctx.getSource().getServer(), presetId));
+                                                                    String aspectsStr = StringArgumentType.getString(ctx, "aspects");
+                                                                    List<String> toAdd = Arrays.stream(aspectsStr.split(" "))
+                                                                            .filter(s -> !s.isBlank())
+                                                                            .toList();
+                                                                    if (toAdd.isEmpty()) {
+                                                                        ctx.getSource().sendFailure(Component.literal("At least one aspect must be provided."));
+                                                                        return 0;
+                                                                    }
+                                                                    int addedCount = 0;
+                                                                    for (String aspect : toAdd) {
+                                                                        if (!existing.contains(aspect)) {
+                                                                            existing.add(aspect);
+                                                                            addedCount++;
+                                                                        }
+                                                                    }
+                                                                    if (addedCount == 0) {
+                                                                        ctx.getSource().sendFailure(Component.literal("No new aspects were added (already present)."));
+                                                                        return 0;
+                                                                    }
+                                                                    ShadowAspectPresets.savePreset(ctx.getSource().getServer(), presetId, existing);
+                                                                    final int finalAdded = addedCount;
+                                                                    ctx.getSource().sendSuccess(() -> Component.literal("Added " + finalAdded + " aspect(s) to preset: " + presetId), true);
+                                                                    return 1;
+                                                                })
+                                                        )
+                                                )
+                                        )
+                                        .then(Commands.literal("remove")
+                                                .then(Commands.argument("presetId", StringArgumentType.string())
+                                                        .then(Commands.argument("aspects", StringArgumentType.greedyString())
+                                                                .executes(ctx -> {
+                                                                    String idStr = StringArgumentType.getString(ctx, "presetId");
+                                                                    ResourceLocation presetId = ResourceLocation.tryParse(idStr);
+                                                                    if (presetId == null) {
+                                                                        ctx.getSource().sendFailure(Component.literal("Invalid preset ID."));
+                                                                        return 0;
+                                                                    }
+                                                                    List<String> existing = new ArrayList<>(ShadowAspectPresets.get(ctx.getSource().getServer(), presetId));
+                                                                    if (existing.isEmpty()) {
+                                                                        ctx.getSource().sendFailure(Component.literal("Preset not found or empty: " + presetId));
+                                                                        return 0;
+                                                                    }
+                                                                    String aspectsStr = StringArgumentType.getString(ctx, "aspects");
+                                                                    List<String> toRemove = Arrays.stream(aspectsStr.split(" "))
+                                                                            .filter(s -> !s.isBlank())
+                                                                            .toList();
+                                                                    if (toRemove.isEmpty()) {
+                                                                        ctx.getSource().sendFailure(Component.literal("At least one aspect must be provided."));
+                                                                        return 0;
+                                                                    }
+                                                                    int removedCount = 0;
+                                                                    for (String aspect : toRemove) {
+                                                                        if (existing.remove(aspect)) {
+                                                                            removedCount++;
+                                                                        }
+                                                                    }
+                                                                    if (removedCount == 0) {
+                                                                        ctx.getSource().sendFailure(Component.literal("No matching aspects were found to remove."));
+                                                                        return 0;
+                                                                    }
+                                                                    ShadowAspectPresets.savePreset(ctx.getSource().getServer(), presetId, existing);
+                                                                    final int finalRemoved = removedCount;
+                                                                    ctx.getSource().sendSuccess(() -> Component.literal("Removed " + finalRemoved + " aspect(s) from preset: " + presetId), true);
+                                                                    return 1;
+                                                                })
+                                                        )
+                                                )
+                                        )
+                                        .then(Commands.literal("apply")
+                                                .then(Commands.argument("targets", EntityArgument.entities())
+                                                        .then(Commands.argument("presetId", StringArgumentType.string())
+                                                                .executes(ctx -> {
+                                                                    var entities = EntityArgument.getEntities(ctx, "targets");
+                                                                    String presetIdStr = StringArgumentType.getString(ctx, "presetId");
+                                                                    ResourceLocation presetId = ResourceLocation.tryParse(presetIdStr);
+                                                                    if (presetId == null) {
+                                                                        ctx.getSource().sendFailure(Component.literal("Invalid preset ID."));
+                                                                        return 0;
+                                                                    }
+                                                                    String fullTag = "shadowedhearts:shadow_presets/" + presetId.getNamespace() + "/" + presetId.getPath();
+                                                                    int applied = 0;
+                                                                    for (Entity e : entities) {
+                                                                        if (e instanceof NPCEntity npc) {
+                                                                            if (npc.addTag(fullTag))
+                                                                                applied++;
+                                                                        }
+                                                                    }
+                                                                    final int appliedFinal = applied;
+                                                                    ctx.getSource().sendSuccess(() -> Component.literal("Applied preset tag to " + appliedFinal + " NPC(s)."), true);
+                                                                    return appliedFinal;
+                                                                })
+                                                        )
+                                                )
                                         )
                                 )
                         )

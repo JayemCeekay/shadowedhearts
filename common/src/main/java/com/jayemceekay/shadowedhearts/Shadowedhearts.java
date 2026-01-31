@@ -11,6 +11,7 @@ import com.jayemceekay.shadowedhearts.aura.AuraReaderEvents;
 import com.jayemceekay.shadowedhearts.client.particle.LuminousMoteEmitters;
 import com.jayemceekay.shadowedhearts.config.HeartGaugeConfig;
 import com.jayemceekay.shadowedhearts.core.*;
+import com.jayemceekay.shadowedhearts.data.ShadowAspectPresets;
 import com.jayemceekay.shadowedhearts.integration.accessories.SnagAccessoryBridgeHolder;
 import com.jayemceekay.shadowedhearts.pokemon.properties.PropertyRegistration;
 import com.jayemceekay.shadowedhearts.restrictions.ShadowRestrictions;
@@ -72,6 +73,7 @@ public final class Shadowedhearts {
         AuraReaderEvents.init();
         ModSounds.init();
         ShadowAspectValidator.init();
+        ShadowAspectPresets.init();
         SnagEvents.init();
         ModCommands.init();
         ModParticleTypes.register();
