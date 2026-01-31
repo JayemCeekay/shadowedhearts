@@ -2,9 +2,11 @@ package com.jayemceekay.shadowedhearts.restrictions;
 
 import com.cobblemon.mod.common.api.Priority;
 import com.cobblemon.mod.common.api.events.CobblemonEvents;
+import com.cobblemon.mod.common.api.events.pokeball.ThrownPokeballHitEvent;
 import com.cobblemon.mod.common.api.events.pokemon.PokemonNicknamedEvent;
 import com.cobblemon.mod.common.pokemon.Pokemon;
 import com.jayemceekay.shadowedhearts.PokemonAspectUtil;
+import com.jayemceekay.shadowedhearts.mixin.AccessorCancelable;
 
 /**
  * Server-side rules to restrict interactions with Shadow Pokémon until purified.
@@ -44,6 +46,14 @@ public final class ShadowRestrictions {
             var p2 = pre.getTradeParticipant2Pokemon();
             if ((p1 != null && PokemonAspectUtil.hasShadowAspect(p1)) || (p2 != null && PokemonAspectUtil.hasShadowAspect(p2))) {
                 pre.cancel();
+            }
+            return kotlin.Unit.INSTANCE;
+        });
+
+        // Uncancel pokeball hit for Shadow Pokemon (overrides TimCore reservation)
+        CobblemonEvents.THROWN_POKEBALL_HIT.subscribe(Priority.LOW, (ThrownPokeballHitEvent event) -> {
+            if (event.isCanceled() && PokemonAspectUtil.hasShadowAspect(event.getPokemon().getPokemon())) {
+                ((AccessorCancelable) (Object) event).setCanceled(false);
             }
             return kotlin.Unit.INSTANCE;
         });
