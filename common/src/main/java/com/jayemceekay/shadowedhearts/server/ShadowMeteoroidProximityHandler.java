@@ -46,7 +46,7 @@ public class ShadowMeteoroidProximityHandler {
         for (net.minecraft.world.entity.Entity e : level.getAllEntities()) {
             if (e instanceof PokemonEntity entity && entity.isAlive()) {
                 Pokemon pokemon = entity.getPokemon();
-                if (pokemon != null && entity.getOwnerUUID() == null && !pokemon.isBattleClone() && !PokemonAspectUtil.hasShadowAspect(pokemon) && !ShadowSpawnConfig.isBlacklisted(pokemon) && !PokemonAspectUtil.isImmunized(pokemon)) {
+                if (pokemon != null && !pokemon.isBattleClone() && !PokemonAspectUtil.hasShadowAspect(pokemon) && !ShadowSpawnConfig.isBlacklisted(pokemon) && !PokemonAspectUtil.isImmunized(pokemon)) {
                     if (isNearMeteoroid(level, entity.blockPosition(), radius)) {
                         double currentExposure = PokemonAspectUtil.getExposure(pokemon);
                         currentExposure += config.meteoroidShadowTransformationExposureIncrease();
