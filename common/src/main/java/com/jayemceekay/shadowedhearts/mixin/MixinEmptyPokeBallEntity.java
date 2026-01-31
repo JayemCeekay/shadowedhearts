@@ -31,7 +31,7 @@ import org.spongepowered.asm.mixin.Shadow;
 
 import static com.cobblemon.mod.common.util.LocalizationUtilsKt.lang;
 
-@Mixin(value = EmptyPokeBallEntity.class)
+@Mixin(value = EmptyPokeBallEntity.class, priority = 10000)
 public abstract class MixinEmptyPokeBallEntity extends ThrowableItemProjectile {
 
 
@@ -59,7 +59,7 @@ public abstract class MixinEmptyPokeBallEntity extends ThrowableItemProjectile {
      */
     @WrapMethod(method = "onHitEntity")
     public void onHitEntity(EntityHitResult hitResult, Operation<Void> original) {
-        if(hitResult.getEntity() instanceof PokemonEntity pokemonEntity && pokemonEntity.getAspects().contains(SHAspects.SHADOW)) {
+        if (hitResult.getEntity() instanceof PokemonEntity pokemonEntity && pokemonEntity.getAspects().contains(SHAspects.SHADOW)) {
             if (((EmptyPokeBallEntity) (Object) this).getCaptureState() == EmptyPokeBallEntity.CaptureState.NOT) {
                 if (!hitResult.getEntity().level().isClientSide) {
                     if (pokemonEntity.getDelegate() instanceof PokemonServerDelegate delegate) {

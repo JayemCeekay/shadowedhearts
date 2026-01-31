@@ -12,10 +12,25 @@ public class ShadowedHeartsMixinConfigPlugin implements IMixinConfigPlugin {
 
     @Override
     public boolean shouldApplyMixin(String targetClassName, String mixinClassName) {
+
+        if (mixinClassName.equals("us.timinc.mc.cobblemon.timcore.mixins.CancelThrownPokeballInBattle") ||
+                mixinClassName.equals("us.timinc.mc.cobblemon.timcore.mixins.IsActuallyWild")) {
+            return false;
+        }
+
+        if (mixinClassName.equals("com.jayemceekay.shadowedhearts.mixin.MixinCancelThrownPokeballInBattleHelper") ||
+                mixinClassName.equals("com.jayemceekay.shadowedhearts.mixin.MixinPokeballHitReserved")) {
+            return Platform.isModLoaded("tim_core");
+        }
+
         return switch (mixinClassName) {
             case "com.jayemceekay.shadowedhearts.mixin.cobblemonbattleextras.CobblemonBattleExtrasMoveTileTooltipMixin" ->
                     Platform.isModLoaded("cobblemon_battle_extras");
-            case "com.jayemceekay.shadowedhearts.mixin.cobblemonpartyextras.CobblemonPartyExtrasCustomTooltipRendererMixin" ->
+            case "com.jayemceekay.shadowedhearts.mixin.cobblemonpartyextras.MixinCobblemonPartyExtrasCustomTooltipRenderer",
+                 "com.jayemceekay.shadowedhearts.mixin.cobblemonpartyextras.MixinCobblemonPartyExtrasNatureTooltipBuilder",
+                 "com.jayemceekay.shadowedhearts.mixin.cobblemonpartyextras.MixinCobblemonPartyExtrasMoveTooltipBuilder",
+                 "com.jayemceekay.shadowedhearts.mixin.cobblemonpartyextras.MixinCobblemonPartyExtrasMoveTooltipHelper",
+                 "com.jayemceekay.shadowedhearts.mixin.cobblemonpartyextras.MixinCobblemonPartyExtrasSummaryUIMixin" ->
                     Platform.isModLoaded("cobblemon_party_extras");
             case "com.jayemceekay.shadowedhearts.mixin.simpletms.MixinPokemonSelectingItemNonBattle" ->
                     Platform.isModLoaded("simpletms");

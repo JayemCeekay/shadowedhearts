@@ -13,10 +13,19 @@ public class ShadowedHeartsMixinConfigPlugin implements IMixinConfigPlugin {
 
     @Override
     public boolean shouldApplyMixin(String targetClassName, String mixinClassName) {
+        if (mixinClassName.equals("com.jayemceekay.shadowedhearts.mixin.MixinCancelThrownPokeballInBattleHelper") ||
+                mixinClassName.equals("com.jayemceekay.shadowedhearts.mixin.MixinPokeballHitReserved")) {
+            return FMLLoader.getLoadingModList().getModFileById("tim_core") != null;
+        }
+
         return switch (mixinClassName) {
             case "com.jayemceekay.shadowedhearts.mixin.cobblemonbattleextras.CobblemonBattleExtrasMoveTileTooltipMixin" ->
                     FMLLoader.getLoadingModList().getModFileById("cobblemon_battle_extras") != null;
-            case "com.jayemceekay.shadowedhearts.mixin.cobblemonpartyextras.CobblemonPartyExtrasCustomTooltipRendererMixin" ->
+            case "com.jayemceekay.shadowedhearts.mixin.cobblemonpartyextras.MixinCobblemonPartyExtrasCustomTooltipRenderer",
+                 "com.jayemceekay.shadowedhearts.mixin.cobblemonpartyextras.MixinCobblemonPartyExtrasNatureTooltipBuilder",
+                 "com.jayemceekay.shadowedhearts.mixin.cobblemonpartyextras.MixinCobblemonPartyExtrasMoveTooltipBuilder",
+                 "com.jayemceekay.shadowedhearts.mixin.cobblemonpartyextras.MixinCobblemonPartyExtrasMoveTooltipHelper",
+                 "com.jayemceekay.shadowedhearts.mixin.cobblemonpartyextras.MixinCobblemonPartyExtrasSummaryUIMixin"  ->
                     FMLLoader.getLoadingModList().getModFileById("cobblemon_party_extras") != null;
             case "com.jayemceekay.shadowedhearts.mixin.simpletms.MixinPokemonSelectingItemNonBattle" ->
                     FMLLoader.getLoadingModList().getModFileById("simpletms") != null;
