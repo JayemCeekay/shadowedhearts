@@ -40,6 +40,8 @@ public class CraterGenerator {
         int minZ = chunkPos != null ? chunkPos.getMinBlockZ() : center.getZ() - checkRadius;
         int maxZ = chunkPos != null ? chunkPos.getMaxBlockZ() : center.getZ() + checkRadius;
 
+        BlockState centerState = safeGetBlockState(level, center);
+
         for (int x = minX; x <= maxX; x++) {
             for (int z = minZ; z <= maxZ; z++) {
                 // Determine if this column is within the crater's horizontal reach
@@ -47,7 +49,8 @@ public class CraterGenerator {
                 double relZ = z - center.getZ();
 
                 // Check columns within a wider range because slant moves the crater at depth
-                if (Math.abs(relX) > checkRadius || Math.abs(relZ) > checkRadius) continue;
+                if (Math.abs(relX) > checkRadius || Math.abs(relZ) > checkRadius)
+                    continue;
 
                 for (int yOffset = -depth; yOffset <= radius / 4; yOffset++) {
                     double shiftedX = relX - (yOffset * angleX);
@@ -69,16 +72,16 @@ public class CraterGenerator {
                         if (yOffset <= 0) {
                             BlockState currentState = safeGetBlockState(level, pos);
                             if (currentState.getFluidState().isEmpty()) {
-                                //if (pos.getY() < level.getHeight(Heightmap.Types.OCEAN_FLOOR, pos.getX(), pos.getZ())) {
+                                if (shouldFillWithWater(level, pos, centerState)) {
+                                    safeSetBlock(level, pos, Blocks.WATER.defaultBlockState(), 3);
+                                } else {
                                     safeSetBlock(level, pos, Blocks.AIR.defaultBlockState(), 3);
-                                /*} else {
-                                    safeSetBlock(level, pos, Blocks.AIR.defaultBlockState(), 3);
-                                }*/
+                                }
                             }
 
                             // Clear terrain above following the impact angle
                             // We use a wider clearing cone as we go up to ensure no floating bits
-                            for (int moveUp = 1; center.getY() + yOffset + moveUp <= center.getY()+(2*radius); moveUp++) {
+                            for (int moveUp = 1; center.getY() + yOffset + moveUp <= center.getY() + radius; moveUp++) {
                                 // Calculate the slant at this specific height above the impact point
                                 double slantX = (yOffset + moveUp) * angleX;
                                 double slantZ = (yOffset + moveUp) * angleZ;
@@ -90,7 +93,8 @@ public class CraterGenerator {
                                     for (int dz = -clearRange; dz <= clearRange; dz++) {
                                         BlockPos abovePos = center.offset((int) (relX + slantX + dx), yOffset + moveUp, (int) (relZ + slantZ + dz));
 
-                                        if (chunkPos != null && !isWithinChunk(abovePos, chunkPos)) continue;
+                                        if (chunkPos != null && !isWithinChunk(abovePos, chunkPos))
+                                            continue;
 
                                         BlockState stateAbove = safeGetBlockState(level, abovePos);
                                         // If we hit air or water significantly above the impact, we might be done with this column
@@ -99,28 +103,30 @@ public class CraterGenerator {
                                             // Optional: stop if we've cleared enough air, but for safety with overhangs we keep going a bit
                                         }
 
-                                        if (!stateAbove.isAir() && stateAbove.getFluidState().isEmpty()) {
-                                            //if (abovePos.getY() < level.getHeight(Heightmap.Types.OCEAN_FLOOR, abovePos.getX(), abovePos.getZ())) {
-                                                safeSetBlock(level, abovePos, Blocks.AIR.defaultBlockState(), 3);
-                                           /* } else {
-                                                safeSetBlock(level, abovePos, Blocks.AIR.defaultBlockState(), 3);
-                                            }*/
+                                        if (!stateAbove.isAir() && !stateAbove.liquid()) {
+                                            BlockState fillState = shouldFillWithWater(level, abovePos, centerState)
+                                                    ? Blocks.WATER.defaultBlockState()
+                                                    : Blocks.AIR.defaultBlockState();
+                                            safeSetBlock(level, abovePos, fillState, 3);
                                         }
                                     }
                                 }
-                                
+
                                 // Optimization: if we've reached a very high point and everything is air, we can stop
                                 if (moveUp > 20 && moveUp % 5 == 0) {
-                                     BlockPos checkPos = center.offset((int) (relX + (yOffset + moveUp) * angleX), yOffset + moveUp, (int) (relZ + (yOffset + moveUp) * angleZ));
-                                     if (chunkPos == null || isWithinChunk(checkPos, chunkPos)) {
-                                         if (safeGetBlockState(level, checkPos).isAir()) {
-                                             // Check a few blocks higher to be sure
-                                             if (safeGetBlockState(level, checkPos.above(10)).isAir()) break;
-                                         }
-                                     }
+                                    BlockPos checkPos = center.offset((int) (relX + (yOffset + moveUp) * angleX), yOffset + moveUp, (int) (relZ + (yOffset + moveUp) * angleZ));
+                                    if (chunkPos == null || isWithinChunk(checkPos, chunkPos)) {
+                                        if (safeGetBlockState(level, checkPos).isAir()) {
+                                            // Check a few blocks higher to be sure
+                                            if (safeGetBlockState(level, checkPos.above(10)).isAir())
+                                                break;
+                                        }
+                                    }
                                 }
                             }
-                        } else {
+                        }
+                        //generate debris
+                        /* else {
                             if (distSq > 0.7 && RandomSource.create((long) x * 13 + (long) z * 19 + seed).nextDouble() > 0.3) {
                                 BlockPos below = pos.below();
                                 if (chunkPos == null || isWithinChunk(below, chunkPos)) {
@@ -130,7 +136,7 @@ public class CraterGenerator {
                                     }
                                 }
                             }
-                        }
+                        }*/
                     }
                 }
             }
@@ -151,40 +157,73 @@ public class CraterGenerator {
             blobSize += random.nextInt(radius / 10);
         }
         int blobRadius = blobSize / 2;
-        if (blobRadius < 1) blobRadius = 1; // Minimum radius of 1 ensures at least a 3x3x3 area is checked 
+        if (blobRadius < 1)
+            blobRadius = 1; // Minimum radius of 1 ensures at least a 3x3x3 area is checked
 
         for (int x = -blobRadius - 1; x <= blobRadius + 1; x++) {
             for (int y = -blobRadius - 1; y <= blobRadius + 1; y++) {
                 for (int z = -blobRadius - 1; z <= blobRadius + 1; z++) {
                     BlockPos pos = center.offset(x, y - 1, z);
-                    if (chunkPos != null && !isWithinChunk(pos, chunkPos)) continue;
+                    if (chunkPos != null && !isWithinChunk(pos, chunkPos))
+                        continue;
 
                     double dist = Math.sqrt(x * x + y * y + z * z);
-                    
+
                     // Multi-octave noise for a more irregular "rocky" shape
                     RandomSource noiseRand = RandomSource.create((long) x * 3121L + (long) y * 4961L + (long) z * 123L + seed);
                     double noise = 0.0;
                     noise += noiseRand.nextDouble() * 0.5; // Large scale irregularities
                     noise += noiseRand.nextDouble() * 0.3; // Medium scale
                     noise += noiseRand.nextDouble() * 0.2; // Small details
-                    
+
                     // Base threshold on the desired radius (diameter/2)
                     double targetRadius = blobSize / 2.0;
-                    
+
                     // The noise modulates the radius at this specific angle/direction
                     // We map the 0..1 noise to a factor like 0.6..1.2
                     double noiseFactor = 0.6 + (noise * 0.6);
                     double threshold = targetRadius * noiseFactor;
 
                     if (dist <= threshold) {
-                        BlockState currentState = safeGetBlockState(level, pos);
-                        if (currentState.getFluidState().isEmpty()) {
-                            safeSetBlock(level, pos, coreBlock, 3);
-                        }
+                        safeSetBlock(level, pos, coreBlock, 3);
                     }
                 }
             }
         }
+    }
+
+    private static boolean shouldFillWithWater(LevelAccessor level, BlockPos pos, BlockState centerState) {
+        // If the impact center was in water, we generally want water
+        if (!centerState.getFluidState().isEmpty()) {
+            return true;
+        }
+
+        // Quick check: if the block immediately above is water, it's almost certainly underwater
+        if (!level.getFluidState(pos.above()).isEmpty()) {
+            return true;
+        }
+
+        // Sample a 2-block radius (5x5x5 area)
+        int waterCount = 0;
+        int airCount = 0;
+        int range = 2;
+
+        for (int x = -range; x <= range; x++) {
+            for (int y = -range; y <= range; y++) {
+                for (int z = -range; z <= range; z++) {
+                    BlockPos neighbor = pos.offset(x, y, z);
+                    BlockState state = safeGetBlockState(level, neighbor);
+                    if (!state.getFluidState().isEmpty()) {
+                        waterCount++;
+                    } else if (state.isAir()) {
+                        airCount++;
+                    }
+                }
+            }
+        }
+
+        // If there's significantly more water than air in the immediate vicinity, fill with water
+        return waterCount > airCount;
     }
 
     private static boolean isWithinChunk(BlockPos pos, ChunkPos chunkPos) {

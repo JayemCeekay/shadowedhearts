@@ -44,14 +44,14 @@ public abstract class MixinRandomSpreadStructurePlacement extends StructurePlace
 
     @Inject(method = "spacing", at = @At("HEAD"), cancellable = true)
     private void shadowedhearts$overrideSpacing(CallbackInfoReturnable<Integer> cir) {
-        if (this.salt() == 14357621) {
+        if (this.salt() == 14357622) {
             cir.setReturnValue(ShadowedHeartsConfigs.getInstance().getShadowConfig().worldAlteration().meteoroidSpacing());
         }
     }
 
     @Inject(method = "separation", at = @At("HEAD"), cancellable = true)
     private void shadowedhearts$overrideSeparation(CallbackInfoReturnable<Integer> cir) {
-        if (this.salt() == 14357621) {
+        if (this.salt() == 14357622) {
             cir.setReturnValue(ShadowedHeartsConfigs.getInstance().getShadowConfig().worldAlteration().meteoroidSeparation());
         }
     }
@@ -61,7 +61,7 @@ public abstract class MixinRandomSpreadStructurePlacement extends StructurePlace
             long seed, int x, int z,
             CallbackInfoReturnable<ChunkPos> cir
     ) {
-        if (this.salt() != 14357621) return;
+        if (this.salt() != 14357622) return;
 
         int spacing = ShadowedHeartsConfigs.getInstance()
                 .getShadowConfig().worldAlteration().meteoroidSpacing();

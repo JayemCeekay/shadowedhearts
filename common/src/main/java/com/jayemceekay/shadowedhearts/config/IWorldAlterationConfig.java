@@ -1,5 +1,7 @@
 package com.jayemceekay.shadowedhearts.config;
 
+import java.util.List;
+
 public interface IWorldAlterationConfig {
     default boolean shadowfallActive() { return false; }
     default int impactChanceOneInTicks() { return 12000; } // Once every 10 mins on average
@@ -15,7 +17,7 @@ public interface IWorldAlterationConfig {
     default boolean meteoroidWorldGenEnabled() { return true; }
     default int meteoroidSpacing() { return 16; }
     default int meteoroidSeparation() { return 8; }
-    default java.util.List<? extends String> meteoroidBiomeBlacklist() { return java.util.Collections.emptyList(); }
+    default java.util.List<? extends String> meteoroidBiomeBlacklist() { return List.of("#minecraft:is_river", "#minecraft:is_beach"); }
     default java.util.List<? extends String> meteoroidBiomeWhitelist() { return java.util.Collections.emptyList(); }
 
     default int heatmapPresenceRadius() { return 2; }
