@@ -1,6 +1,7 @@
 package com.jayemceekay.shadowedhearts.items;
 
 import com.jayemceekay.shadowedhearts.core.ModItemComponents;
+import com.jayemceekay.shadowedhearts.integration.accessories.SnagAccessoryBridgeHolder;
 import com.jayemceekay.shadowedhearts.snag.PlayerSnagData;
 import com.jayemceekay.shadowedhearts.snag.SnagBattleUtil;
 import com.jayemceekay.shadowedhearts.snag.SnagCaps;
@@ -49,9 +50,31 @@ public class SnagMachineItem extends Item implements Equipable {
     @Override
     public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
         ItemStack held = player.getItemInHand(hand);
+        
+        // If we are on client and Accessories mod might want to handle this, 
+        // we might want to return pass to allow other things to handle it.
+        // But Equipable usually handles it if we return success/consume.
+        
         if (level.isClientSide) return InteractionResultHolder.success(held);
         // Initialize energy store
         SnagEnergy.ensureInitialized(held, capacity.getAsInt());
+        
+        // Check if it's already equipped in an accessory slot or offhand.
+        // If not, let the Equipable system (or Accessories mod) handle it.
+        if (!isEquipped(player, held)) {
+             // Prevent equipping to offhand if already equipped in accessory slot
+             if (SnagAccessoryBridgeHolder.INSTANCE.isEquipped(player)) {
+                 return InteractionResultHolder.fail(held);
+             }
+
+             // In 1.21, Equipable items might need to return pass to allow the right-click to equip them
+             // if they don't have a specific use action.
+             // However, SnagMachineItem HAS a use action (arming in battle).
+             if (!SnagBattleUtil.isInTrainerBattle(player)) {
+                 return InteractionResultHolder.pass(held);
+             }
+        }
+
         PlayerSnagData cap = SnagCaps.get(player);
         if (!cap.hasSnagMachine()) return InteractionResultHolder.fail(held);
         if (cap.cooldown() > 0) return InteractionResultHolder.fail(held);
@@ -61,6 +84,10 @@ public class SnagMachineItem extends Item implements Equipable {
         }
         // No toggle here; UI/action should send SnagArmC2S. Item use is a no-op success in battle to avoid desync.
         return InteractionResultHolder.sidedSuccess(held, false);
+    }
+
+    private boolean isEquipped(Player player, ItemStack stack) {
+        return player.getOffhandItem() == stack || player.getMainHandItem() == stack || SnagAccessoryBridgeHolder.INSTANCE.getEquippedStack(player) == stack;
     }
 
     @Override

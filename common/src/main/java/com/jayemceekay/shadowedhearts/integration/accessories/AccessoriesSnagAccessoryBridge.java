@@ -17,7 +17,7 @@ public final class AccessoriesSnagAccessoryBridge implements SnagAccessoryBridge
     }
 
     private void register(net.minecraft.world.item.Item item) {
-        if (item == ModItems.SNAG_MACHINE_ADVANCED.get()) {
+        if (item instanceof SnagMachineItem) {
             try {
                 AccessoriesAPI.registerAccessory(item, new io.wispforest.accessories.api.Accessory() {
                     @Override
@@ -28,6 +28,10 @@ public final class AccessoriesSnagAccessoryBridge implements SnagAccessoryBridge
                     @Override
                     public boolean canEquip(ItemStack stack, SlotReference reference) {
                         if (!(reference.entity() instanceof Player player)) return true;
+                        
+                        // Prevent equipping if already in offhand
+                        if (player.getOffhandItem().getItem() instanceof SnagMachineItem) return false;
+
                         ItemStack equipped = getEquippedStack(player);
                         return equipped.isEmpty() || equipped == stack;
                     }
@@ -91,22 +95,43 @@ public final class AccessoriesSnagAccessoryBridge implements SnagAccessoryBridge
 
 
     @Override
+    public ItemStack getAuraReaderStack(Player player) {
+        try {
+            AccessoriesCapability capability = AccessoriesCapability.get(player);
+            if (capability != null) {
+                for (var container : capability.getContainers().values()) {
+                    for (var accessory : container.getAccessories()) {
+                        if (accessory != null && accessory.getSecond().is(ModItems.AURA_READER.get())) {
+                            return accessory.getSecond();
+                        }
+                    }
+                }
+            }
+        } catch (Throwable ignored) {
+        }
+
+        if (player.getInventory().armor.get(3).is(ModItems.AURA_READER.get())) {
+            return player.getInventory().armor.get(3);
+        }
+
+        return ItemStack.EMPTY;
+    }
+
+
+    @Override
     public ItemStack getEquippedStack(Player player) {
         try {
             AccessoriesCapability capability = AccessoriesCapability.get(player);
             if (capability != null) {
                 for (var container : capability.getContainers().values()) {
                     for (var accessory : container.getAccessories()) {
-                        if (accessory != null && (accessory.getSecond().getItem() instanceof SnagMachineItem || accessory.getSecond().is(ModItems.AURA_READER.get()))) {
+                        if (accessory != null && (accessory.getSecond().getItem() instanceof SnagMachineItem)) {
                             return accessory.getSecond();
                         }
                     }
                 }
             }
         } catch (Throwable ignored) {}
-
-        if (player.getMainHandItem().getItem() instanceof SnagMachineItem) return player.getMainHandItem();
-        if (player.getOffhandItem().getItem() instanceof SnagMachineItem) return player.getOffhandItem();
 
         return ItemStack.EMPTY;
     }
