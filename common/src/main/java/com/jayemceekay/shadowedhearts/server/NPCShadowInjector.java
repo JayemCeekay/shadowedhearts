@@ -246,6 +246,7 @@ public final class NPCShadowInjector {
 
             // Force the Shadow aspect for this battle
             forceShadow(p);
+            p.setOriginalTrainer("?????");
             PokemonAspectUtil.ensureRequiredShadowAspects(p);
             assignShadowMoves(p, rng);
             converted++;
@@ -328,6 +329,7 @@ public final class NPCShadowInjector {
             BattlePokemon clone = BattlePokemon.Companion.safeCopyOf(source.getEffectedPokemon());
             Pokemon p = clone.getEffectedPokemon();
             forceShadow(p);
+            p.setOriginalTrainer("?????");
             int resolvedLevel = Math.max(1, lvl.resolve());
             try { p.setLevel(resolvedLevel); } catch (Throwable ignored) {}
             if (enforceMinEvo && getMinEvolutionLevel(p) > p.getLevel()) {
@@ -387,6 +389,7 @@ public final class NPCShadowInjector {
                 replacement = BattlePokemon.Companion.safeCopyOf(bp.getEffectedPokemon());
                 Pokemon p = replacement.getEffectedPokemon();
                 forceShadow(p);
+                p.setOriginalTrainer("?????");
                 int resolvedLevel = Math.max(1, lvl.resolve());
                 try { p.setLevel(resolvedLevel); } catch (Throwable ignored) {}
                 if (enforceMinEvo && getMinEvolutionLevel(p) > p.getLevel()) {
