@@ -17,7 +17,7 @@ public abstract class CobblemonBattleExtrasMoveTileTooltipMixin {
             method = "renderTooltipAtPosition"
     )
     private void shadowedhearts$cancelShadowTooltip(
-            GuiGraphics context, int tooltipX, int tooltipY, Operation<Void> original
+            GuiGraphics context, int tooltipX, int tooltipY, int anchorBottomY, Operation<Void> original
     ) {
         BattleMoveSelection.MoveTile self = (BattleMoveSelection.MoveTile) (Object) this;
 
@@ -25,7 +25,7 @@ public abstract class CobblemonBattleExtrasMoveTileTooltipMixin {
             // Cancel the call to prevent the tooltip from rendering
             return;
         }
-        original.call(context, tooltipX, tooltipY);
+        original.call(context, tooltipX, tooltipY, anchorBottomY);
     }
 
     private static boolean shadowedhearts$shouldMaskTooltip(BattleMoveSelection.MoveTile self) {
