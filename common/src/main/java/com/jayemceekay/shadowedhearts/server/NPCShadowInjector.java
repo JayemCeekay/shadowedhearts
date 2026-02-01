@@ -589,13 +589,24 @@ public final class NPCShadowInjector {
         List<String> pool = new ArrayList<>(Arrays.asList(SHADOW_IDS));
 
         for (int i = 0; i < Math.min(count, 4); i++) {
-            String moveId = (i == 0) ? "shadowrush" : pickShadow(pool, null, r);
+            String moveId = (i == 0) ? pickDamageShadow(pool, null, r) : pickShadow(pool, null, r);
             if (moveId != null) {
                 var tmpl = Moves.INSTANCE.getByNameOrDummy(moveId);
                 pokemon.getMoveSet().setMove(i, tmpl.create(tmpl.getPp(), 0));
                 pool.remove(moveId);
             }
         }
+    }
+
+    private static String pickDamageShadow(List<String> ids, String exclude, Random rng) {
+        List<String> damageMoves = new ArrayList<>();
+        for (String id : ids) {
+            var tmpl = Moves.INSTANCE.getByNameOrDummy(id);
+            if (tmpl.getDamageCategory() != com.cobblemon.mod.common.api.moves.categories.DamageCategories.INSTANCE.getSTATUS()) {
+                damageMoves.add(id);
+            }
+        }
+        return pickShadow(damageMoves, exclude, rng);
     }
 
     private static String pickShadow(List<String> ids, String exclude, Random rng) {

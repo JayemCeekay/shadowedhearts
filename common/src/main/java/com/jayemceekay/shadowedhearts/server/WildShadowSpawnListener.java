@@ -109,11 +109,16 @@ public final class WildShadowSpawnListener {
 
         // Pick shadow moves based on config
         int count = ModConfig.resolveReplaceCount(RANDOM);
-        List<String> pool = new ArrayList<>();
-        for (String id : SHADOW_IDS) pool.add(id);
+        List<String> pool = new ArrayList<>(List.of(SHADOW_IDS));
 
         for (int i = 0; i < Math.min(count, 4); i++) {
-            String moveId = pickShadow(pool, null);
+            String moveId;
+            if (i == 0) {
+                moveId = pickDamageShadow(pool, null);
+            } else {
+                moveId = pickShadow(pool, null);
+            }
+
             if (moveId != null) {
                 var tmpl = Moves.INSTANCE.getByNameOrDummy(moveId);
                 pokemon.getMoveSet().setMove(i, tmpl.create(tmpl.getPp(), 0));
@@ -121,6 +126,17 @@ public final class WildShadowSpawnListener {
                 pool.remove(moveId);
             }
         }
+    }
+
+    private static String pickDamageShadow(List<String> ids, String exclude) {
+        List<String> damageMoves = new ArrayList<>();
+        for (String id : ids) {
+            var tmpl = Moves.INSTANCE.getByNameOrDummy(id);
+            if (tmpl.getDamageCategory() != com.cobblemon.mod.common.api.moves.categories.DamageCategories.INSTANCE.getSTATUS()) {
+                damageMoves.add(id);
+            }
+        }
+        return pickShadow(damageMoves, exclude);
     }
 
     private static String pickShadow(List<String> ids, String exclude) {

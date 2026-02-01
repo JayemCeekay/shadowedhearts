@@ -88,7 +88,11 @@ public final class PokemonAspectUtil {
                     continue; // Only allow shadowrush in the first slot if onlyShadowRush is enabled
                 }
             } else {
-                shadowMoveName = getRandomShadowMove(pokemon, i);
+                if (i == 0) {
+                    shadowMoveName = getRandomDamageShadowMove(pokemon, i);
+                } else {
+                    shadowMoveName = getRandomShadowMove(pokemon, i);
+                }
             }
 
             var template = Moves.getByName(shadowMoveName);
@@ -98,6 +102,26 @@ public final class PokemonAspectUtil {
         }
 
 
+    }
+
+    private static String getRandomDamageShadowMove(Pokemon pokemon, int seed) {
+        String[] shadowMoves = {
+                "shadowblast", "shadowblitz", "shadowbolt", "shadowbreak", "shadowchill",
+                "shadowdown", "shadowend", "shadowfire", "shadowhalf", "shadowhold",
+                "shadowmist", "shadowpanic", "shadowrave", "shadowrush", "shadowshed",
+                "shadowsky", "shadowstorm", "shadowwave"
+        };
+        List<String> damageMoves = new ArrayList<>();
+        for (String id : shadowMoves) {
+            var tmpl = Moves.getByName(id);
+            if (tmpl != null && tmpl.getDamageCategory() != com.cobblemon.mod.common.api.moves.categories.DamageCategories.INSTANCE.getSTATUS()) {
+                damageMoves.add(id);
+            }
+        }
+        if (damageMoves.isEmpty()) return "shadowrush";
+        long salt = pokemon.getUuid().getLeastSignificantBits() ^ seed;
+        Random rng = new Random(salt);
+        return damageMoves.get(rng.nextInt(damageMoves.size()));
     }
 
     private static String getRandomShadowMove(Pokemon pokemon, int seed) {
@@ -190,6 +214,7 @@ public final class PokemonAspectUtil {
             syncAspects(pokemon);
             syncProperties(pokemon);
         }
+
     }
 
     /**
