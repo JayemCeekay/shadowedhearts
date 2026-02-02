@@ -15,7 +15,7 @@ public class MeteoroidStructurePiece extends StructurePiece {
     private final BlockPos center;
 
     public MeteoroidStructurePiece(BlockPos center) {
-        super(ModStructures.METEOROID_PIECE.get(), 0, new BoundingBox(center.getX() - 32, center.getY() - 32, center.getZ() - 32, center.getX() + 32, center.getY() + 32, center.getZ() + 32));
+        super(ModStructures.METEOROID_PIECE.get(), 0, new BoundingBox(center.getX() - 64, center.getY() - 64, center.getZ() - 64, center.getX() + 64, center.getY() + 64, center.getZ() + 64));
         this.center = center;
     }
 
