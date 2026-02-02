@@ -1,6 +1,9 @@
 package com.jayemceekay.shadowedhearts.mixin;
 
 import dev.architectury.platform.Platform;
+import net.fabricmc.loader.api.Version;
+import net.fabricmc.loader.api.VersionParsingException;
+import net.fabricmc.loader.api.metadata.version.VersionPredicate;
 import org.objectweb.asm.tree.ClassNode;
 import org.spongepowered.asm.mixin.extensibility.IMixinConfigPlugin;
 import org.spongepowered.asm.mixin.extensibility.IMixinInfo;
@@ -12,20 +15,30 @@ public class ShadowedHeartsMixinConfigPlugin implements IMixinConfigPlugin {
 
     @Override
     public boolean shouldApplyMixin(String targetClassName, String mixinClassName) {
-
-        if (mixinClassName.equals("us.timinc.mc.cobblemon.timcore.mixins.CancelThrownPokeballInBattle") ||
-                mixinClassName.equals("us.timinc.mc.cobblemon.timcore.mixins.IsActuallyWild")) {
-            return false;
-        }
-
         if (mixinClassName.equals("com.jayemceekay.shadowedhearts.mixin.MixinCancelThrownPokeballInBattleHelper") ||
                 mixinClassName.equals("com.jayemceekay.shadowedhearts.mixin.MixinPokeballHitReserved")) {
             return Platform.isModLoaded("tim_core");
         }
 
         return switch (mixinClassName) {
-            case "com.jayemceekay.shadowedhearts.mixin.cobblemonbattleextras.CobblemonBattleExtrasMoveTileTooltipMixin" ->
-                    Platform.isModLoaded("cobblemon_battle_extras");
+            case "com.jayemceekay.shadowedhearts.mixin.cobblemonbattleextras.CobblemonBattleExtras_1_7_24_MoveTileTooltipMixin" -> {
+                var mod = Platform.getMod("cobblemon-battle-extras");
+                if (mod == null) yield false;
+                try {
+                    yield VersionPredicate.parse("<=1.7.24").test(Version.parse(mod.getVersion()));
+                } catch (VersionParsingException e) {
+                    yield false;
+                }
+            }
+            case "com.jayemceekay.shadowedhearts.mixin.cobblemonbattleextras.CobblemonBattleExtrasNewMoveTileTooltipMixin" -> {
+                var mod = Platform.getMod("cobblemon-battle-extras");
+                if (mod == null) yield false;
+                try {
+                    yield VersionPredicate.parse(">=1.7.25").test(Version.parse(mod.getVersion()));
+                } catch (VersionParsingException e) {
+                    yield false;
+                }
+            }
             case "com.jayemceekay.shadowedhearts.mixin.cobblemonpartyextras.MixinCobblemonPartyExtrasCustomTooltipRenderer",
                  "com.jayemceekay.shadowedhearts.mixin.cobblemonpartyextras.MixinCobblemonPartyExtrasNatureTooltipBuilder",
                  "com.jayemceekay.shadowedhearts.mixin.cobblemonpartyextras.MixinCobblemonPartyExtrasMoveTooltipBuilder",

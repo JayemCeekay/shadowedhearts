@@ -54,4 +54,4 @@ versionRange = "[0.14.4-beta,)"
 side = "BOTH"
 
 [[mixins]]
-config = "shadowedhearts-neoforge.mixins.json"
+config = "shadowedhearts.mixins.json"
