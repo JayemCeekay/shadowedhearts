@@ -4,16 +4,8 @@ uniform sampler2D DiffuseSampler;
 uniform sampler2D uDepth;
 uniform mat4 uInvView;
 uniform mat4 uInvProj;
+uniform sampler2D uPulseTexture;
 uniform float uPulseCount;
-
-struct Pulse {
-    vec4 origin; // x, y, z, radius
-    vec4 color;  // r, g, b, distance
-};
-
-layout(std430, binding = 0) buffer PulseData {
-    Pulse pulses[];
-};
 
 uniform float uThickness;
 
@@ -33,10 +25,13 @@ void main() {
     float finalPulseAlpha = 0.0;
 
     for (int i = 0; i < int(uPulseCount); i++) {
-        vec3 origin = pulses[i].origin.xyz;
-        float radius = pulses[i].origin.w;
-        vec3 color = pulses[i].color.rgb;
-        float max_radius = pulses[i].color.a;
+        vec4 data1 = texelFetch(uPulseTexture, ivec2(i * 2, 0), 0);
+        vec4 data2 = texelFetch(uPulseTexture, ivec2(i * 2 + 1, 0), 0);
+
+        vec3 origin = data1.xyz;
+        float radius = data1.w;
+        vec3 color = data2.rgb;
+        float max_radius = data2.a;
         
         float dist = distance(worldPos.xyz, origin);
         float pulse = smoothstep(radius - uThickness, radius, dist) * (1.0 - smoothstep(radius, radius + uThickness, dist));
@@ -44,7 +39,7 @@ void main() {
         // Fade out based on distance to prevent infinite pulse
         float fade = 1.0 - smoothstep(0.0, max_radius, dist);
         // Also fade out based on time/radius
-        float lifeFade = 1.0 - smoothstep(0.0, max_radius*0.75, radius);
+        float lifeFade = 1.0 - smoothstep(0.0, max_radius*0.90, radius);
 
         float alpha = pulse * fade * lifeFade;
         finalPulseColor += color * alpha;

@@ -13,6 +13,7 @@ import com.jayemceekay.shadowedhearts.network.AuraPulsePacket;
 import com.jayemceekay.shadowedhearts.network.AuraScannerC2SPacket;
 import com.jayemceekay.shadowedhearts.network.ShadowedHeartsNetwork;
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.core.BlockPos;
@@ -73,79 +74,95 @@ public class AuraScannerHUD {
     private static int beepTimer = 0;
     private static int pulseQueue = 0;
     private static int pulseTimer = 0;
+    private static int pulseCooldown = 0;
+    private static int scannerCooldown = 0;
+    private static final int PULSE_COOLDOWN_TICKS = 200; // 10 seconds cooldown between pulse activations
+    private static final int SCANNER_COOLDOWN_TICKS = 20; // 1 second cooldown between HUD activations
     private static final Map<UUID, Integer> DETECTED_SHADOWS = Collections.synchronizedMap(new HashMap<>());
     private static final Map<UUID, Integer> PENDING_RESPONSES = Collections.synchronizedMap(new HashMap<>());
     private static final int DETECTION_DURATION_POKEMON = 100; // 5 seconds
     private static final int DETECTION_DURATION_METEOROIDS = 200;
-    private static final int RESPONSE_DELAY = 40; // 2 seconds
+    private static final int RESPONSE_DELAY = 100; // 2 seconds
     private static final Map<BlockPos, Integer> DETECTED_METEOROIDS = Collections.synchronizedMap(new HashMap<>());
     private static final Map<BlockPos, Integer> PENDING_METEOROID_RESPONSES = Collections.synchronizedMap(new HashMap<>());
     private static boolean isScanning = false;
 
     public static void tick() {
-        Minecraft mc = Minecraft.getInstance();
-        if (mc.player == null) return;
 
-        prevFadeAmount = fadeAmount;
-        prevBootTimer = bootTimer;
-        prevSweepAngle = sweepAngle;
-        prevGlitchTimer = glitchTimer;
-        prevScanningProgress = scanningProgress;
+        try {
 
-        float xRot = mc.player.getXRot();
-        float yRot = mc.player.getYRot();
+            Minecraft mc = Minecraft.getInstance();
+            if (mc.player == null || mc.level == null) return;
 
-        lastXRot = xRot;
-        lastYRot = yRot;
+            prevFadeAmount = fadeAmount;
+            prevBootTimer = bootTimer;
+            prevSweepAngle = sweepAngle;
+            prevGlitchTimer = glitchTimer;
+            prevScanningProgress = scanningProgress;
 
-        boolean hasAuraReader = SnagAccessoryBridgeHolder.INSTANCE.isAuraReaderEquipped(mc.player);
+            float xRot = mc.player.getXRot();
+            float yRot = mc.player.getYRot();
 
-        if (ModKeybinds.consumeAuraScannerPress()) {
-            if (hasAuraReader && ShadowedHeartsConfigs.getInstance().getClientConfig().auraScannerEnabled()) {
-                ItemStack auraReader = SnagAccessoryBridgeHolder.INSTANCE.getAuraReaderStack(mc.player);
+            lastXRot = xRot;
+            lastYRot = yRot;
 
-                if (!auraReader.isEmpty() && AuraReaderCharge.get(auraReader) > 0) {
-                    active = !active;
-                    ShadowedHeartsNetwork.sendToServer(new AuraScannerC2SPacket(active));
-                    if (active) {
-                        Minecraft.getInstance().player.playSound(ModSounds.AURA_READER_EQUIP.get(), 1.0f, 1.0f);
-                        bootTimer = BOOT_DURATION;
-                        sweepAngle = 0.0f;
-                        prevSweepAngle = 0.0f;
-                    } else {
-                        Minecraft.getInstance().player.playSound(ModSounds.AURA_READER_UNEQUIP.get(), 1.0f, 1.0f);
+            boolean hasAuraReader = SnagAccessoryBridgeHolder.INSTANCE.isAuraReaderEquipped(mc.player);
+
+            if (ModKeybinds.consumeAuraScannerPress() && scannerCooldown <= 0) {
+                if (hasAuraReader && ShadowedHeartsConfigs.getInstance().getClientConfig().auraScannerEnabled()) {
+                    ItemStack auraReader = SnagAccessoryBridgeHolder.INSTANCE.getAuraReaderStack(mc.player);
+
+                    if (!auraReader.isEmpty() && AuraReaderCharge.get(auraReader) > 0) {
+                        active = !active;
+                        scannerCooldown = SCANNER_COOLDOWN_TICKS;
+                        ShadowedHeartsNetwork.sendToServer(new AuraScannerC2SPacket(active));
+                        if (active) {
+                            Minecraft.getInstance().player.playSound(ModSounds.AURA_READER_EQUIP.get(), 1.0f, 1.0f);
+                            bootTimer = BOOT_DURATION;
+                            sweepAngle = 0.0f;
+                            prevSweepAngle = 0.0f;
+                        } else {
+                            Minecraft.getInstance().player.playSound(ModSounds.AURA_READER_UNEQUIP.get(), 1.0f, 1.0f);
+                        }
                     }
-                }
-            } else {
-                if (active) {
-                    active = false;
-                    ShadowedHeartsNetwork.sendToServer(new AuraScannerC2SPacket(false));
+                } else {
+                    if (active) {
+                        active = false;
+                        ShadowedHeartsNetwork.sendToServer(new AuraScannerC2SPacket(false));
+                    }
                 }
             }
-        }
 
-        if (active && !hasAuraReader) {
-            active = false;
-            ShadowedHeartsNetwork.sendToServer(new AuraScannerC2SPacket(false));
-        }
+            if (active && !hasAuraReader) {
+                active = false;
+                ShadowedHeartsNetwork.sendToServer(new AuraScannerC2SPacket(false));
+            }
 
-        if (ModKeybinds.consumeAuraPulsePress()) {
-            if (active) {
-                pulseQueue = 3;
-                pulseTimer = 0;
-                ShadowedHeartsNetwork.sendToServer(new AuraPulsePacket());
-                mc.player.playSound(ModSounds.AURA_SCANNER_BEEP.get());
+            // Cooldown tick down (regardless of active state)
+            if (pulseCooldown > 0) {
+                pulseCooldown--;
+            }
+            if (scannerCooldown > 0) {
+                scannerCooldown--;
+            }
 
-                // Start response timer for nearby shadows
-                int shadowRange = ShadowedHeartsConfigs.getInstance().getShadowConfig().auraScannerShadowRange();
-                List<Entity> entities = mc.level.getEntities(null, mc.player.getBoundingBox().inflate(shadowRange));
-                for (Entity entity : entities) {
-                    if (entity instanceof PokemonEntity pe && ShadowPokemonData.isShadow(pe)) {
-                        PENDING_RESPONSES.put(entity.getUUID(), RESPONSE_DELAY);
+            if (ModKeybinds.consumeAuraPulsePress()) {
+                if (active && pulseCooldown <= 0) {
+                    pulseQueue = 3;
+                    pulseTimer = 0;
+                    ShadowedHeartsNetwork.sendToServer(new AuraPulsePacket());
+                    mc.player.playSound(ModSounds.AURA_SCANNER_BEEP.get());
+
+                    // Start response timer for nearby shadows
+                    int shadowRange = ShadowedHeartsConfigs.getInstance().getShadowConfig().auraScannerShadowRange();
+                    List<Entity> entities = mc.level.getEntities(null, mc.player.getBoundingBox().inflate(shadowRange));
+                    for (Entity entity : entities) {
+                        if (entity instanceof PokemonEntity pe && ShadowPokemonData.isShadow(pe)) {
+                            PENDING_RESPONSES.put(entity.getUUID(), RESPONSE_DELAY);
+                        }
                     }
-                }
-                
-                // Scan for meteoroid blocks manually in a radius (client-side fallback if POI manager is unavailable)
+
+                    // Scan for meteoroid blocks manually in a radius (client-side fallback if POI manager is unavailable)
                 if (!isScanning) {
                     isScanning = true;
                     BlockPos playerPos = mc.player.blockPosition();
@@ -153,9 +170,53 @@ public class AuraScannerHUD {
                     net.minecraft.client.multiplayer.ClientLevel level = mc.level;
                     java.util.concurrent.CompletableFuture.runAsync(() -> {
                         try {
+                            // 1) Collect all meteoroid block positions in range
+                            Set<BlockPos> meteoroids = new HashSet<>();
                             for (BlockPos p : BlockPos.betweenClosed(playerPos.offset(-meteoroidRange, -16, -meteoroidRange), playerPos.offset(meteoroidRange, 16, meteoroidRange))) {
                                 if (level.getBlockState(p).is(com.jayemceekay.shadowedhearts.core.ModBlocks.SHADOWFALL_METEOROID.get())) {
-                                    PENDING_METEOROID_RESPONSES.put(p.immutable(), RESPONSE_DELAY);
+                                    meteoroids.add(p.immutable());
+                                }
+                            }
+
+                            // 2) Group meteoroid blocks using spherical connectivity (radius 2) and compute one center per cluster
+                            Set<BlockPos> visited = new HashSet<>();
+                            for (BlockPos start : meteoroids) {
+                                if (visited.contains(start)) continue;
+
+                                long sumX = 0, sumY = 0, sumZ = 0;
+                                int count = 0;
+                                ArrayDeque<BlockPos> queue = new ArrayDeque<>();
+                                queue.add(start);
+                                visited.add(start);
+
+                                while (!queue.isEmpty()) {
+                                    BlockPos cur = queue.poll();
+                                    sumX += cur.getX();
+                                    sumY += cur.getY();
+                                    sumZ += cur.getZ();
+                                    count++;
+
+                                    // Explore all positions within a spherical radius of 2 blocks
+                                    for (int dx = -2; dx <= 2; dx++) {
+                                        for (int dy = -2; dy <= 2; dy++) {
+                                            for (int dz = -2; dz <= 2; dz++) {
+                                                int dist2 = dx*dx + dy*dy + dz*dz;
+                                                if (dist2 <= 4) { // radius^2 = 2*2
+                                                    BlockPos n = cur.offset(dx, dy, dz);
+                                                    if (meteoroids.contains(n) && visited.add(n)) {
+                                                        queue.add(n);
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                if (count > 0) {
+                                    int cx = Math.round((float) sumX / (float) count);
+                                    int cy = Math.round((float) sumY / (float) count);
+                                    int cz = Math.round((float) sumZ / (float) count);
+                                    PENDING_METEOROID_RESPONSES.put(new BlockPos(cx, cy, cz).immutable(), RESPONSE_DELAY);
                                 }
                             }
                         } finally {
@@ -163,191 +224,198 @@ public class AuraScannerHUD {
                         }
                     });
                 }
-            }
-        }
 
-        if (active) {
-            if (pulseQueue > 0) {
-                if (pulseTimer <= 0) {
-                    AuraPulseRenderer.spawnPulse(mc.player.position());
-                    pulseQueue--;
-                    pulseTimer = 10; // 0.5s between pulses
-                } else {
-                    pulseTimer--;
+                    // set cooldown after activating pulses
+                    pulseCooldown = PULSE_COOLDOWN_TICKS;
                 }
             }
 
-            // Handle pending responses
-            synchronized (PENDING_RESPONSES) {
-                Iterator<Map.Entry<UUID, Integer>> respIter = PENDING_RESPONSES.entrySet().iterator();
-                while (respIter.hasNext()) {
-                    Map.Entry<UUID, Integer> entry = respIter.next();
-                    entry.setValue(entry.getValue() - 1);
-                    if (entry.getValue() <= 0) {
-                        Entity entity = null;
-                        // Check all entities in the level for this UUID
-                        for (Entity e : mc.level.entitiesForRendering()) {
-                            if (e.getUUID().equals(entry.getKey())) {
-                                entity = e;
-                                break;
+            if (active) {
+                if (pulseQueue > 0) {
+                    if (pulseTimer <= 0) {
+                        AuraPulseRenderer.spawnPulse(mc.player.position());
+                        pulseQueue--;
+                        pulseTimer = 10; // 0.5s between pulses
+                    } else {
+                        pulseTimer--;
+                    }
+                }
+
+                // Handle pending responses
+                synchronized (PENDING_RESPONSES) {
+                    Iterator<Map.Entry<UUID, Integer>> respIter = PENDING_RESPONSES.entrySet().iterator();
+                    while (respIter.hasNext()) {
+                        Map.Entry<UUID, Integer> entry = respIter.next();
+                        entry.setValue(entry.getValue() - 1);
+                        if (entry.getValue() <= 0) {
+                            Entity entity = null;
+                            // Check all entities in the level for this UUID
+                            for (Entity e : mc.level.entitiesForRendering()) {
+                                if (e.getUUID().equals(entry.getKey())) {
+                                    entity = e;
+                                    break;
+                                }
                             }
+
+                            if (entity != null) {
+                                AuraPulseRenderer.spawnPulse(entity.position(), 0.6f, 0.3f, 1.0f, 128.0f); // Purple pulse
+                                DETECTED_SHADOWS.put(entity.getUUID(), DETECTION_DURATION_POKEMON);
+                            }
+                            respIter.remove();
                         }
+                    }
+                }
 
-                        if (entity != null) {
-                            AuraPulseRenderer.spawnPulse(entity.position(), 0.6f, 0.3f, 1.0f, 128.0f); // Purple pulse
-                            DETECTED_SHADOWS.put(entity.getUUID(), DETECTION_DURATION_POKEMON);
+                // Handle pending meteoroid responses
+                synchronized (PENDING_METEOROID_RESPONSES) {
+                    Iterator<Map.Entry<BlockPos, Integer>> metRespIter = PENDING_METEOROID_RESPONSES.entrySet().iterator();
+                    while (metRespIter.hasNext()) {
+                        Map.Entry<BlockPos, Integer> entry = metRespIter.next();
+                        entry.setValue(entry.getValue() - 1);
+                        if (entry.getValue() <= 0) {
+                            AuraPulseRenderer.spawnPulse(entry.getKey().getCenter(), 0.6f, 0.3f, 1.0f, 256.0f); // Purple pulse
+                            DETECTED_METEOROIDS.put(entry.getKey(), DETECTION_DURATION_METEOROIDS);
+                            metRespIter.remove();
                         }
-                        respIter.remove();
                     }
                 }
-            }
 
-            // Handle pending meteoroid responses
-            synchronized (PENDING_METEOROID_RESPONSES) {
-                Iterator<Map.Entry<BlockPos, Integer>> metRespIter = PENDING_METEOROID_RESPONSES.entrySet().iterator();
-                while (metRespIter.hasNext()) {
-                    Map.Entry<BlockPos, Integer> entry = metRespIter.next();
-                    entry.setValue(entry.getValue() - 1);
-                    if (entry.getValue() <= 0) {
-                        AuraPulseRenderer.spawnPulse(entry.getKey().getCenter(), 0.6f, 0.3f, 1.0f, 256.0f); // Purple pulse
-                        DETECTED_METEOROIDS.put(entry.getKey(), DETECTION_DURATION_METEOROIDS);
-                        metRespIter.remove();
+                // Update detections
+                synchronized (DETECTED_SHADOWS) {
+                    Iterator<Map.Entry<UUID, Integer>> detectIter = DETECTED_SHADOWS.entrySet().iterator();
+                    while (detectIter.hasNext()) {
+                        Map.Entry<UUID, Integer> entry = detectIter.next();
+                        entry.setValue(entry.getValue() - 1);
+                        if (entry.getValue() <= 0) {
+                            detectIter.remove();
+                        }
                     }
                 }
-            }
 
-            // Update detections
-            synchronized (DETECTED_SHADOWS) {
-                Iterator<Map.Entry<UUID, Integer>> detectIter = DETECTED_SHADOWS.entrySet().iterator();
-                while (detectIter.hasNext()) {
-                    Map.Entry<UUID, Integer> entry = detectIter.next();
-                    entry.setValue(entry.getValue() - 1);
-                    if (entry.getValue() <= 0) {
-                        detectIter.remove();
+                // Update meteoroid detections
+                synchronized (DETECTED_METEOROIDS) {
+                    Iterator<Map.Entry<BlockPos, Integer>> metDetectIter = DETECTED_METEOROIDS.entrySet().iterator();
+                    while (metDetectIter.hasNext()) {
+                        Map.Entry<BlockPos, Integer> entry = metDetectIter.next();
+                        entry.setValue(entry.getValue() - 1);
+                        if (entry.getValue() <= 0) {
+                            metDetectIter.remove();
+                        }
                     }
                 }
-            }
 
-            // Update meteoroid detections
-            synchronized (DETECTED_METEOROIDS) {
-                Iterator<Map.Entry<BlockPos, Integer>> metDetectIter = DETECTED_METEOROIDS.entrySet().iterator();
-                while (metDetectIter.hasNext()) {
-                    Map.Entry<BlockPos, Integer> entry = metDetectIter.next();
-                    entry.setValue(entry.getValue() - 1);
-                    if (entry.getValue() <= 0) {
-                        metDetectIter.remove();
+                fadeAmount = Math.min(1.0f, fadeAmount + 0.1f);
+                if (bootTimer > 0) {
+                    bootTimer -= 0.05f;
+                }
+                sweepAngle += 0.1f;
+                if (sweepAngle > (float) Math.PI * 2) {
+                    sweepAngle -= (float) Math.PI * 2;
+                    prevSweepAngle -= (float) Math.PI * 2;
+                }
+
+                // Scanning logic
+                PokemonEntity nearest = null;
+                double minDist = Double.MAX_VALUE;
+                List<Entity> nearbyEntities = mc.level.getEntities(null, mc.player.getBoundingBox().inflate(16.0));
+                for (Entity entity : nearbyEntities) {
+                    if (entity instanceof PokemonEntity pe && ShadowPokemonData.isShadow(pe) && DETECTED_SHADOWS.containsKey(pe.getUUID())) {
+                        double dist = entity.distanceTo(mc.player);
+                        if (dist < minDist) {
+                            minDist = dist;
+                            nearest = pe;
+                        }
                     }
                 }
-            }
 
-            fadeAmount = Math.min(1.0f, fadeAmount + 0.1f);
-            if (bootTimer > 0) {
-                bootTimer -= 0.05f;
-            }
-            sweepAngle += 0.1f;
-            if (sweepAngle > (float) Math.PI * 2) {
-                sweepAngle -= (float) Math.PI * 2;
-                prevSweepAngle -= (float) Math.PI * 2;
-            }
-
-            // Scanning logic
-            PokemonEntity nearest = null;
-            double minDist = Double.MAX_VALUE;
-            List<Entity> nearbyEntities = mc.level.getEntities(null, mc.player.getBoundingBox().inflate(16.0));
-            for (Entity entity : nearbyEntities) {
-                if (entity instanceof PokemonEntity pe && ShadowPokemonData.isShadow(pe) && DETECTED_SHADOWS.containsKey(pe.getUUID())) {
-                    double dist = entity.distanceTo(mc.player);
-                    if (dist < minDist) {
-                        minDist = dist;
-                        nearest = pe;
+                if (nearest != null) {
+                    if (scannedPokemon != nearest) {
+                        scannedPokemon = nearest;
+                        scanningProgress = 0;
                     }
-                }
-            }
-
-            if (nearest != null) {
-                if (scannedPokemon != nearest) {
-                    scannedPokemon = nearest;
-                    scanningProgress = 0;
-                }
-                scanningProgress = Math.min(1.0f, scanningProgress + 0.01f);
-            } else {
-                scannedPokemon = null;
-                scanningProgress = Math.max(0.0f, scanningProgress - 0.05f);
-            }
-
-            // Deactivate if charge is empty (client side check)
-            ItemStack auraReader = SnagAccessoryBridgeHolder.INSTANCE.getAuraReaderStack(mc.player);
-            if (!auraReader.isEmpty() && auraReader.getItem() instanceof AuraReaderItem) {
-                if (AuraReaderCharge.get(auraReader) <= 0) {
-                    active = false;
-                }
-            }
-
-            // Check for legendaries to trigger glitches
-            boolean legendaryNearby = false;
-            nearbyEntities = mc.level.getEntities(null, mc.player.getBoundingBox().inflate(32.0));
-            for (Entity entity : nearbyEntities) {
-                if (entity instanceof PokemonEntity pe && ShadowPokemonData.isShadow(pe) && pe.getPokemon().isLegendary()) {
-                    legendaryNearby = true;
-                    break;
-                }
-            }
-            
-            if (legendaryNearby && mc.level.random.nextFloat() < 0.1f) {
-                glitchTimer = 0.2f;
-            }
-            if (glitchTimer > 0) {
-                glitchTimer -= 0.05f;
-            }
-
-            // Update maxIntensity for signal strength and audio cues
-            maxIntensity = 0;
-            int shadowRange = ShadowedHeartsConfigs.getInstance().getShadowConfig().auraScannerShadowRange();
-            List<Entity> nearbyShadows = mc.level.getEntities(null, mc.player.getBoundingBox().inflate(shadowRange));
-            for (Entity entity : nearbyShadows) {
-                if (entity instanceof PokemonEntity pe && ShadowPokemonData.isShadow(pe) && DETECTED_SHADOWS.containsKey(pe.getUUID())) {
-                    double dist = entity.distanceTo(mc.player);
-                    maxIntensity = Math.max(maxIntensity, (float) (1.0 - (dist / shadowRange)));
-                }
-            }
-        
-            // Intensity from meteoroids
-            int meteoroidRange = ShadowedHeartsConfigs.getInstance().getShadowConfig().auraScannerMeteoroidRange();
-            for (BlockPos p : DETECTED_METEOROIDS.keySet()) {
-                double dist = Math.sqrt(p.distSqr(mc.player.blockPosition()));
-                maxIntensity = Math.max(maxIntensity, (float) (1.0 - (dist / meteoroidRange)));
-            }
-
-            // Hot/Cold Audio Cues
-            if (beepTimer > 0) {
-                beepTimer--;
-            } else {
-                if (maxIntensity > 0) {
-                    // maxIntensity is 0.0 to 1.0 based on distance (0 to 64 blocks)
-                    // We want faster beeps when closer (higher intensity)
-                    // min delay: 5 ticks (0.25s) at max intensity
-                    // max delay: 60 ticks (3s) at min intensity
-                    int delay = (int) Mth.lerp(maxIntensity, 60, 5);
-                    float pitch = Mth.lerp(maxIntensity, 0.8f, 1.5f);
-                    mc.level.playSound(mc.player, mc.player.getX(), mc.player.getY(), mc.player.getZ(), ModSounds.AURA_SCANNER_BEEP.get(), SoundSource.PLAYERS, 0.3f, pitch);
-                    beepTimer = delay;
+                    scanningProgress = Math.min(1.0f, scanningProgress + 0.01f);
                 } else {
-                    // No shadow nearby, slow idle beep or no beep?
-                    // Let's go with no beep if no signal, or very slow beep if scanner is on.
-                    // Actually, "NO SIGNAL" usually means silence in these tropes.
+                    scannedPokemon = null;
+                    scanningProgress = Math.max(0.0f, scanningProgress - 0.05f);
                 }
+
+                // Deactivate if charge is empty (client side check)
+                ItemStack auraReader = SnagAccessoryBridgeHolder.INSTANCE.getAuraReaderStack(mc.player);
+                if (!auraReader.isEmpty() && auraReader.getItem() instanceof AuraReaderItem) {
+                    if (AuraReaderCharge.get(auraReader) <= 0) {
+                        active = false;
+                    }
+                }
+
+                // Check for legendaries to trigger glitches
+                boolean legendaryNearby = false;
+                nearbyEntities = mc.level.getEntities(null, mc.player.getBoundingBox().inflate(32.0));
+                for (Entity entity : nearbyEntities) {
+                    if (entity instanceof PokemonEntity pe && ShadowPokemonData.isShadow(pe) && pe.getPokemon().isLegendary()) {
+                        legendaryNearby = true;
+                        break;
+                    }
+                }
+
+                if (legendaryNearby && mc.level.random.nextFloat() < 0.1f) {
+                    glitchTimer = 0.2f;
+                }
+                if (glitchTimer > 0) {
+                    glitchTimer -= 0.05f;
+                }
+
+                // Update maxIntensity for signal strength and audio cues
+                maxIntensity = 0;
+                int shadowRange = ShadowedHeartsConfigs.getInstance().getShadowConfig().auraScannerShadowRange();
+                List<Entity> nearbyShadows = mc.level.getEntities(null, mc.player.getBoundingBox().inflate(shadowRange));
+                for (Entity entity : nearbyShadows) {
+                    if (entity instanceof PokemonEntity pe && ShadowPokemonData.isShadow(pe) && DETECTED_SHADOWS.containsKey(pe.getUUID())) {
+                        double dist = entity.distanceTo(mc.player);
+                        maxIntensity = Math.max(maxIntensity, (float) (1.0 - (dist / shadowRange)));
+                    }
+                }
+
+                // Intensity from meteoroids
+                int meteoroidRange = ShadowedHeartsConfigs.getInstance().getShadowConfig().auraScannerMeteoroidRange();
+                for (BlockPos p : DETECTED_METEOROIDS.keySet()) {
+                    double dist = Math.sqrt(p.distSqr(mc.player.blockPosition()));
+                    maxIntensity = Math.max(maxIntensity, (float) (1.0 - (dist / meteoroidRange)));
+                }
+
+                // Hot/Cold Audio Cues
+                if (beepTimer > 0) {
+                    beepTimer--;
+                } else {
+                    if (maxIntensity > 0) {
+                        // maxIntensity is 0.0 to 1.0 based on distance (0 to 64 blocks)
+                        // We want faster beeps when closer (higher intensity)
+                        // min delay: 5 ticks (0.25s) at max intensity
+                        // max delay: 60 ticks (3s) at min intensity
+                        int delay = (int) Mth.lerp(maxIntensity, 60, 5);
+                        float pitch = Mth.lerp(maxIntensity, 0.8f, 1.5f);
+                        mc.level.playSound(mc.player, mc.player.getX(), mc.player.getY(), mc.player.getZ(), ModSounds.AURA_SCANNER_BEEP.get(), SoundSource.PLAYERS, 0.3f, pitch);
+                        beepTimer = delay;
+                    } else {
+                        // No shadow nearby, slow idle beep or no beep?
+                        // Let's go with no beep if no signal, or very slow beep if scanner is on.
+                        // Actually, "NO SIGNAL" usually means silence in these tropes.
+                    }
+                }
+            } else {
+                fadeAmount = Math.max(0.0f, fadeAmount - 0.1f);
+                beepTimer = 0;
+                maxIntensity = 0;
+                pulseQueue = 0;
+                pulseTimer = 0;
+                // Do NOT reset pulseCooldown here; it should continue ticking down even when HUD is closed
+                AuraPulseRenderer.clearPulses();
+                DETECTED_SHADOWS.clear();
+                PENDING_RESPONSES.clear();
+                DETECTED_METEOROIDS.clear();
+                PENDING_METEOROID_RESPONSES.clear();
             }
-        } else {
-            fadeAmount = Math.max(0.0f, fadeAmount - 0.1f);
-            beepTimer = 0;
-            maxIntensity = 0;
-            pulseQueue = 0;
-            pulseTimer = 0;
-            AuraPulseRenderer.clearPulses();
-            DETECTED_SHADOWS.clear();
-            PENDING_RESPONSES.clear();
-            DETECTED_METEOROIDS.clear();
-            PENDING_METEOROID_RESPONSES.clear();
+        }catch(Exception e){
+            e.printStackTrace();
         }
     }
 
@@ -358,6 +426,7 @@ public class AuraScannerHUD {
         if (baseAlpha <= 0.0f) return;
 
         Minecraft mc = Minecraft.getInstance();
+        if(mc.level == null) return;
         int width = mc.getWindow().getGuiScaledWidth();
         int height = mc.getWindow().getGuiScaledHeight();
         float time = (mc.level.getGameTime() + partialTick) * 0.05f;
@@ -499,7 +568,7 @@ public class AuraScannerHUD {
         if (currentGlitchTimer > 0) {
             currentSweep += (mc.level.random.nextFloat() - 0.5f) * 0.5f;
         }
-        
+
         // Render Sweep Arc
         guiGraphics.pose().pushPose();
         guiGraphics.pose().translate(centerX, centerY, 0);
@@ -518,18 +587,18 @@ public class AuraScannerHUD {
                 double dist = Math.sqrt(dx * dx + dz * dz);
 
                 float intensity = (float) Math.max(0, 1.0 - (dist / shadowRange));
-                
+
                 // Spike sweep when passing over
                 float angleDiff = (float) (angle - currentSweep);
                 while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
                 while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
-                
+
                 float spike = Math.max(0, 1.0f - Math.abs(angleDiff) * 5.0f);
-                
+
                 guiGraphics.pose().pushPose();
                 guiGraphics.pose().translate(centerX, centerY, 0);
                 guiGraphics.pose().mulPose(com.mojang.math.Axis.ZP.rotation((float) angle));
-                
+
                 // Signal segment
                 float segmentAlpha = alpha * intensity * (0.3f + 0.7f * spike);
                 // Purple for shadow energy
@@ -537,7 +606,7 @@ public class AuraScannerHUD {
                 // SELECT_ARROW is pointing down by default, we flip it vertically so it points UP
                 // (away from the center) as requested by using an "upside down" version.
                 guiGraphics.blit(SELECT_ARROW, -8, -80, 0, 16, 16, -16, 16, 16);
-                
+
                 guiGraphics.pose().popPose();
             }
         }
@@ -565,7 +634,7 @@ public class AuraScannerHUD {
 
             // Signal segment
             float segmentAlpha = alpha * intensity * (0.3f + 0.7f * spike);
-            // Slightly different purple/pink for meteoroids? 
+            // Slightly different purple/pink for meteoroids?
             // Or just the same to indicate "Shadow Source"
             RenderSystem.setShaderColor(0.8f, 0.2f, 0.9f, segmentAlpha);
             guiGraphics.blit(SELECT_ARROW, -8, -80, 0, 16, 16, -16, 16, 16);
@@ -575,10 +644,10 @@ public class AuraScannerHUD {
 
         RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f);
     }
-    
+
     private static void renderSignalStrength(GuiGraphics guiGraphics, int width, int height, float alpha) {
         Minecraft mc = Minecraft.getInstance();
-        
+
         String label = "NO SIGNAL";
         int color = 0xAAAAAA;
         if (maxIntensity > 0.8) {
@@ -591,7 +660,7 @@ public class AuraScannerHUD {
             label = "WEAK SIGNAL";
             color = 0x00FFFF; // Cyan
         }
-        
+
         int textAlpha = (int)(alpha * 255) << 24;
 
         // Use CENTER_INFO_FRAME for the label
@@ -603,7 +672,7 @@ public class AuraScannerHUD {
         RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f);
 
         guiGraphics.drawCenteredString(mc.font, label, width / 2, frameY + 4, color | textAlpha);
-        
+
         // Render Waveform
         int waveX = width / 2 - 50;
         int waveY = frameY + 45;
@@ -615,6 +684,9 @@ public class AuraScannerHUD {
 
         // Render Charge Bar
         renderChargeBar(guiGraphics, width, height, alpha);
+
+        // Render Cooldown Bar (bottom middle)
+        renderCooldownBar(guiGraphics, width, height, alpha);
     }
 
     private static void renderChargeBar(GuiGraphics guiGraphics, int width, int height, float alpha) {
@@ -646,7 +718,35 @@ public class AuraScannerHUD {
         String chargeText = String.format("CHARGE: %d%%", (int)(chargeRatio * 100));
         guiGraphics.drawCenteredString(mc.font, chargeText, width / 2, y - 10, color | textAlpha);
     }
-    
+
+    private static void renderCooldownBar(GuiGraphics guiGraphics, int width, int height, float alpha) {
+        if (pulseCooldown <= 0) return;
+        int barWidth = 25;
+        int barHeight = 2;
+        int x = (width - barWidth) / 3;
+        int y = height / 2 + 60; // outside lower left of scanning ring
+
+        int textAlpha = (int)(alpha * 255) << 24;
+
+        // Background
+        guiGraphics.fill(x - 1, y - 1, x + barWidth + 1, y + barHeight + 1, 0xAA000000 | (textAlpha & 0xFF000000));
+
+        // Fill based on remaining cooldown
+        float ratio = Math.min(1.0f, Math.max(0.0f, (float) pulseCooldown / (float) PULSE_COOLDOWN_TICKS));
+        int fillWidth = (int) (barWidth * ratio);
+        int color = 0xAAAAAA; // Gray cooldown color
+        guiGraphics.fill(x, y, x + fillWidth, y + barHeight, color | textAlpha);
+
+        // Optional label above
+        Minecraft mc = Minecraft.getInstance();
+        String cdText = String.format("COOLDOWN: %.1fs", pulseCooldown / 20.0f);
+        PoseStack poseStack = guiGraphics.pose();
+        poseStack.pushPose();
+        guiGraphics.drawCenteredString(mc.font, cdText, width / 3, y - 10, 0xCCCCCC | textAlpha);
+        poseStack.scale(1.0f, 1.0f, 1.0f);
+        poseStack.popPose();
+    }
+
     private static void renderInfoPane(GuiGraphics guiGraphics, int width, int height, float alpha, float partialTick) {
         float currentScanningProgress = Mth.lerp(partialTick, prevScanningProgress, scanningProgress);
         if (currentScanningProgress <= 0) return;
@@ -730,7 +830,7 @@ public class AuraScannerHUD {
         int textAlpha = (int) (alpha * 255) << 24;
         guiGraphics.drawCenteredString(mc.font, text, centerX + xOffset + xOffsetText, centerY + yOffset + yOffsetText, 0x00FFFF | textAlpha);
     }
-    
+
     public static boolean isActive() {
         return active && fadeAmount > 0;
     }

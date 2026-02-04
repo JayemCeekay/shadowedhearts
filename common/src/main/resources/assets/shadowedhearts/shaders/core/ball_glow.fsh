@@ -49,7 +49,6 @@ in float vertexDistance;
 in vec4 vertexColor;
 in vec4 overlayColor;
 in vec2 texCoord0;
-in vec4 normal; // view-space normal from entity shader
 
 out vec4 fragColor;
 
@@ -115,11 +114,12 @@ vec3 palette_vertical_fire(float y) {
 
 void main() {
     vec2 texCoord = texCoord0;
-    vec3 nrm = normal.xyz;
+    // Default-facing normal (toward camera). Some entity vertex shaders used here
+    // do not provide a normal varying; avoid linking errors by not requiring it.
+    vec3 nrm = vec3(0.0, 0.0, 1.0);
 
     if (u_voxelsPerRad > 0.0) {
         texCoord = quantize3D(vec3(texCoord0, 0.0), u_voxelsPerRad).xy;
-        nrm = quantize3D(normal.xyz, u_voxelsPerRad);
     }
 
     vec4 outCol;
@@ -224,14 +224,14 @@ void main() {
 
         outCol = vec4(color, intensity);
     }
-    // Apply vertex tinting and ensure additive path respects alpha fades.
+    // Apply vertex/overlay tinting and ensure additive path respects alpha fades.
     // Default multiplication (outCol *= vertexColor * ColorModulator) doesn't dim RGB when vertexColor.rgb = 1.
     // With additive blending (ONE, ONE), color channels are independent of alpha, so explicitly scale RGB by alpha.
     float alphaMod = vertexColor.a * ColorModulator.a;
     // Apply color tints to RGB
-    outCol.rgb *= (vertexColor.rgb * ColorModulator.rgb);
+    outCol.rgb *= (vertexColor.rgb * ColorModulator.rgb * overlayColor.rgb);
     // Apply alpha normally
-    outCol.a *= alphaMod;
+    outCol.a *= alphaMod * overlayColor.a;
     // Also attenuate RGB by the combined alpha so fades are smooth under additive blending
     outCol.rgb *= alphaMod;
 
