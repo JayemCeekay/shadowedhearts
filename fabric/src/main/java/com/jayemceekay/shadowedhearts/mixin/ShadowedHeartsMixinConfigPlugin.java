@@ -22,6 +22,8 @@ public class ShadowedHeartsMixinConfigPlugin implements IMixinConfigPlugin {
 
         return switch (mixinClassName) {
             case "com.jayemceekay.shadowedhearts.mixin.cobblemonbattleextras.CobblemonBattleExtras_1_7_24_MoveTileTooltipMixin" -> {
+                if( !Platform.isModLoaded("cobblemon-battle-extras"))
+                    yield false;
                 var mod = Platform.getMod("cobblemon-battle-extras");
                 if (mod == null) yield false;
                 try {
@@ -31,6 +33,8 @@ public class ShadowedHeartsMixinConfigPlugin implements IMixinConfigPlugin {
                 }
             }
             case "com.jayemceekay.shadowedhearts.mixin.cobblemonbattleextras.CobblemonBattleExtrasNewMoveTileTooltipMixin" -> {
+                if( !Platform.isModLoaded("cobblemon-battle-extras"))
+                    yield false;
                 var mod = Platform.getMod("cobblemon-battle-extras");
                 if (mod == null) yield false;
                 try {
