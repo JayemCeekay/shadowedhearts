@@ -11,6 +11,7 @@ import com.jayemceekay.shadowedhearts.integration.accessories.SnagAccessoryBridg
 import com.jayemceekay.shadowedhearts.items.AuraReaderItem;
 import com.jayemceekay.shadowedhearts.network.AuraPulsePacket;
 import com.jayemceekay.shadowedhearts.network.AuraScannerC2SPacket;
+import com.jayemceekay.shadowedhearts.network.MeteoroidScanRequestPacket;
 import com.jayemceekay.shadowedhearts.network.ShadowedHeartsNetwork;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.PoseStack;
@@ -162,68 +163,9 @@ public class AuraScannerHUD {
                         }
                     }
 
-                    // Scan for meteoroid blocks manually in a radius (client-side fallback if POI manager is unavailable)
-                if (!isScanning) {
-                    isScanning = true;
-                    BlockPos playerPos = mc.player.blockPosition();
+                    // Request meteoroid centers from the server via POI lookup
                     int meteoroidRange = ShadowedHeartsConfigs.getInstance().getShadowConfig().auraScannerMeteoroidRange();
-                    net.minecraft.client.multiplayer.ClientLevel level = mc.level;
-                    java.util.concurrent.CompletableFuture.runAsync(() -> {
-                        try {
-                            // 1) Collect all meteoroid block positions in range
-                            Set<BlockPos> meteoroids = new HashSet<>();
-                            for (BlockPos p : BlockPos.betweenClosed(playerPos.offset(-meteoroidRange, -16, -meteoroidRange), playerPos.offset(meteoroidRange, 16, meteoroidRange))) {
-                                if (level.getBlockState(p).is(com.jayemceekay.shadowedhearts.core.ModBlocks.SHADOWFALL_METEOROID.get())) {
-                                    meteoroids.add(p.immutable());
-                                }
-                            }
-
-                            // 2) Group meteoroid blocks using spherical connectivity (radius 2) and compute one center per cluster
-                            Set<BlockPos> visited = new HashSet<>();
-                            for (BlockPos start : meteoroids) {
-                                if (visited.contains(start)) continue;
-
-                                long sumX = 0, sumY = 0, sumZ = 0;
-                                int count = 0;
-                                ArrayDeque<BlockPos> queue = new ArrayDeque<>();
-                                queue.add(start);
-                                visited.add(start);
-
-                                while (!queue.isEmpty()) {
-                                    BlockPos cur = queue.poll();
-                                    sumX += cur.getX();
-                                    sumY += cur.getY();
-                                    sumZ += cur.getZ();
-                                    count++;
-
-                                    // Explore all positions within a spherical radius of 2 blocks
-                                    for (int dx = -2; dx <= 2; dx++) {
-                                        for (int dy = -2; dy <= 2; dy++) {
-                                            for (int dz = -2; dz <= 2; dz++) {
-                                                int dist2 = dx*dx + dy*dy + dz*dz;
-                                                if (dist2 <= 4) { // radius^2 = 2*2
-                                                    BlockPos n = cur.offset(dx, dy, dz);
-                                                    if (meteoroids.contains(n) && visited.add(n)) {
-                                                        queue.add(n);
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-
-                                if (count > 0) {
-                                    int cx = Math.round((float) sumX / (float) count);
-                                    int cy = Math.round((float) sumY / (float) count);
-                                    int cz = Math.round((float) sumZ / (float) count);
-                                    PENDING_METEOROID_RESPONSES.put(new BlockPos(cx, cy, cz).immutable(), RESPONSE_DELAY);
-                                }
-                            }
-                        } finally {
-                            isScanning = false;
-                        }
-                    });
-                }
+                    ShadowedHeartsNetwork.sendToServer(new MeteoroidScanRequestPacket(meteoroidRange));
 
                     // set cooldown after activating pulses
                     pulseCooldown = PULSE_COOLDOWN_TICKS;
@@ -841,6 +783,18 @@ public class AuraScannerHUD {
             bootTimer = BOOT_DURATION;
             sweepAngle = 0.0f;
             prevSweepAngle = 0.0f;
+        }
+    }
+
+    // Called from client network handler when server returns meteoroid centers
+    public static void enqueueMeteoroidCenters(java.util.List<BlockPos> centers) {
+        if (centers == null || centers.isEmpty()) return;
+        synchronized (PENDING_METEOROID_RESPONSES) {
+            for (BlockPos pos : centers) {
+                if (pos != null) {
+                    PENDING_METEOROID_RESPONSES.put(pos.immutable(), RESPONSE_DELAY);
+                }
+            }
         }
     }
 }

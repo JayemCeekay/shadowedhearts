@@ -28,6 +28,7 @@ object ShadowedHeartsNetwork {
         add(PacketRegisterInfo(SnagResultPacket.ID, SnagResultPacket::decode, SnagResultHandler))
         add(PacketRegisterInfo(PokemonPropertyUpdatePacket.ID, PokemonPropertyUpdatePacket::decode, com.cobblemon.mod.common.client.net.pokemon.update.PokemonUpdatePacketHandler()))
         add(PacketRegisterInfo(AuraScannerS2CPacket.ID, AuraScannerS2CPacket::decode, AuraScannerClientHandler))
+        add(PacketRegisterInfo(MeteoroidScanResultPacket.ID, MeteoroidScanResultPacket::decode, com.jayemceekay.shadowedhearts.client.network.MeteoroidScanResultClientHandler))
     }
 
     /**
@@ -66,6 +67,7 @@ object ShadowedHeartsNetwork {
         add(PacketRegisterInfo(SnagArmPacket.ID, SnagArmPacket::decode, SnagArmHandler))
         add(PacketRegisterInfo(AuraPulsePacket.ID, AuraPulsePacket::decode, AuraPulseHandler))
         add(PacketRegisterInfo(AuraScannerC2SPacket.ID, AuraScannerC2SPacket::decode, AuraScannerHandler))
+        add(PacketRegisterInfo(MeteoroidScanRequestPacket.ID, MeteoroidScanRequestPacket::decode, MeteoroidScanRequestHandler))
     }
 
     @JvmStatic
