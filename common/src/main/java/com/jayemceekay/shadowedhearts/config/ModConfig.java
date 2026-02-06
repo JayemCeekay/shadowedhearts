@@ -128,6 +128,11 @@ public final class ModConfig implements IShadowConfig {
     }
 
     @Override
+    public int purificationChamberStepRequirement() {
+        return DATA.purificationChamber.stepRequirement.get();
+    }
+
+    @Override
     public int auraScannerShadowRange() {
         return DATA.auraScanner.auraScannerShadowRange.get();
     }
@@ -175,6 +180,7 @@ public final class ModConfig implements IShadowConfig {
         public final ShadowStatConfig shadowStatChanges = new ShadowStatConfig();
         public final AuraScannerConfig auraScanner = new AuraScannerConfig();
         public final RelicStoneConfig relicStone = new RelicStoneConfig();
+        public final PurificationChamberConfig purificationChamber = new PurificationChamberConfig();
         public final RCTIntegrationConfig rctIntegration = new RCTIntegrationConfig();
         public final WorldAlterationConfig worldAlteration = new WorldAlterationConfig();
 
@@ -213,6 +219,10 @@ public final class ModConfig implements IShadowConfig {
 
             builder.push("relicStone");
             relicStone.build(builder);
+            builder.pop();
+
+            builder.push("purificationChamber");
+            purificationChamber.build(builder);
             builder.pop();
 
             builder.push("shadowSpawn");
@@ -646,6 +656,16 @@ public final class ModConfig implements IShadowConfig {
             cooldownMinutes = builder
                     .comment("Cooldown in minutes between using the Relic Stone's purification function.")
                     .defineInRange("cooldownMinutes", 5, 0, Integer.MAX_VALUE);
+        }
+    }
+
+    public static final class PurificationChamberConfig {
+        public ModConfigSpec.IntValue stepRequirement;
+
+        private void build(ModConfigSpec.Builder builder) {
+            stepRequirement = builder
+                    .comment("The number of steps required to advance the purification chamber by one tick.")
+                    .defineInRange("stepRequirement", 161, 1, Integer.MAX_VALUE);
         }
     }
 

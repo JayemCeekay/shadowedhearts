@@ -45,6 +45,9 @@ public interface IShadowConfig extends IModConfig {
     // Relic Stone
     default int relicStoneCooldownMinutes() { return 5; }
 
+    // Purification Chamber
+    default int purificationChamberStepRequirement() { return 161; }
+
     // Aura Scanner
     default int auraScannerShadowRange() { return 64; }
     default int auraScannerMeteoroidRange() { return 128; }

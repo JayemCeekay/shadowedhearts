@@ -10,6 +10,7 @@ import com.google.gson.JsonObject
 import com.jayemceekay.shadowedhearts.PokemonAspectUtil
 import com.jayemceekay.shadowedhearts.ShadowService
 import com.jayemceekay.shadowedhearts.client.net.storage.purification.PurificationChamberSyncPacket
+import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs
 import net.minecraft.core.RegistryAccess
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.server.level.ServerPlayer
@@ -44,7 +45,7 @@ class PurificationChamberStore(
     private val observingUUIDs = mutableSetOf(uuid)
     private val changeObservable = SimpleObservable<Unit>()
 
-    // Accumulate world steps; every 161 steps apply chamber purification per spec
+    // Accumulate world steps; every X steps apply chamber purification per spec
     private var stepAccumulator: Int = 0
 
     /**
@@ -189,17 +190,18 @@ class PurificationChamberStore(
 
     /**
      * Advance the chamber's purification cadence by a given number of steps.
-     * Every 161 accumulated steps, compute and apply heart gauge reductions to each set's shadow.
+     * Every X accumulated steps, compute and apply heart gauge reductions to each set's shadow.
      * Server-side authority only.
      *
      * Context: Minecraft Cobblemon mod; all shadow/purity/corruption terms are gameplay mechanics.
      */
     fun advanceSteps(steps: Int) {
         if (steps <= 0) return
+        val stepRequirement = ShadowedHeartsConfigs.getInstance().shadowConfig.purificationChamberStepRequirement()
         stepAccumulator += steps
         val affectedPokemon = mutableSetOf<Pokemon>()
-        while (stepAccumulator >= 161) {
-            stepAccumulator -= 161
+        while (stepAccumulator >= stepRequirement) {
+            stepAccumulator -= stepRequirement
             applyChamberTick(affectedPokemon)
         }
         affectedPokemon.forEach { ShadowService.syncAll(it) }
