@@ -67,8 +67,6 @@ public class AuraScannerHUD {
     private static float prevSweepAngle = 0.0f;
     private static float glitchTimer = 0.0f;
     private static float prevGlitchTimer = 0.0f;
-    private static float lastXRot = 0.0f;
-    private static float lastYRot = 0.0f;
     private static float scanningProgress = 0.0f;
     private static float prevScanningProgress = 0.0f;
     private static PokemonEntity scannedPokemon = null;
@@ -83,7 +81,7 @@ public class AuraScannerHUD {
     private static final Map<UUID, Integer> PENDING_RESPONSES = Collections.synchronizedMap(new HashMap<>());
     private static final int DETECTION_DURATION_POKEMON = 100; // 5 seconds
     private static final int DETECTION_DURATION_METEOROIDS = 200;
-    private static final int RESPONSE_DELAY = 100; // 2 seconds
+    private static final int RESPONSE_DELAY = 100; // 5 seconds
     private static final Map<BlockPos, Integer> DETECTED_METEOROIDS = Collections.synchronizedMap(new HashMap<>());
     private static final Map<BlockPos, Integer> PENDING_METEOROID_RESPONSES = Collections.synchronizedMap(new HashMap<>());
     private static boolean isScanning = false;
@@ -100,12 +98,6 @@ public class AuraScannerHUD {
             prevSweepAngle = sweepAngle;
             prevGlitchTimer = glitchTimer;
             prevScanningProgress = scanningProgress;
-
-            float xRot = mc.player.getXRot();
-            float yRot = mc.player.getYRot();
-
-            lastXRot = xRot;
-            lastYRot = yRot;
 
             boolean hasAuraReader = SnagAccessoryBridgeHolder.INSTANCE.isAuraReaderEquipped(mc.player);
 
@@ -775,6 +767,11 @@ public class AuraScannerHUD {
 
     public static boolean isActive() {
         return active && fadeAmount > 0;
+    }
+
+    public static boolean isDetected(UUID uuid) {
+        if (uuid == null) return false;
+        return DETECTED_SHADOWS.containsKey(uuid);
     }
 
     public static void setActive(boolean activeIn) {

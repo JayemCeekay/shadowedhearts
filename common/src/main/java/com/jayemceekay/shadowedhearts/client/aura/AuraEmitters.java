@@ -7,9 +7,11 @@ import com.cobblemon.mod.common.pokemon.RenderablePokemon;
 import com.cobblemon.mod.common.util.math.QuaternionUtilsKt;
 import com.jayemceekay.shadowedhearts.SHAspects;
 import com.jayemceekay.shadowedhearts.client.ModShaders;
+import com.jayemceekay.shadowedhearts.client.gui.AuraScannerHUD;
 import com.jayemceekay.shadowedhearts.client.render.AuraRenderTypes;
 import com.jayemceekay.shadowedhearts.client.render.geom.CylinderBuffers;
 import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs;
+import com.jayemceekay.shadowedhearts.integration.accessories.SnagAccessoryBridgeHolder;
 import com.jayemceekay.shadowedhearts.network.AuraLifecyclePacket;
 import com.jayemceekay.shadowedhearts.network.AuraStatePacket;
 import com.mojang.blaze3d.shaders.Uniform;
@@ -659,6 +661,9 @@ public final class AuraEmitters {
         var camPos = camera.getPosition();
         long now = mc.level.getGameTime();
 
+        boolean auraReaderRequired = ShadowedHeartsConfigs.getInstance().getShadowConfig().auraReaderRequiredForAura();
+        boolean hasAuraReader = auraReaderRequired && SnagAccessoryBridgeHolder.INSTANCE.isAuraReaderEquipped(mc.player);
+
         // Hoist per-frame uniforms (view/proj/inverses, time) out of the per-instance loop
         var shFrame = activeShader;
         var uuFrame = activeUniforms;
@@ -685,10 +690,14 @@ public final class AuraEmitters {
                 ACTIVE.remove(en.getKey());
                 continue;
             }
-            if (inst.isExpired(now)) {
+            if (inst.isExpired(now) && !AuraScannerHUD.isDetected(inst.entityUuid)) {
                 inst.stopSound();
                 ACTIVE.remove(en.getKey());
                 continue;
+            }
+
+            if (AuraScannerHUD.isDetected(inst.entityUuid)) {
+                inst.lastDetectedTick = now;
             }
 
             inst.updateSound();
@@ -725,6 +734,10 @@ public final class AuraEmitters {
             // Debug handling: if not debugging, completely skip when invisible; otherwise, proceed so the trail can render
             boolean hasVisibility = fade > 0.001f && corruption > 0.01f;
             if (!hasVisibility) continue;
+
+            if (auraReaderRequired && !hasAuraReader && !AuraScannerHUD.isDetected(inst.entityUuid)) {
+                continue;
+            }
 
             // Build matrices
             double x = ix - camPos.x;
@@ -838,6 +851,7 @@ public final class AuraEmitters {
         float lastCorruption = 1.0f;
         float prevCorruption = 1.0f;
         long lastServerTick = -1L;
+        private long lastDetectedTick = -1L;
 
 
         AuraInstance(int entityId, Entity ent, long startTick, int fadeInTicks, int sustainTicks, int fadeOutTicks, double x, double y, double z, double dx, double dy, double dz, float bbw, float bbh, double bbs, float lastCorruption) {
@@ -874,6 +888,15 @@ public final class AuraEmitters {
         public void updateSound() {
             var mc = Minecraft.getInstance();
             if (mc == null || mc.level == null) return;
+
+            boolean auraReaderRequired = ShadowedHeartsConfigs.getInstance().getShadowConfig().auraReaderRequiredForAura();
+            boolean hasAuraReader = auraReaderRequired && SnagAccessoryBridgeHolder.INSTANCE.isAuraReaderEquipped(mc.player);
+
+            if (auraReaderRequired && !hasAuraReader && !AuraScannerHUD.isDetected(this.entityUuid)) {
+                stopSound();
+                return;
+            }
+
             if (soundInstance == null || soundInstance.isStopped()) {
                 soundInstance = new ShadowAuraSoundInstance(this);
                 mc.getSoundManager().play(soundInstance);
@@ -894,20 +917,41 @@ public final class AuraEmitters {
 
         public boolean isExpired(long now) {
             long total = (long) fadeInTicks + (long) sustainTicks + (long) fadeOutTicks;
-            return now - startTick >= total;
+            boolean originalExpired = now - startTick >= total;
+            if (originalExpired) {
+                if (AuraScannerHUD.isDetected(this.entityUuid)) return false;
+                if (lastDetectedTick != -1L && now - lastDetectedTick < fadeOutTicks) return false;
+                return true;
+            }
+            return false;
         }
 
         public float fadeFactor(long now) {
+            float normalFade = 0f;
             long age = Math.max(0, now - startTick);
             long fi = this.fadeInTicks;
             long sus = this.sustainTicks;
             long fo = this.fadeOutTicks;
-            if (age < fi) return (float) age / (float) fi;
-            age -= fi;
-            if (age < sus) return 1f;
-            age -= sus;
-            if (age < fo) return 1f - (float) age / (float) fo;
-            return 0f;
+            if (age < fi) normalFade = (float) age / (float) fi;
+            else {
+                age -= fi;
+                if (age < sus) normalFade = 1f;
+                else {
+                    age -= sus;
+                    if (age < fo) normalFade = 1f - (float) age / (float) fo;
+                }
+            }
+
+            if (AuraScannerHUD.isDetected(this.entityUuid)) return 1.0f;
+            float pulseFade = 0f;
+            if (lastDetectedTick != -1L) {
+                long pulseAge = now - lastDetectedTick;
+                if (pulseAge < fo) {
+                    pulseFade = 1.0f - (float) pulseAge / (float) fo;
+                }
+            }
+
+            return Math.max(normalFade, pulseFade);
         }
 
         float getCorruption() {

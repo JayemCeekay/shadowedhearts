@@ -51,6 +51,10 @@ public interface IShadowConfig extends IModConfig {
     // Aura Scanner
     default int auraScannerShadowRange() { return 64; }
     default int auraScannerMeteoroidRange() { return 128; }
+    default boolean auraReaderRequiredForAura() { return false; }
+
+    // Heart Gauge
+    default List<? extends String> heartGaugeMaxOverrides() { return List.of(); }
 
     IRCTSection append();
     IRCTSection convert();

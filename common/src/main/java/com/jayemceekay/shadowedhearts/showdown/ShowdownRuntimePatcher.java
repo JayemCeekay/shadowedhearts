@@ -75,17 +75,16 @@ public final class ShowdownRuntimePatcher {
     }
 
     public static class DynamicInjector {
-        public static void inject(Context context) {
+        public static void prepareContext(Context context) {
             try {
                 if (context == null) {
-                    Shadowedhearts.LOGGER.info("Failed to access Showdown context object, skipping injection.");
+                    Shadowedhearts.LOGGER.info("Failed to access Showdown context object, skipping preparation.");
                     return;
                 }
 
-
                 var bindings = context.getBindings("js");
 
-                if(!Platform.isModLoaded("mega_showdown")) {
+                if (!Platform.isModLoaded("mega_showdown")) {
                     context.eval("js", "if (typeof items === 'undefined') items = require('./data/mods/cobblemon/items');\n" +
                             "if (typeof conditions === 'undefined') conditions = require('./data/mods/cobblemon/conditions');\n" +
                             "if (typeof typechart === 'undefined') typechart = require('./data/mods/cobblemon/typechart');\n" +
@@ -140,13 +139,27 @@ public final class ShowdownRuntimePatcher {
                 } else {
                     Shadowedhearts.LOGGER.info("Failed to find receiveTypeChartData function, skipping injection.");
                 }
+            } catch (Exception e) {
+                Shadowedhearts.LOGGER.info("Failed to prepare Showdown context object: " + e);
+                e.printStackTrace();
+            }
+        }
+
+        public static void injectConfig(Context context) {
+            try {
+                if (context == null) {
+                    Shadowedhearts.LOGGER.info("Failed to access Showdown context object, skipping config injection.");
+                    return;
+                }
+
+                var bindings = context.getBindings("js");
 
                 if (bindings.hasMember("receiveScriptData")) {
                     Object receiveScriptDataFn = bindings.getMember("receiveScriptData");
                     injectScript(receiveScriptDataFn, "shadowedhearts", "/data/shadowedhearts/showdown/scripts/shadowedhearts.js");
-                    Shadowedhearts.LOGGER.info("Injected custom scripts into Showdown.");
+                    Shadowedhearts.LOGGER.info("Injected custom scripts and config into Showdown.");
                 } else {
-                    Shadowedhearts.LOGGER.info("Failed to find receiveScriptData function, skipping injection.");
+                    Shadowedhearts.LOGGER.info("Failed to find receiveScriptData function, skipping config injection.");
                 }
 
                 if (bindings.hasMember("receiveHeldItemData")) {
@@ -156,8 +169,15 @@ public final class ShowdownRuntimePatcher {
                 }
 
             } catch (Exception e) {
-                Shadowedhearts.LOGGER.info("Failed to patch Showdown context object: " + e);
+                Shadowedhearts.LOGGER.info("Failed to inject config into Showdown context object: " + e);
                 e.printStackTrace();
+            }
+        }
+
+        public static void inject(Context context) {
+            prepareContext(context);
+            if (ShadowedHeartsConfigs.getInstance().getShadowConfig().isLoaded()) {
+                injectConfig(context);
             }
         }
 

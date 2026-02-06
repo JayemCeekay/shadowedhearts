@@ -14,22 +14,43 @@ public class AuraBroadcastQueue {
         TickEvent.SERVER_POST.register(server -> {
             synchronized (QUEUE) {
                 if (!QUEUE.isEmpty()) {
+                    List<BroadcastTask> toRemove = new ArrayList<>();
                     for (BroadcastTask task : QUEUE) {
-                        if (task.entity != null && !task.entity.isRemoved()) {
-                            ShadowedHeartsNetworkingUtils.broadcastAuraStartToTracking(task.entity, task.heightMultiplier, task.sustainOverride);
+                        task.delay--;
+                        if (task.delay <= 0) {
+                            if (task.entity != null && !task.entity.isRemoved()) {
+                                ShadowedHeartsNetworkingUtils.broadcastAuraStartToTracking(task.entity, task.heightMultiplier, task.sustainOverride);
+                            }
+                            toRemove.add(task);
                         }
                     }
-                    QUEUE.clear();
+                    QUEUE.removeAll(toRemove);
                 }
             }
         });
     }
 
     public static void queueBroadcast(Entity entity, float heightMultiplier, int sustainOverride) {
+        queueBroadcast(entity, heightMultiplier, sustainOverride, 0);
+    }
+
+    public static void queueBroadcast(Entity entity, float heightMultiplier, int sustainOverride, int delay) {
         synchronized (QUEUE) {
-            QUEUE.add(new BroadcastTask(entity, heightMultiplier, sustainOverride));
+            QUEUE.add(new BroadcastTask(entity, heightMultiplier, sustainOverride, delay));
         }
     }
 
-    private record BroadcastTask(Entity entity, float heightMultiplier, int sustainOverride) {}
+    private static class BroadcastTask {
+        Entity entity;
+        float heightMultiplier;
+        int sustainOverride;
+        int delay;
+
+        BroadcastTask(Entity entity, float heightMultiplier, int sustainOverride, int delay) {
+            this.entity = entity;
+            this.heightMultiplier = heightMultiplier;
+            this.sustainOverride = sustainOverride;
+            this.delay = delay;
+        }
+    }
 }

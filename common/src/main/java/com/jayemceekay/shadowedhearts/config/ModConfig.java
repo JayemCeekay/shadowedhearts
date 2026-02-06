@@ -143,6 +143,16 @@ public final class ModConfig implements IShadowConfig {
     }
 
     @Override
+    public boolean auraReaderRequiredForAura() {
+        return DATA.auraScanner.auraReaderRequiredForAura.get();
+    }
+
+    @Override
+    public List<? extends String> heartGaugeMaxOverrides() {
+        return DATA.heartGauge.maxOverrides.get();
+    }
+
+    @Override
     public IRCTSection append() {
         return DATA.rctIntegration.append;
     }
@@ -179,6 +189,7 @@ public final class ModConfig implements IShadowConfig {
         public final ShadowMovesConfig shadowMoves = new ShadowMovesConfig();
         public final ShadowStatConfig shadowStatChanges = new ShadowStatConfig();
         public final AuraScannerConfig auraScanner = new AuraScannerConfig();
+        public final HeartGaugeConfig heartGauge = new HeartGaugeConfig();
         public final RelicStoneConfig relicStone = new RelicStoneConfig();
         public final PurificationChamberConfig purificationChamber = new PurificationChamberConfig();
         public final RCTIntegrationConfig rctIntegration = new RCTIntegrationConfig();
@@ -215,6 +226,10 @@ public final class ModConfig implements IShadowConfig {
 
             builder.push("auraScanner");
             auraScanner.build(builder);
+            builder.pop();
+
+            builder.push("heartGauge");
+            heartGauge.build(builder);
             builder.pop();
 
             builder.push("relicStone");
@@ -636,6 +651,7 @@ public final class ModConfig implements IShadowConfig {
     public static final class AuraScannerConfig {
         public ModConfigSpec.IntValue auraScannerShadowRange;
         public ModConfigSpec.IntValue auraScannerMeteoroidRange;
+        public ModConfigSpec.BooleanValue auraReaderRequiredForAura;
 
         private void build(ModConfigSpec.Builder builder) {
             auraScannerShadowRange = builder
@@ -645,6 +661,20 @@ public final class ModConfig implements IShadowConfig {
             auraScannerMeteoroidRange = builder
                     .comment("The range (in blocks) at which the Aura Scanner can detect Shadowfall meteoroids.")
                     .defineInRange("auraScannerMeteoroidRange", 256, 1, 512);
+
+            auraReaderRequiredForAura = builder
+                    .comment("Whether the Aura Reader is required to see Shadow Auras in the overworld.")
+                    .define("auraReaderRequiredForAura", false);
+        }
+    }
+
+    public static final class HeartGaugeConfig {
+        public ModConfigSpec.ConfigValue<List<? extends String>> maxOverrides;
+
+        private void build(ModConfigSpec.Builder builder) {
+            maxOverrides = builder
+                    .comment("List of species-specific maximum Heart Gauge values. Format: species=max")
+                    .defineList("maxOverrides", List.of(), o -> o instanceof String && ((String) o).contains("="));
         }
     }
 

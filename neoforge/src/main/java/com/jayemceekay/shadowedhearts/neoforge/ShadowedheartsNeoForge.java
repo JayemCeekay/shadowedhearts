@@ -15,8 +15,8 @@ import net.neoforged.fml.event.config.ModConfigEvent;
 public final class ShadowedheartsNeoForge {
 
     public ShadowedheartsNeoForge(IEventBus modEventBus, ModContainer container) {
-        container.registerConfig(Type.COMMON, ModConfig.SPEC, "shadowedhearts/common.toml");
-        container.registerConfig(Type.COMMON, SnagConfig.SPEC, "shadowedhearts/snag.toml");
+        container.registerConfig(Type.SERVER, ModConfig.SPEC, "shadowedhearts/common.toml");
+        container.registerConfig(Type.SERVER, SnagConfig.SPEC, "shadowedhearts/snag.toml");
 
         modEventBus.addListener(ShadowedheartsNeoForge::onConfigLoading);
         modEventBus.addListener(ShadowedheartsNeoForge::onConfigReloading);
@@ -31,6 +31,7 @@ public final class ShadowedheartsNeoForge {
     public static void onConfigLoading(ModConfigEvent.Loading event) {
         if (event.getConfig().getSpec() == ModConfig.SPEC) {
             ShadowedHeartsConfigs.getInstance().getShadowConfig().load();
+            Shadowedhearts.injectShowdownConfig();
         } else if (event.getConfig().getSpec() == SnagConfig.SPEC) {
             ShadowedHeartsConfigs.getInstance().getSnagConfig().load();
         }
@@ -39,6 +40,7 @@ public final class ShadowedheartsNeoForge {
     public static void onConfigReloading(ModConfigEvent.Reloading event) {
         if (event.getConfig().getSpec() == ModConfig.SPEC) {
             ShadowedHeartsConfigs.getInstance().getShadowConfig().load();
+            Shadowedhearts.injectShowdownConfig();
         } else if (event.getConfig().getSpec() == SnagConfig.SPEC) {
             ShadowedHeartsConfigs.getInstance().getSnagConfig().load();
         }

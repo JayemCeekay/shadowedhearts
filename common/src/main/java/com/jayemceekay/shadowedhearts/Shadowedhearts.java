@@ -8,8 +8,8 @@ import com.cobblemon.mod.common.battles.runner.graal.GraalShowdownService;
 import com.cobblemon.mod.relocations.graalvm.polyglot.Context;
 import com.jayemceekay.shadowedhearts.advancements.ModCriteriaTriggers;
 import com.jayemceekay.shadowedhearts.aura.AuraReaderEvents;
-import com.jayemceekay.shadowedhearts.client.particle.LuminousMoteEmitters;
 import com.jayemceekay.shadowedhearts.config.HeartGaugeConfig;
+import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs;
 import com.jayemceekay.shadowedhearts.core.*;
 import com.jayemceekay.shadowedhearts.data.ShadowAspectPresets;
 import com.jayemceekay.shadowedhearts.data.ShadowPools;
@@ -93,7 +93,6 @@ public final class Shadowedhearts {
         AuraBroadcastQueue.init();
         ShadowDropListener.init();
         NPCShadowInjector.init();
-        LuminousMoteEmitters.init();
         PlayerActivityHeatmap.init();
         ImpactScheduler.init();
         ShadowMeteoroidProximityHandler.init();
@@ -129,7 +128,35 @@ public final class Shadowedhearts {
                 } catch (IllegalAccessException e) {
                     throw new RuntimeException(e);
                 }
-                ShowdownRuntimePatcher.DynamicInjector.inject(context);
+                ShowdownRuntimePatcher.DynamicInjector.prepareContext(context);
+                if (ShadowedHeartsConfigs.getInstance().getShadowConfig().isLoaded()) {
+                    ShowdownRuntimePatcher.DynamicInjector.injectConfig(context);
+                }
+            }
+            return Unit.INSTANCE;
+        });
+    }
+
+    public static void injectShowdownConfig() {
+        if (!ShadowedHeartsConfigs.getInstance().getShadowConfig().isLoaded()) {
+            return;
+        }
+        Cobblemon.INSTANCE.getShowdownThread().queue(showdownService -> {
+            if (showdownService instanceof GraalShowdownService service) {
+                Field field = null;
+                try {
+                    field = GraalShowdownService.class.getDeclaredField("context");
+                } catch (NoSuchFieldException e) {
+                    throw new RuntimeException(e);
+                }
+                field.setAccessible(true);
+                Context context = null;
+                try {
+                    context = (Context) field.get(service);
+                } catch (IllegalAccessException e) {
+                    throw new RuntimeException(e);
+                }
+                ShowdownRuntimePatcher.DynamicInjector.injectConfig(context);
             }
             return Unit.INSTANCE;
         });

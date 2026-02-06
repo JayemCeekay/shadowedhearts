@@ -39,7 +39,6 @@ public final class ClientConfig implements IClientConfig, ISoundConfig {
             auraScannerEnabled = builder
                     .comment("Whether the Aura Scanner HUD is enabled.")
                     .define("auraScannerEnabled", true);
-            
 
             skipIrisWarning = builder
                     .comment("Whether to skip the Iris shader warning screen.")

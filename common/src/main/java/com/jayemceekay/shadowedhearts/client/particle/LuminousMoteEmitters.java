@@ -63,6 +63,9 @@ public final class LuminousMoteEmitters {
         ClientLevel level = mc != null ? mc.level : null;
         if (level == null) return;
 
+        boolean auraReaderRequired = com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs.getInstance().getShadowConfig().auraReaderRequiredForAura();
+        boolean hasAuraReader = auraReaderRequired && com.jayemceekay.shadowedhearts.integration.accessories.SnagAccessoryBridgeHolder.INSTANCE.isAuraReaderEquipped(mc.player);
+
         // Update & emit, remove dead/expired.
         long now = level.getGameTime();
         Iterator<Map.Entry<Integer, EmitterGroup>> it = ACTIVE.entrySet().iterator();
@@ -73,6 +76,11 @@ public final class LuminousMoteEmitters {
                 it.remove();
                 continue;
             }
+
+            if (auraReaderRequired && !hasAuraReader && !com.jayemceekay.shadowedhearts.client.gui.AuraScannerHUD.isDetected(group.getEntityUuid())) {
+                continue;
+            }
+
             if (!group.tickAndEmit(level, partialTicks)) {
                 it.remove();
             }
@@ -82,11 +90,13 @@ public final class LuminousMoteEmitters {
     // Group of emitters around the entity, count scaled by bbox size and spaced via Poisson sampling
     private static final class EmitterGroup {
         private final WeakReference<Entity> entityRef;
+        private final java.util.UUID entityUuid;
         private final long endTick;
         private final Emitter[] emitters;
 
         private EmitterGroup(Entity e, long endTick) {
             this.entityRef = new WeakReference<>(e);
+            this.entityUuid = e.getUUID();
             this.endTick = endTick;
 
             // Compute number of emitters based on bounding box size.
@@ -168,6 +178,10 @@ public final class LuminousMoteEmitters {
                 if (em != null) em.tickAndEmit(level, partialTicks);
             }
             return true;
+        }
+
+        public java.util.UUID getEntityUuid() {
+            return entityUuid;
         }
     }
 

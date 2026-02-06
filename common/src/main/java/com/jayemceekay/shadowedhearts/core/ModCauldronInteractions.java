@@ -14,15 +14,17 @@ import net.minecraft.world.level.block.LayeredCauldronBlock;
 public class ModCauldronInteractions {
 
     public static void register() {
-        if (!ShadowedHeartsConfigs.getInstance().getShadowConfig().expandedScentSystemEnabled()) {
-            registerScentRecipe(Items.PINK_PETALS, ModItems.JOY_SCENT.get());
-            registerScentRecipe(Items.GLOW_BERRIES, ModItems.EXCITE_SCENT.get());
-            registerScentRecipe(Items.PHANTOM_MEMBRANE, ModItems.VIVID_SCENT.get());
-        }
+        registerScentRecipe(Items.PINK_PETALS, ModItems.JOY_SCENT.get());
+        registerScentRecipe(Items.GLOW_BERRIES, ModItems.EXCITE_SCENT.get());
+        registerScentRecipe(Items.PHANTOM_MEMBRANE, ModItems.VIVID_SCENT.get());
     }
 
     private static void registerScentRecipe(Item ingredient, Item result) {
         CauldronInteraction.WATER.map().put(ingredient, (state, level, pos, player, hand, stack) -> {
+            if (ShadowedHeartsConfigs.getInstance().getShadowConfig().expandedScentSystemEnabled()) {
+                return ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION;
+            }
+
             if (!player.getAbilities().instabuild) {
                 stack.shrink(1);
             }

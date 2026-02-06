@@ -25,12 +25,13 @@ public final class ShadowedheartsFabric implements ModInitializer {
             );
         };
 
-        NeoForgeConfigRegistry.INSTANCE.register(Shadowedhearts.MOD_ID, Type.COMMON, ModConfig.SPEC, "shadowedhearts/common.toml");
-        NeoForgeConfigRegistry.INSTANCE.register(Shadowedhearts.MOD_ID, Type.COMMON, SnagConfig.SPEC, "shadowedhearts/snag.toml");
+        NeoForgeConfigRegistry.INSTANCE.register(Shadowedhearts.MOD_ID, Type.SERVER, ModConfig.SPEC, "shadowedhearts/common.toml");
+        NeoForgeConfigRegistry.INSTANCE.register(Shadowedhearts.MOD_ID, Type.SERVER, SnagConfig.SPEC, "shadowedhearts/snag.toml");
 
         NeoForgeModConfigEvents.loading(Shadowedhearts.MOD_ID).register(config -> {
             if (config.getSpec() == ModConfig.SPEC) {
                 ShadowedHeartsConfigs.getInstance().getShadowConfig().load();
+                Shadowedhearts.injectShowdownConfig();
             } else if (config.getSpec() == SnagConfig.SPEC) {
                 ShadowedHeartsConfigs.getInstance().getSnagConfig().load();
             }
@@ -39,6 +40,7 @@ public final class ShadowedheartsFabric implements ModInitializer {
         NeoForgeModConfigEvents.reloading(Shadowedhearts.MOD_ID).register(config -> {
             if (config.getSpec() == ModConfig.SPEC) {
                 ShadowedHeartsConfigs.getInstance().getShadowConfig().load();
+                Shadowedhearts.injectShowdownConfig();
             } else if (config.getSpec() == SnagConfig.SPEC) {
                 ShadowedHeartsConfigs.getInstance().getSnagConfig().load();
             }

@@ -3,10 +3,37 @@ plugins {
     id 'org.jetbrains.kotlin.jvm' version '2.2.0'
 }
 
+var devEnv = false;
+
 architectury {
     platformSetupLoomIde()
     neoForge()
+    loom {
+        runs {
+            devClient2 {
+                client()
+                runDir "runDevClient2"
+                ideConfigGenerated = true
+                programArgs "--username", "Ved"
+                devEnv = true
+            }
+            devServer {
+                server()
+                runDir "runDevServer"
+                ideConfigGenerated = true
+                devEnv = true
+            }
+        }
+    }
 }
+
+task runMultiplayer {
+    group = "loom"
+    description = "Runs Client, DevClient2, and DevServer"
+    dependsOn "runClient", "runDevClient2", "runDevServer"
+}
+
+
 
 configurations {
     common {
@@ -78,8 +105,8 @@ dependencies {
     //rctapi
     modCompileOnlyApi("curse.maven:radical-cobblemon-trainers-api-1152792:7319959")
 
-    //owo lib?
-    modCompileOnly("maven.modrinth:ccKDOlHs:NMCHU6DZ")
+    //owo lib
+    modImplementation("io.wispforest:owo-lib-neoforge:${project.owo_version}")
 
     //accessories
     modImplementation("io.wispforest:accessories-neoforge:${project.accessories_version}")
@@ -87,10 +114,11 @@ dependencies {
     implementation ("org.xerial:sqlite-jdbc:3.46.0.0") {
         exclude group: 'org.slf4j'
     }
-    include("org.xerial:sqlite-jdbc:3.46.0.0")
-
-    // Remove from shadowBundle if using forgeRuntimeLibrary to avoid duplication
-    //forgeRuntimeLibrary "org.xerial:sqlite-jdbc:3.46.0.0"
+    if(!devEnv) {
+        include("org.xerial:sqlite-jdbc:3.46.0.0")
+    } else {
+        forgeRuntimeLibrary "org.xerial:sqlite-jdbc:3.46.0.0"
+    }
 
     forgeRuntimeLibrary("io.wispforest:endec:0.1.5.1")
     forgeRuntimeLibrary("io.wispforest.endec:gson:0.1.3.1")
@@ -116,11 +144,10 @@ dependencies {
     modImplementation("maven.modrinth:x2wZP9kQ:wxVvkEmX")
 
     //cobblemon tim core
-    modRuntimeOnly("maven.modrinth:lVP9aUaY:YhsWrN4q")
+    //modRuntimeOnly("maven.modrinth:lVP9aUaY:YhsWrN4q")
 
     //simpleTMs
     modCompileOnly("maven.modrinth:yFqR0DNc:uaKfPMYS")
-
 }
 
 processResources {

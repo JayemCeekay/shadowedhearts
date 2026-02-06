@@ -13,6 +13,7 @@ public final class SnagAccessoryBridgeHolder {
                 try {
                     INSTANCE = new AccessoriesSnagAccessoryBridge();
                 } catch (Throwable t) {
+                    INSTANCE = new NoopSnagAccessoryBridge();
                     Shadowedhearts.LOGGER.error("Failed to initialize Accessories snag bridge even though mod is loaded: " + t.getMessage());
                 }
             });

@@ -2,21 +2,19 @@ package com.jayemceekay.shadowedhearts.config;
 
 import com.cobblemon.mod.common.pokemon.Pokemon;
 import com.cobblemon.mod.common.pokemon.Species;
-import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
 import java.io.BufferedReader;
-import java.io.BufferedWriter;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.TreeMap;
 
 /**
  * Loads per-species maximum Heart Gauge values from a JSON config.
@@ -1060,8 +1058,8 @@ public final class HeartGaugeConfig {
         DEFAULTS.put("cobblemon:zygarde", 28500);
     }
 
-    private static volatile boolean loaded = false;
     private static final Map<String, Integer> overrides = new HashMap<>();
+    private static int globalMax = 30000;
 
     private static Path configPath() {
         return Path.of("config", "shadowedhearts", "heart_gauge_max.json");
@@ -1087,43 +1085,64 @@ public final class HeartGaugeConfig {
         }
     }
 
-    private static int globalMax = 30000;
-
     public static int getGlobalMax() {
         ensureLoaded();
         return globalMax;
     }
 
     public static void ensureLoaded() {
-        if (loaded) return;
         synchronized (HeartGaugeConfig.class) {
-            if (loaded) return;
-            Path path = configPath();
-            if (Files.exists(path)) {
-                try (BufferedReader reader = Files.newBufferedReader(path, StandardCharsets.UTF_8)) {
-                    JsonElement root = JsonParser.parseReader(reader);
-                    if (root != null && root.isJsonObject()) {
-                        JsonObject obj = root.getAsJsonObject();
-                        for (Map.Entry<String, JsonElement> e : obj.entrySet()) {
-                            String key = e.getKey();
-                            if (key == null) continue;
-                            key = key.toLowerCase(Locale.ROOT).trim();
-                            try {
-                                int val = e.getValue().getAsInt();
-                                if (val > 0) {
-                                    overrides.put(key, val);
+            // Clear current overrides
+            overrides.clear();
+
+            // 1. Load from server config (authoritative)
+            try {
+                List<? extends String> configOverrides = ShadowedHeartsConfigs.getInstance().getShadowConfig().heartGaugeMaxOverrides();
+                for (String entry : configOverrides) {
+                    if (entry == null || !entry.contains("=")) continue;
+                    String[] parts = entry.split("=", 2);
+                    String key = parts[0].toLowerCase(Locale.ROOT).trim();
+                    try {
+                        int val = Integer.parseInt(parts[1].trim());
+                        if (val > 0) {
+                            overrides.put(key, val);
+                        }
+                    } catch (NumberFormatException ignored) {
+                    }
+                }
+            } catch (IllegalStateException e) {
+                // Config not loaded yet (e.g. during early initialization)
+                // We'll try to fall back to the local file if it exists, or just use DEFAULTS.
+            }
+
+            // 2. Legacy/Local File Fallback: if overrides is still empty and local file exists, 
+            // we could load it. But the requirement is "server authoritative".
+            // If the server config is empty, we should probably stick to DEFAULTS.
+            // However, to assist with migration, if the local file exists, we could use it 
+            // until the user moves it to common.toml.
+            if (overrides.isEmpty()) {
+                Path path = configPath();
+                if (Files.exists(path)) {
+                    try (BufferedReader reader = Files.newBufferedReader(path, StandardCharsets.UTF_8)) {
+                        JsonElement root = JsonParser.parseReader(reader);
+                        if (root != null && root.isJsonObject()) {
+                            JsonObject obj = root.getAsJsonObject();
+                            for (Map.Entry<String, JsonElement> e : obj.entrySet()) {
+                                String key = e.getKey();
+                                if (key == null) continue;
+                                key = key.toLowerCase(Locale.ROOT).trim();
+                                try {
+                                    int val = e.getValue().getAsInt();
+                                    if (val > 0) {
+                                        overrides.put(key, val);
+                                    }
+                                } catch (Exception ignored) {
                                 }
-                            } catch (Exception ignored) {
                             }
                         }
+                    } catch (IOException ignored) {
                     }
-                } catch (IOException ignored) {
-                    // If the file can't be read, keep defaults.
                 }
-            } else {
-                // If missing, initialize overrides with our hardcoded defaults and save
-                overrides.putAll(DEFAULTS);
-                save();
             }
 
             // Calculate global max
@@ -1135,29 +1154,11 @@ public final class HeartGaugeConfig {
                 if (v > max) max = v;
             }
             globalMax = max;
-
-            loaded = true;
         }
     }
 
     public static void save() {
-        Path path = configPath();
-        try {
-            Path parent = path.getParent();
-            if (parent != null && !Files.isDirectory(parent)) {
-                Files.createDirectories(parent);
-            }
-            JsonObject obj = new JsonObject();
-            // Use a TreeMap to keep the keys sorted in the output JSON
-            Map<String, Integer> sorted = new TreeMap<>(overrides);
-            for (Map.Entry<String, Integer> e : sorted.entrySet()) {
-                obj.addProperty(e.getKey(), e.getValue());
-            }
-            try (BufferedWriter writer = Files.newBufferedWriter(path, StandardCharsets.UTF_8)) {
-                new GsonBuilder().setPrettyPrinting().create().toJson(obj, writer);
-            }
-        } catch (IOException ignored) {
-        }
+        // No longer saving to local JSON as it's now server authoritative via common.toml
     }
 
     /**

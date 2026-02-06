@@ -1,8 +1,10 @@
 package com.jayemceekay.shadowedhearts.client;
 
+import com.jayemceekay.shadowedhearts.Shadowedhearts;
 import com.jayemceekay.shadowedhearts.client.render.armor.AuraReaderModel;
 import com.jayemceekay.shadowedhearts.client.render.armor.SnagMachineAdvancedModel;
 import com.jayemceekay.shadowedhearts.client.render.armor.SnagMachinePrototypeModel;
+import dev.architectury.event.events.client.ClientPlayerEvent;
 import dev.architectury.registry.client.level.entity.EntityModelLayerRegistry;
 
 public class ShadowedHeartsClient {
@@ -19,5 +21,9 @@ public class ShadowedHeartsClient {
             SnagMachinePrototypeModel.LAYER_LOCATION,
             SnagMachinePrototypeModel::createBodyLayer
         );
+
+        ClientPlayerEvent.CLIENT_PLAYER_JOIN.register(player -> {
+            Shadowedhearts.injectShowdownConfig();
+        });
     }
 }
