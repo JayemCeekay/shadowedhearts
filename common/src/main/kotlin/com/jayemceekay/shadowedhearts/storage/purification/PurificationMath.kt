@@ -27,14 +27,17 @@ object PurificationMath {
      * - If dual-type defender has one weakness and one resistance (net 1x), treat as weak (2x)
      */
     fun effectiveness(attacker: ElementalType, defenderTypes: List<ElementalType>): Double {
-        if (attacker == ElementalTypes.NORMAL && defenderTypes.size == 1 && defenderTypes[0] == ElementalTypes.NORMAL) {
-            return 2.0
-        }
         var product = 1.0
         var hasWeak = false
         var hasResist = false
         for (def in defenderTypes) {
-            val m = AIUtility.getDamageMultiplier(attacker, def)
+            var m = AIUtility.getDamageMultiplier(attacker, def)
+            
+            // Special rule: Normal vs Normal is treated as super effective (2x)
+            if (attacker == ElementalTypes.NORMAL && def == ElementalTypes.NORMAL) {
+                m = 2.0
+            }
+
             when {
                 m == 0.0 -> hasResist = true // treat as resist later
                 m > 1.0 -> hasWeak = true
@@ -68,7 +71,7 @@ object PurificationMath {
             val atkTypes = pokemonTypes(a)
             val defTypes = pokemonTypes(b)
             // Use the better of the attacker's available types (best-case STAB for the chamber flow rules)
-            var best = 1.0
+            var best = 0.0
             for (atk in atkTypes) {
                 val m = effectiveness(atk, defTypes)
                 if (m > best) best = m
@@ -135,7 +138,7 @@ object PurificationMath {
             val shadowTypes = pokemonTypes(shadow)
             val defTypes = pokemonTypes(supports[faceIdx]!!)
             // Use best of shadow types
-            var best = 1.0
+            var best = 0.0
             for (atk in shadowTypes) {
                 val m = effectiveness(atk, defTypes)
                 if (m > best) best = m

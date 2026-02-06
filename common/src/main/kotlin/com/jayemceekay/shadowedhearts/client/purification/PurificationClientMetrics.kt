@@ -59,7 +59,7 @@ object PurificationClientMetrics {
             // The widget uses slot 0 if present; for ring-only list, use index 0 as facing.
             val defTypes = pokemonTypes(supports.firstOrNull())
             if (defTypes.isNotEmpty() && shadow != null) {
-                var best = 1.0
+                var best = 0.0
                 for (atk in pokemonTypes(shadow)) {
                     val m = PurificationMath.effectiveness(atk, defTypes)
                     if (m > best) best = m
@@ -136,7 +136,7 @@ object PurificationClientMetrics {
         // Center matchup influence
         val defTypes = pokemonTypes(supportsArray[PurificationMath.facingSupportIndex(supportsArray)])
         if (defTypes.isNotEmpty()) {
-            var best = 1.0
+            var best = 0.0
             for (atk in pokemonTypes(shadow)) {
                 val m = PurificationMath.effectiveness(atk, defTypes)
                 if (m > best) best = m

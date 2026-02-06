@@ -69,6 +69,141 @@ class PurificationStorageWidget(
         private val screenGlowResource =
             cobblemonResource("textures/gui/pc/pc_screen_glow.png")
 
+        private val rightNeutralSlot2 = ResourceLocation.fromNamespaceAndPath(
+            Shadowedhearts.MOD_ID,
+            "textures/gui/purification_pc/support_matchup_right_slot_2_neutral.png"
+        )
+        private val rightSuperSlot2 = ResourceLocation.fromNamespaceAndPath(
+            Shadowedhearts.MOD_ID,
+            "textures/gui/purification_pc/support_matchup_right_slot_2_super.png"
+        )
+        private val rightResistSlot2 = ResourceLocation.fromNamespaceAndPath(
+            Shadowedhearts.MOD_ID,
+            "textures/gui/purification_pc/support_matchup_right_slot_2_resist.png"
+        )
+        private val rightNeutralSlot3 = ResourceLocation.fromNamespaceAndPath(
+            Shadowedhearts.MOD_ID,
+            "textures/gui/purification_pc/support_matchup_right_slot_3_neutral.png"
+        )
+        private val rightSuperSlot3 = ResourceLocation.fromNamespaceAndPath(
+            Shadowedhearts.MOD_ID,
+            "textures/gui/purification_pc/support_matchup_right_slot_3_super.png"
+        )
+        private val rightResistSlot3 = ResourceLocation.fromNamespaceAndPath(
+            Shadowedhearts.MOD_ID,
+            "textures/gui/purification_pc/support_matchup_right_slot_3_resist.png"
+        )
+        private val rightNeutralSlot4 = ResourceLocation.fromNamespaceAndPath(
+            Shadowedhearts.MOD_ID,
+            "textures/gui/purification_pc/support_matchup_right_slot_4_neutral.png"
+        )
+        private val rightSuperSlot4 = ResourceLocation.fromNamespaceAndPath(
+            Shadowedhearts.MOD_ID,
+            "textures/gui/purification_pc/support_matchup_right_slot_4_super.png"
+        )
+        private val rightResistSlot4 = ResourceLocation.fromNamespaceAndPath(
+            Shadowedhearts.MOD_ID,
+            "textures/gui/purification_pc/support_matchup_right_slot_4_resist.png"
+        )
+
+        // Left-side overlays for wrap arrows (from last to first), spanning 2, 3, or 4 slots
+        private val leftNeutralSlot2 = ResourceLocation.fromNamespaceAndPath(
+            Shadowedhearts.MOD_ID,
+            "textures/gui/purification_pc/support_matchup_left_slot_2_neutral.png"
+        )
+        private val leftSuperSlot2 = ResourceLocation.fromNamespaceAndPath(
+            Shadowedhearts.MOD_ID,
+            "textures/gui/purification_pc/support_matchup_left_slot_2_super.png"
+        )
+        private val leftResistSlot2 = ResourceLocation.fromNamespaceAndPath(
+            Shadowedhearts.MOD_ID,
+            "textures/gui/purification_pc/support_matchup_left_slot_2_resist.png"
+        )
+        private val leftNeutralSlot3 = ResourceLocation.fromNamespaceAndPath(
+            Shadowedhearts.MOD_ID,
+            "textures/gui/purification_pc/support_matchup_left_slot_3_neutral.png"
+        )
+        private val leftSuperSlot3 = ResourceLocation.fromNamespaceAndPath(
+            Shadowedhearts.MOD_ID,
+            "textures/gui/purification_pc/support_matchup_left_slot_3_super.png"
+        )
+        private val leftResistSlot3 = ResourceLocation.fromNamespaceAndPath(
+            Shadowedhearts.MOD_ID,
+            "textures/gui/purification_pc/support_matchup_left_slot_3_resist.png"
+        )
+
+        private val lastNeutralResource = ResourceLocation.fromNamespaceAndPath(
+            Shadowedhearts.MOD_ID,
+            "textures/gui/purification_pc/support_matchup_left_slot_4_neutral.png"
+        )
+        private val lastSuperEffectiveResource =
+            ResourceLocation.fromNamespaceAndPath(
+                Shadowedhearts.MOD_ID,
+                "textures/gui/purification_pc/support_matchup_left_slot_4_super.png"
+            )
+        private val lastNotVeryEffectiveResource =
+            ResourceLocation.fromNamespaceAndPath(
+                Shadowedhearts.MOD_ID,
+                "textures/gui/purification_pc/support_matchup_left_slot_4_resist.png"
+            )
+
+        // Helper selectors for textures, with placeholders when specific spans are missing
+        private fun rightTextureFor(
+            span: Int,
+            matchup: PurificationMath.Matchup
+        ): ResourceLocation {
+            return when (span) {
+                2 -> when (matchup) {
+                    PurificationMath.Matchup.SUPER_EFFECTIVE -> rightSuperSlot2
+                    PurificationMath.Matchup.NOT_VERY_EFFECTIVE -> rightResistSlot2
+                    else -> rightNeutralSlot2
+                }
+
+                3 -> when (matchup) {
+                    PurificationMath.Matchup.SUPER_EFFECTIVE -> rightSuperSlot3
+                    PurificationMath.Matchup.NOT_VERY_EFFECTIVE -> rightResistSlot3
+                    else -> rightNeutralSlot3
+                }
+
+                4 -> {
+                    when (matchup) {
+                        PurificationMath.Matchup.SUPER_EFFECTIVE -> rightSuperSlot4
+                        PurificationMath.Matchup.NOT_VERY_EFFECTIVE -> rightResistSlot4
+                        else -> rightNeutralSlot4
+                    }
+                }
+
+                else -> rightNeutralSlot2
+            }
+        }
+
+        private fun leftTextureFor(
+            span: Int,
+            matchup: PurificationMath.Matchup
+        ): ResourceLocation {
+            return when (span) {
+                2 -> when (matchup) {
+                    PurificationMath.Matchup.SUPER_EFFECTIVE -> leftSuperSlot2
+                    PurificationMath.Matchup.NOT_VERY_EFFECTIVE -> leftResistSlot2
+                    else -> leftNeutralSlot2
+                }
+
+                3 -> when (matchup) {
+                    PurificationMath.Matchup.SUPER_EFFECTIVE -> leftSuperSlot3
+                    PurificationMath.Matchup.NOT_VERY_EFFECTIVE -> leftResistSlot3
+                    else -> leftNeutralSlot3
+                }
+
+                4 -> when (matchup) {
+                    PurificationMath.Matchup.SUPER_EFFECTIVE -> lastSuperEffectiveResource
+                    PurificationMath.Matchup.NOT_VERY_EFFECTIVE -> lastNotVeryEffectiveResource
+                    else -> lastNeutralResource
+                }
+
+                else -> lastNeutralResource
+            }
+        }
+
 
         var screenLoaded = false
 
@@ -356,9 +491,11 @@ class PurificationStorageWidget(
 
             // Colors (ARGB): background, fill, and border
             val bgColor = 0x66000000     // semi-opaque dark background
-            val fillColor = 0xFF6AD5FF.toInt()   // cyan-ish fill for visibility (tempo bar)
+            val fillColor =
+                0xFF6AD5FF.toInt()   // cyan-ish fill for visibility (tempo bar)
             val borderColor = 0x99FFFFFF.toInt() // soft white border
-            val smallBarColor = 0xFFF0F0F0.toInt() // off-white base for small bars
+            val smallBarColor =
+                0xFFF0F0F0.toInt() // off-white base for small bars
             // Flow meter large segment palette (dark → light to blend into small bars)
             // Chosen by sampling the provided reference image: deep blue progressing to light cyan.
             val largeSegmentColors = intArrayOf(
@@ -388,7 +525,15 @@ class PurificationStorageWidget(
             // - 4 larger bars occupy 60% of height and represent the current set's flow amount
             // - remaining 40% shows up to 9 smaller bars, each representing a set with full flow
             // - vertical brightness scroll from bottom to top
-            fun drawFlowMeter(x0: Int, y0: Int, w: Int, h: Int, currentFlowPct: Float, fullSetsCount: Int, nonShadowSupportCount: Int) {
+            fun drawFlowMeter(
+                x0: Int,
+                y0: Int,
+                w: Int,
+                h: Int,
+                currentFlowPct: Float,
+                fullSetsCount: Int,
+                nonShadowSupportCount: Int
+            ) {
                 // Border and background
                 val x1 = x0 + w
                 val y1 = y0 + h
@@ -403,7 +548,8 @@ class PurificationStorageWidget(
                 // Gaps/padding configuration
                 val segmentGap = 1          // 1f padding between large segments
                 val smallBarGap = 1         // 1f padding between small bars
-                val largeSmallGap = 1       // only 1 pixel gap between large and small regions
+                val largeSmallGap =
+                    1       // only 1 pixel gap between large and small regions
 
                 // Helpers
                 fun scaleColor(color: Int, brightness: Float): Int {
@@ -431,14 +577,19 @@ class PurificationStorageWidget(
                 // Fill large segments based on currentFlowPct, respecting 1px gaps between segments
                 val segDrawableH = (largeSegH - segmentGap).coerceAtLeast(1)
                 val effectiveDrawableH = largeZoneH * largeSegments
-                val totalLargeFill = (effectiveDrawableH * currentFlowPct.coerceIn(0f, 1f)).toInt()
+                val totalLargeFill =
+                    (effectiveDrawableH * currentFlowPct.coerceIn(
+                        0f,
+                        1f
+                    )).toInt()
 
                 val largeBottom = innerBottom
                 var remainingFill = totalLargeFill
                 var largeTipY = largeBottom
                 for (i in 0 until largeSegments) {
                     val segBottom = largeBottom - (i * largeSegH)
-                    val segTop = (segBottom - segDrawableH).coerceAtLeast(innerTop)
+                    val segTop =
+                        (segBottom - segDrawableH).coerceAtLeast(innerTop)
                     val avail = (segBottom - segTop).coerceAtLeast(0)
                     if (avail <= 0) continue
                     val filledInThisSeg = remainingFill.coerceIn(0, avail)
@@ -446,11 +597,20 @@ class PurificationStorageWidget(
                         // brightness scroll upward: phase offset per pixel row
                         val centerY = segBottom - filledInThisSeg / 2f
                         val phase = (centerY - innerTop) / innerH.toFloat()
-                        val brightness = 0.75f + 0.25f * kotlin.math.sin((time * 0.20f + phase * 6.28318f).toDouble()).toFloat()
+                        val brightness =
+                            0.75f + 0.25f * kotlin.math.sin((time * 0.20f + phase * 6.28318f).toDouble())
+                                .toFloat()
                         // Pick base color for this large segment (bottom index 0 → darkest)
-                        val baseCol = if (i < largeSegmentColors.size) largeSegmentColors[i] else largeSegmentColors.last()
+                        val baseCol =
+                            if (i < largeSegmentColors.size) largeSegmentColors[i] else largeSegmentColors.last()
                         val col = scaleColor(baseCol, brightness)
-                        guiGraphics.fill(innerLeft, segBottom - filledInThisSeg, innerRight, segBottom, col)
+                        guiGraphics.fill(
+                            innerLeft,
+                            segBottom - filledInThisSeg,
+                            innerRight,
+                            segBottom,
+                            col
+                        )
                         largeTipY = segBottom - filledInThisSeg
                         remainingFill -= filledInThisSeg
                     }
@@ -468,7 +628,8 @@ class PurificationStorageWidget(
                     val topClamp = innerTop
 
                     // Bars stack upward from just above the tip of the large fill, leaving 1px gap to the large region
-                    val tipStartBottom = (largeTipY - largeSmallGap).coerceAtMost(innerBottom)
+                    val tipStartBottom =
+                        (largeTipY - largeSmallGap).coerceAtMost(innerBottom)
 
                     // Always anchor the small-bar stack at the tip of the large fill
                     val startBottom = tipStartBottom
@@ -476,14 +637,19 @@ class PurificationStorageWidget(
                     // Limit the total height the small bars may occupy to the 40% small-zone cap
                     // without moving the anchor point. We do this by constraining the drawable height
                     // (distance from topClamp) to at most smallZoneH.
-                    val available = kotlin.math.min((startBottom - topClamp).coerceAtLeast(0), smallZoneH)
+                    val available = kotlin.math.min(
+                        (startBottom - topClamp).coerceAtLeast(0),
+                        smallZoneH
+                    )
 
                     // Partition the small-bar region into 9 slots. We distribute any remainder so that
                     // the sum of the 9 theoretical slot heights exactly equals the drawable space.
                     // This avoids leftover pixels accumulating as an extra gap at the very top when 9 bars are shown.
                     val totalSlotGaps = smallBarGap * (smallBarsMax - 1)
-                    val drawableAllSlots = (available - totalSlotGaps).coerceAtLeast(0)
-                    val baseH = if (smallBarsMax > 0) (drawableAllSlots / smallBarsMax) else 0
+                    val drawableAllSlots =
+                        (available - totalSlotGaps).coerceAtLeast(0)
+                    val baseH =
+                        if (smallBarsMax > 0) (drawableAllSlots / smallBarsMax) else 0
                     var remainder = drawableAllSlots - baseH * smallBarsMax
 
                     if (baseH > 0 || smallBarGap > 0) {
@@ -493,15 +659,25 @@ class PurificationStorageWidget(
                             val add = if (remainder > 0) 1 else 0
                             val thisH = baseH + add
                             val barBottom = cursorBottom
-                            val barTop = (barBottom - thisH).coerceAtLeast(topClamp)
+                            val barTop =
+                                (barBottom - thisH).coerceAtLeast(topClamp)
 
                             if (barBottom > barTop && thisH > 0) {
                                 // Draw small bars with off-white base and apply brightness scrolling
                                 val centerY = (barTop + barBottom) / 2f
-                                val phase = (centerY - innerTop) / innerH.toFloat()
-                                val brightness = 0.75f + 0.25f * kotlin.math.sin((time * 0.20f + phase * 6.28318f).toDouble()).toFloat()
+                                val phase =
+                                    (centerY - innerTop) / innerH.toFloat()
+                                val brightness =
+                                    0.75f + 0.25f * kotlin.math.sin((time * 0.20f + phase * 6.28318f).toDouble())
+                                        .toFloat()
                                 val col = scaleColor(smallBarColor, brightness)
-                                guiGraphics.fill(innerLeft, barTop, innerRight, barBottom, col)
+                                guiGraphics.fill(
+                                    innerLeft,
+                                    barTop,
+                                    innerRight,
+                                    barBottom,
+                                    col
+                                )
                             }
 
                             // advance cursor to the next theoretical slot (slot height + fixed gap)
@@ -525,29 +701,66 @@ class PurificationStorageWidget(
             var perfectSets = 0
             var anySetMissingMember = false
             for (setIdx in 0 until ClientPurificationStorage.TOTAL_SETS) {
-                val s1g = storage.getAt(setIdx, ClientPurificationStorage.PurificationPosition(1))
-                val s2g = storage.getAt(setIdx, ClientPurificationStorage.PurificationPosition(2))
-                val s3g = storage.getAt(setIdx, ClientPurificationStorage.PurificationPosition(3))
-                val s4g = storage.getAt(setIdx, ClientPurificationStorage.PurificationPosition(4))
+                val s1g = storage.getAt(
+                    setIdx,
+                    ClientPurificationStorage.PurificationPosition(1)
+                )
+                val s2g = storage.getAt(
+                    setIdx,
+                    ClientPurificationStorage.PurificationPosition(2)
+                )
+                val s3g = storage.getAt(
+                    setIdx,
+                    ClientPurificationStorage.PurificationPosition(3)
+                )
+                val s4g = storage.getAt(
+                    setIdx,
+                    ClientPurificationStorage.PurificationPosition(4)
+                )
                 val ringList = listOfNotNull(s1g, s2g, s3g, s4g)
                 if (ringList.size < 4) anySetMissingMember = true
                 if (PurificationMath.isPerfectSet(ringList)) perfectSets++
             }
 
             val metrics =
-                PurificationClientMetrics.compute(center, supportsArray, perfectSets, anySetMissingMember)
+                PurificationClientMetrics.compute(
+                    center,
+                    supportsArray,
+                    perfectSets,
+                    anySetMissingMember
+                )
             val tempoPct = metrics.tempoPct
             val flowPct = metrics.flowPct
 
             // Count sets with full flow (~100%). Each set is the current page 0..8 in the client cache.
             var fullSets = 0
             for (setIdx in 0 until ClientPurificationStorage.TOTAL_SETS) {
-                val c = storage.getAt(setIdx, ClientPurificationStorage.PurificationPosition(0))
-                val s1 = storage.getAt(setIdx, ClientPurificationStorage.PurificationPosition(1))
-                val s2 = storage.getAt(setIdx, ClientPurificationStorage.PurificationPosition(2))
-                val s3 = storage.getAt(setIdx, ClientPurificationStorage.PurificationPosition(3))
-                val s4 = storage.getAt(setIdx, ClientPurificationStorage.PurificationPosition(4))
-                val m = PurificationClientMetrics.compute(c, arrayOf(s1, s2, s3, s4), perfectSets, anySetMissingMember)
+                val c = storage.getAt(
+                    setIdx,
+                    ClientPurificationStorage.PurificationPosition(0)
+                )
+                val s1 = storage.getAt(
+                    setIdx,
+                    ClientPurificationStorage.PurificationPosition(1)
+                )
+                val s2 = storage.getAt(
+                    setIdx,
+                    ClientPurificationStorage.PurificationPosition(2)
+                )
+                val s3 = storage.getAt(
+                    setIdx,
+                    ClientPurificationStorage.PurificationPosition(3)
+                )
+                val s4 = storage.getAt(
+                    setIdx,
+                    ClientPurificationStorage.PurificationPosition(4)
+                )
+                val m = PurificationClientMetrics.compute(
+                    c,
+                    arrayOf(s1, s2, s3, s4),
+                    perfectSets,
+                    anySetMissingMember
+                )
                 if (m.flowPct >= 0.999f) fullSets++
             }
 
@@ -555,7 +768,96 @@ class PurificationStorageWidget(
             val nonShadowSupportCount = supportsArray.count { p -> p != null }
 
             drawBar(leftBarX0, barTop, barW, barH, tempoPct)
-            drawFlowMeter(rightBarX0, barTop, barW, barH, flowPct, fullSets, nonShadowSupportCount)
+            drawFlowMeter(
+                rightBarX0,
+                barTop,
+                barW,
+                barH,
+                flowPct,
+                fullSets,
+                nonShadowSupportCount
+            )
+
+            // Draw arrow overlays for support slot matchups (variable-length with gaps)
+            run {
+                // Build ordered ring of occupied positions (1..4) and their Pokemons
+                val ringPositions = (1..4).filter { idx ->
+                    storage.get(
+                        ClientPurificationStorage.PurificationPosition(
+                            idx
+                        )
+                    ) != null
+                }
+                if (ringPositions.size >= 2) {
+                    val ringPokemon = ringPositions.mapNotNull { idx ->
+                        storage.get(
+                            ClientPurificationStorage.PurificationPosition(
+                                idx
+                            )
+                        )
+                    }
+                    val matchups =
+                        PurificationMath.clockwiseSupportMatchups(ringPokemon)
+
+                    val arrowX = x + 182
+                    val arrowY = y - 19
+
+                    for (i in ringPositions.indices) {
+                        val fromPos = ringPositions[i]
+                        val toPos = ringPositions[(i + 1) % ringPositions.size]
+                        val matchup = matchups.getOrNull(i)
+                            ?: PurificationMath.Matchup.NEUTRAL
+
+                        val isWrap = toPos <= fromPos
+                        val span = if (!isWrap) {
+                            // e.g., 1->3 covers slots 1,2,3 → span 3
+                            (toPos - fromPos + 1)
+                        } else {
+                            // wrap return path: physically covers slots from toPos to fromPos
+                            (fromPos - toPos + 1)
+                        }.coerceIn(2, 4)
+
+                        if (!isWrap) {
+                            // Right-side arrows (non-wrapping)
+                            val texture = rightTextureFor(span, matchup)
+                            val baseY = when (fromPos) {
+                                1 -> 57
+                                2 -> 85
+                                3 -> 113
+                                else -> 0
+                            }
+                            if (baseY != 0) {
+                                val height = 21 + (span - 2) * 28
+                                blitk(
+                                    matrixStack = matrices,
+                                    texture = texture,
+                                    x = arrowX + 53,
+                                    y = arrowY + baseY,
+                                    width = 6,
+                                    height = height
+                                )
+                            }
+                        } else {
+                            // Left-side arrows (wrapping return path)
+                            val texture = leftTextureFor(span, matchup)
+                            val topY = arrowY + 41 + (toPos - 1) * 28
+                            val height = when (span) {
+                                2 -> 50
+                                3 -> 78
+                                else -> 106 // span 4
+                            }
+                            blitk(
+                                matrixStack = matrices,
+                                texture = texture,
+                                x = arrowX + 22,
+                                y = topY,
+                                width = 6,
+                                height = height
+                            )
+                        }
+                    }
+                }
+            }
         }
 
         blitk(
@@ -576,8 +878,55 @@ class PurificationStorageWidget(
             val isSelected = slot.position.index == selectedIndex
             slot.render(guiGraphics, mouseX, mouseY, partialTick)
             val pokemon = slot.getPokemon()
-            if (!isSelected && slot.isHovered(mouseX, mouseY) && pokemon != null && pokemon != gui.previewPokemon) {
+            if (!isSelected && slot.isHovered(
+                    mouseX,
+                    mouseY
+                ) && pokemon != null && pokemon != gui.previewPokemon
+            ) {
                 gui.setPreviewPokemon(pokemon)
+            }
+
+            // Draw a gray selection box around hovered or selected slots
+            val isHovered = slot.isHovered(mouseX, mouseY)
+            if (isSelected || isHovered) {
+                val bx0 = slot.x
+                val by0 = slot.y
+                val bx1 = bx0 + PurificationStorageSlot.SIZE
+                val by1 = by0 + PurificationStorageSlot.SIZE
+
+                // Colors: light gray border, slightly darker when selected
+                val borderColor =
+                    if (isSelected) 0xFF9A9A9A.toInt() else 0xFFB5B5B5.toInt()
+
+                // 1px outline
+                guiGraphics.fill(
+                    bx0 - 1,
+                    by0 - 1,
+                    bx1 + 1,
+                    by0,
+                    borderColor
+                )      // top
+                guiGraphics.fill(
+                    bx0 - 1,
+                    by1,
+                    bx1 + 1,
+                    by1 + 1,
+                    borderColor
+                )      // bottom
+                guiGraphics.fill(
+                    bx0 - 1,
+                    by0,
+                    bx0,
+                    by1,
+                    borderColor
+                )              // left
+                guiGraphics.fill(
+                    bx1,
+                    by0,
+                    bx1 + 1,
+                    by1,
+                    borderColor
+                )              // right
             }
         }
 
@@ -778,7 +1127,8 @@ class PurificationStorageWidget(
                         AuraEmitters.renderInPurificationGUI(
                             guiGraphics,
                             matrices,
-                            Minecraft.getInstance().renderBuffers().bufferSource(),
+                            Minecraft.getInstance().renderBuffers()
+                                .bufferSource(),
                             PokemonAspectUtil.getHeartGaugeValue(centerPokemon) / 100.0f,
                             partialTick,
                             centerPokemon.asRenderablePokemon(),
@@ -793,68 +1143,75 @@ class PurificationStorageWidget(
                     matrices.popPose()
 
 
+                    // Draw Pokémon on top of their respective orbitals (only populated ones).
+                    // projectedOccupied pairs: (slotIndex 1..4, projection)
+                    projectedOccupied.sortedByDescending { it.second.depth }
+                        .forEach { (slotIdx, orb) ->
+                            val pokemon: Pokemon? =
+                                storage.get(
+                                    ClientPurificationStorage.PurificationPosition(
+                                        slotIdx
+                                    )
+                                )
+                            if (pokemon != null) {
+                                matrices.pushPose()
 
+                                var zTranslation = 0.0
+                                zTranslation =
+                                    if (centerProj.screenY > orb.screenY) {
+                                        -350.0
+                                    } else {
+                                        350.0
+                                    }
+                                // Place the Pokémon roughly centered over the platform and lifted a bit.
+                                val lift =
+                                    36.0 * orb.scale // scale-aware lift so feet meet the pad visually
+                                matrices.translate(
+                                    orb.screenX.toDouble(),
+                                    orb.screenY.toDouble() - lift,
+                                    zTranslation
+                                )
 
-            // Draw Pokémon on top of their respective orbitals (only populated ones).
-            // projectedOccupied pairs: (slotIndex 1..4, projection)
-            projectedOccupied.sortedByDescending { it.second.depth }
-                .forEach { (slotIdx, orb) ->
-                    val pokemon: Pokemon? =
-                        storage.get(
-                            ClientPurificationStorage.PurificationPosition(
-                                slotIdx
-                            )
-                        )
-                    if (pokemon != null) {
-                        matrices.pushPose()
+                                // Scale model relative to the projected platform scale
+                                val modelScale = (orb.scale)
+                                matrices.scale(
+                                    modelScale,
+                                    modelScale,
+                                    modelScale
+                                )
 
-                        var zTranslation = 0.0
-                        zTranslation = if (centerProj.screenY > orb.screenY) {
-                            -350.0
-                        } else {
-                            350.0
+                                // Match the center’s display rotation
+                                val rotation =
+                                    Quaternionf().fromEulerXYZDegrees(
+                                        Vector3f(
+                                            13f,
+                                            325f,
+                                            0f
+                                        )
+                                    )
+
+                                // Pick a distinct PosableState per orbital to avoid multiple partialTick updates on the same state per frame
+                                val orbitalState =
+                                    orbitalModelStates.getOrNull(slotIdx - 1)
+                                        ?: orbitalModelStates.first()
+
+                                drawProfilePokemon(
+                                    renderablePokemon = pokemon.asRenderablePokemon(),
+                                    matrixStack = matrices,
+                                    rotation = rotation,
+                                    state = orbitalState,
+                                    partialTicks = partialTick
+                                )
+
+                                matrices.popPose()
+                            }
                         }
-                        // Place the Pokémon roughly centered over the platform and lifted a bit.
-                        val lift =
-                            36.0 * orb.scale // scale-aware lift so feet meet the pad visually
-                        matrices.translate(
-                            orb.screenX.toDouble(),
-                            orb.screenY.toDouble() - lift,
-                            zTranslation
-                        )
-
-                        // Scale model relative to the projected platform scale
-                        val modelScale = (orb.scale)
-                        matrices.scale(modelScale, modelScale, modelScale)
-
-                        // Match the center’s display rotation
-                        val rotation = Quaternionf().fromEulerXYZDegrees(
-                            Vector3f(
-                                13f,
-                                325f,
-                                0f
-                            )
-                        )
-
-                        // Pick a distinct PosableState per orbital to avoid multiple partialTick updates on the same state per frame
-                        val orbitalState = orbitalModelStates.getOrNull(slotIdx - 1) ?: orbitalModelStates.first()
-
-                        drawProfilePokemon(
-                            renderablePokemon = pokemon.asRenderablePokemon(),
-                            matrixStack = matrices,
-                            rotation = rotation,
-                            state = orbitalState,
-                            partialTicks = partialTick
-                        )
-
-                        matrices.popPose()
-                    }
-                }
 
                     // Tooltip on hover over the center Pokémon/platform (slot 0)
                     run {
                         val hoverX0 = baseX
-                        val hoverY0 = baseY - 60f // extend above the platform to include the model area
+                        val hoverY0 =
+                            baseY - 60f // extend above the platform to include the model area
                         val hoverX1 = baseX + (PLATFORM_W * baseScale)
                         val hoverY1 = baseY + (PLATFORM_H * baseScale)
 
@@ -863,8 +1220,16 @@ class PurificationStorageWidget(
                                     mouseY.toFloat() >= hoverY0 && mouseY.toFloat() <= hoverY1
 
                         if (hovered) {
-                            val message = if (PokemonAspectUtil.hasShadowAspect(centerPokemon)) {
-                                val value = kotlin.math.max(0, PokemonAspectUtil.getHeartGaugeValue(centerPokemon))
+                            val message = if (PokemonAspectUtil.hasShadowAspect(
+                                    centerPokemon
+                                )
+                            ) {
+                                val value = kotlin.math.max(
+                                    0,
+                                    PokemonAspectUtil.getHeartGaugeValue(
+                                        centerPokemon
+                                    )
+                                )
                                 when {
                                     value >= 100 -> "The door to its heart is tightly shut."
                                     value >= 80 -> "The door to its heart is starting to open."
