@@ -1,5 +1,6 @@
 package com.jayemceekay.shadowedhearts.client.aura;
 
+import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs;
 import com.jayemceekay.shadowedhearts.core.ModSounds;
 import net.minecraft.client.resources.sounds.AbstractTickableSoundInstance;
 import net.minecraft.sounds.SoundSource;
@@ -13,7 +14,7 @@ public class ShadowAuraSoundInstance extends AbstractTickableSoundInstance {
         this.aura = aura;
         this.looping = true;
         this.delay = 0;
-        this.volume = 1.0F;
+        this.volume = ShadowedHeartsConfigs.getInstance().getClientConfig().soundConfig().shadowAuraLoopVolume();
         this.relative = false;
     }
 
@@ -34,7 +35,7 @@ public class ShadowAuraSoundInstance extends AbstractTickableSoundInstance {
             }
 
             float fade = this.aura.fadeFactor(net.minecraft.client.Minecraft.getInstance().level.getGameTime());
-            this.volume = fade * 0.5F; // Scale volume if needed
+            this.volume = fade * 0.5F * ShadowedHeartsConfigs.getInstance().getClientConfig().soundConfig().shadowAuraLoopVolume(); // Scale volume if needed
         }
     }
 

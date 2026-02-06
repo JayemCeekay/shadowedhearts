@@ -2,7 +2,6 @@ package com.jayemceekay.shadowedhearts.server;
 
 import com.cobblemon.mod.common.Cobblemon;
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
-import com.cobblemon.mod.common.net.messages.client.sound.UnvalidatedPlaySoundS2CPacket;
 import com.cobblemon.mod.common.pokemon.Pokemon;
 import com.jayemceekay.shadowedhearts.PokemonAspectUtil;
 import com.jayemceekay.shadowedhearts.ShadowService;
@@ -157,8 +156,14 @@ public class ShadowMeteoroidProximityHandler {
 
         // Play spawn sound near by
         if (ModSounds.SHADOW_AURA_INITIAL_BURST != null) {
-            new UnvalidatedPlaySoundS2CPacket(ModSounds.SHADOW_AURA_INITIAL_BURST.getId(), SoundSource.NEUTRAL,
-                    entity.getX(), entity.getY(), entity.getZ(), 3.0f, 1.0f).sendToPlayersAround(entity.getX(), entity.getY(), entity.getZ(), 64.0f, level.dimension(), serverPlayer -> false);
+            ShadowedHeartsNetworkingUtils.broadcastPlaySound(
+                    ModSounds.SHADOW_AURA_INITIAL_BURST.getId(),
+                    SoundSource.NEUTRAL,
+                    level,
+                    entity.getX(), entity.getY(), entity.getZ(),
+                    1.0f,
+                    64.0f
+            );
         }
 
         // Broadcast specialized aura

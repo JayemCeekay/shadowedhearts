@@ -5,7 +5,6 @@ import com.cobblemon.mod.common.api.events.CobblemonEvents;
 import com.cobblemon.mod.common.api.events.entity.SpawnEvent;
 import com.cobblemon.mod.common.api.moves.Moves;
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
-import com.cobblemon.mod.common.net.messages.client.sound.UnvalidatedPlaySoundS2CPacket;
 import com.cobblemon.mod.common.pokemon.Pokemon;
 import com.jayemceekay.shadowedhearts.PokemonAspectUtil;
 import com.jayemceekay.shadowedhearts.ShadowService;
@@ -15,6 +14,7 @@ import com.jayemceekay.shadowedhearts.config.ShadowSpawnConfig;
 import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs;
 import com.jayemceekay.shadowedhearts.core.ModBlocks;
 import com.jayemceekay.shadowedhearts.core.ModSounds;
+import com.jayemceekay.shadowedhearts.network.ShadowedHeartsNetworkingUtils;
 import kotlin.Unit;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
@@ -77,8 +77,14 @@ public final class WildShadowSpawnListener {
 
             // Play spawn sound near by
             if (ModSounds.SHADOW_AURA_INITIAL_BURST != null) {
-                new UnvalidatedPlaySoundS2CPacket(ModSounds.SHADOW_AURA_INITIAL_BURST.getId(), SoundSource.NEUTRAL,
-                        entity.getX(), entity.getY(), entity.getZ(), 3.0f, 1.0f).sendToPlayersAround(entity.getX(), entity.getY(), entity.getZ(), 64.0f, level.dimension(), serverPlayer -> false);
+                ShadowedHeartsNetworkingUtils.broadcastPlaySound(
+                        ModSounds.SHADOW_AURA_INITIAL_BURST.getId(),
+                        SoundSource.NEUTRAL,
+                        level,
+                        entity.getX(), entity.getY(), entity.getZ(),
+                        1.0f,
+                        64.0f
+                );
             }
 
             // Broadcast specialized aura for wild spawn: 2.5x height for 10 seconds (200 ticks)

@@ -1,5 +1,6 @@
 package com.jayemceekay.shadowedhearts.client.sound;
 
+import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs;
 import com.jayemceekay.shadowedhearts.core.ModBlocks;
 import com.jayemceekay.shadowedhearts.core.ModSounds;
 import net.minecraft.client.Minecraft;
@@ -46,7 +47,7 @@ public class RelicStoneSoundInstance extends AbstractTickableSoundInstance {
                     this.stop();
                 }
             } else {
-                float targetVolume = 1.0F - (float)(Math.sqrt(distSq) / (double)maxDist);
+                float targetVolume = (1.0F - (float)(Math.sqrt(distSq) / (double)maxDist)) * ShadowedHeartsConfigs.getInstance().getClientConfig().soundConfig().relicShrineLoopVolume();
                 this.volume = Mth.lerp(0.1F, this.volume, targetVolume);
             }
         } else {

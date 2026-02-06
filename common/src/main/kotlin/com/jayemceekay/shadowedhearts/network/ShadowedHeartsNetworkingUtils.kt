@@ -2,7 +2,9 @@ package com.jayemceekay.shadowedhearts.network
 
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
 import com.jayemceekay.shadowedhearts.PokemonAspectUtil
+import net.minecraft.resources.ResourceLocation
 import net.minecraft.server.level.ServerLevel
+import net.minecraft.sounds.SoundSource
 import net.minecraft.world.entity.Entity
 
 object ShadowedHeartsNetworkingUtils {
@@ -75,6 +77,26 @@ object ShadowedHeartsNetworkingUtils {
                 for (sp in level.players()) {
                     ShadowedHeartsNetwork.sendToPlayer(sp, pkt)
                 }
+            }
+        }
+    }
+
+    @JvmStatic
+    fun broadcastPlaySound(
+        soundId: ResourceLocation,
+        source: SoundSource,
+        level: ServerLevel,
+        x: Double,
+        y: Double,
+        z: Double,
+        pitch: Float,
+        radius: Float
+    ) {
+        val pkt = PlaySoundPacket(soundId, source, x, y, z, pitch)
+        val radiusSq = (radius * radius).toDouble()
+        for (sp in level.players()) {
+            if (sp.distanceToSqr(x, y, z) <= radiusSq) {
+                ShadowedHeartsNetwork.sendToPlayer(sp, pkt)
             }
         }
     }

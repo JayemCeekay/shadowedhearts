@@ -118,12 +118,12 @@ public class AuraScannerHUD {
                         scannerCooldown = SCANNER_COOLDOWN_TICKS;
                         ShadowedHeartsNetwork.sendToServer(new AuraScannerC2SPacket(active));
                         if (active) {
-                            Minecraft.getInstance().player.playSound(ModSounds.AURA_READER_EQUIP.get(), 1.0f, 1.0f);
+                            Minecraft.getInstance().player.playSound(ModSounds.AURA_READER_EQUIP.get(), ShadowedHeartsConfigs.getInstance().getClientConfig().soundConfig().auraReaderEquipVolume(), 1.0f);
                             bootTimer = BOOT_DURATION;
                             sweepAngle = 0.0f;
                             prevSweepAngle = 0.0f;
                         } else {
-                            Minecraft.getInstance().player.playSound(ModSounds.AURA_READER_UNEQUIP.get(), 1.0f, 1.0f);
+                            Minecraft.getInstance().player.playSound(ModSounds.AURA_READER_UNEQUIP.get(), ShadowedHeartsConfigs.getInstance().getClientConfig().soundConfig().auraReaderUnequipVolume(), 1.0f);
                         }
                     }
                 } else {
@@ -152,7 +152,7 @@ public class AuraScannerHUD {
                     pulseQueue = 3;
                     pulseTimer = 0;
                     ShadowedHeartsNetwork.sendToServer(new AuraPulsePacket());
-                    mc.player.playSound(ModSounds.AURA_SCANNER_BEEP.get());
+                    mc.player.playSound(ModSounds.AURA_SCANNER_BEEP.get(), ShadowedHeartsConfigs.getInstance().getClientConfig().soundConfig().auraScannerBeepVolume(), 1.0f);
 
                     // Start response timer for nearby shadows
                     int shadowRange = ShadowedHeartsConfigs.getInstance().getShadowConfig().auraScannerShadowRange();
@@ -335,7 +335,7 @@ public class AuraScannerHUD {
                         // max delay: 60 ticks (3s) at min intensity
                         int delay = (int) Mth.lerp(maxIntensity, 60, 5);
                         float pitch = Mth.lerp(maxIntensity, 0.8f, 1.5f);
-                        mc.level.playSound(mc.player, mc.player.getX(), mc.player.getY(), mc.player.getZ(), ModSounds.AURA_SCANNER_BEEP.get(), SoundSource.PLAYERS, 0.3f, pitch);
+                        mc.level.playSound(mc.player, mc.player.getX(), mc.player.getY(), mc.player.getZ(), ModSounds.AURA_SCANNER_BEEP.get(), SoundSource.PLAYERS, 0.3f * ShadowedHeartsConfigs.getInstance().getClientConfig().soundConfig().auraScannerBeepVolume(), pitch);
                         beepTimer = delay;
                     } else {
                         // No shadow nearby, slow idle beep or no beep?

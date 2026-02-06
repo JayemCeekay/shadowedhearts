@@ -18,6 +18,7 @@ import com.jayemceekay.shadowedhearts.pokemon.properties.PropertyRegistration;
 import com.jayemceekay.shadowedhearts.restrictions.ShadowRestrictions;
 import com.jayemceekay.shadowedhearts.server.*;
 import com.jayemceekay.shadowedhearts.server.listeners.ShadowCatchRateListener;
+import com.jayemceekay.shadowedhearts.server.listeners.StarterShadowListener;
 import com.jayemceekay.shadowedhearts.showdown.ShowdownRuntimePatcher;
 import com.jayemceekay.shadowedhearts.snag.SnagEvents;
 import com.jayemceekay.shadowedhearts.util.ShadowedHeartsPlayerData;
@@ -32,6 +33,7 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.PackType;
 import net.minecraft.tags.TagKey;
+import net.minecraft.world.level.GameRules;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.levelgen.GenerationStep;
 import net.minecraft.world.level.levelgen.placement.PlacedFeature;
@@ -51,6 +53,7 @@ public final class Shadowedhearts {
     }
 
     public static FeatureAdder featureAdder;
+    public static GameRules.Key<GameRules.BooleanValue> RULE_SHADOW_STARTERS;
 
     public static void addFeatureToWorldGen(ResourceKey<PlacedFeature> feature, GenerationStep.Decoration step, TagKey<Biome> validTag) {
         if (featureAdder != null) {
@@ -86,6 +89,7 @@ public final class Shadowedhearts {
         BattleSentOnceListener.INSTANCE.init();
         WildShadowSpawnListener.init();
         ShadowCatchRateListener.init();
+        StarterShadowListener.init();
         AuraBroadcastQueue.init();
         ShadowDropListener.init();
         NPCShadowInjector.init();
@@ -98,11 +102,15 @@ public final class Shadowedhearts {
         HeartGaugeConfig.ensureLoaded();
         ReloadListenerRegistry.register(PackType.SERVER_DATA, SpeciesTagManager.INSTANCE);
 
+        RULE_SHADOW_STARTERS = GameRules.register("doShadowStarters", GameRules.Category.MISC, GameRules.BooleanValue.create(false));
+
         ElementalTypes.register(new ElementalType(
                 "shadow", Component.literal("Shadow"),
                 0x604E82, 19, ResourceLocation.fromNamespaceAndPath(Cobblemon.MODID, "textures/gui/types.png"),
                 "shadow"
         ));
+        
+
 
         ElementalTypes.register(new ElementalType("shadow-locked", Component.literal("Locked"), 0x1F1F1F, 20, ResourceLocation.fromNamespaceAndPath(Cobblemon.MODID, "textures/gui/types.png"), "shadow-locked"));
 

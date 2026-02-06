@@ -29,6 +29,7 @@ object ShadowedHeartsNetwork {
         add(PacketRegisterInfo(PokemonPropertyUpdatePacket.ID, PokemonPropertyUpdatePacket::decode, com.cobblemon.mod.common.client.net.pokemon.update.PokemonUpdatePacketHandler()))
         add(PacketRegisterInfo(AuraScannerS2CPacket.ID, AuraScannerS2CPacket::decode, AuraScannerClientHandler))
         add(PacketRegisterInfo(MeteoroidScanResultPacket.ID, MeteoroidScanResultPacket::decode, com.jayemceekay.shadowedhearts.client.network.MeteoroidScanResultClientHandler))
+        add(PacketRegisterInfo(PlaySoundPacket.ID, PlaySoundPacket::decode, PlaySoundHandler))
     }
 
     /**
