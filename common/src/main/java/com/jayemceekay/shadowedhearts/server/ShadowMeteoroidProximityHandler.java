@@ -42,7 +42,10 @@ public class ShadowMeteoroidProximityHandler {
         int radius = config.meteoroidShadowTransformationRadius();
         double baseChance = config.meteoroidShadowTransformationChancePerInterval();
 
-        for (net.minecraft.world.entity.Entity e : level.getAllEntities()) {
+        java.util.List<net.minecraft.world.entity.Entity> entities = new java.util.ArrayList<>();
+        level.getAllEntities().forEach(entities::add);
+
+        for (net.minecraft.world.entity.Entity e : entities) {
             if (e instanceof PokemonEntity entity && entity.isAlive()) {
                 Pokemon pokemon = entity.getPokemon();
                 if (pokemon != null && !pokemon.isBattleClone() && !PokemonAspectUtil.hasShadowAspect(pokemon) && !ShadowSpawnConfig.isBlacklisted(pokemon) && !PokemonAspectUtil.isImmunized(pokemon)) {
@@ -86,7 +89,10 @@ public class ShadowMeteoroidProximityHandler {
 
         // Set to track Pokemon we've already processed this tick (entities were processed in processProximity)
         Set<Pokemon> processed = new HashSet<>();
-        for (net.minecraft.world.entity.Entity e : level.getAllEntities()) {
+        java.util.List<net.minecraft.world.entity.Entity> entities = new java.util.ArrayList<>();
+        level.getAllEntities().forEach(entities::add);
+
+        for (net.minecraft.world.entity.Entity e : entities) {
             if (e instanceof PokemonEntity entity) {
                 Pokemon pokemon = entity.getPokemon();
                 if (pokemon != null) processed.add(pokemon);
