@@ -118,6 +118,20 @@ public final class ShowdownRuntimePatcher {
                             "        const target = items.Items || items;\n" +
                             "        target[itemId] = eval(`(${itemData})`);\n" +
                             "    };\n" +
+                            "}\n" +
+                            "\n" +
+                            "if (typeof receiveMoveData === 'undefined') {\n" +
+                            "    receiveMoveData = function(moveId, moveData) {\n" +
+                            "        const target = moves.Moves || moves;\n" +
+                            "        target[moveId] = eval(`(${moveData})`);\n" +
+                            "    };\n" +
+                            "}\n" +
+                            "\n" +
+                            "if (typeof receiveNewTypeData === 'undefined') {\n" +
+                            "    receiveNewTypeData = function(type, max, z) {\n" +
+                            "        battleActions.MAX_MOVES[type] = max;\n" +
+                            "        battleActions.Z_MOVES[type] = z;\n" +
+                            "    };\n" +
                             "}");
                 }
 
@@ -138,6 +152,25 @@ public final class ShowdownRuntimePatcher {
                     Shadowedhearts.LOGGER.info("Injected custom typechart into Showdown...");
                 } else {
                     Shadowedhearts.LOGGER.info("Failed to find receiveTypeChartData function, skipping injection.");
+                }
+
+                if (bindings.hasMember("receiveMoveData")) {
+                    Object receiveMoveDataFn = bindings.getMember("receiveMoveData");
+                    injectMove(receiveMoveDataFn, "maxshadow", "/data/shadowedhearts/showdown/moves/maxshadow.js");
+                    injectMove(receiveMoveDataFn, "shadowysupernova", "/data/shadowedhearts/showdown/moves/shadowysupernova.js");
+                    Shadowedhearts.LOGGER.info("Injected custom gimmick moves into Showdown...");
+                }
+
+                if (bindings.hasMember("receiveHeldItemData")) {
+                    Object receiveHeldItemDataFn = bindings.getMember("receiveHeldItemData");
+                    injectHeldItem(receiveHeldItemDataFn, "shadowiumz", "/data/shadowedhearts/showdown/held_items/shadowiumz.js");
+                    Shadowedhearts.LOGGER.info("Injected custom items into Showdown...");
+                }
+
+                if (bindings.hasMember("receiveNewTypeData")) {
+                    Object receiveNewTypeDataFn = bindings.getMember("receiveNewTypeData");
+                    executeFn(receiveNewTypeDataFn, "Shadow", "Max Shadow", "Shadowy Supernova");
+                    Shadowedhearts.LOGGER.info("Mapped Shadow type to custom gimmick moves...");
                 }
             } catch (Exception e) {
                 Shadowedhearts.LOGGER.info("Failed to prepare Showdown context object: " + e);
@@ -234,6 +267,28 @@ public final class ShowdownRuntimePatcher {
                 executeFn(fn, id, js);
             } else {
                 Shadowedhearts.LOGGER.info("Failed to find typechart resource: " + resourcePath);
+            }
+        }
+
+        private static void injectMove(Object fn, String id, String resourcePath) {
+            String js = readResourceText(resourcePath);
+            if (js != null) {
+                js = js.replaceAll("//.*", "");
+                js = js.replace("\n", " ").replace("\r", "");
+                executeFn(fn, id, js);
+            } else {
+                Shadowedhearts.LOGGER.info("Failed to find move resource: " + resourcePath);
+            }
+        }
+
+        private static void injectHeldItem(Object fn, String id, String resourcePath) {
+            String js = readResourceText(resourcePath);
+            if (js != null) {
+                js = js.replaceAll("//.*", "");
+                js = js.replace("\n", " ").replace("\r", "");
+                executeFn(fn, id, js);
+            } else {
+                Shadowedhearts.LOGGER.info("Failed to find held item resource: " + resourcePath);
             }
         }
 

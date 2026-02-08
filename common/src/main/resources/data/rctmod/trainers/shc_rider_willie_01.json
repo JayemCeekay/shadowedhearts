@@ -1,0 +1,80 @@
+{
+  "identity": "shc_rider_willie_01",
+  "battleFormat": "GEN_9_DOUBLES",
+  "battleRules": {
+    "maxItemUses": -1,
+    "healPlayers": false,
+    "adjustPlayerLevels": false,
+    "adjustNPCLevels": false
+  },
+  "name": {
+    "literal": "Rider Willie"
+  },
+  "ai": {
+    "type": "rct",
+    "data": {
+      "moveBias": 1.0,
+      "statusMoveBias": 0.85,
+      "switchBias": 0.65,
+      "itemBias": 0.85,
+      "maxSelectMargin": 0.25
+    }
+  },
+  "bag": [],
+  "team": [
+    {
+      "species": "cobblemon:zigzagoon",
+      "gender": "FEMALE",
+      "level": 24,
+      "ability": "pickup",
+      "moveset": [
+        "tailwhip",
+        "tackle"
+      ],
+      "evs": {
+        "hp": 0,
+        "atk": 0,
+        "def": 0,
+        "spa": 0,
+        "spd": 0,
+        "spe": 0
+      },
+      "shiny": false,
+      "heldItem": [],
+      "aspects": [
+        ""
+      ],
+      "gimmicks": {
+        "dynamax": false,
+        "gmax": false
+      }
+    },
+    {
+      "species": "cobblemon:zigzagoon",
+      "gender": "MALE",
+      "level": 24,
+      "ability": "pickup",
+      "moveset": [
+        "tackle",
+        "growl"
+      ],
+      "evs": {
+        "hp": 0,
+        "atk": 0,
+        "def": 0,
+        "spa": 0,
+        "spd": 0,
+        "spe": 0
+      },
+      "shiny": false,
+      "heldItem": [],
+      "aspects": [
+        "shadowedhearts:shadow"
+      ],
+      "gimmicks": {
+        "dynamax": false,
+        "gmax": false
+      }
+    }
+  ]
+}

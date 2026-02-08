@@ -117,8 +117,7 @@ public class LuminousMoteParticle extends TextureSheetParticle {
 
     @Override
     public @NotNull ParticleRenderType getRenderType() {
-        // Built-in translucent (SrcAlpha, OneMinusSrcAlpha), depth test on, depth write off.
-        return ParticleRenderType.PARTICLE_SHEET_TRANSLUCENT;
+        return ModParticleRenderTypes.LUMINOUS_MOTE_RENDER_TYPE;
     }
 
     public static class Provider implements ParticleProvider<SimpleParticleType> {

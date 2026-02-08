@@ -14,6 +14,7 @@ import com.jayemceekay.shadowedhearts.core.*;
 import com.jayemceekay.shadowedhearts.data.ShadowAspectPresets;
 import com.jayemceekay.shadowedhearts.data.ShadowPools;
 import com.jayemceekay.shadowedhearts.integration.accessories.SnagAccessoryBridgeHolder;
+import com.jayemceekay.shadowedhearts.integration.mega_showdown.MegaShowdownBridgeHolder;
 import com.jayemceekay.shadowedhearts.pokemon.properties.PropertyRegistration;
 import com.jayemceekay.shadowedhearts.restrictions.ShadowRestrictions;
 import com.jayemceekay.shadowedhearts.server.*;
@@ -63,12 +64,13 @@ public final class Shadowedhearts {
 
     public static void init() {
         LOGGER.info("[ShadowedHearts] Initializing mod...");
+        SnagAccessoryBridgeHolder.init();
+        MegaShowdownBridgeHolder.init();
         ModItemComponents.init();
         ModBlocks.init();
         ModItems.init();
         LifecycleEvent.SETUP.register(ModCauldronInteractions::register);
         ModCreativeTabs.init();
-        SnagAccessoryBridgeHolder.init();
         ModBlockEntities.init();
         ModPoiTypes.init();
         ModMenuTypes.init();

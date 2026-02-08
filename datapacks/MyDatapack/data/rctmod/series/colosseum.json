@@ -1,0 +1,11 @@
+{
+  "title": {
+    "literal": "Colosseum"
+  },
+  "description": {
+    "literal": "Battle the trainers from Pokemon Colosseum!"
+  },
+  "difficulty": 8,
+  "initialLevelCap": 30,
+  "requiredSeries": []
+}

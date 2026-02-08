@@ -61,6 +61,9 @@ public class ModShadersPlatformImpl {
             evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:aura_pulse", DefaultVertexFormat.POSITION_TEX),
                     shader -> ModShaders.AURA_PULSE = shader);
 
+            evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:luminous_mote", DefaultVertexFormat.PARTICLE),
+                    shader -> ModShaders.LUMINOUS_MOTE = shader);
+
         } catch (IOException e) {
             throw new RuntimeException("Failed to load shaders", e);
         }

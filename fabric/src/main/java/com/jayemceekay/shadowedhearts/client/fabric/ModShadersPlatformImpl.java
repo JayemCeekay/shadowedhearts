@@ -63,6 +63,12 @@ public final class ModShadersPlatformImpl {
                         DefaultVertexFormat.POSITION_TEX,
                         program -> ModShaders.AURA_PULSE = program
                 );
+
+                registrationContext.register(
+                        ResourceLocation.parse("shadowedhearts:luminous_mote"),
+                        DefaultVertexFormat.PARTICLE,
+                        program -> ModShaders.LUMINOUS_MOTE = program
+                );
             } catch (Exception e) {
                 throw new RuntimeException("Failed to load shaders (Fabric)", e);
             }

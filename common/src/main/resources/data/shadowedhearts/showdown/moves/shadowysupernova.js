@@ -1,0 +1,16 @@
+({
+    accuracy: true,
+    basePower: 180,
+    category: "Physical",
+    desc: "The user creates a powerful blast of shadowy energy. This move is used by a Pokémon holding a Shadowium Z.",
+    name: "Shadowy Supernova",
+    pp: 1,
+    priority: 0,
+    flags: {},
+    isZ: "shadowiumz",
+    secondary: null,
+    target: "normal",
+    type: "Shadow",
+    contestType: "Cool",
+    isNonstandard: "Custom",
+})

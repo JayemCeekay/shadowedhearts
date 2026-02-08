@@ -12,6 +12,8 @@
     },
     target: "normal",
     type: "Shadow",
+    zMove: { basePower: 100 },
+    maxMove: { basePower: 90 },
     contestType: "Tough",
     isNonstandard: "Custom"
 })

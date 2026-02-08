@@ -542,7 +542,6 @@ public final class PokemonAspectUtil {
      */
     public static int getAllowedVisibleNonShadowMoves(Pokemon pokemon) {
         int percent = Math.max(0, Math.min(100, getHeartGaugePercent(pokemon)));
-        if (percent == 0) return 4; // all non-Shadow moves
         if (percent <= 20) return 3;
         if (percent <= 40) return 2;
         if (percent < 80) return 1; // 41..79

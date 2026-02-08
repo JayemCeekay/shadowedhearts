@@ -17,6 +17,8 @@
     },
     target: "allAdjacentFoes",
     type: "Shadow",
+    zMove: { basePower: 175 },
+    maxMove: { basePower: 130 },
     contestType: "Tough",
     isNonstandard: "Custom"
 })

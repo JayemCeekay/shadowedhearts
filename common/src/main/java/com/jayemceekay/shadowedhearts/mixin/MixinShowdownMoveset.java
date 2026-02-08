@@ -3,7 +3,6 @@ package com.jayemceekay.shadowedhearts.mixin;
 import com.cobblemon.mod.common.battles.InBattleGimmickMove;
 import com.cobblemon.mod.common.battles.InBattleMove;
 import com.cobblemon.mod.common.battles.ShowdownMoveset;
-import com.jayemceekay.shadowedhearts.ShadowGate;
 import kotlin.Unit;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -31,9 +30,6 @@ public abstract class MixinShowdownMoveset {
             int gimmickIndex = 0;
             for (InBattleMove move : moves) {
                 if (move == null) continue;
-                if (ShadowGate.isShadowMoveId(move.getId())) {
-                    continue;
-                }
                 if (gimmickIndex < gimmickMoves.size()) {
                     move.setGimmickMove(gimmickMoves.get(gimmickIndex));
                     gimmickIndex++;
@@ -42,4 +38,5 @@ public abstract class MixinShowdownMoveset {
         }
         cir.cancel();
     }
+
 }

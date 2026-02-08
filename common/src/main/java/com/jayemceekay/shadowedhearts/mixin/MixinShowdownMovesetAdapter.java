@@ -23,7 +23,7 @@ public abstract class MixinShowdownMovesetAdapter {
     private Unit shadowedhearts$wrapSetGimmickMapping(ShowdownMoveset instance, Operation<Unit> original) {
         List<InBattleMove> originalMoves = instance.getMoves();
         if (originalMoves != null) {
-            instance.setMoves(shadowedhearts$getFilteredMoves(originalMoves));
+            ///instance.setMoves(shadowedhearts$getFilteredMoves(originalMoves));
             Unit result = original.call(instance);
             instance.setMoves(originalMoves);
             return result;
@@ -38,7 +38,7 @@ public abstract class MixinShowdownMovesetAdapter {
     private void shadowedhearts$wrapSetMaxMoves(ShowdownMoveset instance, List<?> maxMoves, Operation<Void> original) {
         List<InBattleMove> originalMoves = instance.getMoves();
         if (originalMoves != null) {
-            instance.setMoves(shadowedhearts$getFilteredMoves(originalMoves));
+            //instance.setMoves(shadowedhearts$getFilteredMoves(originalMoves));
             original.call(instance, maxMoves);
             instance.setMoves(originalMoves);
         } else {

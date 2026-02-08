@@ -26,6 +26,7 @@ public final class ModShaders {
     public static ShaderInstance BALL_TRAIL;
 
     public static ShaderInstance AURA_PULSE;
+    public static ShaderInstance LUMINOUS_MOTE;
 
     private ModShaders() {}
 

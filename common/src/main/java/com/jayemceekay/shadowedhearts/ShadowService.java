@@ -23,9 +23,10 @@ public final class ShadowService {
 
     /**
      * Make a Pokemon (and its live entity if present) shadow/non-shadow.
+     *
      * @param pokemon stored Pokemon object
-     * @param live currently loaded entity for that Pokemon (nullable)
-     * @param shadow true to set shadow, false to clear
+     * @param live    currently loaded entity for that Pokemon (nullable)
+     * @param shadow  true to set shadow, false to clear
      */
     public static void setShadow(Pokemon pokemon, @Nullable PokemonEntity live, boolean shadow) {
         setShadow(pokemon, live, shadow, true);
@@ -47,7 +48,9 @@ public final class ShadowService {
         }
     }
 
-    /** Set heart gauge absolute meter [0..speciesMax from config]. */
+    /**
+     * Set heart gauge absolute meter [0..speciesMax from config].
+     */
     public static void setHeartGauge(Pokemon pokemon, @Nullable PokemonEntity live, int meter) {
         setHeartGauge(pokemon, live, meter, true);
     }
@@ -58,7 +61,8 @@ public final class ShadowService {
         PokemonAspectUtil.setHeartGaugeValue(pokemon, clamped, sync);
         // Ensure required supporting aspects exist when shadowed (no-op if not shadowed)
         PokemonAspectUtil.ensureRequiredShadowAspects(pokemon);
-        if (live != null) ShadowPokemonData.set(live, ShadowPokemonData.isShadow(live), PokemonAspectUtil.getHeartGauge(pokemon));
+        if (live != null)
+            ShadowPokemonData.set(live, ShadowPokemonData.isShadow(live), PokemonAspectUtil.getHeartGauge(pokemon));
 
         applyMoveUnlocks(pokemon);
 
@@ -95,7 +99,7 @@ public final class ShadowService {
 
         // Get all legal level-up moves up to current level
         List<MoveTemplate> levelUpMoves =
-            new ArrayList<>(pokemon.getForm().getMoves().getLevelUpMovesUpTo(pokemon.getLevel()));
+                new ArrayList<>(pokemon.getForm().getMoves().getLevelUpMovesUpTo(pokemon.getLevel()));
 
         // Reverse to get "most recently unlocked" first
         Collections.reverse(levelUpMoves);
@@ -123,23 +127,9 @@ public final class ShadowService {
 
         if (candidates.isEmpty()) return;
 
-        // Thresholds for replacing shadow moves:
-        //XD: <2 bars (2 moves unlocked) => replace 1st shadow move?
-        //Actually our system is:
-        // < 4 bars => 1st non-shadow unlocked
-        // < 2 bars => 2nd non-shadow unlocked
-        // < 1 bar => 3rd non-shadow unlocked
-        // 0% => 4th non-shadow unlocked
-
-        // The prompt says "if they have unlocked them by the heart gauge lowering"
-        // and "When a pokemon is purified... All its moves should me undisabled."
-
-        // For partial unlock during gauge lowering, we might want to replace shadow moves
-        // if we have enough allowed slots.
 
         int shadowMovesToReplace = 0;
-        if (allowed >= 4) shadowMovesToReplace = 4;
-        else if (allowed >= 3) shadowMovesToReplace = 1; // At 3 moves allowed, usually one shadow move is replaced in XD
+        if (allowed >= 3) shadowMovesToReplace = shadowMoves.size() - 1;
 
         if (shadowMovesToReplace <= 0) return;
 
@@ -157,7 +147,9 @@ public final class ShadowService {
         }
     }
 
-    /** Convenience: fully purified (0) and not shadow. */
+    /**
+     * Convenience: fully purified (0) and not shadow.
+     */
     public static void fullyPurify(Pokemon pokemon, @Nullable PokemonEntity live) {
         // 1. Restore all moves (replace all shadow moves)
         restoreAllMoves(pokemon);
@@ -192,10 +184,10 @@ public final class ShadowService {
         }
 
         // 4. Remove custom properties and NBT data
-        pokemon.getCustomProperties().removeIf(p -> 
-            p instanceof HeartGaugeProperty ||
-            p instanceof XPBufferProperty ||
-            p instanceof EVBufferProperty
+        pokemon.getCustomProperties().removeIf(p ->
+                p instanceof HeartGaugeProperty ||
+                        p instanceof XPBufferProperty ||
+                        p instanceof EVBufferProperty
         );
         pokemon.getPersistentData().remove("shadowedhearts:heartgauge");
         pokemon.getPersistentData().remove("shadowedhearts:xpbuf");
@@ -219,8 +211,8 @@ public final class ShadowService {
         }
 
         // Get candidates from level-up moves that the Pokemon has already qualified for
-        List<MoveTemplate> levelUpMoves = 
-            new ArrayList<>(pokemon.getForm().getMoves().getLevelUpMovesUpTo(pokemon.getLevel()));
+        List<MoveTemplate> levelUpMoves =
+                new ArrayList<>(pokemon.getForm().getMoves().getLevelUpMovesUpTo(pokemon.getLevel()));
         // Reverse to prioritize the most recently learned moves
         Collections.reverse(levelUpMoves);
 
@@ -266,7 +258,9 @@ public final class ShadowService {
         }
     }
 
-    /** Convenience: corrupted and shadow with specific heart gauge value. */
+    /**
+     * Convenience: corrupted and shadow with specific heart gauge value.
+     */
     public static void corrupt(Pokemon pokemon, @Nullable PokemonEntity live, int value) {
         corrupt(pokemon, live, value, true);
     }
@@ -276,7 +270,9 @@ public final class ShadowService {
         setHeartGauge(pokemon, live, value, sync);
     }
 
-    /** Convenience: fully corrupted (speciesMax) and shadow. */
+    /**
+     * Convenience: fully corrupted (speciesMax) and shadow.
+     */
     public static void fullyCorrupt(Pokemon pokemon, @Nullable PokemonEntity live) {
         fullyCorrupt(pokemon, live, true);
     }

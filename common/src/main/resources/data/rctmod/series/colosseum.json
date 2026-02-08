@@ -1,0 +1,11 @@
+{
+  "title": {
+    "translatable": "series.rctmod.colosseum.title"
+  },
+  "description": {
+    "translatable": "series.rctmod.colosseum.description"
+  },
+  "difficulty": 5,
+  "initialLevelCap": 26,
+  "requiredSeries": []
+}

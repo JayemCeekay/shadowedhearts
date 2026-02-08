@@ -24,8 +24,10 @@
   "item.shadowedhearts.grounding_scent": "Grounding Scent",
   "item.shadowedhearts.shadow_shard": "Shadow Shard",
   "item.shadowedhearts.purified_gem": "Purified Gem",
+  "item.shadowedhearts.shadowium_z": "Shadowium-Z",
   "item.shadowedhearts.aura_reader": "Aura Reader",
   "item.shadowedhearts.aura_reader.tooltip": "A device that detects and tracks shadow signatures in the environment.",
+  "tooltip.shadowedhearts.shadowium_z.tooltip": "Z-Crystal associated with the Shadow type and allows Pokémon to upgrade their Shadow-type moves to Z-moves",
   "tooltip.shadowedhearts.aura_reader.charge": "Charge: %d / %d",
   "key.shadowedhearts.aura_scanner": "Toggle Aura Scanner",
   "key.shadowedhearts.aura_pulse": "Aura Pulse",
@@ -92,6 +94,10 @@
   "cobblemon.move.shadowstorm.desc": "A shadowy aura is used to whip up a vicious tornado.",
   "cobblemon.move.shadowwave": "Shadow Wave",
   "cobblemon.move.shadowwave.desc": "Shadowy aura waves are loosed to inflict damage.",
+  "cobblemon.move.maxshadow": "Max Shadow",
+  "cobblemon.move.maxshadow.desc": "A Shadow-type attack that Dynamax Pokémon use. This lowers everyone's Defense and Special Defense by 2 stages, and raises everyone's Attack and Special Attack by 2 stages.",
+  "cobblemon.move.shadowysupernova": "Shadowy Supernova",
+  "cobblemon.move.shadowysupernova.desc": "The user creates a powerful blast of shadowy energy. This move is used by a Pokémon holding a Shadowium Z.",
 
   "cobblemon.battle.weather.shadowyaura.start": "A shadowy aura filled the sky!",
   "cobblemon.battle.weather.shadowyaura.end": "The shadowy aura faded away!",
@@ -170,5 +176,9 @@
   "advancements.shadowedhearts.purified_gem.title": "Pure Power",
   "advancements.shadowedhearts.purified_gem.description": "Obtain a Purified Gem.",
   "advancements.shadowedhearts.snag_machine_advanced.title": "Advanced Snagging",
-  "advancements.shadowedhearts.snag_machine_advanced.description": "Obtain an Advanced Snag Machine."
+  "advancements.shadowedhearts.snag_machine_advanced.description": "Obtain an Advanced Snag Machine.",
+
+  "series.rctmod.colosseum.title": "Colosseum",
+  "series.rctmod.xd.title": "XD: Gale of Darkness"
+
 }

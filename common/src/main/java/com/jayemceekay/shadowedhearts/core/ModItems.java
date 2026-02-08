@@ -2,6 +2,7 @@ package com.jayemceekay.shadowedhearts.core;
 
 import com.jayemceekay.shadowedhearts.Shadowedhearts;
 import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs;
+import com.jayemceekay.shadowedhearts.integration.mega_showdown.MegaShowdownBridgeHolder;
 import com.jayemceekay.shadowedhearts.items.AuraReaderItem;
 import com.jayemceekay.shadowedhearts.items.PurifiedGemItem;
 import com.jayemceekay.shadowedhearts.items.ScentItem;
@@ -107,6 +108,10 @@ public final class ModItems {
     public static final RegistrySupplier<Item> PURIFIED_GEM = ITEMS.register(
             "purified_gem",
             () -> new PurifiedGemItem(new Item.Properties().arch$tab(ModCreativeTabs.SHADOWED_HEARTS_TAB)));
+
+    public static final RegistrySupplier<Item> SHADOWIUM_Z = ITEMS.register(
+            "shadowium_z",
+            () -> MegaShowdownBridgeHolder.INSTANCE.createShadowiumZ(new Item.Properties().arch$tab(ModCreativeTabs.SHADOWED_HEARTS_TAB).stacksTo(1)));
 
     public static final RegistrySupplier<Item> AURA_READER = ITEMS.register(
             "aura_reader",

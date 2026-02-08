@@ -23,7 +23,8 @@
     },
 
     target: "allAdjacentFoes",
-        type: "Shadow",
+    type: "Shadow",
+    zMove: { boost: { spa: 1 } },
     contestType: "Tough",
     isNonstandard: "Custom"
 })

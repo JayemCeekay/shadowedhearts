@@ -11,7 +11,8 @@
         def: -2
     },
     target: "foeSide",
-        type: "Shadow",
+    type: "Shadow",
+    zMove: { effect: "clearnegativeboost" },
     contestType: "Tough",
     isNonstandard: "Custom"
 })

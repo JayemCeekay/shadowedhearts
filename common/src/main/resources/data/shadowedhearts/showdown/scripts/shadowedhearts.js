@@ -1,5 +1,13 @@
 module.exports = `
 {
+    "actions": {
+        "Z_MOVES": {
+            "Shadow": "Shadowy Supernova"
+        },
+        "MAX_MOVES": {
+            "Shadow": "Max Shadow"
+        }
+    },
     "call": function(pokemon) {
         this.add('call', pokemon.getSlot());
         let success = false;

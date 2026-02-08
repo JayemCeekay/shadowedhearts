@@ -1,0 +1,21 @@
+{
+  "type": "shc_team_snagem",
+  "signatureItem": "",
+  "requiredDefeats": [
+    [
+      "sch_shadyguy_folly_01"
+    ]
+  ],
+  "series": [
+    "colosseum"
+  ],
+  "substitutes": [],
+  "optional": false,
+  "maxTrainerWins": -1,
+  "maxTrainerDefeats": 1,
+  "battleCooldownTicks": 240,
+  "spawnWeightFactor": 1.0,
+  "biomeTagBlacklist": [],
+  "biomeTagWhitelist": [],
+  "forceBattleOnSight": true
+}

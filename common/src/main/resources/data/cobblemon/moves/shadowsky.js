@@ -10,6 +10,7 @@
     weather: "shadowyaura",
     target: "all",
     type: "Shadow",
+    zMove: { boost: { spe: 1 } },
     contestType: "Tough",
     isNonstandard: "Custom",
 })

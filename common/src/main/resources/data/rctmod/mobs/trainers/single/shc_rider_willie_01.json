@@ -1,0 +1,19 @@
+{
+  "type": "normal",
+  "signatureItem": "",
+  "requiredDefeats": [],
+  "series": [
+    "colosseum"
+  ],
+  "substitutes": [],
+  "optional": false,
+  "maxTrainerWins": 3,
+  "maxTrainerDefeats": 1,
+  "battleCooldownTicks": 240,
+  "spawnWeightFactor": 1.0,
+  "biomeTagBlacklist": [],
+  "biomeTagWhitelist": [],
+  "forceBattleOnSight": true,
+  "forceBattleMaxDistance": 8.0,
+  "forceBattleLookTicks": 40
+}

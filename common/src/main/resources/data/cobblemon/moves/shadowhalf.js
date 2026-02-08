@@ -29,7 +29,8 @@
         volatileStatus: "mustrecharge",
     },
     target: "all",
-        type: "Shadow",
+    type: "Shadow",
+    zMove: { effect: "heal" },
     contestType: "Tough",
     isNonstandard: "Custom"
 })

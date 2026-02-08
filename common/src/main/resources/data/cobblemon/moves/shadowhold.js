@@ -20,7 +20,8 @@
 
 
     target: "allAdjacentFoes",
-        type: "Shadow",
+    type: "Shadow",
+    zMove: { boost: { accuracy: 1 } },
     contestType: "Tough",
     isNonstandard: "Custom",
 
