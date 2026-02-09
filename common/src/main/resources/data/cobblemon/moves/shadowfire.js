@@ -1,21 +1,28 @@
 ({
     accuracy: 100,
-        basePower: 75,
+    basePower: 75,
     category: "Special",
     desc: "A shadowy fireball attack that may inflict a burn.",
     name: "Shadow Fire",
     pp: 100,
     priority: 0,
-    flags: { contact: 0, protect: 1, mirror: 0, metronome: 0, reflectable: 0, snatch: 0 },
+    flags: {
+        contact: 0,
+        protect: 1,
+        mirror: 0,
+        metronome: 0,
+        reflectable: 0,
+        snatch: 0
+    },
     secondary: {
         chance: 10,
         status: 'brn',
-            kingsrock: true
+        kingsrock: true
     },
     target: "normal",
-        type: "Shadow",
-    zMove: { basePower: 140 },
-    maxMove: { basePower: 130 },
+    type: "Shadow",
+    zMove: {basePower: 140},
+    maxMove: {basePower: 130},
     contestType: "Tough",
     isNonstandard: "Custom"
 })

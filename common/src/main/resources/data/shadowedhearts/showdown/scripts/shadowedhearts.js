@@ -2,7 +2,7 @@ module.exports = `
 {
     "actions": {
         "Z_MOVES": {
-            "Shadow": "Shadowy Supernova"
+            "Shadow": "Shadow Supernova"
         },
         "MAX_MOVES": {
             "Shadow": "Max Shadow"

@@ -55,8 +55,8 @@
       "level": 25,
       "ability": "shellarmor",
       "moveset": [
-        "bubble",
-        "vicegrip"
+        "visegrip",
+        "bubble"
       ],
       "evs": {
         "hp": 0,

@@ -157,7 +157,7 @@ public final class ShowdownRuntimePatcher {
                 if (bindings.hasMember("receiveMoveData")) {
                     Object receiveMoveDataFn = bindings.getMember("receiveMoveData");
                     injectMove(receiveMoveDataFn, "maxshadow", "/data/shadowedhearts/showdown/moves/maxshadow.js");
-                    injectMove(receiveMoveDataFn, "shadowysupernova", "/data/shadowedhearts/showdown/moves/shadowysupernova.js");
+                    injectMove(receiveMoveDataFn, "shadowsupernova", "/data/shadowedhearts/showdown/moves/shadowsupernova.js");
                     Shadowedhearts.LOGGER.info("Injected custom gimmick moves into Showdown...");
                 }
 
@@ -169,7 +169,7 @@ public final class ShowdownRuntimePatcher {
 
                 if (bindings.hasMember("receiveNewTypeData")) {
                     Object receiveNewTypeDataFn = bindings.getMember("receiveNewTypeData");
-                    executeFn(receiveNewTypeDataFn, "Shadow", "Max Shadow", "Shadowy Supernova");
+                    executeFn(receiveNewTypeDataFn, "Shadow", "Max Shadow", "Shadow Supernova");
                     Shadowedhearts.LOGGER.info("Mapped Shadow type to custom gimmick moves...");
                 }
             } catch (Exception e) {

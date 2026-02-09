@@ -6,11 +6,18 @@
     name: "Shadow Sky",
     pp: 100,
     priority: 0,
-    flags: { contact: 0, protect: 1, mirror: 0, metronome: 0, snatch: 0, reflectable: 0 },
+    flags: {
+        contact: 0,
+        protect: 1,
+        mirror: 0,
+        metronome: 0,
+        snatch: 0,
+        reflectable: 0
+    },
     weather: "shadowyaura",
     target: "all",
     type: "Shadow",
-    zMove: { boost: { spe: 1 } },
+    zMove: {boost: {spe: 1}},
     contestType: "Tough",
     isNonstandard: "Custom",
 })

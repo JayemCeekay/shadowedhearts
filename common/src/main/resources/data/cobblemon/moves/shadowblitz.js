@@ -6,14 +6,14 @@
     name: "Shadow Blitz",
     pp: 100,
     priority: 0,
-    flags: { contact: 1, protect: 1, mirror: 0, metronome: 0, snatch: 0 },
+    flags: {contact: 1, protect: 1, mirror: 0, metronome: 0, snatch: 0},
     secondary: {
         kingsrock: true
     },
     target: "normal",
     type: "Shadow",
-    zMove: { basePower: 100 },
-    maxMove: { basePower: 90 },
+    zMove: {basePower: 100},
+    maxMove: {basePower: 90},
     contestType: "Tough",
     isNonstandard: "Custom"
 })

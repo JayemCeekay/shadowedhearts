@@ -18,7 +18,7 @@
     },
     target: "allAdjacentFoes",
     type: "Shadow",
-    zMove: { boost: { spa: 1 } },
+    zMove: {boost: {spa: 1}},
     contestType: "Tough",
     isNonstandard: "Custom",
     onHit(target, source, move) {
