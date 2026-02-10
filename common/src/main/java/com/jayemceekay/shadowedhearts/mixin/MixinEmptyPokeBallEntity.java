@@ -123,9 +123,7 @@ public abstract class MixinEmptyPokeBallEntity extends ThrowableItemProjectile {
                                     com.jayemceekay.shadowedhearts.network.ShadowedHeartsNetwork.sendToPlayer(sp, new com.jayemceekay.shadowedhearts.network.SnagArmedPacket(false));
                                 }
                             }
-                            throwerActor.getActivePokemon().forEach(activeBattlePokemon -> {
-                                throwerActor.forceChoose(PassActionResponse.INSTANCE);
-                            });
+                            throwerActor.forceChoose(PassActionResponse.INSTANCE);
                         } else if (pokemonEntity.isBusy()) {
                             owner.sendSystemMessage(lang("capture.busy", pokemonEntity.getExposedSpecies().getTranslatedName().withStyle(ChatFormatting.RED)));
                             drop();
