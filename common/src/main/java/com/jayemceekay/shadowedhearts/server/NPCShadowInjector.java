@@ -5,6 +5,7 @@ import com.cobblemon.mod.common.api.battles.model.actor.BattleActor;
 import com.cobblemon.mod.common.api.battles.model.actor.EntityBackedBattleActor;
 import com.cobblemon.mod.common.api.events.CobblemonEvents;
 import com.cobblemon.mod.common.api.events.battles.BattleStartedEvent;
+import com.cobblemon.mod.common.api.moves.BenchedMove;
 import com.cobblemon.mod.common.api.moves.Moves;
 import com.cobblemon.mod.common.api.pokemon.PokemonProperties;
 import com.cobblemon.mod.common.api.pokemon.evolution.PreEvolution;
@@ -13,10 +14,7 @@ import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
 import com.cobblemon.mod.common.pokemon.Pokemon;
 import com.cobblemon.mod.common.pokemon.properties.UncatchableProperty;
 import com.cobblemon.mod.common.pokemon.requirements.LevelRequirement;
-import com.jayemceekay.shadowedhearts.AspectHolder;
-import com.jayemceekay.shadowedhearts.PokemonAspectUtil;
-import com.jayemceekay.shadowedhearts.SHAspects;
-import com.jayemceekay.shadowedhearts.Shadowedhearts;
+import com.jayemceekay.shadowedhearts.*;
 import com.jayemceekay.shadowedhearts.config.ModConfig;
 import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs;
 import com.jayemceekay.shadowedhearts.data.ShadowAspectPresets;
@@ -93,10 +91,17 @@ public final class NPCShadowInjector {
                             allTraits.addAll(holder.shadowedhearts$getAspects());
                         }
 
-                        if (!allTraits.contains(TAG_ENABLE)) return; // opt-in per NPC instance
+                        if (!allTraits.contains(TAG_ENABLE)) {
+                            // Even if not a shadow party, we must ensure any existing shadow mons are properly initialized
+                            refreshExistingShadows(ba.getPokemonList(), makeRng(entity, battleSalt));
+                            return;
+                        }
 
                         final int count = readCountFromTags(allTraits);
-                        if (count <= 0) return;
+                        if (count <= 0) {
+                            refreshExistingShadows(ba.getPokemonList(), makeRng(entity, battleSalt));
+                            return;
+                        }
 
                         final Mode mode = readMode(allTraits);
                         final LevelPolicy lvl = readLevelPolicy(allTraits, ba);
@@ -105,13 +110,13 @@ public final class NPCShadowInjector {
                         final int convertChance = readConvertChance(allTraits);
                         final boolean enforceMinEvo = allTraits.contains(TAG_LVL_ENFORCE_EVO_MIN);
 
-                        Shadowedhearts.LOGGER.info("Processing actor: " + ba.getName().getString() + " | Mode: " + mode + " | Count: " + count + " | Unique: " + unique);
-
                         switch (mode) {
                             case CONVERT -> convertExistingToShadow(ba.getPokemonList(), count, convertChance, makeRng(entity, battleSalt));
                             case APPEND -> appendShadowPokemon(ba, entity, count, lvl, poolId, unique, enforceMinEvo, battleSalt);
                             case REPLACE -> replaceWithShadowPokemon(ba, entity, count, lvl, poolId, unique, enforceMinEvo, battleSalt);
                         }
+                        // After mode-specific logic, ensure ALL shadow mons (newly injected or pre-existing) are refreshed
+                        refreshExistingShadows(ba.getPokemonList(), makeRng(entity, battleSalt));
                     }
                 });
             } catch (Throwable ignored) {
@@ -187,6 +192,21 @@ public final class NPCShadowInjector {
                 }
             }
         } catch (Throwable ignored) {
+        }
+    }
+
+    private static void refreshExistingShadows(List<BattlePokemon> list, Random rng) {
+        if (list.isEmpty()) return;
+        for (BattlePokemon bp : list) {
+            if (bp == null) continue;
+            Pokemon p = bp.getEffectedPokemon();
+            if (p == null) continue;
+            if (p.getAspects().contains(SHAspects.SHADOW)) {
+                forceShadow(p);
+                p.setOriginalTrainer("?????");
+                PokemonAspectUtil.ensureRequiredShadowAspects(p);
+                assignShadowMoves(p, rng);
+            }
         }
     }
 
@@ -578,22 +598,82 @@ public final class NPCShadowInjector {
     // === Shadow move assignment for converted Pokémon (convert mode) ===
     private static void assignShadowMoves(Pokemon pokemon, Random rng) {
         if (pokemon == null) return;
-        if (ShadowedHeartsConfigs.getInstance().getShadowConfig().shadowMovesOnlyShadowRush()) {
-            var tmpl = Moves.INSTANCE.getByNameOrDummy("shadowrush");
-            pokemon.getMoveSet().setMove(0, tmpl.create(tmpl.getPp(), 0));
-            return;
-        }
 
         Random r = (rng == null ? new Random() : rng);
         int count = ModConfig.resolveReplaceCount(r);
         List<String> pool = new ArrayList<>(Arrays.asList(SHADOW_IDS));
 
-        for (int i = 0; i < Math.min(count, 4); i++) {
-            String moveId = (i == 0) ? pickDamageShadow(pool, null, r) : pickShadow(pool, null, r);
-            if (moveId != null) {
-                var tmpl = Moves.INSTANCE.getByNameOrDummy(moveId);
-                pokemon.getMoveSet().setMove(i, tmpl.create(tmpl.getPp(), 0));
-                pool.remove(moveId);
+        if (ShadowedHeartsConfigs.getInstance().getShadowConfig().shadowMovesOnlyShadowRush()) {
+            count = 1;
+            pool = List.of("shadowrush");
+        }
+
+        var moveSet = pokemon.getMoveSet();
+        List<Integer> shadowMoveSlots = new ArrayList<>();
+        List<Integer> nonShadowMoveSlots = new ArrayList<>();
+
+        for (int i = 0; i < 4; i++) {
+            var move = moveSet.get(i);
+            if (move != null) {
+                if (ShadowGate.isShadowMoveId(move.getTemplate().getName())) {
+                    shadowMoveSlots.add(i);
+                } else {
+                    nonShadowMoveSlots.add(i);
+                }
+            } else {
+                nonShadowMoveSlots.add(i);
+            }
+        }
+
+        // 1. If we already have enough shadow moves, we're done.
+        if (shadowMoveSlots.size() >= count) {
+            return;
+        }
+
+        // 2. Try to pull shadow moves from the bench
+        var benchedMoves = pokemon.getBenchedMoves();
+        List<BenchedMove> benchedShadowMoves = new ArrayList<>();
+        for (var bm : benchedMoves) {
+            if (ShadowGate.isShadowMoveId(bm.getMoveTemplate().getName())) {
+                benchedShadowMoves.add(bm);
+            }
+        }
+
+        int needed = count - shadowMoveSlots.size();
+        for (var bsm : benchedShadowMoves) {
+            if (needed <= 0) break;
+            if (nonShadowMoveSlots.isEmpty()) break;
+
+            int slotToOverwrite = nonShadowMoveSlots.remove(0);
+            var template = bsm.getMoveTemplate();
+            moveSet.setMove(slotToOverwrite, template.create(template.getPp(), bsm.getPpRaisedStages()));
+            pokemon.getBenchedMoves().remove(template);
+            shadowMoveSlots.add(slotToOverwrite);
+            needed--;
+        }
+
+        // 3. Inject new shadow moves if still needed
+        if (needed > 0) {
+            // Remove already present shadow moves from pool to avoid duplicates
+            for (int slot : shadowMoveSlots) {
+                var move = moveSet.get(slot);
+                if (move != null) {
+                    pool.remove(move.getTemplate().getName().toLowerCase(Locale.ROOT));
+                }
+            }
+
+            for (int i = 0; i < needed; i++) {
+                if (nonShadowMoveSlots.isEmpty()) break;
+                if (pool.isEmpty()) break;
+
+                String moveId = (shadowMoveSlots.isEmpty()) ? pickDamageShadow(pool, null, r) : pickShadow(pool, null, r);
+                if (moveId != null) {
+                    var tmpl = Moves.INSTANCE.getByNameOrDummy(moveId);
+                    int slotToOverwrite = nonShadowMoveSlots.remove(0);
+                    moveSet.setMove(slotToOverwrite, tmpl.create(tmpl.getPp(), 0));
+                    pool.remove(moveId);
+                    shadowMoveSlots.add(slotToOverwrite);
+                }
             }
         }
     }
