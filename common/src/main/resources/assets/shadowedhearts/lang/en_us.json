@@ -58,6 +58,10 @@
 
   "shadowedhearts.ui.stats.heart_gauge": "Heart Gauge",
 
+  "shadowedhearts.mark.ribbon_event_purity": "Purity Ribbon",
+  "shadowedhearts.mark.ribbon_event_purity.title": "%s the Pure",
+  "shadowedhearts.mark.ribbon_event_purity.desc": "A ribbon that shows immunity to becoming a Shadow Pokémon.",
+
   "cobblemon.move.shadowblast": "Shadow Blast",
   "cobblemon.move.shadowblast.desc": "A wicked blade of air is formed using a shadowy aura.",
   "cobblemon.move.shadowblitz": "Shadow Blitz",

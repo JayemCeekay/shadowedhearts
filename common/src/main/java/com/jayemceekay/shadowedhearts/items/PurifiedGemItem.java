@@ -1,10 +1,15 @@
 package com.jayemceekay.shadowedhearts.items;
 
+import com.cobblemon.mod.common.api.mark.Mark;
+import com.cobblemon.mod.common.api.mark.Marks;
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
+import com.cobblemon.mod.common.net.messages.client.pokemon.update.MarkAddUpdatePacket;
 import com.cobblemon.mod.common.pokemon.Pokemon;
 import com.jayemceekay.shadowedhearts.PokemonAspectUtil;
+import com.jayemceekay.shadowedhearts.Shadowedhearts;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.LivingEntity;
@@ -47,7 +52,13 @@ public class PurifiedGemItem extends Item {
         // Immunize
         PokemonAspectUtil.setImmunizedProperty(pokemon, true);
         player.displayClientMessage(Component.translatable("message.shadowedhearts.purified_gem.immunized", pokemon.getDisplayName(false).getString()).withStyle(ChatFormatting.GREEN), true);
-
+        Mark purityRibbon = Marks.getByIdentifier(ResourceLocation.fromNamespaceAndPath(Shadowedhearts.MOD_ID, "ribbon_event_purity"));
+        try {
+            pokemon.exchangeMark(purityRibbon, true);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        pokemon.onChange(new MarkAddUpdatePacket(() -> pokemon, purityRibbon));
         // Consume item
         if (!player.getAbilities().instabuild) {
             stack.shrink(1);
