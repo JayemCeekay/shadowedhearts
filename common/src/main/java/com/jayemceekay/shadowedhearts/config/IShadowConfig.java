@@ -30,7 +30,7 @@ public interface IShadowConfig extends IModConfig {
     default boolean shadowMovesOnlyShadowRush() { return false; }
 
     // Shadow Stat Changes
-    default String shadowIVMode() { return "SCALED"; }
+    default String shadowIVMode() { return "FIXED"; }
     default int shadowFixedPerfectIVs() { return 3; }
     default int shadowMaxPerfectIVs() { return 5; }
 
@@ -51,7 +51,7 @@ public interface IShadowConfig extends IModConfig {
     // Aura Scanner
     default int auraScannerShadowRange() { return 64; }
     default int auraScannerMeteoroidRange() { return 128; }
-    default boolean auraReaderRequiredForAura() { return false; }
+    default boolean auraReaderRequiredForAura() { return true; }
 
     // Heart Gauge
     default List<? extends String> heartGaugeMaxOverrides() { return List.of(); }
