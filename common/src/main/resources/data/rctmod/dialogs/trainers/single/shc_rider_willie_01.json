@@ -1,7 +1,0 @@
-{
-  "on_battle_start": [
-    {
-      "literal": "Test"
-    }
-  ]
-}

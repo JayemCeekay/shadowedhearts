@@ -1,5 +1,5 @@
 {
-  "identity": "shc_shadyguy_folly_01",
+  "identity": "shc_miror_b_peon_trudly_01",
   "battleFormat": "GEN_9_DOUBLES",
   "battleRules": {
     "maxItemUses": -1,
@@ -8,7 +8,7 @@
     "adjustNPCLevels": false
   },
   "name": {
-    "literal": "Shady Guy Folly"
+    "literal": "Miror B. Peon Trudly"
   },
   "ai": {
     "type": "rct",
@@ -23,13 +23,13 @@
   "bag": [],
   "team": [
     {
-      "species": "cobblemon:whismur",
-      "gender": "FEMALE",
-      "level": 24,
-      "ability": "soundproof",
+      "species": "cobblemon:duskull",
+      "gender": "MALE",
+      "level": 25,
+      "ability": "levitate",
       "moveset": [
-        "pound",
-        "uproar"
+        "leer",
+        "nightshade"
       ],
       "evs": {
         "hp": 0,
@@ -50,13 +50,13 @@
       }
     },
     {
-      "species": "cobblemon:whismur",
-      "gender": "MALE",
+      "species": "cobblemon:spinarak",
+      "gender": "FEMALE",
       "level": 25,
-      "ability": "soundproof",
+      "ability": "insomnia",
       "moveset": [
-        "pound",
-        "howl"
+        "stringshot",
+        "constrict"
       ],
       "evs": {
         "hp": 0,
@@ -70,6 +70,35 @@
       "heldItem": [],
       "aspects": [
         ""
+      ],
+      "gimmicks": {
+        "dynamax": false,
+        "gmax": false
+      }
+    },
+    {
+      "species": "cobblemon:makuhita",
+      "gender": "GENDERLESS",
+      "level": 30,
+      "ability": "thick_fat",
+      "moveset": [
+        "shadowrush",
+        "vitalthrow",
+        "crosschop",
+        "focusenergy"
+      ],
+      "evs": {
+        "hp": 0,
+        "atk": 0,
+        "def": 0,
+        "spa": 0,
+        "spd": 0,
+        "spe": 0
+      },
+      "shiny": false,
+      "heldItem": [],
+      "aspects": [
+        "shadowedhearts:shadow"
       ],
       "gimmicks": {
         "dynamax": false,

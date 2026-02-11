@@ -6,6 +6,6 @@
     "translatable": "series.rctmod.colosseum.description"
   },
   "difficulty": 5,
-  "initialLevelCap": 26,
+  "initialLevelCap": 30,
   "requiredSeries": []
 }

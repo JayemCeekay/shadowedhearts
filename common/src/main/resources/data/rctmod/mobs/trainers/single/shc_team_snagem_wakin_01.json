@@ -17,5 +17,7 @@
   "spawnWeightFactor": 1.0,
   "biomeTagBlacklist": [],
   "biomeTagWhitelist": [],
-  "forceBattleOnSight": true
+  "forceBattleOnSight": true,
+  "forceBattleMaxDistance": 8.0,
+  "forceBattleLookTicks": 40
 }
