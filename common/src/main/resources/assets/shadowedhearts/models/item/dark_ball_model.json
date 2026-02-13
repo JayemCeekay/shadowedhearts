@@ -1,0 +1,6 @@
+{
+  "parent": "cobblemon:item/dark_ball_model",
+  "textures": {
+    "layer0": "shadowedhearts:item/poke_balls/models/dark_ball"
+  }
+}

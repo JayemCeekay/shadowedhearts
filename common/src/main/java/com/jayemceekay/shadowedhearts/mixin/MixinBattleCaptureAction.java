@@ -4,6 +4,7 @@ import com.cobblemon.mod.common.api.battles.model.actor.BattleActor;
 import com.cobblemon.mod.common.battles.BattleCaptureAction;
 import com.cobblemon.mod.common.battles.PassActionResponse;
 import com.jayemceekay.shadowedhearts.SHAspects;
+import com.jayemceekay.shadowedhearts.integration.mega_showdown.MegaShowdownBridgeHolder;
 import kotlin.Unit;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -17,6 +18,7 @@ public class MixinBattleCaptureAction {
     private static void shadowedhearts$attachLambda5Head(BattleCaptureAction this$0, Boolean successful, CallbackInfoReturnable<Unit> cir) {
         if (successful) {
             if (this$0.getTargetPokemon().getBattlePokemon().getEffectedPokemon().getAspects().contains(SHAspects.SHADOW)) {
+                MegaShowdownBridgeHolder.INSTANCE.revertMegaShowdownAspects(this$0.getTargetPokemon().getBattlePokemon().getEffectedPokemon());
                 BattleActor npcActor = this$0.getTargetPokemon().getActor();
                 int capturedIndex = this$0.getTargetPokemon().getDigit(true) - 1;
                 npcActor.getResponses().set(capturedIndex, PassActionResponse.INSTANCE);

@@ -26,6 +26,7 @@
   "item.shadowedhearts.purified_gem": "Purified Gem",
   "item.shadowedhearts.shadowium_z": "Shadowium-Z",
   "item.shadowedhearts.aura_reader": "Aura Reader",
+  "item.shadowedhearts.dark_ball": "Dark Ball",
   "item.shadowedhearts.aura_reader.tooltip": "A device that detects and tracks shadow signatures in the environment.",
   "tooltip.shadowedhearts.shadowium_z.tooltip": "Z-Crystal associated with the Shadow type and allows Pokémon to upgrade their Shadow-type moves to Z-moves",
   "tooltip.shadowedhearts.aura_reader.charge": "Charge: %d / %d",

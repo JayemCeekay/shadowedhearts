@@ -1,5 +1,7 @@
 package com.jayemceekay.shadowedhearts.core;
 
+import com.cobblemon.mod.common.api.pokeball.PokeBalls;
+import com.cobblemon.mod.common.item.PokeBallItem;
 import com.jayemceekay.shadowedhearts.Shadowedhearts;
 import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs;
 import com.jayemceekay.shadowedhearts.integration.mega_showdown.MegaShowdownBridgeHolder;
@@ -10,6 +12,7 @@ import com.jayemceekay.shadowedhearts.items.SnagMachineItem;
 import dev.architectury.registry.registries.DeferredRegister;
 import dev.architectury.registry.registries.RegistrySupplier;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 
@@ -116,6 +119,19 @@ public final class ModItems {
     public static final RegistrySupplier<Item> AURA_READER = ITEMS.register(
             "aura_reader",
             () -> new AuraReaderItem(new Item.Properties().arch$tab(ModCreativeTabs.SHADOWED_HEARTS_TAB).stacksTo(1)));
+
+    public static final RegistrySupplier<Item> DARK_BALL = ITEMS.register(
+            "dark_ball",
+            () -> {
+                var id = ResourceLocation.fromNamespaceAndPath("cobblemon", "dark_ball");
+                var pb = PokeBalls.getPokeBall(id);
+                if (pb == null) {
+                    throw new IllegalStateException("PokeBall 'cobblemon:dark_ball' was not registered (mixin failed?).");
+                }
+                PokeBallItem item = new PokeBallItem(pb);
+                pb.item = item;
+                return item;
+            });
 
     public static void init() {
         ITEMS.register();

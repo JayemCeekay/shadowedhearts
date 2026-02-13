@@ -62,6 +62,7 @@
     "cobblemonpartyextras.MixinCobblemonPartyExtrasMoveTooltipBuilder",
     "cobblemonpartyextras.MixinCobblemonPartyExtrasMoveTooltipHelper",
     "cobblemonpartyextras.MixinCobblemonPartyExtrasNatureTooltipBuilder",
+    "pokeball.MixinPokeBalls",
     "rctmod.MixinRCTModMakeBattle",
     "simpletms.MixinPokemonSelectingItemNonBattle"
   ],

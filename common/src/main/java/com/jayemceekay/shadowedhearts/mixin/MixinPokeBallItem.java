@@ -1,10 +1,13 @@
 package com.jayemceekay.shadowedhearts.mixin;
 
 import com.cobblemon.mod.common.item.PokeBallItem;
+import com.cobblemon.mod.common.pokeball.PokeBall;
 import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs;
+import com.jayemceekay.shadowedhearts.core.ModCreativeTabs;
 import com.jayemceekay.shadowedhearts.network.ShadowedHeartsNetwork;
 import com.jayemceekay.shadowedhearts.network.SnagArmedPacket;
 import com.jayemceekay.shadowedhearts.snag.SnagCaps;
+import dev.architectury.registry.CreativeTabRegistry;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.Level;
 import org.spongepowered.asm.mixin.Mixin;
@@ -17,6 +20,13 @@ import java.util.Set;
 
 @Mixin(PokeBallItem.class)
 public class MixinPokeBallItem {
+
+    @Inject(method = "<init>(Lcom/cobblemon/mod/common/pokeball/PokeBall;)V", at = @At("TAIL"))
+    private void shadowedhearts$addTabToDarkBall(PokeBall pokeBall, CallbackInfo ci) {
+        if (pokeBall.getName().getPath().equals("dark_ball")) {
+            CreativeTabRegistry.append(ModCreativeTabs.SHADOWED_HEARTS_TAB, (PokeBallItem) (Object) this);
+        }
+    }
 
     @Inject(method = "throwPokeBall", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/level/Level;addFreshEntity(Lnet/minecraft/world/entity/Entity;)Z"), locals = org.spongepowered.asm.mixin.injection.callback.LocalCapture.CAPTURE_FAILHARD)
     public void shadowedhearts$throwSnagBall(Level world, ServerPlayer player, CallbackInfo ci, com.cobblemon.mod.common.entity.pokeball.EmptyPokeBallEntity pokeBallEntity) {
