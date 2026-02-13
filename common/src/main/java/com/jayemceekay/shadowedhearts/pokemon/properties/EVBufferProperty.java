@@ -2,7 +2,7 @@ package com.jayemceekay.shadowedhearts.pokemon.properties;
 
 import com.cobblemon.mod.common.api.properties.CustomPokemonProperty;
 import com.cobblemon.mod.common.pokemon.Pokemon;
-import com.jayemceekay.shadowedhearts.PokemonAspectUtil;
+import com.jayemceekay.shadowedhearts.ShadowAspectUtil;
 
 import java.util.Arrays;
 import java.util.stream.Collectors;
@@ -28,7 +28,7 @@ public class EVBufferProperty implements CustomPokemonProperty {
 
     @Override
     public void apply(Pokemon pokemon) {
-        PokemonAspectUtil.setEVBufferProperty(pokemon, values);
+        ShadowAspectUtil.setEVBufferProperty(pokemon, values);
     }
 
     @Override

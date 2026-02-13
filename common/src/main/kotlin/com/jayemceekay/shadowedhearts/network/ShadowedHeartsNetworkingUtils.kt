@@ -1,7 +1,7 @@
 package com.jayemceekay.shadowedhearts.network
 
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
-import com.jayemceekay.shadowedhearts.PokemonAspectUtil
+import com.jayemceekay.shadowedhearts.ShadowAspectUtil
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.server.level.ServerLevel
 import net.minecraft.sounds.SoundSource
@@ -18,7 +18,7 @@ object ShadowedHeartsNetworkingUtils {
                 entity.knownMovement.x, entity.knownMovement.y, entity.knownMovement.z,
                 entity.bbWidth, entity.bbHeight, entity.boundingBox.size,
                 tick,
-                PokemonAspectUtil.getHeartGauge(entity.pokemon)
+                ShadowAspectUtil.getHeartGauge(entity.pokemon)
             )
             val level = entity.level() as ServerLevel
             for (sp in level.players()) {
@@ -36,7 +36,7 @@ object ShadowedHeartsNetworkingUtils {
                 entity.x, entity.y, entity.z,
                 entity.knownMovement.x, entity.knownMovement.y, entity.knownMovement.z,
                 entity.bbWidth, entity.bbHeight, entity.boundingBox.size,
-                PokemonAspectUtil.getHeartGauge(entity.pokemon),
+                ShadowAspectUtil.getHeartGauge(entity.pokemon),
                 heightMultiplier,
                 sustainOverride
             )
@@ -70,7 +70,7 @@ object ShadowedHeartsNetworkingUtils {
                 entity.x, entity.y, entity.z,
                 entity.knownMovement.x, entity.knownMovement.y, entity.knownMovement.z,
                 entity.bbWidth, entity.bbHeight, entity.boundingBox.size,
-                PokemonAspectUtil.getHeartGauge(entity.pokemon)
+                ShadowAspectUtil.getHeartGauge(entity.pokemon)
             )
             if (entity.level() is ServerLevel) {
                 val level = entity.level() as ServerLevel

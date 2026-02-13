@@ -3,8 +3,8 @@ package com.jayemceekay.shadowedhearts.mixin;
 import com.cobblemon.mod.common.battles.BattleRegistry;
 import com.cobblemon.mod.common.battles.pokemon.BattlePokemon;
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
-import com.jayemceekay.shadowedhearts.PokemonAspectUtil;
 import com.jayemceekay.shadowedhearts.SHAspects;
+import com.jayemceekay.shadowedhearts.ShadowAspectUtil;
 import com.llamalad7.mixinextras.sugar.Local;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -30,7 +30,7 @@ public class MixinBattleRegistry {
             // Try to compute heart gauge bars from the live entity if present
             PokemonEntity entity = pokemon.getEntity();
             if (entity != null) {
-                heartGaugeBars = PokemonAspectUtil.getBarsRemaining(entity.getPokemon());
+                heartGaugeBars = ShadowAspectUtil.getBarsRemaining(entity.getPokemon());
             } else {
                 // Fallback sensible default: fully closed if shadow, 0 otherwise
                 heartGaugeBars = isShadow ? 5 : 0;

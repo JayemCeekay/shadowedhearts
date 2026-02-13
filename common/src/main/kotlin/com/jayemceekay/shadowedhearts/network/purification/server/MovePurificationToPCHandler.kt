@@ -2,7 +2,7 @@ package com.jayemceekay.shadowedhearts.network.purification.server
 
 import com.cobblemon.mod.common.Cobblemon
 import com.cobblemon.mod.common.api.net.ServerNetworkPacketHandler
-import com.jayemceekay.shadowedhearts.PokemonAspectUtil
+import com.jayemceekay.shadowedhearts.ShadowAspectUtil
 import com.jayemceekay.shadowedhearts.network.purification.MovePurificationToPCPacket
 import com.jayemceekay.shadowedhearts.storage.purification.PurificationChamberPosition
 import com.jayemceekay.shadowedhearts.storage.purification.PurificationChamberStore
@@ -39,7 +39,7 @@ object MovePurificationToPCHandler : ServerNetworkPacketHandler<MovePurification
             pc[packet.pcPosition] = fromMon
         } else {
             // Swap if compatible with the source slot type
-            val destIsShadow = PokemonAspectUtil.hasShadowAspect(destMon)
+            val destIsShadow = ShadowAspectUtil.hasShadowAspect(destMon)
             if (from.isShadow == destIsShadow) {
                 // Place the destination mon into Purification FIRST so removal of the existing occupant (fromMon) succeeds
                 purification[from] = destMon

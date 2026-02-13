@@ -5,7 +5,7 @@ import com.cobblemon.mod.common.client.storage.ClientBox;
 import com.cobblemon.mod.common.client.storage.ClientPC;
 import com.cobblemon.mod.common.client.storage.ClientParty;
 import com.cobblemon.mod.common.pokemon.Pokemon;
-import com.jayemceekay.shadowedhearts.PokemonAspectUtil;
+import com.jayemceekay.shadowedhearts.ShadowAspectUtil;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -26,12 +26,12 @@ public abstract class MixinPCGUIEnsure {
             ClientPC pc = self.getPc();
             // Validate party slots
             for (Pokemon p : party.getSlots()) {
-                if (p != null) PokemonAspectUtil.ensureRequiredShadowAspects(p);
+                if (p != null) ShadowAspectUtil.ensureRequiredShadowAspects(p);
             }
             // Validate all PC boxes (safe, idempotent; ensures visible ones are covered)
             for (ClientBox box : pc.getBoxes()) {
                 for (Pokemon p : box.getSlots()) {
-                    if (p != null) PokemonAspectUtil.ensureRequiredShadowAspects(p);
+                    if (p != null) ShadowAspectUtil.ensureRequiredShadowAspects(p);
                 }
             }
         } catch (Throwable ignored) {

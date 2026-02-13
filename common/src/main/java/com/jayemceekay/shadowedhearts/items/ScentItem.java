@@ -4,7 +4,7 @@ import com.cobblemon.mod.common.api.pokemon.Natures;
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
 import com.cobblemon.mod.common.pokemon.Nature;
 import com.cobblemon.mod.common.pokemon.Pokemon;
-import com.jayemceekay.shadowedhearts.PokemonAspectUtil;
+import com.jayemceekay.shadowedhearts.ShadowAspectUtil;
 import com.jayemceekay.shadowedhearts.ShadowService;
 import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs;
 import com.jayemceekay.shadowedhearts.core.ModItems;
@@ -185,11 +185,11 @@ public class ScentItem extends Item {
         if (!(target instanceof PokemonEntity pe)) return InteractionResult.PASS;
         Pokemon pokemon = pe.getPokemon();
         if (pokemon == null) return InteractionResult.PASS;
-        if (!PokemonAspectUtil.hasShadowAspect(pokemon)) return InteractionResult.PASS;
+        if (!ShadowAspectUtil.hasShadowAspect(pokemon)) return InteractionResult.PASS;
 
         // Check cooldown
         long now = level.getGameTime(); // using game time ticks
-        long lastUse = PokemonAspectUtil.getScentCooldown(pokemon);
+        long lastUse = ShadowAspectUtil.getScentCooldown(pokemon);
         int cooldownTicks = ShadowedHeartsConfigs.getInstance().getShadowConfig().scentCooldownSeconds() * 20;
 
         if (now - lastUse < cooldownTicks) {
@@ -220,12 +220,12 @@ public class ScentItem extends Item {
         }
 
         int delta = (int) (base * finalMultiplier); // base is negative to open heart
-        int current = PokemonAspectUtil.getHeartGaugeMeter(pokemon);
+        int current = ShadowAspectUtil.getHeartGaugeMeter(pokemon);
         int next = current + delta; // delta negative => reduces meter
         ShadowService.setHeartGauge(pokemon, pe, next);
 
         // Update cooldown
-        PokemonAspectUtil.setScentCooldown(pokemon, now);
+        ShadowAspectUtil.setScentCooldown(pokemon, now);
 
         // Consume one scent
         if (!player.getAbilities().instabuild) {

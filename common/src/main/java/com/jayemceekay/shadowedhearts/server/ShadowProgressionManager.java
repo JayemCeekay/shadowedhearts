@@ -6,7 +6,7 @@ import com.cobblemon.mod.common.api.events.pokemon.EvGainedEvent;
 import com.cobblemon.mod.common.api.events.pokemon.ExperienceGainedEvent;
 import com.cobblemon.mod.common.api.events.pokemon.interaction.ExperienceCandyUseEvent;
 import com.cobblemon.mod.common.pokemon.Pokemon;
-import com.jayemceekay.shadowedhearts.PokemonAspectUtil;
+import com.jayemceekay.shadowedhearts.ShadowAspectUtil;
 import kotlin.Unit;
 
 /**
@@ -20,9 +20,9 @@ public final class ShadowProgressionManager {
         CobblemonEvents.EXPERIENCE_GAINED_EVENT_PRE.subscribe(Priority.NORMAL, (ExperienceGainedEvent.Pre e) -> {
             Pokemon p = e.getPokemon();
             if (p == null) return Unit.INSTANCE;
-            if (PokemonAspectUtil.hasShadowAspect(p)) {
+            if (ShadowAspectUtil.hasShadowAspect(p)) {
                 int xp = e.getExperience();
-                if (xp > 0) PokemonAspectUtil.addBufferedExp(p, xp);
+                if (xp > 0) ShadowAspectUtil.addBufferedExp(p, xp);
                 e.cancel();
             }
             return Unit.INSTANCE;
@@ -32,9 +32,9 @@ public final class ShadowProgressionManager {
         CobblemonEvents.EXPERIENCE_CANDY_USE_PRE.subscribe(Priority.NORMAL, (ExperienceCandyUseEvent.Pre e) -> {
             Pokemon p = e.getPokemon();
             if (p == null) return Unit.INSTANCE;
-            if (PokemonAspectUtil.hasShadowAspect(p)) {
+            if (ShadowAspectUtil.hasShadowAspect(p)) {
                 int yield = Math.max(0, e.getExperienceYield());
-                if (yield > 0) PokemonAspectUtil.addBufferedExp(p, yield);
+                if (yield > 0) ShadowAspectUtil.addBufferedExp(p, yield);
                 e.cancel();
             }
             return Unit.INSTANCE;
@@ -44,9 +44,9 @@ public final class ShadowProgressionManager {
         CobblemonEvents.EV_GAINED_EVENT_PRE.subscribe(Priority.NORMAL, (EvGainedEvent.Pre e) -> {
             Pokemon p = e.getPokemon();
             if (p == null) return Unit.INSTANCE;
-            if (PokemonAspectUtil.hasShadowAspect(p)) {
+            if (ShadowAspectUtil.hasShadowAspect(p)) {
                 int amt = e.getAmount();
-                if (amt > 0) PokemonAspectUtil.addBufferedEv(p, e.getStat(), amt);
+                if (amt > 0) ShadowAspectUtil.addBufferedEv(p, e.getStat(), amt);
                 e.cancel();
             }
             return Unit.INSTANCE;

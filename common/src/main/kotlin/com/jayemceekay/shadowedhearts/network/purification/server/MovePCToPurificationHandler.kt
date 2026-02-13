@@ -3,7 +3,7 @@ package com.jayemceekay.shadowedhearts.network.purification.server
 import com.cobblemon.mod.common.Cobblemon
 import com.cobblemon.mod.common.api.net.ServerNetworkPacketHandler
 import com.cobblemon.mod.common.api.storage.pc.PCPosition
-import com.jayemceekay.shadowedhearts.PokemonAspectUtil
+import com.jayemceekay.shadowedhearts.ShadowAspectUtil
 import com.jayemceekay.shadowedhearts.network.purification.MovePCToPurificationPacket
 import com.jayemceekay.shadowedhearts.storage.purification.PurificationChamberPosition
 import com.jayemceekay.shadowedhearts.storage.purification.PurificationChamberStore
@@ -43,7 +43,7 @@ object MovePCToPurificationHandler : ServerNetworkPacketHandler<MovePCToPurifica
         val target = PurificationChamberPosition(setIndex = packet.setIndex, index = if (isShadow) 0 else supportIdx, isShadow = isShadow)
 
         // Validate compatibility BEFORE removing from PC
-        val monIsShadow = PokemonAspectUtil.hasShadowAspect(pokemon)
+        val monIsShadow = ShadowAspectUtil.hasShadowAspect(pokemon)
         if (isShadow && !monIsShadow) {
             return
         }

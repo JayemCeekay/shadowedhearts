@@ -11,7 +11,7 @@ import com.cobblemon.mod.common.client.render.models.blockbench.FloatingState
 import com.cobblemon.mod.common.pokemon.Pokemon
 import com.cobblemon.mod.common.util.cobblemonResource
 import com.cobblemon.mod.common.util.math.fromEulerXYZDegrees
-import com.jayemceekay.shadowedhearts.PokemonAspectUtil
+import com.jayemceekay.shadowedhearts.ShadowAspectUtil
 import com.jayemceekay.shadowedhearts.Shadowedhearts
 import com.jayemceekay.shadowedhearts.client.ModShaders
 import com.jayemceekay.shadowedhearts.client.aura.AuraEmitters
@@ -1123,13 +1123,13 @@ class PurificationStorageWidget(
                         partialTicks = partialTick
                     )
                     matrices.popPose()
-                    if (PokemonAspectUtil.hasShadowAspect(centerPokemon)) {
+                    if (ShadowAspectUtil.hasShadowAspect(centerPokemon)) {
                         AuraEmitters.renderInPurificationGUI(
                             guiGraphics,
                             matrices,
                             Minecraft.getInstance().renderBuffers()
                                 .bufferSource(),
-                            PokemonAspectUtil.getHeartGaugeValue(centerPokemon) / 100.0f,
+                            ShadowAspectUtil.getHeartGaugeValue(centerPokemon) / 100.0f,
                             partialTick,
                             centerPokemon.asRenderablePokemon(),
                             centerModelState,
@@ -1220,13 +1220,13 @@ class PurificationStorageWidget(
                                     mouseY.toFloat() >= hoverY0 && mouseY.toFloat() <= hoverY1
 
                         if (hovered) {
-                            val message = if (PokemonAspectUtil.hasShadowAspect(
+                            val message = if (ShadowAspectUtil.hasShadowAspect(
                                     centerPokemon
                                 )
                             ) {
                                 val value = kotlin.math.max(
                                     0,
-                                    PokemonAspectUtil.getHeartGaugeValue(
+                                    ShadowAspectUtil.getHeartGaugeValue(
                                         centerPokemon
                                     )
                                 )

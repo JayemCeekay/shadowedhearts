@@ -4,7 +4,7 @@ import com.cobblemon.mod.common.api.moves.Move;
 import com.cobblemon.mod.common.client.gui.summary.widgets.screens.moves.MoveSlotWidget;
 import com.cobblemon.mod.common.client.gui.summary.widgets.screens.moves.MovesWidget;
 import com.cobblemon.mod.common.pokemon.Pokemon;
-import com.jayemceekay.shadowedhearts.PokemonAspectUtil;
+import com.jayemceekay.shadowedhearts.ShadowAspectUtil;
 import com.jayemceekay.shadowedhearts.ShadowGate;
 import com.llamalad7.mixinextras.sugar.Local;
 import net.minecraft.network.chat.Component;
@@ -33,7 +33,7 @@ public abstract class MixinMovesWidget {
 
         // Compute this move's index among non-Shadow moves in move order
         int nonShadowIndex = 0;
-        int allowed = PokemonAspectUtil.getAllowedVisibleNonShadowMoves(pokemon);
+        int allowed = ShadowAspectUtil.getAllowedVisibleNonShadowMoves(pokemon);
         for (var mv : pokemon.getMoveSet().getMovesWithNulls()) {
             if (mv == null) continue;
             if (ShadowGate.isShadowMoveId(mv.getName())) continue;

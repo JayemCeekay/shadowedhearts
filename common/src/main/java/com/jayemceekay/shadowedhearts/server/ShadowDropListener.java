@@ -7,7 +7,7 @@ import com.cobblemon.mod.common.api.events.CobblemonEvents;
 import com.cobblemon.mod.common.api.events.battles.BattleVictoryEvent;
 import com.cobblemon.mod.common.battles.actor.PlayerBattleActor;
 import com.cobblemon.mod.common.battles.pokemon.BattlePokemon;
-import com.jayemceekay.shadowedhearts.PokemonAspectUtil;
+import com.jayemceekay.shadowedhearts.ShadowAspectUtil;
 import com.jayemceekay.shadowedhearts.core.ModItems;
 import kotlin.Unit;
 import net.minecraft.server.level.ServerPlayer;
@@ -35,7 +35,7 @@ public final class ShadowDropListener {
                 if (loser.getType() == ActorType.WILD) {
                     for (BattlePokemon bp : loser.getPokemonList()) {
                         if (bp != null && bp.getEffectedPokemon() != null) {
-                            if (PokemonAspectUtil.hasShadowAspect(bp.getEffectedPokemon())) {
+                            if (ShadowAspectUtil.hasShadowAspect(bp.getEffectedPokemon())) {
                                 shadowCount++;
                             }
                         }

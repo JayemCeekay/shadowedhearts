@@ -5,6 +5,7 @@ import com.cobblemon.mod.common.api.battles.model.actor.ActorType;
 import com.cobblemon.mod.common.api.battles.model.actor.BattleActor;
 import com.cobblemon.mod.common.battles.ShowdownActionRequest;
 import com.cobblemon.mod.common.battles.interpreter.instructions.RequestInstruction;
+import com.jayemceekay.shadowedhearts.ShadowAspectUtil;
 import kotlin.Unit;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -51,7 +52,7 @@ public abstract class MixinRequestInstruction {
             var moveset = reqMovesets.get(i);
             if (moveset == null || moveset.getMoves() == null) continue;
 
-            int allowed = com.jayemceekay.shadowedhearts.PokemonAspectUtil.getAllowedVisibleNonShadowMoves(effected);
+            int allowed = ShadowAspectUtil.getAllowedVisibleNonShadowMoves(effected);
             int nonShadowIndex = 0;
 
             for (var m : moveset.getMoves()) {

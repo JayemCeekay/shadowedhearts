@@ -2,7 +2,7 @@ package com.jayemceekay.shadowedhearts.heart;
 
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
 import com.cobblemon.mod.common.pokemon.Pokemon;
-import com.jayemceekay.shadowedhearts.PokemonAspectUtil;
+import com.jayemceekay.shadowedhearts.ShadowAspectUtil;
 import com.jayemceekay.shadowedhearts.ShadowService;
 
 /**
@@ -17,14 +17,14 @@ public final class HeartGaugeEvents {
     }
 
     private static void apply(Pokemon pokemon, PokemonEntity live, int delta, boolean sync) {
-        if (pokemon == null || !PokemonAspectUtil.hasShadowAspect(pokemon)) return;
+        if (pokemon == null || !ShadowAspectUtil.hasShadowAspect(pokemon)) return;
         // Ensure required aspects are present before we modify the gauge
-        PokemonAspectUtil.ensureRequiredShadowAspects(pokemon);
-        int cur = PokemonAspectUtil.getHeartGaugeMeter(pokemon);
+        ShadowAspectUtil.ensureRequiredShadowAspects(pokemon);
+        int cur = ShadowAspectUtil.getHeartGaugeMeter(pokemon);
         int next = cur + delta; // delta negative reduces meter
         ShadowService.setHeartGauge(pokemon, live, next, sync);
         // Post-application validation (idempotent) to keep aspects consistent
-        PokemonAspectUtil.ensureRequiredShadowAspects(pokemon);
+        ShadowAspectUtil.ensureRequiredShadowAspects(pokemon);
     }
 
     public static void onBattleSentOut(PokemonEntity live) {

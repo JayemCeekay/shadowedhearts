@@ -1,7 +1,7 @@
 package com.jayemceekay.shadowedhearts.mixin;
 
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
-import com.jayemceekay.shadowedhearts.PokemonAspectUtil;
+import com.jayemceekay.shadowedhearts.ShadowAspectUtil;
 import com.llamalad7.mixinextras.sugar.Local;
 import net.minecraft.client.renderer.entity.LivingEntityRenderer;
 import net.minecraft.world.entity.LivingEntity;
@@ -45,7 +45,7 @@ public abstract class MixinLivingEntityRenderer<T extends LivingEntity> {
 
     @Unique
     private boolean shadowedhearts$shouldDarken(LivingEntity e) {
-        return e instanceof PokemonEntity pokemonEntity && PokemonAspectUtil.hasShadowAspect(pokemonEntity.getPokemon());
+        return e instanceof PokemonEntity pokemonEntity && ShadowAspectUtil.hasShadowAspect(pokemonEntity.getPokemon());
     }
 
     @Unique

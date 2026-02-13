@@ -5,7 +5,7 @@ import com.cobblemon.mod.common.api.events.CobblemonEvents;
 import com.cobblemon.mod.common.api.events.pokeball.ThrownPokeballHitEvent;
 import com.cobblemon.mod.common.api.events.pokemon.PokemonNicknamedEvent;
 import com.cobblemon.mod.common.pokemon.Pokemon;
-import com.jayemceekay.shadowedhearts.PokemonAspectUtil;
+import com.jayemceekay.shadowedhearts.ShadowAspectUtil;
 import com.jayemceekay.shadowedhearts.mixin.AccessorCancelable;
 
 /**
@@ -22,7 +22,7 @@ public final class ShadowRestrictions {
         CobblemonEvents.EVOLUTION_ACCEPTED.subscribe(Priority.NORMAL, event -> {
             Pokemon pokemon = event.getPokemon();
             if (pokemon == null) return kotlin.Unit.INSTANCE;
-            if (PokemonAspectUtil.hasShadowAspect(pokemon)) {
+            if (ShadowAspectUtil.hasShadowAspect(pokemon)) {
                 event.cancel();
             }
             return kotlin.Unit.INSTANCE;
@@ -32,7 +32,7 @@ public final class ShadowRestrictions {
         CobblemonEvents.POKEMON_NICKNAMED.subscribe(Priority.NORMAL, (PokemonNicknamedEvent e) -> {
             Pokemon pokemon = e.getPokemon();
             if (pokemon == null) return kotlin.Unit.INSTANCE;
-            if (PokemonAspectUtil.hasShadowAspect(pokemon)) {
+            if (ShadowAspectUtil.hasShadowAspect(pokemon)) {
                 e.cancel();
                 // Optionally give feedback to player
                // e.getPlayer().sendSystemMessage(Component.translatable("shadowedhearts.shadow.nickname_blocked"));
@@ -44,7 +44,7 @@ public final class ShadowRestrictions {
         CobblemonEvents.TRADE_EVENT_PRE.subscribe(Priority.NORMAL, pre -> {
             var p1 = pre.getTradeParticipant1Pokemon();
             var p2 = pre.getTradeParticipant2Pokemon();
-            if ((p1 != null && PokemonAspectUtil.hasShadowAspect(p1)) || (p2 != null && PokemonAspectUtil.hasShadowAspect(p2))) {
+            if ((p1 != null && ShadowAspectUtil.hasShadowAspect(p1)) || (p2 != null && ShadowAspectUtil.hasShadowAspect(p2))) {
                 pre.cancel();
             }
             return kotlin.Unit.INSTANCE;
@@ -52,7 +52,7 @@ public final class ShadowRestrictions {
 
         // Uncancel pokeball hit for Shadow Pokemon (overrides TimCore reservation)
         CobblemonEvents.THROWN_POKEBALL_HIT.subscribe(Priority.LOW, (ThrownPokeballHitEvent event) -> {
-            if (event.isCanceled() && PokemonAspectUtil.hasShadowAspect(event.getPokemon().getPokemon())) {
+            if (event.isCanceled() && ShadowAspectUtil.hasShadowAspect(event.getPokemon().getPokemon())) {
                 ((AccessorCancelable) (Object) event).setCanceled(false);
             }
             return kotlin.Unit.INSTANCE;

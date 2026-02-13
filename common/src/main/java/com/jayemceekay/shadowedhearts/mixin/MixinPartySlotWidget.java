@@ -2,7 +2,7 @@ package com.jayemceekay.shadowedhearts.mixin;
 
 import com.cobblemon.mod.common.client.gui.summary.widgets.PartySlotWidget;
 import com.cobblemon.mod.common.pokemon.Pokemon;
-import com.jayemceekay.shadowedhearts.PokemonAspectUtil;
+import com.jayemceekay.shadowedhearts.ShadowAspectUtil;
 import com.jayemceekay.shadowedhearts.Shadowedhearts;
 import com.llamalad7.mixinextras.injector.ModifyReturnValue;
 import com.llamalad7.mixinextras.sugar.Local;
@@ -17,7 +17,7 @@ public class MixinPartySlotWidget {
 
     @ModifyReturnValue(method = "getSlotTexture", at = @At("RETURN"))
     private ResourceLocation shadowedhearts$replaceFrame(ResourceLocation original, @Local(argsOnly = true) Pokemon pokemon) {
-        if(PokemonAspectUtil.hasShadowAspect(pokemon) && !pokemon.isFainted()) {
+        if(ShadowAspectUtil.hasShadowAspect(pokemon) && !pokemon.isFainted()) {
             return SHADOW_FRAME;
         } else {
             return original;

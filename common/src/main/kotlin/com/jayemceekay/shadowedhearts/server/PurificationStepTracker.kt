@@ -5,6 +5,7 @@ import com.cobblemon.mod.common.platform.events.ChangeDimensionEvent
 import com.cobblemon.mod.common.platform.events.PlatformEvents
 import com.cobblemon.mod.common.platform.events.ServerPlayerEvent
 import com.cobblemon.mod.common.platform.events.ServerPlayerTickEvent
+import com.jayemceekay.shadowedhearts.ShadowAspectUtil
 import com.jayemceekay.shadowedhearts.storage.purification.PurificationChamberStore
 import net.minecraft.server.level.ServerPlayer
 import net.minecraft.world.phys.Vec3
@@ -95,7 +96,7 @@ object PurificationStepTracker {
                     // For each completed 256-step block, trigger once per shadow Pokémon in party
                     repeat(intervals) {
                         for (mon in snapshot) {
-                            if (com.jayemceekay.shadowedhearts.PokemonAspectUtil.hasShadowAspect(mon)) {
+                            if (ShadowAspectUtil.hasShadowAspect(mon)) {
                                 // Wire up HeartGaugeEvents.onPartyStep; live entity may be null when in party
                                 com.jayemceekay.shadowedhearts.heart.HeartGaugeEvents.onPartyStep(mon, null)
                             }

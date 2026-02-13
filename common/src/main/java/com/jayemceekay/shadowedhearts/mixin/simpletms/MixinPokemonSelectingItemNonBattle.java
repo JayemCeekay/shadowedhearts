@@ -1,7 +1,7 @@
 package com.jayemceekay.shadowedhearts.mixin.simpletms;
 
 import com.cobblemon.mod.common.pokemon.Pokemon;
-import com.jayemceekay.shadowedhearts.PokemonAspectUtil;
+import com.jayemceekay.shadowedhearts.ShadowAspectUtil;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import dragomordor.simpletms.item.api.PokemonSelectingItemNonBattle;
@@ -20,7 +20,7 @@ public interface MixinPokemonSelectingItemNonBattle {
 
     @WrapOperation(method = "use", at = @At(value = "INVOKE", target = "Ldragomordor/simpletms/item/api/PokemonSelectingItemNonBattle;applyToPokemon(Lnet/minecraft/server/level/ServerPlayer;Lnet/minecraft/world/item/ItemStack;Lcom/cobblemon/mod/common/pokemon/Pokemon;)Lnet/minecraft/world/InteractionResultHolder;"))
     private @Nullable InteractionResultHolder<@NotNull ItemStack> shadowedhearts$preventShadowPokemonUse(PokemonSelectingItemNonBattle instance, @NotNull ServerPlayer serverPlayer, @NotNull ItemStack itemStack, @NotNull Pokemon pokemon, Operation<InteractionResultHolder<ItemStack>> original) {
-        if(PokemonAspectUtil.hasShadowAspect(pokemon)) {
+        if(ShadowAspectUtil.hasShadowAspect(pokemon)) {
             serverPlayer.sendSystemMessage(Component.literal("You cannot use this item on a shadow pokemon!").withStyle(ChatFormatting.RED), true);
             return InteractionResultHolder.fail(itemStack);
         }
@@ -29,7 +29,7 @@ public interface MixinPokemonSelectingItemNonBattle {
 
     @WrapOperation(method = "interactGeneral$lambda$4", at = @At(value = "INVOKE", target = "Ldragomordor/simpletms/item/api/PokemonSelectingItemNonBattle;applyToPokemon(Lnet/minecraft/server/level/ServerPlayer;Lnet/minecraft/world/item/ItemStack;Lcom/cobblemon/mod/common/pokemon/Pokemon;)Lnet/minecraft/world/InteractionResultHolder;"))
     private static InteractionResultHolder<ItemStack> shadowedhearts$preventShadowPokemonInteract(PokemonSelectingItemNonBattle instance, ServerPlayer serverPlayer, ItemStack itemStack, Pokemon pokemon, Operation<InteractionResultHolder<ItemStack>> original) {
-        if(PokemonAspectUtil.hasShadowAspect(pokemon)) {
+        if(ShadowAspectUtil.hasShadowAspect(pokemon)) {
             serverPlayer.sendSystemMessage(Component.literal("You cannot use this item on a shadow pokemon!").withStyle(ChatFormatting.RED), true);
             return InteractionResultHolder.fail(itemStack);
         }

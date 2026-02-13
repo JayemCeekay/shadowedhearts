@@ -3,7 +3,7 @@ package com.jayemceekay.shadowedhearts.server;
 import com.cobblemon.mod.common.Cobblemon;
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
 import com.cobblemon.mod.common.pokemon.Pokemon;
-import com.jayemceekay.shadowedhearts.PokemonAspectUtil;
+import com.jayemceekay.shadowedhearts.ShadowAspectUtil;
 import com.jayemceekay.shadowedhearts.ShadowService;
 import com.jayemceekay.shadowedhearts.config.HeartGaugeConfig;
 import com.jayemceekay.shadowedhearts.config.IWorldAlterationConfig;
@@ -48,29 +48,29 @@ public class ShadowMeteoroidProximityHandler {
         for (net.minecraft.world.entity.Entity e : entities) {
             if (e instanceof PokemonEntity entity && entity.isAlive()) {
                 Pokemon pokemon = entity.getPokemon();
-                if (pokemon != null && !pokemon.isBattleClone() && !PokemonAspectUtil.hasShadowAspect(pokemon) && !ShadowSpawnConfig.isBlacklisted(pokemon) && !PokemonAspectUtil.isImmunized(pokemon)) {
+                if (pokemon != null && !pokemon.isBattleClone() && !ShadowAspectUtil.hasShadowAspect(pokemon) && !ShadowSpawnConfig.isBlacklisted(pokemon) && !ShadowAspectUtil.isImmunized(pokemon)) {
                     if (isNearMeteoroid(level, entity.blockPosition(), radius)) {
-                        double currentExposure = PokemonAspectUtil.getExposure(pokemon);
+                        double currentExposure = ShadowAspectUtil.getExposure(pokemon);
                         currentExposure += config.meteoroidShadowTransformationExposureIncrease();
-                        PokemonAspectUtil.setExposureProperty(pokemon, currentExposure);
+                        ShadowAspectUtil.setExposureProperty(pokemon, currentExposure);
 
                         // Compounding chance: chance increases with exposure
                         double chance = baseChance * currentExposure;
                         if (level.random.nextDouble() < chance) {
                             transformToShadow(level, entity);
-                            PokemonAspectUtil.setExposureProperty(pokemon, 0.0);
+                            ShadowAspectUtil.setExposureProperty(pokemon, 0.0);
                         }
                     } else {
                         // Decay exposure if not near meteoroid
-                        double currentExposure = PokemonAspectUtil.getExposure(pokemon);
+                        double currentExposure = ShadowAspectUtil.getExposure(pokemon);
                         if (currentExposure > 0) {
                             double exposure = currentExposure - config.meteoroidShadowTransformationExposureDecay();
-                            PokemonAspectUtil.setExposureProperty(pokemon, Math.max(0, exposure));
+                            ShadowAspectUtil.setExposureProperty(pokemon, Math.max(0, exposure));
                         }
                     }
-                } else if (pokemon != null && PokemonAspectUtil.hasShadowAspect(pokemon)) {
+                } else if (pokemon != null && ShadowAspectUtil.hasShadowAspect(pokemon)) {
                     if (isNearMeteoroid(level, entity.blockPosition(), radius)) {
-                        int currentGauge = PokemonAspectUtil.getHeartGaugeMeter(pokemon);
+                        int currentGauge = ShadowAspectUtil.getHeartGaugeMeter(pokemon);
                         int maxGauge = HeartGaugeConfig.getMax(pokemon);
                         if (currentGauge < maxGauge) {
                             int increase = (int) Math.max(1, config.meteoroidShadowTransformationExposureIncrease());
@@ -121,12 +121,12 @@ public class ShadowMeteoroidProximityHandler {
     }
 
     private static void decayExposure(Pokemon pokemon, double decayAmount) {
-        if (PokemonAspectUtil.hasShadowAspect(pokemon)) return;
+        if (ShadowAspectUtil.hasShadowAspect(pokemon)) return;
         if (ShadowSpawnConfig.isBlacklisted(pokemon)) return;
 
-        double currentExposure = PokemonAspectUtil.getExposure(pokemon);
+        double currentExposure = ShadowAspectUtil.getExposure(pokemon);
         if (currentExposure > 0) {
-            PokemonAspectUtil.setExposureProperty(pokemon, Math.max(0, currentExposure - decayAmount));
+            ShadowAspectUtil.setExposureProperty(pokemon, Math.max(0, currentExposure - decayAmount));
         }
     }
 
@@ -155,7 +155,7 @@ public class ShadowMeteoroidProximityHandler {
 
 
         // Ensure required aspects for shadow
-        PokemonAspectUtil.ensureRequiredShadowAspects(pokemon);
+        ShadowAspectUtil.ensureRequiredShadowAspects(pokemon);
 
         // Insert shadow moves
         WildShadowSpawnListener.assignShadowMoves(pokemon);

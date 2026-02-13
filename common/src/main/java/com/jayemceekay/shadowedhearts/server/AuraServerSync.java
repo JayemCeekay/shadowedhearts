@@ -6,7 +6,7 @@ import com.cobblemon.mod.common.api.events.pokemon.PokemonRecallEvent;
 import com.cobblemon.mod.common.api.events.pokemon.PokemonSentEvent;
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
 import com.cobblemon.mod.common.pokemon.Pokemon;
-import com.jayemceekay.shadowedhearts.PokemonAspectUtil;
+import com.jayemceekay.shadowedhearts.ShadowAspectUtil;
 import com.jayemceekay.shadowedhearts.network.ShadowedHeartsNetworkingUtils;
 import kotlin.Unit;
 
@@ -35,8 +35,8 @@ public final class AuraServerSync {
             try {
                 Pokemon p = pe.getPokemon();
                 // Run occasional validation when sent out
-                PokemonAspectUtil.ensureRequiredShadowAspects(p);
-                if (!PokemonAspectUtil.hasShadowAspect(p))
+                ShadowAspectUtil.ensureRequiredShadowAspects(p);
+                if (!ShadowAspectUtil.hasShadowAspect(p))
                     return Unit.INSTANCE;
             } catch (Exception ex) {
                 return Unit.INSTANCE;
@@ -52,7 +52,7 @@ public final class AuraServerSync {
         CobblemonEvents.POKEMON_ENTITY_SPAWN.subscribe(Priority.LOWEST, (e) -> {
             var pe = e.getEntity();
             if (pe == null || pe.level().isClientSide()) return Unit.INSTANCE;
-            if (PokemonAspectUtil.hasShadowAspect(pe.getPokemon())) {
+            if (ShadowAspectUtil.hasShadowAspect(pe.getPokemon())) {
                 TRACKING.put(pe.getId(), new WeakReference<>(pe));
                 // We don't broadcast START here because listeners (like WildShadowSpawnListener)
                 // might want to broadcast a specialized one. The tick loop will pick it up

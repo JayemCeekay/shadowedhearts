@@ -3,7 +3,7 @@ package com.jayemceekay.shadowedhearts.network.purification.server
 import com.cobblemon.mod.common.Cobblemon
 import com.cobblemon.mod.common.api.mark.Marks
 import com.cobblemon.mod.common.api.net.ServerNetworkPacketHandler
-import com.jayemceekay.shadowedhearts.PokemonAspectUtil
+import com.jayemceekay.shadowedhearts.ShadowAspectUtil
 import com.jayemceekay.shadowedhearts.ShadowService
 import com.jayemceekay.shadowedhearts.advancements.ModCriteriaTriggers
 import com.jayemceekay.shadowedhearts.network.purification.PokemonPurifiedPacket
@@ -32,7 +32,7 @@ object PurifyPokemonHandler : ServerNetworkPacketHandler<PurifyPokemonPacket> {
 
 
         // Verify it's actually ready for purification (heart gauge 0)
-        if (PokemonAspectUtil.getHeartGauge(pokemon) == 0F) {
+        if (ShadowAspectUtil.getHeartGauge(pokemon) == 0F) {
             ShadowService.fullyPurify(pokemon, null)
             if (pokemon.getOwnerPlayer() is ServerPlayer) {
                 ModCriteriaTriggers.triggerShadowPurified(player)

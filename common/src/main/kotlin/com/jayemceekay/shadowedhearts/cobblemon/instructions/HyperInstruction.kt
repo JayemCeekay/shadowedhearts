@@ -3,8 +3,8 @@ package com.jayemceekay.shadowedhearts.cobblemon.instructions
 import com.cobblemon.mod.common.api.battles.interpreter.BattleMessage
 import com.cobblemon.mod.common.api.battles.model.PokemonBattle
 import com.cobblemon.mod.common.battles.dispatch.InterpreterInstruction
-import com.jayemceekay.shadowedhearts.PokemonAspectUtil
 import com.jayemceekay.shadowedhearts.SHAspects
+import com.jayemceekay.shadowedhearts.ShadowAspectUtil
 
 /**
  * Custom instruction emitted by our Showdown patches to persist Hyper Mode outside battle.
@@ -29,14 +29,14 @@ class HyperInstruction(private val message: BattleMessage) : InterpreterInstruct
                     aspectsEff.add(SHAspects.HYPER_MODE)
                     effected.forcedAspects = aspectsEff
                     effected.updateAspects()
-                    PokemonAspectUtil.syncAspects(effected)
+                    ShadowAspectUtil.syncAspects(effected)
                 }
                 val aspectsOrig = original.aspects.toMutableSet()
                 if (!aspectsOrig.contains(SHAspects.HYPER_MODE)) {
                     aspectsOrig.add(SHAspects.HYPER_MODE)
                     original.forcedAspects = aspectsOrig
                     original.updateAspects()
-                    PokemonAspectUtil.syncAspects(original)
+                    ShadowAspectUtil.syncAspects(original)
                 }
             }
             "end" -> {
@@ -44,13 +44,13 @@ class HyperInstruction(private val message: BattleMessage) : InterpreterInstruct
                 if (aspectsEff.remove(SHAspects.HYPER_MODE)) {
                     effected.forcedAspects = aspectsEff
                     effected.updateAspects()
-                    PokemonAspectUtil.syncAspects(effected)
+                    ShadowAspectUtil.syncAspects(effected)
                 }
                 val aspectsOrig = original.aspects.toMutableSet()
                 if (aspectsOrig.remove(SHAspects.HYPER_MODE)) {
                     original.forcedAspects = aspectsOrig
                     original.updateAspects()
-                    PokemonAspectUtil.syncAspects(original)
+                    ShadowAspectUtil.syncAspects(original)
                 }
             }
         }

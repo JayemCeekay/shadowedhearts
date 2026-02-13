@@ -9,7 +9,7 @@ import com.cobblemon.mod.common.client.gui.summary.widgets.screens.moves.MoveSlo
 import com.cobblemon.mod.common.client.gui.summary.widgets.screens.moves.MoveSwapScreen;
 import com.cobblemon.mod.common.client.gui.summary.widgets.screens.moves.MovesWidget;
 import com.cobblemon.mod.common.pokemon.Pokemon;
-import com.jayemceekay.shadowedhearts.PokemonAspectUtil;
+import com.jayemceekay.shadowedhearts.ShadowAspectUtil;
 import com.jayemceekay.shadowedhearts.ShadowGate;
 import com.jayemceekay.shadowedhearts.mixin.MovesWidgetAccessor;
 import com.jayemceekay.shadowedhearts.mixin.SummaryAccessor;
@@ -94,7 +94,7 @@ public abstract class MixinCobblemonPartyExtrasCustomTooltipRenderer {
         if (ShadowGate.isShadowMoveId(m.getTemplate().getName())) return false;
 
         int nonShadowIndex = 0;
-        int allowed = PokemonAspectUtil.getAllowedVisibleNonShadowMoves(pokemon);
+        int allowed = ShadowAspectUtil.getAllowedVisibleNonShadowMoves(pokemon);
         for (Move mv : pokemon.getMoveSet().getMovesWithNulls()) {
             if (mv == null || ShadowGate.isShadowMoveId(mv.getName())) continue;
             if (mv == m) return nonShadowIndex >= allowed;
@@ -109,7 +109,7 @@ public abstract class MixinCobblemonPartyExtrasCustomTooltipRenderer {
         if (ShadowGate.isShadowMoveId(t.getName())) return false;
 
         int nonShadowIndex = 0;
-        int allowed = PokemonAspectUtil.getAllowedVisibleNonShadowMoves(pokemon);
+        int allowed = ShadowAspectUtil.getAllowedVisibleNonShadowMoves(pokemon);
         for (Move mv : pokemon.getMoveSet().getMovesWithNulls()) {
             if (mv == null || ShadowGate.isShadowMoveId(mv.getName())) continue;
             if (mv.getTemplate() == t) return nonShadowIndex >= allowed;

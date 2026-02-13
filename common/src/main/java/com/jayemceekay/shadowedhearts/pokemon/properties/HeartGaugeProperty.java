@@ -2,7 +2,7 @@ package com.jayemceekay.shadowedhearts.pokemon.properties;
 
 import com.cobblemon.mod.common.api.properties.CustomPokemonProperty;
 import com.cobblemon.mod.common.pokemon.Pokemon;
-import com.jayemceekay.shadowedhearts.PokemonAspectUtil;
+import com.jayemceekay.shadowedhearts.ShadowAspectUtil;
 
 public class HeartGaugeProperty implements CustomPokemonProperty {
     private final int value;
@@ -22,7 +22,7 @@ public class HeartGaugeProperty implements CustomPokemonProperty {
 
     @Override
     public void apply(Pokemon pokemon) {
-        PokemonAspectUtil.setHeartGaugeProperty(pokemon, value);
+        ShadowAspectUtil.setHeartGaugeProperty(pokemon, value);
     }
 
     @Override

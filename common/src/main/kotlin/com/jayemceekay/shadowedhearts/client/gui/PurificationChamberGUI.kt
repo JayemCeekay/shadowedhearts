@@ -29,7 +29,7 @@ import com.cobblemon.mod.common.pokemon.Pokemon
 import com.cobblemon.mod.common.util.asTranslated
 import com.cobblemon.mod.common.util.cobblemonResource
 import com.cobblemon.mod.common.util.lang
-import com.jayemceekay.shadowedhearts.PokemonAspectUtil
+import com.jayemceekay.shadowedhearts.ShadowAspectUtil
 import com.jayemceekay.shadowedhearts.ShadowGate
 import com.jayemceekay.shadowedhearts.Shadowedhearts
 import com.jayemceekay.shadowedhearts.client.gui.summary.widgets.screens.stats.features.HeartGaugeFeatureRenderer
@@ -172,7 +172,7 @@ class PurificationChamberGUI(
         // Ensure Shadow aspects exist before storing/using in UI
         if (pokemon != null) {
             try {
-                PokemonAspectUtil.ensureRequiredShadowAspects(pokemon)
+                ShadowAspectUtil.ensureRequiredShadowAspects(pokemon)
             } catch (_: Exception) {
             }
         }
@@ -203,7 +203,7 @@ class PurificationChamberGUI(
         try {
             for (i in 0..4) {
                 val p = getPokemonAt(i)
-                if (p != null) PokemonAspectUtil.ensureRequiredShadowAspects(p)
+                if (p != null) ShadowAspectUtil.ensureRequiredShadowAspects(p)
             }
         } catch (_: Exception) {
         }
@@ -321,7 +321,7 @@ class PurificationChamberGUI(
             labelSupplier = { Component.literal("Purify") },
             visibleSupplier = {
                 val centerPokemon = purificationStorage.get(PurificationPosition(0))
-                centerPokemon != null && PokemonAspectUtil.hasShadowAspect(centerPokemon) && PokemonAspectUtil.getHeartGauge(centerPokemon) == 0F
+                centerPokemon != null && ShadowAspectUtil.hasShadowAspect(centerPokemon) && ShadowAspectUtil.getHeartGauge(centerPokemon) == 0F
             }
         ) {
             PurifyPokemonPacket(purificationStorage.uuid, currentSet()).sendToServer()
@@ -648,7 +648,7 @@ class PurificationChamberGUI(
                 STAT_INFO -> {
                     // Nature (mask when gauge hides nature)
                     val natureText =
-                        if (com.jayemceekay.shadowedhearts.PokemonAspectUtil.isNatureHiddenByGauge(
+                        if (ShadowAspectUtil.isNatureHiddenByGauge(
                                 pokemon
                             )
                         ) {
@@ -680,7 +680,7 @@ class PurificationChamberGUI(
                     // Moves (mask non-Shadow moves progressively by heart gauge)
                     val moves = pokemon.moveSet.getMoves().take(4)
                     val allowed =
-                        PokemonAspectUtil.getAllowedVisibleNonShadowMoves(
+                        ShadowAspectUtil.getAllowedVisibleNonShadowMoves(
                             pokemon
                         )
                     var nonShadowIndex = 0
@@ -727,7 +727,7 @@ class PurificationChamberGUI(
                             pokemon.ivs.getEffectiveBattleIV(stats[i])
                         drawScaledText(
                             context = context,
-                            text = if (com.jayemceekay.shadowedhearts.PokemonAspectUtil.isIVHiddenByGauge(
+                            text = if (ShadowAspectUtil.isIVHiddenByGauge(
                                     pokemon
                                 )
                             ) {
@@ -756,7 +756,7 @@ class PurificationChamberGUI(
 
                         drawScaledText(
                             context = context,
-                            text = (if (com.jayemceekay.shadowedhearts.PokemonAspectUtil.isEVHiddenByGauge(
+                            text = (if (ShadowAspectUtil.isEVHiddenByGauge(
                                     pokemon
                                 )
                             ) "??" else pokemon.evs.get(stats[i])
@@ -802,7 +802,7 @@ class PurificationChamberGUI(
                 // Render heart gauge at bottom middle of the GUI if available
                 heartGaugeRenderer = HeartGaugeFeatureRenderer(centerPokemon)
 
-                if (PokemonAspectUtil.getHeartGauge(centerPokemon) != 0F) {
+                if (ShadowAspectUtil.getHeartGauge(centerPokemon) != 0F) {
                     heartGaugeRenderer?.let { renderer ->
                         val bottomY =
                             y + BASE_HEIGHT - 25 // leave a small margin above bottom
@@ -843,7 +843,7 @@ class PurificationChamberGUI(
         super.render(context, mouseX, mouseY, partialTick)
 
         val centerPokemon = purificationStorage.get(PurificationPosition(0))
-        if (centerPokemon != null && !PokemonAspectUtil.hasShadowAspect(centerPokemon)) {
+        if (centerPokemon != null && !ShadowAspectUtil.hasShadowAspect(centerPokemon)) {
             drawScaledText(
                 context = context,
                 text = Component.literal("This Pokemon has been purified!"),
@@ -886,8 +886,8 @@ class PurificationChamberGUI(
 
                 val hovered = mouseX in renderX..(renderX + barWidth) && mouseY in bottomY..(bottomY + barHeight)
                 if (hovered) {
-                    val message = if (PokemonAspectUtil.hasShadowAspect(centerPokemon)) {
-                        val value = max(0, PokemonAspectUtil.getHeartGaugeValue(centerPokemon))
+                    val message = if (ShadowAspectUtil.hasShadowAspect(centerPokemon)) {
+                        val value = max(0, ShadowAspectUtil.getHeartGaugeValue(centerPokemon))
                         when {
                             value >= 100 -> "The door to its heart is tightly shut."
                             value >= 80 -> "The door to its heart is starting to open."

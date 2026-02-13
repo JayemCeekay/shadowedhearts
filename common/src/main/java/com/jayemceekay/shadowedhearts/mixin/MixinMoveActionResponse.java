@@ -3,6 +3,7 @@ package com.jayemceekay.shadowedhearts.mixin;
 import com.cobblemon.mod.common.battles.ActiveBattlePokemon;
 import com.cobblemon.mod.common.battles.MoveActionResponse;
 import com.cobblemon.mod.common.battles.ShowdownMoveset;
+import com.jayemceekay.shadowedhearts.ShadowAspectUtil;
 import com.jayemceekay.shadowedhearts.ShadowGate;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -24,7 +25,7 @@ public class MixinMoveActionResponse {
         if (ShadowGate.isShadowLocked(pokemon)) {
             String moveId = ((AccessorMoveActionResponse) this).shadowedhearts$getMoveName();
             if (!ShadowGate.isShadowMoveId(moveId)) {
-                int allowed = com.jayemceekay.shadowedhearts.PokemonAspectUtil.getAllowedVisibleNonShadowMoves(pokemon);
+                int allowed = ShadowAspectUtil.getAllowedVisibleNonShadowMoves(pokemon);
                 int nonShadowIndex = 0;
                 boolean matched = false;
                 for (var mv : pokemon.getMoveSet().getMovesWithNulls()) {

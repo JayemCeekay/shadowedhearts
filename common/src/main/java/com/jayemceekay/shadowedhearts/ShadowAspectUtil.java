@@ -21,7 +21,7 @@ import java.util.*;
 /**
  * Utility for manipulating Cobblemon Pokemon aspects and derived values used by this mod.
  */
-public final class PokemonAspectUtil {
+public final class ShadowAspectUtil {
 
     private static final String METER_PREFIX = "shadowedhearts:heartgauge:"; // 0..speciesMax
     private static final String XPBUF_PREFIX = "shadowedhearts:xpbuf:"; // pending exp integer

@@ -4,7 +4,7 @@ import com.cobblemon.mod.common.api.mark.Mark;
 import com.cobblemon.mod.common.api.mark.Marks;
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
 import com.cobblemon.mod.common.pokemon.Pokemon;
-import com.jayemceekay.shadowedhearts.PokemonAspectUtil;
+import com.jayemceekay.shadowedhearts.ShadowAspectUtil;
 import com.jayemceekay.shadowedhearts.ShadowService;
 import com.jayemceekay.shadowedhearts.advancements.ModCriteriaTriggers;
 import com.jayemceekay.shadowedhearts.blocks.entity.RelicStoneBlockEntity;
@@ -360,13 +360,13 @@ public class RelicStoneBlock extends Block implements EntityBlock {
             AABB area = new AABB(center).inflate(5.0);
             List<PokemonEntity> nearbyPokemon = level.getEntitiesOfClass(PokemonEntity.class, area, pe -> {
                 Pokemon p = pe.getPokemon();
-                return serverPlayer.getUUID().equals(p.getOwnerUUID()) && PokemonAspectUtil.hasShadowAspect(p);
+                return serverPlayer.getUUID().equals(p.getOwnerUUID()) && ShadowAspectUtil.hasShadowAspect(p);
             });
 
             boolean purifiedAny = false;
             for (PokemonEntity pe : nearbyPokemon) {
                 Pokemon p = pe.getPokemon();
-                if (PokemonAspectUtil.getHeartGaugePercent(p) == 0) {
+                if (ShadowAspectUtil.getHeartGaugePercent(p) == 0) {
                     ShadowService.fullyPurify(p, pe);
                     Mark nationalRibbon = Marks.getByIdentifier(ResourceLocation.fromNamespaceAndPath("cobblemon", "ribbon_event_national"));
                     p.exchangeMark(nationalRibbon, true);

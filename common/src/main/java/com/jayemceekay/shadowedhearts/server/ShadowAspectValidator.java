@@ -4,7 +4,7 @@ import com.cobblemon.mod.common.api.Priority;
 import com.cobblemon.mod.common.api.events.CobblemonEvents;
 import com.cobblemon.mod.common.api.events.pokemon.PokemonAspectsChangedEvent;
 import com.cobblemon.mod.common.pokemon.Pokemon;
-import com.jayemceekay.shadowedhearts.PokemonAspectUtil;
+import com.jayemceekay.shadowedhearts.ShadowAspectUtil;
 import kotlin.Unit;
 
 /**
@@ -23,7 +23,7 @@ public final class ShadowAspectValidator {
             try {
                 Pokemon p = e.getPokemon();
                 // Idempotent; will only add supporting aspects if the Shadow aspect is present
-                PokemonAspectUtil.ensureRequiredShadowAspects(p);
+                ShadowAspectUtil.ensureRequiredShadowAspects(p);
             } catch (Throwable ignored) {
             }
             return Unit.INSTANCE;

@@ -2,7 +2,7 @@ package com.jayemceekay.shadowedhearts.mixin.cobblemonpartyextras;
 
 import com.cobblemon.mod.common.client.gui.summary.Summary;
 import com.cobblemon.mod.common.pokemon.Pokemon;
-import com.jayemceekay.shadowedhearts.PokemonAspectUtil;
+import com.jayemceekay.shadowedhearts.ShadowAspectUtil;
 import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import net.minecraft.client.gui.GuiGraphics;
@@ -19,7 +19,7 @@ public abstract class MixinCobblemonPartyExtrasSummaryUIMixin {
 
     @WrapMethod(method = "renderPortraitStats")
     private void shadowedhearts$blockRenderStats(GuiGraphics graphics, int baseX, int baseY, Operation<Void> original) {
-        if (PokemonAspectUtil.hasShadowAspect(selectedPokemon)) {
+        if (ShadowAspectUtil.hasShadowAspect(selectedPokemon)) {
             return;
         }
         original.call(graphics, baseX, baseY);

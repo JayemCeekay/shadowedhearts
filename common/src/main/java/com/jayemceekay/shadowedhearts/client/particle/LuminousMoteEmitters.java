@@ -1,7 +1,7 @@
 package com.jayemceekay.shadowedhearts.client.particle;
 
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
-import com.jayemceekay.shadowedhearts.PokemonAspectUtil;
+import com.jayemceekay.shadowedhearts.ShadowAspectUtil;
 import com.jayemceekay.shadowedhearts.core.ModParticleTypes;
 import com.jayemceekay.shadowedhearts.network.LuminousMotePacket;
 import net.minecraft.client.Minecraft;
@@ -48,7 +48,7 @@ public final class LuminousMoteEmitters {
     }
 
     public static void register(PokemonEntity pe) {
-        if (!PokemonAspectUtil.hasShadowAspect(pe.getPokemon())) return;
+        if (!ShadowAspectUtil.hasShadowAspect(pe.getPokemon())) return;
         var mc = Minecraft.getInstance();
         if (mc == null || mc.level == null) return;
         long now = mc.level.getGameTime();

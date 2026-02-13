@@ -2,7 +2,7 @@ package com.jayemceekay.shadowedhearts.pokemon.properties;
 
 import com.cobblemon.mod.common.api.properties.CustomPokemonProperty;
 import com.cobblemon.mod.common.pokemon.Pokemon;
-import com.jayemceekay.shadowedhearts.PokemonAspectUtil;
+import com.jayemceekay.shadowedhearts.ShadowAspectUtil;
 
 public class ScentCooldownProperty implements CustomPokemonProperty {
     private final long lastUseTime;
@@ -22,7 +22,7 @@ public class ScentCooldownProperty implements CustomPokemonProperty {
 
     @Override
     public void apply(Pokemon pokemon) {
-        PokemonAspectUtil.setScentCooldown(pokemon, lastUseTime);
+        ShadowAspectUtil.setScentCooldown(pokemon, lastUseTime);
     }
 
     @Override

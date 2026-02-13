@@ -2,7 +2,7 @@ package com.jayemceekay.shadowedhearts.pokemon.properties;
 
 import com.cobblemon.mod.common.api.properties.CustomPokemonProperty;
 import com.cobblemon.mod.common.pokemon.Pokemon;
-import com.jayemceekay.shadowedhearts.PokemonAspectUtil;
+import com.jayemceekay.shadowedhearts.ShadowAspectUtil;
 
 public class XPBufferProperty implements CustomPokemonProperty {
     private final int value;
@@ -22,7 +22,7 @@ public class XPBufferProperty implements CustomPokemonProperty {
 
     @Override
     public void apply(Pokemon pokemon) {
-        PokemonAspectUtil.setXPBufferProperty(pokemon, value);
+        ShadowAspectUtil.setXPBufferProperty(pokemon, value);
     }
 
     @Override

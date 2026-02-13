@@ -7,7 +7,7 @@ import com.cobblemon.mod.common.pokemon.Pokemon
 import com.cobblemon.mod.common.util.DataKeys
 import com.cobblemon.mod.common.util.getPlayer
 import com.google.gson.JsonObject
-import com.jayemceekay.shadowedhearts.PokemonAspectUtil
+import com.jayemceekay.shadowedhearts.ShadowAspectUtil
 import com.jayemceekay.shadowedhearts.ShadowService
 import com.jayemceekay.shadowedhearts.client.net.storage.purification.PurificationChamberSyncPacket
 import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs
@@ -136,7 +136,7 @@ class PurificationChamberStore(
 
     override fun add(pokemon: Pokemon): Boolean {
         // Place based on shadow aspect constraint
-        val isShadow = PokemonAspectUtil.hasShadowAspect(pokemon)
+        val isShadow = ShadowAspectUtil.hasShadowAspect(pokemon)
         if (isShadow) {
             val pos = sets.indexOfFirst { it.shadow == null }
             if (pos >= 0) {
@@ -156,7 +156,7 @@ class PurificationChamberStore(
     }
 
     override fun set(position: PurificationChamberPosition, pokemon: Pokemon) {
-        val isShadow = PokemonAspectUtil.hasShadowAspect(pokemon)
+        val isShadow = ShadowAspectUtil.hasShadowAspect(pokemon)
         if (position.isShadow && !isShadow) {
             throw IllegalArgumentException("Support Pokémon cannot occupy shadow slot")
         }
@@ -172,11 +172,11 @@ class PurificationChamberStore(
 
         // Enforce constraints after swap
         if (p1 != null) {
-            val s1 = PokemonAspectUtil.hasShadowAspect(p1)
+            val s1 = ShadowAspectUtil.hasShadowAspect(p1)
             if (position2.isShadow != s1) return // invalid swap
         }
         if (p2 != null) {
-            val s2 = PokemonAspectUtil.hasShadowAspect(p2)
+            val s2 = ShadowAspectUtil.hasShadowAspect(p2)
             if (position1.isShadow != s2) return
         }
 
@@ -221,7 +221,7 @@ class PurificationChamberStore(
             val delta = PurificationMath.computePurificationDeltaForSet(set.shadow, set.supports, perfectCount)
             if (delta != 0 && set.shadow != null) {
                 val p = set.shadow!!
-                val cur = PokemonAspectUtil.getHeartGaugeMeter(p)
+                val cur = ShadowAspectUtil.getHeartGaugeMeter(p)
                 val next = cur + delta // delta negative opens heart
                 if (affectedPokemon != null) {
                     ShadowService.setHeartGauge(p, null, next, false)

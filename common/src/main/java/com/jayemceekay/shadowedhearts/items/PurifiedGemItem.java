@@ -5,7 +5,7 @@ import com.cobblemon.mod.common.api.mark.Marks;
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
 import com.cobblemon.mod.common.net.messages.client.pokemon.update.MarkAddUpdatePacket;
 import com.cobblemon.mod.common.pokemon.Pokemon;
-import com.jayemceekay.shadowedhearts.PokemonAspectUtil;
+import com.jayemceekay.shadowedhearts.ShadowAspectUtil;
 import com.jayemceekay.shadowedhearts.Shadowedhearts;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
@@ -38,19 +38,19 @@ public class PurifiedGemItem extends Item {
         }
 
         // Check if already shadow
-        if (PokemonAspectUtil.hasShadowAspect(pokemon)) {
+        if (ShadowAspectUtil.hasShadowAspect(pokemon)) {
             player.displayClientMessage(Component.translatable("message.shadowedhearts.purified_gem.already_shadow").withStyle(ChatFormatting.RED), true);
             return InteractionResult.FAIL;
         }
 
         // Check if already immunized
-        if (PokemonAspectUtil.isImmunized(pokemon)) {
+        if (ShadowAspectUtil.isImmunized(pokemon)) {
             player.displayClientMessage(Component.translatable("message.shadowedhearts.purified_gem.already_immunized").withStyle(ChatFormatting.YELLOW), true);
             return InteractionResult.PASS;
         }
 
         // Immunize
-        PokemonAspectUtil.setImmunizedProperty(pokemon, true);
+        ShadowAspectUtil.setImmunizedProperty(pokemon, true);
         player.displayClientMessage(Component.translatable("message.shadowedhearts.purified_gem.immunized", pokemon.getDisplayName(false).getString()).withStyle(ChatFormatting.GREEN), true);
         Mark purityRibbon = Marks.getByIdentifier(ResourceLocation.fromNamespaceAndPath(Shadowedhearts.MOD_ID, "ribbon_event_purity"));
         try {

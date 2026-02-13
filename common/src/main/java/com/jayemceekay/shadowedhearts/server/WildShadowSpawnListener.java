@@ -6,7 +6,7 @@ import com.cobblemon.mod.common.api.events.entity.SpawnEvent;
 import com.cobblemon.mod.common.api.moves.Moves;
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
 import com.cobblemon.mod.common.pokemon.Pokemon;
-import com.jayemceekay.shadowedhearts.PokemonAspectUtil;
+import com.jayemceekay.shadowedhearts.ShadowAspectUtil;
 import com.jayemceekay.shadowedhearts.ShadowService;
 import com.jayemceekay.shadowedhearts.config.HeartGaugeConfig;
 import com.jayemceekay.shadowedhearts.config.ModConfig;
@@ -51,7 +51,7 @@ public final class WildShadowSpawnListener {
             if (ShadowSpawnConfig.isBlacklisted(pokemon)) return Unit.INSTANCE;
 
             // Respect immunization
-            if (PokemonAspectUtil.isImmunized(pokemon)) return Unit.INSTANCE;
+            if (ShadowAspectUtil.isImmunized(pokemon)) return Unit.INSTANCE;
 
             // Roll chance
             double chance = ShadowSpawnConfig.getChancePercent();
@@ -70,7 +70,7 @@ public final class WildShadowSpawnListener {
             ShadowService.setHeartGauge(pokemon, entity, HeartGaugeConfig.getMax(pokemon));
 
             // Ensure required aspects for shadow
-            PokemonAspectUtil.ensureRequiredShadowAspects(pokemon);
+            ShadowAspectUtil.ensureRequiredShadowAspects(pokemon);
 
             // Insert 1–2 shadow moves into slots 0 and 1.
             assignShadowMoves(pokemon);

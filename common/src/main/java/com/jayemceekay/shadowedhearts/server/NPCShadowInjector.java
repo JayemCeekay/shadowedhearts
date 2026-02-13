@@ -204,7 +204,7 @@ public final class NPCShadowInjector {
             if (p.getAspects().contains(SHAspects.SHADOW)) {
                 forceShadow(p);
                 p.setOriginalTrainer("?????");
-                PokemonAspectUtil.ensureRequiredShadowAspects(p);
+                ShadowAspectUtil.ensureRequiredShadowAspects(p);
                 assignShadowMoves(p, rng);
             }
         }
@@ -267,7 +267,7 @@ public final class NPCShadowInjector {
             // Force the Shadow aspect for this battle
             forceShadow(p);
             p.setOriginalTrainer("?????");
-            PokemonAspectUtil.ensureRequiredShadowAspects(p);
+            ShadowAspectUtil.ensureRequiredShadowAspects(p);
             assignShadowMoves(p, rng);
             converted++;
             if (converted >= count) break;
@@ -356,7 +356,7 @@ public final class NPCShadowInjector {
                 i--;
                 continue;
             }
-            PokemonAspectUtil.ensureRequiredShadowAspects(p);
+            ShadowAspectUtil.ensureRequiredShadowAspects(p);
             assignShadowMoves(p, makeRng(entity, battleSalt + i));
             // If unique, avoid duplicating species already present after injection
             if (unique && speciesAlreadyPresent(list, safeSpeciesId(p))) {
@@ -415,7 +415,7 @@ public final class NPCShadowInjector {
                 if (enforceMinEvo && getMinEvolutionLevel(p) > p.getLevel()) {
                     continue;
                 }
-                PokemonAspectUtil.ensureRequiredShadowAspects(p);
+                ShadowAspectUtil.ensureRequiredShadowAspects(p);
             }
             if (unique) {
                 // Avoid duplicates vs current party (excluding this slot being replaced)
@@ -533,7 +533,7 @@ public final class NPCShadowInjector {
                 BattlePokemon bp = BattlePokemon.Companion.safeCopyOf(created);
                 Pokemon p = bp.getEffectedPokemon();
                 forceShadow(p);
-                PokemonAspectUtil.ensureRequiredShadowAspects(p);
+                ShadowAspectUtil.ensureRequiredShadowAspects(p);
                 assignShadowMoves(p, makeRng(entity, battleSalt + entries.indexOf(props))); // Use props index as salt offset
                 p.setOriginalTrainer("?????");
                 out.add(bp);

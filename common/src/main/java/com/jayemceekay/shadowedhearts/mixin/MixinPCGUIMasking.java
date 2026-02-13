@@ -2,7 +2,7 @@ package com.jayemceekay.shadowedhearts.mixin;
 
 import com.cobblemon.mod.common.client.gui.pc.PCGUI;
 import com.cobblemon.mod.common.pokemon.Pokemon;
-import com.jayemceekay.shadowedhearts.PokemonAspectUtil;
+import com.jayemceekay.shadowedhearts.ShadowAspectUtil;
 import com.jayemceekay.shadowedhearts.ShadowGate;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
@@ -44,7 +44,7 @@ public abstract class MixinPCGUIMasking {
             )
     )
     private MutableComponent shadowedhearts$maskNatureInPC(Pokemon pokemon, Operation<MutableComponent> original) {
-        if (PokemonAspectUtil.isNatureHiddenByGauge(pokemon)) {
+        if (ShadowAspectUtil.isNatureHiddenByGauge(pokemon)) {
             return Component.literal("????");
         }
         return original.call(pokemon);
@@ -63,7 +63,7 @@ public abstract class MixinPCGUIMasking {
         Pokemon pokemon = this.previewPokemon;
         if (pokemon == null) return original;
         if (this.currentStatIndex != STAT_EV) return original;
-        if (!PokemonAspectUtil.isEVHiddenByGauge(pokemon)) return original;
+        if (!ShadowAspectUtil.isEVHiddenByGauge(pokemon)) return original;
 
         String s = original.getString();
         // Numeric-only components in EV page represent the EV value display (including italic variant)
@@ -86,7 +86,7 @@ public abstract class MixinPCGUIMasking {
         Pokemon pokemon = this.previewPokemon;
         if (pokemon == null) return original;
         if (this.currentStatIndex != STAT_IV) return original;
-        if (!PokemonAspectUtil.isIVHiddenByGauge(pokemon)) return original;
+        if (!ShadowAspectUtil.isIVHiddenByGauge(pokemon)) return original;
 
         String s = original.getString();
         // Numeric-only components in IV page represent the IV value display (including italic variant)
@@ -121,7 +121,7 @@ public abstract class MixinPCGUIMasking {
             if (i >= realCount) return original;
 
             // Determine if this move should be masked based on allowed visible non-Shadow moves
-            int allowed = PokemonAspectUtil.getAllowedVisibleNonShadowMoves(pokemon);
+            int allowed = ShadowAspectUtil.getAllowedVisibleNonShadowMoves(pokemon);
 
             // Count non-shadow moves before the current index
             int nonShadowIndex = 0;

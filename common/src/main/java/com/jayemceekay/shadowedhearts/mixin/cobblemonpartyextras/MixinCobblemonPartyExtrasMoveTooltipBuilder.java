@@ -3,7 +3,7 @@ package com.jayemceekay.shadowedhearts.mixin.cobblemonpartyextras;
 
 import com.cobblemon.mod.common.api.moves.MoveTemplate;
 import com.cobblemon.mod.common.pokemon.Pokemon;
-import com.jayemceekay.shadowedhearts.PokemonAspectUtil;
+import com.jayemceekay.shadowedhearts.ShadowAspectUtil;
 import com.jayemceekay.shadowedhearts.ShadowGate;
 import net.minecraft.network.chat.Component;
 import org.spongepowered.asm.mixin.Mixin;
@@ -28,7 +28,7 @@ public class MixinCobblemonPartyExtrasMoveTooltipBuilder {
 
         // Compute this move's index among non-Shadow moves in move order
         int nonShadowIndex = 0;
-        int allowed = PokemonAspectUtil.getAllowedVisibleNonShadowMoves(pokemon);
+        int allowed = ShadowAspectUtil.getAllowedVisibleNonShadowMoves(pokemon);
         for (var mv : pokemon.getMoveSet().getMovesWithNulls()) {
             if (mv == null) continue;
             if (ShadowGate.isShadowMoveId(mv.getName())) continue;

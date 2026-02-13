@@ -33,18 +33,18 @@ public final class ShadowService {
     }
 
     public static void setShadow(Pokemon pokemon, @Nullable PokemonEntity live, boolean shadow, boolean sync) {
-        PokemonAspectUtil.setShadowAspect(pokemon, shadow, sync);
+        ShadowAspectUtil.setShadowAspect(pokemon, shadow, sync);
         // Ensure required supporting aspects exist when shadowed
-        PokemonAspectUtil.ensureRequiredShadowAspects(pokemon);
+        ShadowAspectUtil.ensureRequiredShadowAspects(pokemon);
         if (live != null) {
-            ShadowPokemonData.set(live, shadow, PokemonAspectUtil.getHeartGauge(pokemon));
+            ShadowPokemonData.set(live, shadow, ShadowAspectUtil.getHeartGauge(pokemon));
         }
         if (sync) {
             // Proactively sync aspect changes to observing players (party/PC/chamber UI) and mark store dirty.
             // This ensures client UIs (e.g., Summary screen) update immediately without requiring a PC swap.
-            PokemonAspectUtil.syncAspects(pokemon);
-            PokemonAspectUtil.syncBenchedMoves(pokemon);
-            PokemonAspectUtil.syncMoveSet(pokemon);
+            ShadowAspectUtil.syncAspects(pokemon);
+            ShadowAspectUtil.syncBenchedMoves(pokemon);
+            ShadowAspectUtil.syncMoveSet(pokemon);
         }
     }
 
@@ -58,33 +58,33 @@ public final class ShadowService {
     public static void setHeartGauge(Pokemon pokemon, @Nullable PokemonEntity live, int meter, boolean sync) {
         int max = HeartGaugeConfig.getMax(pokemon);
         int clamped = Math.max(0, Math.min(max, meter));
-        PokemonAspectUtil.setHeartGaugeValue(pokemon, clamped, sync);
+        ShadowAspectUtil.setHeartGaugeValue(pokemon, clamped, sync);
         // Ensure required supporting aspects exist when shadowed (no-op if not shadowed)
-        PokemonAspectUtil.ensureRequiredShadowAspects(pokemon);
+        ShadowAspectUtil.ensureRequiredShadowAspects(pokemon);
         if (live != null)
-            ShadowPokemonData.set(live, ShadowPokemonData.isShadow(live), PokemonAspectUtil.getHeartGauge(pokemon));
+            ShadowPokemonData.set(live, ShadowPokemonData.isShadow(live), ShadowAspectUtil.getHeartGauge(pokemon));
 
         applyMoveUnlocks(pokemon);
 
         if (sync) {
             // Proactively sync aspect changes to observing players and mark store dirty so client UI updates live.
-            PokemonAspectUtil.syncAspects(pokemon);
-            PokemonAspectUtil.syncBenchedMoves(pokemon);
-            PokemonAspectUtil.syncMoveSet(pokemon);
+            ShadowAspectUtil.syncAspects(pokemon);
+            ShadowAspectUtil.syncBenchedMoves(pokemon);
+            ShadowAspectUtil.syncMoveSet(pokemon);
         }
     }
 
     public static void syncAll(Pokemon pokemon) {
-        PokemonAspectUtil.syncAspects(pokemon);
-        PokemonAspectUtil.syncProperties(pokemon);
-        PokemonAspectUtil.syncBenchedMoves(pokemon);
-        PokemonAspectUtil.syncMoveSet(pokemon);
+        ShadowAspectUtil.syncAspects(pokemon);
+        ShadowAspectUtil.syncProperties(pokemon);
+        ShadowAspectUtil.syncBenchedMoves(pokemon);
+        ShadowAspectUtil.syncMoveSet(pokemon);
     }
 
     private static void applyMoveUnlocks(Pokemon pokemon) {
         if (!ShadowGate.isShadowLocked(pokemon)) return;
 
-        int allowed = PokemonAspectUtil.getAllowedVisibleNonShadowMoves(pokemon);
+        int allowed = ShadowAspectUtil.getAllowedVisibleNonShadowMoves(pokemon);
         if (allowed < 1) return;
 
         // Count how many shadow moves we have
@@ -163,12 +163,12 @@ public final class ShadowService {
         pokemon.updateAspects();
 
         // 3. Apply buffered EXP/EVs and clear gauge/buffers
-        int bufferedExp = PokemonAspectUtil.getBufferedExp(pokemon);
+        int bufferedExp = ShadowAspectUtil.getBufferedExp(pokemon);
         if (bufferedExp > 0) {
             pokemon.addExperience(new SidemodExperienceSource("shadowedhearts"), bufferedExp);
         }
 
-        int[] bufferedEvs = PokemonAspectUtil.getBufferedEvs(pokemon);
+        int[] bufferedEvs = ShadowAspectUtil.getBufferedEvs(pokemon);
         Stats[] stats = {
                 Stats.HP,
                 Stats.ATTACK,

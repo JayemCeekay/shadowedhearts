@@ -91,7 +91,7 @@ public class ShadowCommands {
                                     Set<Pokemon> affectedMons = new HashSet<>();
                                     for (int i = 0; i < intervals; i++) {
                                         for (Pokemon mon : snapshot) {
-                                            if (PokemonAspectUtil.hasShadowAspect(mon)) {
+                                            if (ShadowAspectUtil.hasShadowAspect(mon)) {
                                                 HeartGaugeEvents.onPartyStep(mon, null, false);
                                                 affectedMons.add(mon);
                                                 affected++;
@@ -417,7 +417,7 @@ public class ShadowCommands {
                                             if (e instanceof PokemonEntity pe) {
                                                 Pokemon pk = pe.getPokemon();
                                                 ShadowService.corrupt(pk, pe, val);
-                                                PokemonAspectUtil.ensureRequiredShadowAspects(pk);
+                                                ShadowAspectUtil.ensureRequiredShadowAspects(pk);
                                                 ctx.getSource().sendSuccess(() -> Component.literal("Shadowified " + pk.getSpecies().getName() + " with heart gauge " + val), true);
                                                 return 1;
                                             } else if (e instanceof ServerPlayer player) {
@@ -450,7 +450,7 @@ public class ShadowCommands {
                                                         return 0;
                                                     }
                                                     ShadowService.corrupt(pk, null, value);
-                                                    PokemonAspectUtil.ensureRequiredShadowAspects(pk);
+                                                    ShadowAspectUtil.ensureRequiredShadowAspects(pk);
                                                     ctx.getSource().sendSuccess(() -> Component.literal("Shadowified " + pk.getSpecies().getName() + " in " + player.getScoreboardName() + "'s party with heart gauge " + value), true);
                                                     return 1;
                                                 })))
@@ -461,7 +461,7 @@ public class ShadowCommands {
                                             if (e instanceof PokemonEntity pe) {
                                                 Pokemon pk = pe.getPokemon();
                                                 ShadowService.corrupt(pk, pe, value);
-                                                PokemonAspectUtil.ensureRequiredShadowAspects(pk);
+                                                ShadowAspectUtil.ensureRequiredShadowAspects(pk);
                                                 ctx.getSource().sendSuccess(() -> Component.literal("Shadowified " + pk.getSpecies().getName() + " with heart gauge " + value), true);
                                                 return 1;
                                             } else if (e instanceof ServerPlayer player) {
@@ -469,7 +469,7 @@ public class ShadowCommands {
                                                 int count = 0;
                                                 for (Pokemon pk : party) {
                                                     ShadowService.corrupt(pk, null, value);
-                                                    PokemonAspectUtil.ensureRequiredShadowAspects(pk);
+                                                    ShadowAspectUtil.ensureRequiredShadowAspects(pk);
                                                     count++;
                                                 }
                                                 final int countFinal = count;
@@ -548,7 +548,7 @@ public class ShadowCommands {
                                             Pokemon pokemon = pokemonEntity.getPokemon();
                                             ShadowService.setShadow(pokemon, pokemonEntity, true);
                                             ShadowService.setHeartGauge(pokemon, pokemonEntity, HeartGaugeConfig.getMax(pokemon));
-                                            PokemonAspectUtil.ensureRequiredShadowAspects(pokemon);
+                                            ShadowAspectUtil.ensureRequiredShadowAspects(pokemon);
                                             WildShadowSpawnListener.assignShadowMoves(pokemon);
                                             AuraBroadcastQueue.queueBroadcast(pokemonEntity, 2.5f, 200);
 
@@ -648,8 +648,8 @@ public class ShadowCommands {
         source.sendSuccess(() -> Component.literal("--- Pokemon Data ---"), false);
         source.sendSuccess(() -> Component.literal("Species: " + pk.getSpecies().getName()), false);
         source.sendSuccess(() -> Component.literal("Aspects: " + pk.getAspects()), false);
-        source.sendSuccess(() -> Component.literal("Heart Gauge: " + PokemonAspectUtil.getHeartGaugePercent(pk) + "% (" + PokemonAspectUtil.getHeartGaugeMeter(pk) + "/" + HeartGaugeConfig.getMax(pk) + ")"), false);
-        source.sendSuccess(() -> Component.literal("Buffered EXP: " + PokemonAspectUtil.getBufferedExp(pk)), false);
-        source.sendSuccess(() -> Component.literal("Buffered EVs: " + Arrays.toString(PokemonAspectUtil.getBufferedEvs(pk))), false);
+        source.sendSuccess(() -> Component.literal("Heart Gauge: " + ShadowAspectUtil.getHeartGaugePercent(pk) + "% (" + ShadowAspectUtil.getHeartGaugeMeter(pk) + "/" + HeartGaugeConfig.getMax(pk) + ")"), false);
+        source.sendSuccess(() -> Component.literal("Buffered EXP: " + ShadowAspectUtil.getBufferedExp(pk)), false);
+        source.sendSuccess(() -> Component.literal("Buffered EVs: " + Arrays.toString(ShadowAspectUtil.getBufferedEvs(pk))), false);
     }
 }
