@@ -1,4 +1,3 @@
-// aura_impostor.vsh
 #version 150
 
 // === Attributes (icosphere only needs Position) ===

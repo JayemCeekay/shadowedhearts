@@ -1,4 +1,3 @@
-// aura_impostor_cylinder.vsh (identical to sphere variant)
 #version 150
 
 // === Attributes (icosphere/cylinder proxy only needs Position) ===
