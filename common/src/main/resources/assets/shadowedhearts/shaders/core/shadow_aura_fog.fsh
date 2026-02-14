@@ -1,33 +1,3 @@
-// shadow_aura_fog.fsh — Shadow Aura Fog (size-invariant look)
-// Context: Minecraft Cobblemon mod; all shadow/purity/corruption/capture/attack/combat terms are gameplay mechanics.
-//
-// Purpose
-// - Render a stylized emissive fog “aura” around entities using sphere SDF bounds.
-// - Patterns are scale-invariant: most controls are specified relative to the proxy radius.
-// - Visual style: teardrop/flame silhouette, advected noise that leans with entity motion/wind.
-//
-// Section map
-// 1) Inputs & uniforms (grouped by role)
-// 2) Helpers: noise, fbm, curl, SDFs, ray intersect, dithering, posterize
-// 3) main():
-//    3.1) Ray setup in object space, bounds (sphere)
-//    3.2) March setup and limb fade (silhouette softening)
-//    3.3) Per-step sample:
-//         a) Relative coordinates (size-invariant) + height y01
-//         b) Flow/advection vectors (entity velocity + wind + curl), world-up in relative space
-//         c) Teardrop SDF deformation (bend + taper) then signed distance
-//         d) Shell band windowing (thin skin under the surface) + layered shells
-//         e) Pixelization (optional, relative to radius)
-//         f) Noise sample: base field stable; only advection scrolls over time + small warp
-//         g) Brightness shaping, base density bias (heavier at base)
-//         h) Rim boost (optional), limb fade, absorption, and front-to-back accumulate
-//    3.4) Final fade/color and output
-//
-// Implementation notes
-// - “Relative” means divided by (R, H+R, R) so features scale with proxy size.
-// - We discard outside the SDF; silhouette movement comes from deforming the SDF input (teardrop block).
-// - Only the advection scrolls over time to avoid global texture sliding.
-// - Shell band and lip kill keep the rim clean and avoid crunchy glows.
 #version 150
 
 // ===== From VS =====

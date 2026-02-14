@@ -1,14 +1,3 @@
-// shadow_aura_fog_cylinder.fsh — Shadow Aura Fog (cylindrical bounds)
-// Context: Minecraft Cobblemon mod; all shadow/purity/corruption/capture/attack/combat terms are gameplay mechanics.
-//
-// Purpose
-// - Render a stylized emissive fog “aura” around entities using an infinite vertical cylinder SDF (radius R in XZ).
-// - Patterns are scale-invariant: most controls are specified relative to the proxy radius.
-// - Visual style: teardrop/flame silhouette, advected noise that leans with entity motion/wind.
-//
-// Notes
-// - This is a near-identical copy of shadow_aura_fog.fsh, but the SDF, SDF normal, and ray bound tests use
-//   a Y-axis infinite cylinder instead of a sphere. Uniform names and semantics are unchanged for drop-in use.
 #version 150
 
 // ===== From VS =====
