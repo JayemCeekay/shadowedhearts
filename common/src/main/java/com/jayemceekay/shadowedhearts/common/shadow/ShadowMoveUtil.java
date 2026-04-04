@@ -1,6 +1,8 @@
 package com.jayemceekay.shadowedhearts.common.shadow;
 
 import com.cobblemon.mod.common.api.moves.BenchedMove;
+import com.cobblemon.mod.common.api.moves.Move;
+import com.cobblemon.mod.common.api.moves.MoveTemplate;
 import com.cobblemon.mod.common.api.moves.Moves;
 import com.cobblemon.mod.common.pokemon.Pokemon;
 import com.jayemceekay.shadowedhearts.Shadowedhearts;
@@ -142,5 +144,19 @@ public class ShadowMoveUtil {
             if (exclude == null || !exclude.equalsIgnoreCase(id)) return id;
         }
         return ids.get(0);
+    }
+
+    public static boolean isShadowMove(Move move) {
+        return move != null && move.getType() == Shadowedhearts.SH_SHADOW_TYPE;
+    }
+
+    public static boolean isShadowMove(MoveTemplate template) {
+        return template != null && template.getElementalType() == Shadowedhearts.SH_SHADOW_TYPE;
+    }
+
+    public static boolean isShadowMoveId(String moveId) {
+        if (moveId == null) return false;
+        var tmpl = Moves.INSTANCE.getByNameOrDummy(moveId);
+        return tmpl.getElementalType() == Shadowedhearts.SH_SHADOW_TYPE;
     }
 }

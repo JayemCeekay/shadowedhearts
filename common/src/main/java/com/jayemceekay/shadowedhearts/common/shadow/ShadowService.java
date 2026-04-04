@@ -36,9 +36,9 @@ public final class ShadowService {
     }
 
     public static void setShadow(Pokemon pokemon, @Nullable PokemonEntity live, boolean shadow, boolean sync) {
-        ShadowAspectUtil.setShadowAspect(pokemon, shadow, sync);
+        ShadowAspectUtil.setShadowAspect(pokemon, shadow, false);
         // Ensure required supporting aspects exist when shadowed
-        ShadowAspectUtil.ensureRequiredShadowAspects(pokemon);
+        ShadowAspectUtil.ensureRequiredShadowAspects(pokemon, false);
         if (live != null) {
             ShadowPokemonData.set(live, shadow, ShadowAspectUtil.getHeartGauge(pokemon));
         }
@@ -46,6 +46,7 @@ public final class ShadowService {
             // Proactively sync aspect changes to observing players (party/PC/chamber UI) and mark store dirty.
             // This ensures client UIs (e.g., Summary screen) update immediately without requiring a PC swap.
             ShadowAspectUtil.syncAspects(pokemon);
+            ShadowAspectUtil.syncProperties(pokemon);
             ShadowAspectUtil.syncBenchedMoves(pokemon);
             ShadowAspectUtil.syncMoveSet(pokemon);
         }
@@ -61,9 +62,9 @@ public final class ShadowService {
     public static void setHeartGauge(Pokemon pokemon, @Nullable PokemonEntity live, int meter, boolean sync) {
         int max = HeartGaugeConfig.getMax(pokemon);
         int clamped = Math.max(0, Math.min(max, meter));
-        ShadowAspectUtil.setHeartGaugeValue(pokemon, clamped, sync);
+        ShadowAspectUtil.setHeartGaugeValue(pokemon, clamped, false);
         // Ensure required supporting aspects exist when shadowed (no-op if not shadowed)
-        ShadowAspectUtil.ensureRequiredShadowAspects(pokemon);
+        ShadowAspectUtil.ensureRequiredShadowAspects(pokemon, false);
         if (live != null)
             ShadowPokemonData.set(live, ShadowPokemonData.isShadow(live), ShadowAspectUtil.getHeartGauge(pokemon));
 
@@ -72,6 +73,7 @@ public final class ShadowService {
         if (sync) {
             // Proactively sync aspect changes to observing players and mark store dirty so client UI updates live.
             ShadowAspectUtil.syncAspects(pokemon);
+            ShadowAspectUtil.syncProperties(pokemon);
             ShadowAspectUtil.syncBenchedMoves(pokemon);
             ShadowAspectUtil.syncMoveSet(pokemon);
         }

@@ -45,59 +45,33 @@ public final class ModItems {
             () -> new BlockItem(ModBlocks.SHADOWFALL_METEOROID.get(), new Item.Properties().arch$tab(ModCreativeTabs.SHADOWED_HEARTS_TAB)));
 
     // Scents
-    public static final RegistrySupplier<Item> JOY_SCENT = ITEMS.register(
-            "joy_scent",
-            () -> new ScentItem(new Item.Properties().arch$tab(ModCreativeTabs.SHADOWED_HEARTS_TAB), 1, "soothing", 0xFFA9D1)); // Soft Pink
-    public static final RegistrySupplier<Item> TRANQUIL_SCENT = ITEMS.register(
-            "tranquil_scent",
-            () -> new ScentItem(new Item.Properties().arch$tab(ModCreativeTabs.SHADOWED_HEARTS_TAB), 2, "soothing", 0xAFEEEE)); // Pale Blue
-    public static final RegistrySupplier<Item> MEADOW_SCENT = ITEMS.register(
-            "meadow_scent",
-            () -> new ScentItem(new Item.Properties().arch$tab(ModCreativeTabs.SHADOWED_HEARTS_TAB), 3, "soothing", 0x90EE90)); // Light Green
+    public static final RegistrySupplier<Item> JOY_SCENT = registerScent("joy", 1, "soothing", 0xFFA9D1);
+    public static final RegistrySupplier<Item> TRANQUIL_SCENT = registerScent("tranquil", 2, "soothing", 0xAFEEEE);
+    public static final RegistrySupplier<Item> MEADOW_SCENT = registerScent("meadow", 3, "soothing", 0x90EE90);
 
     // Stimulating
-    public static final RegistrySupplier<Item> SPARK_SCENT = ITEMS.register(
-            "spark_scent",
-            () -> new ScentItem(new Item.Properties().arch$tab(ModCreativeTabs.SHADOWED_HEARTS_TAB), 1, "stimulating", 0xFFFF00)); // Vibrant Yellow
-    public static final RegistrySupplier<Item> EXCITE_SCENT = ITEMS.register(
-            "excite_scent",
-            () -> new ScentItem(new Item.Properties().arch$tab(ModCreativeTabs.SHADOWED_HEARTS_TAB), 2, "stimulating", 0xFFD700)); // Bright Gold
-    public static final RegistrySupplier<Item> FOCUS_SCENT = ITEMS.register(
-            "focus_scent",
-            () -> new ScentItem(new Item.Properties().arch$tab(ModCreativeTabs.SHADOWED_HEARTS_TAB), 3, "stimulating", 0xFF8C00)); // Sharp Orange
+    public static final RegistrySupplier<Item> SPARK_SCENT = registerScent("spark", 1, "stimulating", 0xFFFF00);
+    public static final RegistrySupplier<Item> EXCITE_SCENT = registerScent("excite", 2, "stimulating", 0xFFD700);
+    public static final RegistrySupplier<Item> FOCUS_SCENT = registerScent("focus", 3, "stimulating", 0xFF8C00);
 
     // Affectionate
-    public static final RegistrySupplier<Item> FAMILIAR_SCENT = ITEMS.register(
-            "familiar_scent",
-            () -> new ScentItem(new Item.Properties().arch$tab(ModCreativeTabs.SHADOWED_HEARTS_TAB), 1, "affectionate", 0xFF00FF)); // Magenta
-    public static final RegistrySupplier<Item> COMFORT_SCENT = ITEMS.register(
-            "comfort_scent",
-            () -> new ScentItem(new Item.Properties().arch$tab(ModCreativeTabs.SHADOWED_HEARTS_TAB), 2, "affectionate", 0x8B0000)); // Deep Red
-    public static final RegistrySupplier<Item> HEARTH_SCENT = ITEMS.register(
-            "hearth_scent",
-            () -> new ScentItem(new Item.Properties().arch$tab(ModCreativeTabs.SHADOWED_HEARTS_TAB), 3, "affectionate", 0xFFBF00)); // Warm Amber
+    public static final RegistrySupplier<Item> FAMILIAR_SCENT = registerScent("familiar", 1, "affectionate", 0xFF00FF);
+    public static final RegistrySupplier<Item> COMFORT_SCENT = registerScent("comfort", 2, "affectionate", 0x8B0000);
+    public static final RegistrySupplier<Item> HEARTH_SCENT = registerScent("hearth", 3, "affectionate", 0xFFBF00);
 
     // Clarifying
-    public static final RegistrySupplier<Item> INSIGHT_SCENT = ITEMS.register(
-            "insight_scent",
-            () -> new ScentItem(new Item.Properties().arch$tab(ModCreativeTabs.SHADOWED_HEARTS_TAB), 1, "clarifying", 0xEE82EE)); // Soft Violet
-    public static final RegistrySupplier<Item> LUCID_SCENT = ITEMS.register(
-            "lucid_scent",
-            () -> new ScentItem(new Item.Properties().arch$tab(ModCreativeTabs.SHADOWED_HEARTS_TAB), 2, "clarifying", 0x007FFF)); // Azure
-    public static final RegistrySupplier<Item> VIVID_SCENT = ITEMS.register(
-            "vivid_scent",
-            () -> new ScentItem(new Item.Properties().arch$tab(ModCreativeTabs.SHADOWED_HEARTS_TAB), 3, "clarifying", 0x4B0082)); // Deep Indigo
+    public static final RegistrySupplier<Item> INSIGHT_SCENT = registerScent("insight", 1, "clarifying", 0xEE82EE);
+    public static final RegistrySupplier<Item> LUCID_SCENT = registerScent("lucid", 2, "clarifying", 0x007FFF);
+    public static final RegistrySupplier<Item> VIVID_SCENT = registerScent("vivid", 3, "clarifying", 0x4B0082);
 
     // Resolute
-    public static final RegistrySupplier<Item> GROUNDING_SCENT = ITEMS.register(
-            "grounding_scent",
-            () -> new ScentItem(new Item.Properties().arch$tab(ModCreativeTabs.SHADOWED_HEARTS_TAB), 1, "resolute", 0x808000)); // Olive Green
-    public static final RegistrySupplier<Item> STEADY_SCENT = ITEMS.register(
-            "steady_scent",
-            () -> new ScentItem(new Item.Properties().arch$tab(ModCreativeTabs.SHADOWED_HEARTS_TAB), 2, "resolute", 0x708090)); // Slate Gray
-    public static final RegistrySupplier<Item> RESOLVE_SCENT = ITEMS.register(
-            "resolve_scent",
-            () -> new ScentItem(new Item.Properties().arch$tab(ModCreativeTabs.SHADOWED_HEARTS_TAB), 3, "resolute", 0x964B00)); // Tawny Brown
+    public static final RegistrySupplier<Item> GROUNDING_SCENT = registerScent("grounding", 1, "resolute", 0x808000);
+    public static final RegistrySupplier<Item> STEADY_SCENT = registerScent("steady", 2, "resolute", 0x708090);
+    public static final RegistrySupplier<Item> RESOLVE_SCENT = registerScent("resolve", 3, "resolute", 0x964B00);
+
+    private static RegistrySupplier<Item> registerScent(String name, int tier, String type, int color) {
+        return ITEMS.register(name + "_scent", () -> new ScentItem(new Item.Properties().arch$tab(ModCreativeTabs.SHADOWED_HEARTS_TAB), tier, type, color));
+    }
 
     public static final RegistrySupplier<Item> SHADOW_SHARD = ITEMS.register(
             "shadow_shard",
@@ -125,40 +99,19 @@ public final class ModItems {
     );*/
 
     // Shadow Signal Data — tiered hunt-initiating items (tiers 1–5)
-    public static final RegistrySupplier<Item> SHADOW_SIGNAL_DATA_FAINT = ITEMS.register(
-            "shadow_signal_data_faint",
-            () -> new ShadowSignalDataItem(
-                    new Item.Properties().arch$tab(ModCreativeTabs.SHADOWED_HEARTS_TAB).stacksTo(16)
-                            .rarity(ShadowSignalDataItem.tierToRarity(ShadowSignalTier.FAINT)),
-                    ShadowSignalTier.FAINT));
+    public static final RegistrySupplier<Item> SHADOW_SIGNAL_DATA_FAINT = registerSignalData("faint", ShadowSignalTier.FAINT);
+    public static final RegistrySupplier<Item> SHADOW_SIGNAL_DATA_WEAK = registerSignalData("weak", ShadowSignalTier.WEAK);
+    public static final RegistrySupplier<Item> SHADOW_SIGNAL_DATA_MODERATE = registerSignalData("moderate", ShadowSignalTier.MODERATE);
+    public static final RegistrySupplier<Item> SHADOW_SIGNAL_DATA_STRONG = registerSignalData("strong", ShadowSignalTier.STRONG);
+    public static final RegistrySupplier<Item> SHADOW_SIGNAL_DATA_RESONANT = registerSignalData("resonant", ShadowSignalTier.RESONANT);
 
-    public static final RegistrySupplier<Item> SHADOW_SIGNAL_DATA_WEAK = ITEMS.register(
-            "shadow_signal_data_weak",
-            () -> new ShadowSignalDataItem(
-                    new Item.Properties().arch$tab(ModCreativeTabs.SHADOWED_HEARTS_TAB).stacksTo(16)
-                            .rarity(ShadowSignalDataItem.tierToRarity(ShadowSignalTier.WEAK)),
-                    ShadowSignalTier.WEAK));
-
-    public static final RegistrySupplier<Item> SHADOW_SIGNAL_DATA_MODERATE = ITEMS.register(
-            "shadow_signal_data_moderate",
-            () -> new ShadowSignalDataItem(
-                    new Item.Properties().arch$tab(ModCreativeTabs.SHADOWED_HEARTS_TAB).stacksTo(16)
-                            .rarity(ShadowSignalDataItem.tierToRarity(ShadowSignalTier.MODERATE)),
-                    ShadowSignalTier.MODERATE));
-
-    public static final RegistrySupplier<Item> SHADOW_SIGNAL_DATA_STRONG = ITEMS.register(
-            "shadow_signal_data_strong",
-            () -> new ShadowSignalDataItem(
-                    new Item.Properties().arch$tab(ModCreativeTabs.SHADOWED_HEARTS_TAB).stacksTo(16)
-                            .rarity(ShadowSignalDataItem.tierToRarity(ShadowSignalTier.STRONG)),
-                    ShadowSignalTier.STRONG));
-
-    public static final RegistrySupplier<Item> SHADOW_SIGNAL_DATA_RESONANT = ITEMS.register(
-            "shadow_signal_data_resonant",
-            () -> new ShadowSignalDataItem(
-                    new Item.Properties().arch$tab(ModCreativeTabs.SHADOWED_HEARTS_TAB).stacksTo(16)
-                            .rarity(ShadowSignalDataItem.tierToRarity(ShadowSignalTier.RESONANT)),
-                    ShadowSignalTier.RESONANT));
+    private static RegistrySupplier<Item> registerSignalData(String name, ShadowSignalTier tier) {
+        return ITEMS.register("shadow_signal_data_" + name,
+                () -> new ShadowSignalDataItem(
+                        new Item.Properties().arch$tab(ModCreativeTabs.SHADOWED_HEARTS_TAB).stacksTo(16)
+                                .rarity(ShadowSignalDataItem.tierToRarity(tier)),
+                        tier));
+    }
 
     /*public static final RegistrySupplier<Item> DARK_BALL = ITEMS.register(
             "dark_ball",

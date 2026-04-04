@@ -12,12 +12,12 @@ data class AuraLifecyclePacket(
     @get:JvmName("getX") val x: Double,
     @get:JvmName("getY") val y: Double,
     @get:JvmName("getZ") val z: Double,
-    @get:JvmName("getDx") val dx: Double,
-    @get:JvmName("getDy") val dy: Double,
-    @get:JvmName("getDz") val dz: Double,
+    @get:JvmName("getDx") val dx: Float,
+    @get:JvmName("getDy") val dy: Float,
+    @get:JvmName("getDz") val dz: Float,
     @get:JvmName("getBbw") val bbw: Float,
     @get:JvmName("getBbh") val bbh: Float,
-    @get:JvmName("getBbs") val bbs: Double,
+    @get:JvmName("getBbs") val bbs: Float,
     @get:JvmName("getCorruption") val corruption: Float,
     @get:JvmName("getHeightMultiplier") val heightMultiplier: Float = 1.0f,
     @get:JvmName("getSustainOverride") val sustainOverride: Int = -1
@@ -31,12 +31,12 @@ data class AuraLifecyclePacket(
         buf.writeDouble(x)
         buf.writeDouble(y)
         buf.writeDouble(z)
-        buf.writeDouble(dx)
-        buf.writeDouble(dy)
-        buf.writeDouble(dz)
+        buf.writeFloat(dx)
+        buf.writeFloat(dy)
+        buf.writeFloat(dz)
         buf.writeFloat(bbw)
         buf.writeFloat(bbh)
-        buf.writeDouble(bbs)
+        buf.writeFloat(bbs)
         buf.writeFloat(corruption)
         buf.writeFloat(heightMultiplier)
         buf.writeVarInt(sustainOverride)
@@ -58,12 +58,12 @@ data class AuraLifecyclePacket(
                 buf.readDouble(),
                 buf.readDouble(),
                 buf.readDouble(),
-                buf.readDouble(),
-                buf.readDouble(),
-                buf.readDouble(),
                 buf.readFloat(),
                 buf.readFloat(),
-                buf.readDouble(),
+                buf.readFloat(),
+                buf.readFloat(),
+                buf.readFloat(),
+                buf.readFloat(),
                 buf.readFloat(),
                 buf.readFloat(),
                 buf.readVarInt()

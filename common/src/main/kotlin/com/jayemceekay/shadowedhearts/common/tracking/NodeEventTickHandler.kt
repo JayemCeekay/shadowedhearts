@@ -1,7 +1,5 @@
 package com.jayemceekay.shadowedhearts.common.tracking
 
-import com.cobblemon.mod.common.platform.events.PlatformEvents
-import com.cobblemon.mod.common.platform.events.ServerPlayerTickEvent
 import com.jayemceekay.shadowedhearts.Shadowedhearts
 import com.jayemceekay.shadowedhearts.network.ShadowedHeartsNetwork
 import com.jayemceekay.shadowedhearts.network.trail.EvidenceScanCompleteHandler
@@ -9,6 +7,7 @@ import com.jayemceekay.shadowedhearts.network.trail.ManifestationSyncS2CPacket
 import com.jayemceekay.shadowedhearts.network.trail.NodeEventSyncS2CPacket
 import com.jayemceekay.shadowedhearts.network.trail.TrailSyncS2CPacket
 import com.jayemceekay.shadowedhearts.registry.ModSounds
+import dev.architectury.event.events.common.TickEvent
 import net.minecraft.server.level.ServerPlayer
 import net.minecraft.sounds.SoundSource
 import kotlin.math.min
@@ -23,93 +22,94 @@ object NodeEventTickHandler {
     private const val SYNC_INTERVAL = 5 // sync every 5 ticks to avoid spam
 
     fun init() {
-        PlatformEvents.SERVER_PLAYER_TICK_POST.subscribe { ev: ServerPlayerTickEvent.Post ->
-            val player: ServerPlayer = ev.player
-            val session = TrailManager.get(player.uuid).orElse(null) ?: return@subscribe
+        TickEvent.SERVER_POST.register { server ->
+            for (session in TrailManager.getAllSessions()) {
+                val player = server.playerList.getPlayer(session.playerId) ?: continue
 
-            // Tick signal blackout
-            session.tickSignalBlackout()
+                // Tick signal blackout
+                session.tickSignalBlackout()
 
-            // Tick manifestation buildup
-            if (session.state == TrailSession.State.MANIFESTATION_BUILDUP) {
-                tickManifestationBuildup(player, session)
-                return@subscribe
-            }
-
-            if (session.state != TrailSession.State.NODE_EVENT_ACTIVE) return@subscribe
-            val event = session.activeNodeEvent ?: return@subscribe
-
-            val playerPos = player.blockPosition()
-            val changed = session.tickNodeEvent(playerPos)
-
-            if (event.phase == NodeEventState.Phase.COMPLETED) {
-                // Event completed — grade based on performance
-                val grade = gradeNodeEvent(event)
-                LOG.debug("[ShadowHunt] NodeEvent COMPLETED: type={}, grade={}, elapsed={}/{}, player={}",
-                    event.eventType, grade, event.ticksElapsed, event.maxTicks, player.name.string)
-                session.lastNodeGrade = grade
-
-                // Play event-specific completion sound
-                when (event.eventType) {
-                    NodeEventType.EVIDENCE_INTERPRETATION ->
-                        player.serverLevel().playSound(null, player.blockPosition(), ModSounds.HUNT_EVIDENCE_CORRECT.get(), SoundSource.PLAYERS, 0.9f, 1.0f)
-                    NodeEventType.ENVIRONMENTAL_SEARCH ->
-                        player.serverLevel().playSound(null, player.blockPosition(), ModSounds.HUNT_NODE_SCAN.get(), SoundSource.PLAYERS, 0.9f, 1.0f)
-                    NodeEventType.PROVOCATION ->
-                        player.serverLevel().playSound(null, player.blockPosition(), ModSounds.HUNT_PROVOCATION_BUILDUP.get(), SoundSource.PLAYERS, 0.8f, 1.2f)
-                    else -> {}
+                // Tick manifestation buildup
+                if (session.state == TrailSession.State.MANIFESTATION_BUILDUP) {
+                    tickManifestationBuildup(player, session)
+                    continue
                 }
-                // Play grade-specific sound
-                when (grade) {
-                    "PERFECT" -> player.serverLevel().playSound(null, player.blockPosition(), ModSounds.HUNT_GRADE_PERFECT.get(), SoundSource.PLAYERS, 1.0f, 1.0f)
-                    "SLOPPY" -> player.serverLevel().playSound(null, player.blockPosition(), ModSounds.HUNT_GRADE_SLOPPY.get(), SoundSource.PLAYERS, 0.8f, 1.0f)
-                    else -> {}
-                }
-                // Play trail reveal sound
-                player.serverLevel().playSound(null, player.blockPosition(), ModSounds.HUNT_TRAIL_REVEAL.get(), SoundSource.PLAYERS, 0.8f, 1.0f)
 
-                // Apply outcome branching
-                applyNodeEventBranching(grade, event.eventType, session)
+                if (session.state != TrailSession.State.NODE_EVENT_ACTIVE) continue
+                val event = session.activeNodeEvent ?: continue
 
-                session.completeNodeEvent()
-                advanceAndSync(session, player)
-                // Clear node event on client
-                ShadowedHeartsNetwork.sendToPlayer(player, NodeEventSyncS2CPacket(
-                    eventType = event.eventType,
-                    phase = NodeEventState.Phase.COMPLETED.ordinal,
-                    ticksElapsed = 0, maxTicks = 0
-                ))
-            } else if (event.phase == NodeEventState.Phase.FAILED) {
-                // Event failed — apply penalty
-                LOG.debug("[ShadowHunt] NodeEvent FAILED: type={}, elapsed={}/{}, player={}",
-                    event.eventType, event.ticksElapsed, event.maxTicks, player.name.string)
-                session.lastNodeGrade = "FAILED"
-                player.serverLevel().playSound(null, player.blockPosition(), ModSounds.HUNT_GRADE_FAILED.get(), SoundSource.PLAYERS, 0.7f, 1.0f)
+                val playerPos = player.blockPosition()
+                val changed = session.tickNodeEvent(playerPos)
 
-                // Failure branching: signal blackout + tension spike
-                session.beginSignalBlackout(40) // 2 seconds blackout
-                session.addTension(0.1f)
-                player.serverLevel().playSound(null, player.blockPosition(), ModSounds.HUNT_SIGNAL_BLACKOUT.get(), SoundSource.PLAYERS, 0.6f, 1.0f)
+                if (event.phase == NodeEventState.Phase.COMPLETED) {
+                    // Event completed — grade based on performance
+                    val grade = gradeNodeEvent(event)
+                    LOG.debug("[ShadowHunt] NodeEvent COMPLETED: type={}, grade={}, elapsed={}/{}, player={}",
+                        event.eventType, grade, event.ticksElapsed, event.maxTicks, player.name.string)
+                    session.lastNodeGrade = grade
 
-                // Evidence wrong choice → increased tension + trail noise
-                if (event.eventType == NodeEventType.EVIDENCE_INTERPRETATION) {
-                    session.trailQuality = kotlin.math.max(0f, session.trailQuality - 0.15f)
-                }
-                // Provocation timeout → stronger tension for next node
-                if (event.eventType == NodeEventType.PROVOCATION) {
+                    // Play event-specific completion sound
+                    when (event.eventType) {
+                        NodeEventType.EVIDENCE_INTERPRETATION ->
+                            player.serverLevel().playSound(null, player.blockPosition(), ModSounds.HUNT_EVIDENCE_CORRECT.get(), SoundSource.PLAYERS, 0.9f, 1.0f)
+                        NodeEventType.ENVIRONMENTAL_SEARCH ->
+                            player.serverLevel().playSound(null, player.blockPosition(), ModSounds.HUNT_NODE_SCAN.get(), SoundSource.PLAYERS, 0.9f, 1.0f)
+                        NodeEventType.PROVOCATION ->
+                            player.serverLevel().playSound(null, player.blockPosition(), ModSounds.HUNT_PROVOCATION_BUILDUP.get(), SoundSource.PLAYERS, 0.8f, 1.2f)
+                        else -> {}
+                    }
+                    // Play grade-specific sound
+                    when (grade) {
+                        "PERFECT" -> player.serverLevel().playSound(null, player.blockPosition(), ModSounds.HUNT_GRADE_PERFECT.get(), SoundSource.PLAYERS, 1.0f, 1.0f)
+                        "SLOPPY" -> player.serverLevel().playSound(null, player.blockPosition(), ModSounds.HUNT_GRADE_SLOPPY.get(), SoundSource.PLAYERS, 0.8f, 1.0f)
+                        else -> {}
+                    }
+                    // Play trail reveal sound
+                    player.serverLevel().playSound(null, player.blockPosition(), ModSounds.HUNT_TRAIL_REVEAL.get(), SoundSource.PLAYERS, 0.8f, 1.0f)
+
+                    // Apply outcome branching
+                    applyNodeEventBranching(grade, event.eventType, session)
+
+                    session.completeNodeEvent()
+                    advanceAndSync(session, player)
+                    // Clear node event on client
+                    ShadowedHeartsNetwork.sendToPlayer(player, NodeEventSyncS2CPacket(
+                        eventType = event.eventType,
+                        phase = NodeEventState.Phase.COMPLETED.ordinal,
+                        ticksElapsed = 0, maxTicks = 0
+                    ))
+                } else if (event.phase == NodeEventState.Phase.FAILED) {
+                    // Event failed — apply penalty
+                    LOG.debug("[ShadowHunt] NodeEvent FAILED: type={}, elapsed={}/{}, player={}",
+                        event.eventType, event.ticksElapsed, event.maxTicks, player.name.string)
+                    session.lastNodeGrade = "FAILED"
+                    player.serverLevel().playSound(null, player.blockPosition(), ModSounds.HUNT_GRADE_FAILED.get(), SoundSource.PLAYERS, 0.7f, 1.0f)
+
+                    // Failure branching: signal blackout + tension spike
+                    session.beginSignalBlackout(40) // 2 seconds blackout
                     session.addTension(0.1f)
-                    session.setPendingWildConsequence(true)
-                }
+                    player.serverLevel().playSound(null, player.blockPosition(), ModSounds.HUNT_SIGNAL_BLACKOUT.get(), SoundSource.PLAYERS, 0.6f, 1.0f)
 
-                session.failNodeEvent()
-                ShadowedHeartsNetwork.sendToPlayer(player, NodeEventSyncS2CPacket(
-                    eventType = event.eventType,
-                    phase = NodeEventState.Phase.FAILED.ordinal,
-                    ticksElapsed = event.ticksElapsed, maxTicks = event.maxTicks
-                ))
-            } else if (event.ticksElapsed % SYNC_INTERVAL == 0) {
-                // Periodic sync for continuous feedback
-                syncNodeEvent(player, event, session)
+                    // Evidence wrong choice → increased tension + trail noise
+                    if (event.eventType == NodeEventType.EVIDENCE_INTERPRETATION) {
+                        session.trailQuality = kotlin.math.max(0f, session.trailQuality - 0.15f)
+                    }
+                    // Provocation timeout → stronger tension for next node
+                    if (event.eventType == NodeEventType.PROVOCATION) {
+                        session.addTension(0.1f)
+                        session.setPendingWildConsequence(true)
+                    }
+
+                    session.failNodeEvent()
+                    ShadowedHeartsNetwork.sendToPlayer(player, NodeEventSyncS2CPacket(
+                        eventType = event.eventType,
+                        phase = NodeEventState.Phase.FAILED.ordinal,
+                        ticksElapsed = event.ticksElapsed, maxTicks = event.maxTicks
+                    ))
+                } else if (event.ticksElapsed % SYNC_INTERVAL == 0) {
+                    // Periodic sync for continuous feedback
+                    syncNodeEvent(player, event, session)
+                }
             }
         }
     }

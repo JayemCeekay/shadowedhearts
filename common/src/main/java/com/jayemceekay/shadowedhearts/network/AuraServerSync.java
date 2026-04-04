@@ -27,6 +27,30 @@ public final class AuraServerSync {
     }
 
     private static final Map<Integer, WeakReference<PokemonEntity>> TRACKING = new ConcurrentHashMap<>();
+    private static final Map<Integer, LastSentState> LAST_SENT = new ConcurrentHashMap<>();
+
+    private static final class LastSentState {
+        final double x, y, z;
+        final float corruption;
+        final long tick;
+
+        LastSentState(double x, double y, double z, float corruption, long tick) {
+            this.x = x;
+            this.y = y;
+            this.z = z;
+            this.corruption = corruption;
+            this.tick = tick;
+        }
+
+        boolean shouldResync(double nx, double ny, double nz, float nCorr, long nTick) {
+            if (nTick - tick > 100) return true; // Force sync every 5 seconds
+            if (Math.abs(nCorr - corruption) > 0.01f) return true;
+            double dx = x - nx;
+            double dy = y - ny;
+            double dz = z - nz;
+            return (dx * dx + dy * dy + dz * dz) > 0.01; // Moved more than 0.1 blocks
+        }
+    }
 
     /**
      * Call once during common init on both platforms.
@@ -68,6 +92,7 @@ public final class AuraServerSync {
             } else {
                 if (TRACKING.containsKey(pe.getId())) {
                     TRACKING.remove(pe.getId());
+                    LAST_SENT.remove(pe.getId());
                     S2CUtils.broadcastAuraFadeOutToTracking(pe, 10);
                 }
             }
@@ -91,6 +116,7 @@ public final class AuraServerSync {
             var pe = e.getOldEntity();
             if (pe == null || pe.level().isClientSide()) return Unit.INSTANCE;
             TRACKING.remove(pe.getId());
+            LAST_SENT.remove(pe.getId());
             // Tell clients to fade out the aura quickly
             S2CUtils.broadcastAuraFadeOutToTracking(pe, 10);
             return Unit.INSTANCE;
@@ -104,35 +130,41 @@ public final class AuraServerSync {
         Iterator<Map.Entry<Integer, WeakReference<PokemonEntity>>> it = TRACKING.entrySet().iterator();
         while (it.hasNext()) {
             var en = it.next();
+            int id = en.getKey();
             var ref = en.getValue();
             PokemonEntity pe = ref != null ? ref.get() : null;
-            if (pe == null) {
+            if (pe == null || pe.level().isClientSide()) {
                 it.remove();
-                continue;
-            }
-            if (pe.level().isClientSide()) {
-                it.remove();
+                LAST_SENT.remove(id);
                 continue;
             }
             // If the Pokémon has just died or been removed, send a quick fade-out and drop tracking
             if (!pe.isAlive()) {
                 S2CUtils.broadcastAuraFadeOutToTracking(pe, 10);
                 it.remove();
+                LAST_SENT.remove(id);
                 continue;
             }
 
             if (!ShadowAspectUtil.shouldHaveShadowAura(pe.getPokemon())) {
                 S2CUtils.broadcastAuraFadeOutToTracking(pe, 10);
                 it.remove();
+                LAST_SENT.remove(id);
                 continue;
             }
 
             // Broadcast to tracking players and the owner if present
             if (pe.level() instanceof ServerLevel level) {
                 long now = level.getGameTime();
-                S2CUtils.broadcastStateToTracking(pe, now);
+                float corruption = ShadowAspectUtil.getHeartGauge(pe.getPokemon());
+                LastSentState last = LAST_SENT.get(id);
+                if (last == null || last.shouldResync(pe.getX(), pe.getY(), pe.getZ(), corruption, now)) {
+                    S2CUtils.broadcastStateToTracking(pe, now);
+                    LAST_SENT.put(id, new LastSentState(pe.getX(), pe.getY(), pe.getZ(), corruption, now));
+                }
             } else {
                 it.remove();
+                LAST_SENT.remove(id);
             }
         }
     }

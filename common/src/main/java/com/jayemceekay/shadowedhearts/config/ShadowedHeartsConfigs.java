@@ -1,25 +1,16 @@
 package com.jayemceekay.shadowedhearts.config;
 
-import java.util.function.Supplier;
-
 public final class ShadowedHeartsConfigs {
-    private static Supplier<ShadowedHeartsConfigs> instanceSupplier = () -> {
-        var defaultInstance = new ShadowedHeartsConfigs(
-            new ClientConfig(), new ModConfig(), new SnagConfig());
-
-        ShadowedHeartsConfigs.instanceSupplier = () -> defaultInstance;
-        return defaultInstance;
-    };
+    private static volatile ShadowedHeartsConfigs INSTANCE;
 
     private final IClientConfig clientConfig;
     private final IShadowConfig shadowConfig;
     private final ISnagConfig snagConfig;
 
     private ShadowedHeartsConfigs(
-        IClientConfig clientConfig,
-        IShadowConfig shadowConfig,
-        ISnagConfig snagConfig)
-    {
+            IClientConfig clientConfig,
+            IShadowConfig shadowConfig,
+            ISnagConfig snagConfig) {
         this.clientConfig = clientConfig;
         this.shadowConfig = shadowConfig;
         this.snagConfig = snagConfig;
@@ -39,6 +30,14 @@ public final class ShadowedHeartsConfigs {
 
 
     public static ShadowedHeartsConfigs getInstance() {
-        return ShadowedHeartsConfigs.instanceSupplier.get();
+        if (INSTANCE == null) {
+            synchronized (ShadowedHeartsConfigs.class) {
+                if (INSTANCE == null) {
+                    INSTANCE = new ShadowedHeartsConfigs(
+                            new ClientConfig(), new ModConfig(), new SnagConfig());
+                }
+            }
+        }
+        return INSTANCE;
     }
 }

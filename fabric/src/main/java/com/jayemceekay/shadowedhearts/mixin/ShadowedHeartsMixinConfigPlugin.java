@@ -32,13 +32,31 @@ public class ShadowedHeartsMixinConfigPlugin implements IMixinConfigPlugin {
                     yield false;
                 }
             }
-            case "com.jayemceekay.shadowedhearts.mixin.cobblemonbattleextras.CobblemonBattleExtrasNewMoveTileTooltipMixin" -> {
+            case "com.jayemceekay.shadowedhearts.mixin.cobblemonbattleextras.CobblemonBattleExtras_1_7_25to40_NewMoveTileTooltipMixin" -> {
                 if( !Platform.isModLoaded("cobblemon-battle-extras"))
                     yield false;
                 var mod = Platform.getMod("cobblemon-battle-extras");
                 if (mod == null) yield false;
                 try {
-                    yield VersionPredicate.parse(">=1.7.25").test(Version.parse(mod.getVersion()));
+                    yield VersionPredicate.parse(">=1.7.25 <=1.7.40").test(Version.parse(mod.getVersion()));
+                } catch (VersionParsingException e) {
+                    yield false;
+                }
+            }
+            case "com.jayemceekay.shadowedhearts.mixin.cobblemonbattleextras.CobblemonBattleExtras_1_7_41_NewMoveTileTooltipMixin",
+                 "com.jayemceekay.shadowedhearts.mixin.cobblemonbattleextras.CobblemonBattleExtrasBattleInfoPanelRendererMixin",
+                 "com.jayemceekay.shadowedhearts.mixin.cobblemonbattleextras.CobblemonBattleExtrasCustomBattleControllerMixin",
+                 "com.jayemceekay.shadowedhearts.mixin.cobblemonbattleextras.CobblemonBattleExtrasCustomTooltipRendererMixin",
+                 "com.jayemceekay.shadowedhearts.mixin.cobblemonbattleextras.CobblemonBattleExtrasMoveDisplayInfoAccessor",
+                 "com.jayemceekay.shadowedhearts.mixin.cobblemonbattleextras.CobblemonBattleExtrasMoveTileVisualDataAccessor",
+                 "com.jayemceekay.shadowedhearts.mixin.cobblemonbattleextras.CobblemonBattleExtrasPartySideRendererMixin",
+                 "com.jayemceekay.shadowedhearts.mixin.cobblemonbattleextras.CobblemonBattleExtrasTypeChartMixin" -> {
+                if( !Platform.isModLoaded("cobblemon-battle-extras"))
+                    yield false;
+                var mod = Platform.getMod("cobblemon-battle-extras");
+                if (mod == null) yield false;
+                try {
+                    yield VersionPredicate.parse(">=1.7.41").test(Version.parse(mod.getVersion()));
                 } catch (VersionParsingException e) {
                     yield false;
                 }

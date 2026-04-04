@@ -344,7 +344,7 @@ public final class TrailRibbonRenderer {
         }
         // Soft constraint: blend toward the target rather than hard-clamping
         Vec3 target = anchor.add(diff.scale((double) maxDist / dist));
-        float stiffness = 0.5f;
+        float stiffness = 0.15f;
         return point.add(target.subtract(point).scale(stiffness));
     }
 }

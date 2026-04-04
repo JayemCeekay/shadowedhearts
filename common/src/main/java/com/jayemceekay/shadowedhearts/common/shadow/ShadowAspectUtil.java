@@ -91,6 +91,10 @@ public final class ShadowAspectUtil {
         return pokemon.getAspects().contains(SHAspects.SHADOW) || pokemon.getAspects().contains("cosmetic_item-shadow_shard");
     }
 
+    public static void ensureRequiredShadowAspects(Pokemon pokemon) {
+        ensureRequiredShadowAspects(pokemon, true);
+    }
+
     /**
      * Ensures that a Shadow Pokémon has all required supporting aspects.
      * If the Pokémon has the shadow aspect, this will:
@@ -98,69 +102,86 @@ public final class ShadowAspectUtil {
      * - Create XP and EV buffer aspects if missing, initialized to 0 and 0,0,0,0,0,0 respectively.
      * This method is idempotent and safe to call occasionally (e.g., on send-out or periodic validations).
      */
-    public static void ensureRequiredShadowAspects(Pokemon pokemon) {
+    public static void ensureRequiredShadowAspects(Pokemon pokemon, boolean sync) {
         if (pokemon == null) return;
         if (!hasShadowAspect(pokemon)) return;
 
         boolean changed = false;
-        // Copy before modifications to avoid concurrent modification of the live set
-        Set<String> aspects = new HashSet<>(pokemon.getAspects());
+        Set<String> aspects = null;
 
         // Migration: aspects -> properties
-        int heartGauge = -1;
-        int xpBuf = -1;
-        int[] evBuf = null;
-
-        for (Iterator<String> it = aspects.iterator(); it.hasNext(); ) {
-            String a = it.next();
-            if (a.startsWith(METER_PREFIX)) {
-                try {
-                    heartGauge = Integer.parseInt(a.substring(METER_PREFIX.length()));
-                    it.remove();
-                    changed = true;
-                } catch (NumberFormatException ignored) {}
-            } else if (a.startsWith(XPBUF_PREFIX)) {
-                try {
-                    xpBuf = Integer.parseInt(a.substring(XPBUF_PREFIX.length()));
-                    it.remove();
-                    changed = true;
-                } catch (NumberFormatException ignored) {}
-            } else if (a.startsWith(EVBUF_PREFIX)) {
-                try {
-                    String csv = a.substring(EVBUF_PREFIX.length());
-                    String[] parts = csv.split(",");
-                    evBuf = new int[]{0, 0, 0, 0, 0, 0};
-                    for (int i = 0; i < Math.min(parts.length, 6); i++) {
-                        evBuf[i] = Integer.parseInt(parts[i]);
-                    }
-                    it.remove();
-                    changed = true;
-                } catch (NumberFormatException ignored) {}
+        for (String a : pokemon.getAspects()) {
+            if (a.startsWith(METER_PREFIX) || a.startsWith(XPBUF_PREFIX) || a.startsWith(EVBUF_PREFIX)) {
+                if (aspects == null) aspects = new HashSet<>(pokemon.getAspects());
+                break;
             }
         }
 
-        if (heartGauge != -1) setHeartGaugeProperty(pokemon, heartGauge);
-        if (xpBuf != -1) setXPBufferProperty(pokemon, xpBuf);
-        if (evBuf != null) setEVBufferProperty(pokemon, evBuf);
-        
+        if (aspects != null) {
+            int heartGauge = -1;
+            int xpBuf = -1;
+            int[] evBuf = null;
+
+            for (Iterator<String> it = aspects.iterator(); it.hasNext(); ) {
+                String a = it.next();
+                if (a.startsWith(METER_PREFIX)) {
+                    try {
+                        heartGauge = Integer.parseInt(a.substring(METER_PREFIX.length()));
+                        it.remove();
+                        changed = true;
+                    } catch (NumberFormatException ignored) {
+                    }
+                } else if (a.startsWith(XPBUF_PREFIX)) {
+                    try {
+                        xpBuf = Integer.parseInt(a.substring(XPBUF_PREFIX.length()));
+                        it.remove();
+                        changed = true;
+                    } catch (NumberFormatException ignored) {
+                    }
+                } else if (a.startsWith(EVBUF_PREFIX)) {
+                    try {
+                        String csv = a.substring(EVBUF_PREFIX.length());
+                        String[] parts = csv.split(",");
+                        evBuf = new int[]{0, 0, 0, 0, 0, 0};
+                        for (int i = 0; i < Math.min(parts.length, 6); i++) {
+                            evBuf[i] = Integer.parseInt(parts[i]);
+                        }
+                        it.remove();
+                        changed = true;
+                    } catch (NumberFormatException ignored) {
+                    }
+                }
+            }
+            if (heartGauge != -1) setHeartGaugeProperty(pokemon, heartGauge, false);
+            if (xpBuf != -1) setXPBufferProperty(pokemon, xpBuf, false);
+            if (evBuf != null) setEVBufferProperty(pokemon, evBuf, false);
+        }
+
         ensureShadowMaxIVs(pokemon);
 
         // Ensure defaults if missing both in properties and aspects
         if (getHeartGaugeValueFromProperty(pokemon) == -1) {
-            setHeartGaugeProperty(pokemon, HeartGaugeConfig.getMax(pokemon));
+            setHeartGaugeProperty(pokemon, HeartGaugeConfig.getMax(pokemon), false);
+            changed = true;
         }
         if (getXPBufferFromProperty(pokemon) == -1) {
-            setXPBufferProperty(pokemon, 0);
+            setXPBufferProperty(pokemon, 0, false);
+            changed = true;
         }
         if (getEVBufferFromProperty(pokemon) == null) {
-            setEVBufferProperty(pokemon, new int[]{0, 0, 0, 0, 0, 0});
+            setEVBufferProperty(pokemon, new int[]{0, 0, 0, 0, 0, 0}, false);
+            changed = true;
         }
 
         if (changed) {
-            pokemon.setForcedAspects(aspects);
-            pokemon.updateAspects();
-            syncAspects(pokemon);
-            syncProperties(pokemon);
+            if (aspects != null) {
+                pokemon.setForcedAspects(aspects);
+                pokemon.updateAspects();
+            }
+            if (sync) {
+                syncAspects(pokemon);
+                syncProperties(pokemon);
+            }
         }
 
     }
@@ -311,10 +332,14 @@ public final class ShadowAspectUtil {
     }
 
     public static void setXPBufferProperty(Pokemon pokemon, int value) {
+        setXPBufferProperty(pokemon, value, true);
+    }
+
+    public static void setXPBufferProperty(Pokemon pokemon, int value, boolean sync) {
         pokemon.getCustomProperties().removeIf(p -> p instanceof XPBufferProperty);
         pokemon.getCustomProperties().add(new XPBufferProperty(value));
         pokemon.getPersistentData().putInt(NBT_XP_BUF, value);
-        syncProperties(pokemon);
+        if (sync) syncProperties(pokemon);
     }
 
     public static int getXPBufferFromProperty(Pokemon pokemon) {
@@ -326,10 +351,14 @@ public final class ShadowAspectUtil {
     }
 
     public static void setEVBufferProperty(Pokemon pokemon, int[] values) {
+        setEVBufferProperty(pokemon, values, true);
+    }
+
+    public static void setEVBufferProperty(Pokemon pokemon, int[] values, boolean sync) {
         pokemon.getCustomProperties().removeIf(p -> p instanceof EVBufferProperty);
         pokemon.getCustomProperties().add(new EVBufferProperty(values));
         pokemon.getPersistentData().putIntArray(NBT_EV_BUF, values);
-        syncProperties(pokemon);
+        if (sync) syncProperties(pokemon);
     }
 
     public static int[] getEVBufferFromProperty(Pokemon pokemon) {

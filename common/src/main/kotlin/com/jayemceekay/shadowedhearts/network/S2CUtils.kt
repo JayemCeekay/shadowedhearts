@@ -1,5 +1,6 @@
 package com.jayemceekay.shadowedhearts.network
 
+import com.cobblemon.mod.common.api.net.NetworkPacket
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
 import com.jayemceekay.shadowedhearts.common.shadow.ShadowAspectUtil
 import com.jayemceekay.shadowedhearts.network.aura.AuraLifecyclePacket
@@ -11,6 +12,16 @@ import net.minecraft.sounds.SoundSource
 import net.minecraft.world.entity.Entity
 
 object S2CUtils {
+    @JvmStatic
+    fun broadcastToTracking(entity: Entity, packet: NetworkPacket<*>) {
+        if (entity.level() is ServerLevel) {
+            val level = entity.level() as ServerLevel
+            level.chunkSource.chunkMap.getPlayers(entity.chunkPosition(), false).forEach {
+                ShadowedHeartsNetwork.sendToPlayer(it, packet)
+            }
+        }
+    }
+
     /** Utility: broadcast to all players tracking the entity (and the entity if it's a player). */
     @JvmStatic
     fun broadcastStateToTracking(entity: Entity, tick: Long) {
@@ -20,19 +31,16 @@ object S2CUtils {
                 entity.x,
                 entity.y,
                 entity.z,
-                entity.knownMovement.x,
-                entity.knownMovement.y,
-                entity.knownMovement.z,
+                entity.knownMovement.x.toFloat(),
+                entity.knownMovement.y.toFloat(),
+                entity.knownMovement.z.toFloat(),
                 entity.bbWidth,
                 entity.bbHeight,
-                entity.boundingBox.size,
+                entity.boundingBox.size.toFloat(),
                 tick,
                 ShadowAspectUtil.getHeartGauge(entity.pokemon)
             )
-            val level = entity.level() as ServerLevel
-            for (sp in level.players()) {
-                ShadowedHeartsNetwork.sendToPlayer(sp, pkt)
-            }
+            broadcastToTracking(entity, pkt)
         }
     }
 
@@ -47,22 +55,17 @@ object S2CUtils {
                 entity.x,
                 entity.y,
                 entity.z,
-                entity.knownMovement.x,
-                entity.knownMovement.y,
-                entity.knownMovement.z,
+                entity.knownMovement.x.toFloat(),
+                entity.knownMovement.y.toFloat(),
+                entity.knownMovement.z.toFloat(),
                 entity.bbWidth,
                 entity.bbHeight,
-                entity.boundingBox.size,
+                entity.boundingBox.size.toFloat(),
                 ShadowAspectUtil.getHeartGauge(entity.pokemon),
                 heightMultiplier,
                 sustainOverride
             )
-            if (entity.level() is ServerLevel) {
-                val level = entity.level() as ServerLevel
-                for (sp in level.players()) {
-                    ShadowedHeartsNetwork.sendToPlayer(sp, pkt)
-                }
-            }
+            broadcastToTracking(entity, pkt)
         }
     }
 
@@ -70,12 +73,7 @@ object S2CUtils {
     fun broadcastLuminousMoteToTracking(entity: Entity) {
         if (entity is PokemonEntity) {
             val pkt = LuminousMotePacket(entity.id)
-            if (entity.level() is ServerLevel) {
-                val level = entity.level() as ServerLevel
-                for (sp in level.players()) {
-                    ShadowedHeartsNetwork.sendToPlayer(sp, pkt)
-                }
-            }
+            broadcastToTracking(entity, pkt)
         }
     }
 
@@ -85,16 +83,11 @@ object S2CUtils {
             val pkt = AuraLifecyclePacket(
                 entity.id, AuraLifecyclePacket.Action.FADE_OUT, outTicks.coerceAtLeast(1),
                 entity.x, entity.y, entity.z,
-                entity.knownMovement.x, entity.knownMovement.y, entity.knownMovement.z,
-                entity.bbWidth, entity.bbHeight, entity.boundingBox.size,
+                entity.knownMovement.x.toFloat(), entity.knownMovement.y.toFloat(), entity.knownMovement.z.toFloat(),
+                entity.bbWidth, entity.bbHeight, entity.boundingBox.size.toFloat(),
                 ShadowAspectUtil.getHeartGauge(entity.pokemon)
             )
-            if (entity.level() is ServerLevel) {
-                val level = entity.level() as ServerLevel
-                for (sp in level.players()) {
-                    ShadowedHeartsNetwork.sendToPlayer(sp, pkt)
-                }
-            }
+            broadcastToTracking(entity, pkt)
         }
     }
 

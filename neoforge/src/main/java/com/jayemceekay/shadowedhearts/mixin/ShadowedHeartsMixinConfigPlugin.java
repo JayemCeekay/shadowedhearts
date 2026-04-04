@@ -32,11 +32,28 @@ public class ShadowedHeartsMixinConfigPlugin implements IMixinConfigPlugin {
                     yield false;
                 }
             }
-            case "com.jayemceekay.shadowedhearts.mixin.cobblemonbattleextras.CobblemonBattleExtrasNewMoveTileTooltipMixin" -> {
+            case "com.jayemceekay.shadowedhearts.mixin.cobblemonbattleextras.CobblemonBattleExtras_1_7_25to40_NewMoveTileTooltipMixin" -> {
                 var mod = FMLLoader.getLoadingModList().getModFileById("cobblemon_battle_extras");
                 if (mod == null) yield false;
                 try {
-                    yield VersionRange.createFromVersionSpec("[1.7.25,)")
+                    yield VersionRange.createFromVersionSpec("[1.7.25,1.7.40]")
+                            .containsVersion(new DefaultArtifactVersion(mod.versionString()));
+                } catch (Exception e) {
+                    yield false;
+                }
+            }
+            case "com.jayemceekay.shadowedhearts.mixin.cobblemonbattleextras.CobblemonBattleExtras_1_7_41_NewMoveTileTooltipMixin",
+                 "com.jayemceekay.shadowedhearts.mixin.cobblemonbattleextras.CobblemonBattleExtrasBattleInfoPanelRendererMixin",
+                 "com.jayemceekay.shadowedhearts.mixin.cobblemonbattleextras.CobblemonBattleExtrasCustomBattleControllerMixin",
+                 "com.jayemceekay.shadowedhearts.mixin.cobblemonbattleextras.CobblemonBattleExtrasCustomTooltipRendererMixin",
+                 "com.jayemceekay.shadowedhearts.mixin.cobblemonbattleextras.CobblemonBattleExtrasMoveDisplayInfoAccessor",
+                 "com.jayemceekay.shadowedhearts.mixin.cobblemonbattleextras.CobblemonBattleExtrasMoveTileVisualDataAccessor",
+                 "com.jayemceekay.shadowedhearts.mixin.cobblemonbattleextras.CobblemonBattleExtrasPartySideRendererMixin",
+                 "com.jayemceekay.shadowedhearts.mixin.cobblemonbattleextras.CobblemonBattleExtrasTypeChartMixin" -> {
+                var mod = FMLLoader.getLoadingModList().getModFileById("cobblemon_battle_extras");
+                if (mod == null) yield false;
+                try {
+                    yield VersionRange.createFromVersionSpec("[1.7.41,)")
                             .containsVersion(new DefaultArtifactVersion(mod.versionString()));
                 } catch (Exception e) {
                     yield false;

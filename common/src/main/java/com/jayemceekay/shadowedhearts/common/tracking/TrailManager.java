@@ -21,6 +21,10 @@ public final class TrailManager {
         return Optional.ofNullable(SESSIONS.get(playerId));
     }
 
+    public static Collection<TrailSession> getAllSessions() {
+        return SESSIONS.values();
+    }
+
     /**
      * Start or reset a trail session using the legacy step count (backward compatible).
      * Defaults to FAINT tier with a random seed.

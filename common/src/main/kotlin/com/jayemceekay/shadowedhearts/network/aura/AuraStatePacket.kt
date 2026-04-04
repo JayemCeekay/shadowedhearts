@@ -10,12 +10,12 @@ data class AuraStatePacket(
     @get:JvmName("getX") val x: Double,
     @get:JvmName("getY") val y: Double,
     @get:JvmName("getZ") val z: Double,
-    @get:JvmName("getDx") val dx: Double,
-    @get:JvmName("getDy") val dy: Double,
-    @get:JvmName("getDz") val dz: Double,
+    @get:JvmName("getDx") val dx: Float,
+    @get:JvmName("getDy") val dy: Float,
+    @get:JvmName("getDz") val dz: Float,
     @get:JvmName("getBbw") val bbw: Float,
     @get:JvmName("getBbh") val bbh: Float,
-    @get:JvmName("getBbs") val bbs: Double,
+    @get:JvmName("getBbs") val bbs: Float,
     @get:JvmName("getServerTick") val serverTick: Long,
     @get:JvmName("getCorruption") val corruption: Float
 ) : NetworkPacket<AuraStatePacket> {
@@ -26,12 +26,12 @@ data class AuraStatePacket(
         buf.writeDouble(x)
         buf.writeDouble(y)
         buf.writeDouble(z)
-        buf.writeDouble(dx)
-        buf.writeDouble(dy)
-        buf.writeDouble(dz)
+        buf.writeFloat(dx)
+        buf.writeFloat(dy)
+        buf.writeFloat(dz)
         buf.writeFloat(bbw)
         buf.writeFloat(bbh)
-        buf.writeDouble(bbs)
+        buf.writeFloat(bbs)
         buf.writeVarLong(serverTick)
         buf.writeFloat(corruption)
     }
@@ -45,12 +45,12 @@ data class AuraStatePacket(
                 buf.readDouble(),
                 buf.readDouble(),
                 buf.readDouble(),
-                buf.readDouble(),
-                buf.readDouble(),
-                buf.readDouble(),
                 buf.readFloat(),
                 buf.readFloat(),
-                buf.readDouble(),
+                buf.readFloat(),
+                buf.readFloat(),
+                buf.readFloat(),
+                buf.readFloat(),
                 buf.readVarLong(),
                 buf.readFloat()
             )

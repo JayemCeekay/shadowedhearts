@@ -60,8 +60,8 @@ object TrailClientState {
     private const val HYSTERESIS_THRESHOLD = 2.0      // new micro-path must be ≥2 blocks shorter to switch routes
 
     // Inertia / mass simulation
-    private const val DRAG = 0.85        // velocity retention per tick (0 = no inertia, 1 = no drag)
-    private const val SPRING = 0.35      // spring constant pulling toward target
+    private const val DRAG = 0.92        // velocity retention per tick (0 = no inertia, 1 = no drag)
+    private const val SPRING = 0.15      // spring constant pulling toward target
     private const val MAX_VELOCITY = 0.8 // cap to prevent explosive overshoot
 
     // Terrain-aware height
@@ -178,6 +178,7 @@ object TrailClientState {
     var speciesTrait: ShadowSpeciesTrait = ShadowSpeciesTrait.NEUTRAL
         private set
 
+    @JvmStatic
     fun sync(newNodes: List<BlockPos>, hotspotPos: BlockPos?) {
         nodes.clear()
         nodes.addAll(newNodes)
@@ -794,7 +795,7 @@ object TrailClientState {
         val searchLimit = (closestIndex + 15).coerceAtMost(path.size)
         for (i in closestIndex until searchLimit) {
             val nodeToGoalSq = path[i].distSqr(goal).toDouble()
-            if (playerToGoalSq < nodeToGoalSq) {
+            if (playerToGoalSq < nodeToGoalSq - 4.0) {
                 // Player is closer to goal than this node — player has passed it
                 bestTrim = i
             } else {
@@ -857,8 +858,8 @@ object TrailClientState {
             )
 
             val segmentDist = current.distanceTo(end)
-            // Particle spacing every 0.75 blocks
-            val numSteps = (segmentDist / 0.75).toInt().coerceAtLeast(1)
+            // Particle spacing every 0.25 blocks for smoother sampling
+            val numSteps = (segmentDist / 0.25).toInt().coerceAtLeast(1)
 
             for (j in 1..numSteps) {
                 val t = j.toDouble() / numSteps
@@ -873,7 +874,7 @@ object TrailClientState {
 
     private fun interpolateLine(a: Vec3, b: Vec3): List<Vec3> {
         val dist = a.distanceTo(b)
-        val numSteps = (dist / 0.75).toInt().coerceAtLeast(1)
+        val numSteps = (dist / 0.25).toInt().coerceAtLeast(1)
         val result = mutableListOf<Vec3>()
         result.add(a)
         for (i in 1..numSteps) {
