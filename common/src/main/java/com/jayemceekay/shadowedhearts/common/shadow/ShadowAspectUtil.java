@@ -7,16 +7,20 @@ import com.cobblemon.mod.common.net.messages.client.pokemon.update.AspectsUpdate
 import com.cobblemon.mod.common.net.messages.client.pokemon.update.BenchedMovesUpdatePacket;
 import com.cobblemon.mod.common.net.messages.client.pokemon.update.MoveSetUpdatePacket;
 import com.cobblemon.mod.common.pokemon.Pokemon;
+import com.cobblemon.mod.common.pokemon.RenderablePokemon;
 import com.jayemceekay.shadowedhearts.Shadowedhearts;
 import com.jayemceekay.shadowedhearts.config.HeartGaugeConfig;
 import com.jayemceekay.shadowedhearts.config.IShadowConfig;
 import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs;
 import com.jayemceekay.shadowedhearts.network.PokemonPropertyUpdatePacket;
 import com.jayemceekay.shadowedhearts.pokemon.properties.*;
+import com.jayemceekay.shadowedhearts.registry.ModItems;
+import com.jayemceekay.shadowedhearts.registry.ModPoiTypes;
 import kotlin.jvm.functions.Function0;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.Mth;
+import net.minecraft.world.entity.ai.village.poi.PoiManager;
 
 import java.util.*;
 
@@ -70,6 +74,21 @@ public final class ShadowAspectUtil {
             return pokemon.getAspects().contains(SHAspects.SHADOW);
         }
         return false;
+    }
+
+    public static boolean shouldHaveShadowAura(Pokemon pokemon) {
+        if (pokemon == null) return false;
+        return hasShadowAspect(pokemon) || isHoldingShadowShard(pokemon);
+    }
+
+    public static boolean isHoldingShadowShard(Pokemon pokemon) {
+        if (pokemon == null) return false;
+        return pokemon.cosmeticItem().is(ModItems.SHADOW_SHARD.get());
+    }
+
+    public static boolean shouldHaveShadowAura(RenderablePokemon pokemon) {
+        if (pokemon == null) return false;
+        return pokemon.getAspects().contains(SHAspects.SHADOW) || pokemon.getAspects().contains("cosmetic_item-shadow_shard");
     }
 
     /**
@@ -177,7 +196,7 @@ public final class ShadowAspectUtil {
     }
 
     public static void syncBenchedMoves(Pokemon pokemon) {
-        if (pokemon != null) return;
+        if (pokemon == null) return;
         try {
             final Pokemon pk = pokemon;
             Function0<Pokemon> supplier = () -> pk;
@@ -339,8 +358,8 @@ public final class ShadowAspectUtil {
     public static float getHeartGauge(Pokemon pokemon) {
         int percent = getHeartGaugeValue(pokemon);
         if (percent >= 0) return percent / 100f;
-        // Fallback: Shadow -> full intensity, Non-shadow -> none
-        return hasShadowAspect(pokemon) ? 1f : 0f;
+        // Fallback: Shadow or Shard -> full intensity, else none
+        return shouldHaveShadowAura(pokemon) ? 1f : 0f;
     }
 
     /**
@@ -663,7 +682,6 @@ public final class ShadowAspectUtil {
 
         int nonShadowIndex = 0;
         int allowed = getAllowedVisibleNonShadowMoves(pokemon);
-        System.out.println("Allowed: " + allowed);
         for (var mv : pokemon.getMoveSet().getMovesWithNulls()) {
             if (mv == null) continue;
             if (mv.getType() == Shadowedhearts.SH_SHADOW_TYPE) continue;
@@ -703,11 +721,17 @@ public final class ShadowAspectUtil {
     }
 
     public static boolean isNearMeteoroid(ServerLevel level, BlockPos pos, int radius, int verticalRadius) {
-        for (BlockPos p : BlockPos.betweenClosed(pos.offset(-radius, -verticalRadius, -radius), pos.offset(radius, verticalRadius, radius))) {
-            if (level.getBlockState(p).is(com.jayemceekay.shadowedhearts.registry.ModBlocks.SHADOWFALL_METEOROID.get())) {
-                return true;
-            }
-        }
-        return false;
+        double searchRadius = Math.sqrt(2.0 * radius * radius + (double) verticalRadius * verticalRadius);
+        return level.getPoiManager().getInRange(
+                holder -> holder.value() == ModPoiTypes.SHADOWFALL_METEOROID.get(),
+                pos,
+                (int) Math.ceil(searchRadius),
+                PoiManager.Occupancy.ANY
+        ).anyMatch(poiRecord -> {
+            BlockPos p = poiRecord.getPos();
+            return Math.abs(p.getX() - pos.getX()) <= radius &&
+                    Math.abs(p.getZ() - pos.getZ()) <= radius &&
+                    Math.abs(p.getY() - pos.getY()) <= verticalRadius;
+        });
     }
 }

@@ -1,0 +1,27 @@
+{
+  "description": "Elite shadow signal rarity pool (Tier 4 - Strong)",
+  "entries": [
+    { "pokemon": "tyranitar", "weight": 3 },
+    { "pokemon": "salamence", "weight": 3 },
+    { "pokemon": "metagross", "weight": 3 },
+    { "pokemon": "garchomp", "weight": 3 },
+    { "pokemon": "hydreigon", "weight": 3 },
+    { "pokemon": "dragonite", "weight": 3 },
+    { "pokemon": "lucario", "weight": 4 },
+    { "pokemon": "scizor", "weight": 4 },
+    { "pokemon": "togekiss", "weight": 3 },
+    { "pokemon": "gardevoir", "weight": 4 },
+    { "pokemon": "gallade", "weight": 3 },
+    { "pokemon": "aggron", "weight": 3 },
+    { "pokemon": "flygon", "weight": 3 },
+    { "pokemon": "milotic", "weight": 2 },
+    { "pokemon": "arcanine", "weight": 4 },
+    { "pokemon": "electivire", "weight": 3 },
+    { "pokemon": "magmortar", "weight": 3 },
+    { "pokemon": "alakazam", "weight": 3 },
+    { "pokemon": "gyarados", "weight": 3 },
+    { "pokemon": "umbreon", "weight": 3 },
+    { "pokemon": "espeon", "weight": 3 },
+    { "pokemon": "zoroark", "weight": 3 }
+  ]
+}

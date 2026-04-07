@@ -11,7 +11,6 @@ import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.*;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.MultiBufferSource;
-import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.ShaderInstance;
 import net.minecraft.world.phys.Vec3;
 import org.joml.Matrix4f;
@@ -229,6 +228,14 @@ public final class TrailRibbonRenderer {
             shader.getUniform("uNumNodes").set((float) finalNodeCount);
         }
 
+        // --- Upload hunt state uniforms ---
+        if (shader.getUniform("uTension") != null) {
+            shader.getUniform("uTension").set(TrailClientState.INSTANCE.getTension());
+        }
+        if (shader.getUniform("uTrailQuality") != null) {
+            shader.getUniform("uTrailQuality").set(TrailClientState.INSTANCE.getTrailQuality());
+        }
+
         // --- Bind depth texture ---
         DepthCapture.captureIfNeeded();
         int depthTexture = DepthCapture.textureId();
@@ -260,69 +267,6 @@ public final class TrailRibbonRenderer {
 
         shader.clear();
         RenderSystem.depthMask(true);
-
-        // --- Debug: render red ball indicators at each splined node ---
-        renderDebugNodeBalls(splinedNodes, camPos, poseStack, buffer);
-    }
-
-    private static final float DEBUG_BALL_RADIUS = 0.25f;
-
-    private static void renderDebugNodeBalls(
-            List<Vec3> nodes,
-            Vec3 camPos,
-            PoseStack poseStack,
-            MultiBufferSource buffer
-    ) {
-        if (nodes.isEmpty()) return;
-
-        VertexConsumer vc = buffer.getBuffer(RenderType.debugQuads());
-
-        for (Vec3 node : nodes) {
-            poseStack.pushPose();
-            poseStack.translate(
-                    node.x - camPos.x,
-                    node.y - camPos.y,
-                    node.z - camPos.z
-            );
-            Matrix4f mat = poseStack.last().pose();
-            drawDebugCube(vc, mat, DEBUG_BALL_RADIUS);
-            poseStack.popPose();
-        }
-    }
-
-    private static void drawDebugCube(VertexConsumer vc, Matrix4f mat, float r) {
-        float n = -r, p = r;
-        int red = 255, green = 0, blue = 0, alpha = 255;
-        // +Y face
-        vc.addVertex(mat, n, p, n).setColor(red, green, blue, alpha);
-        vc.addVertex(mat, n, p, p).setColor(red, green, blue, alpha);
-        vc.addVertex(mat, p, p, p).setColor(red, green, blue, alpha);
-        vc.addVertex(mat, p, p, n).setColor(red, green, blue, alpha);
-        // -Y face
-        vc.addVertex(mat, n, n, p).setColor(red, green, blue, alpha);
-        vc.addVertex(mat, n, n, n).setColor(red, green, blue, alpha);
-        vc.addVertex(mat, p, n, n).setColor(red, green, blue, alpha);
-        vc.addVertex(mat, p, n, p).setColor(red, green, blue, alpha);
-        // +Z face
-        vc.addVertex(mat, n, n, p).setColor(red, green, blue, alpha);
-        vc.addVertex(mat, p, n, p).setColor(red, green, blue, alpha);
-        vc.addVertex(mat, p, p, p).setColor(red, green, blue, alpha);
-        vc.addVertex(mat, n, p, p).setColor(red, green, blue, alpha);
-        // -Z face
-        vc.addVertex(mat, p, n, n).setColor(red, green, blue, alpha);
-        vc.addVertex(mat, n, n, n).setColor(red, green, blue, alpha);
-        vc.addVertex(mat, n, p, n).setColor(red, green, blue, alpha);
-        vc.addVertex(mat, p, p, n).setColor(red, green, blue, alpha);
-        // +X face
-        vc.addVertex(mat, p, n, n).setColor(red, green, blue, alpha);
-        vc.addVertex(mat, p, p, n).setColor(red, green, blue, alpha);
-        vc.addVertex(mat, p, p, p).setColor(red, green, blue, alpha);
-        vc.addVertex(mat, p, n, p).setColor(red, green, blue, alpha);
-        // -X face
-        vc.addVertex(mat, n, n, p).setColor(red, green, blue, alpha);
-        vc.addVertex(mat, n, p, p).setColor(red, green, blue, alpha);
-        vc.addVertex(mat, n, p, n).setColor(red, green, blue, alpha);
-        vc.addVertex(mat, n, n, n).setColor(red, green, blue, alpha);
     }
 
     private static Vec3 catmullRom(Vec3 p0, Vec3 p1, Vec3 p2, Vec3 p3, float t) {

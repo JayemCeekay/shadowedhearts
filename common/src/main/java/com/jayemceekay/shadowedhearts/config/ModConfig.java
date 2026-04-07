@@ -143,6 +143,12 @@ public final class ModConfig implements IShadowConfig {
     }
 
     @Override
+    public boolean limitExpToRCTCap() {
+        if (!isLoaded()) return IShadowConfig.super.limitExpToRCTCap();
+        return DATA.rctIntegration.limitExpToRCTCap.get();
+    }
+
+    @Override
     public int relicStoneCooldownMinutes() {
         if (!isLoaded()) return IShadowConfig.super.relicStoneCooldownMinutes();
         return DATA.relicStone.cooldownMinutes.get();
@@ -810,6 +816,7 @@ public final class ModConfig implements IShadowConfig {
 
     public static final class RCTIntegrationConfig {
         public ModConfigSpec.BooleanValue enabled;
+        public ModConfigSpec.BooleanValue limitExpToRCTCap;
         public RCTSection append;
         public RCTSection convert;
         public RCTSection replace;
@@ -818,6 +825,10 @@ public final class ModConfig implements IShadowConfig {
             enabled = builder
                     .comment("Enables integration with Radical Cobblemon Trainers.")
                     .define("enabled", Platform.isModLoaded("rctmod"));
+
+            limitExpToRCTCap = builder
+                    .comment("If true, the XP buffer will be capped to the player's current RCT level cap during purification.")
+                    .define("limitExpToRCTCap", false);
             
             builder.push("append");
             append = new RCTSection();

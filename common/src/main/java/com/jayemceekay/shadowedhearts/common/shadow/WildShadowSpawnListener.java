@@ -79,8 +79,10 @@ public final class WildShadowSpawnListener {
                 );
             }
 
-            // Broadcast specialized aura for wild spawn: 2.5x height for 10 seconds (200 ticks)
-            AuraBroadcastQueue.queueBroadcast(entity, 2.5f, 600);
+            // Broadcast specialized aura for wild spawn: 2.5x height for 30 seconds (600 ticks)
+            // If it's holding a Shadow Shard, make it 24/7.
+            int sustain = ShadowAspectUtil.isHoldingShadowShard(pokemon) ? Integer.MAX_VALUE / 2 : 600;
+            AuraBroadcastQueue.queueBroadcast(entity, 2.5f, sustain);
 
             return Unit.INSTANCE;
         });

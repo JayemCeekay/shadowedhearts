@@ -14,6 +14,7 @@ import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs;
 import com.jayemceekay.shadowedhearts.integration.accessories.SnagAccessoryBridgeHolder;
 import com.jayemceekay.shadowedhearts.network.aura.AuraLifecyclePacket;
 import com.jayemceekay.shadowedhearts.network.aura.AuraStatePacket;
+import com.jayemceekay.shadowedhearts.registry.ModItems;
 import com.mojang.blaze3d.shaders.Uniform;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.ByteBufferBuilder;
@@ -723,7 +724,11 @@ public final class AuraEmitters {
             if (!hasVisibility) continue;
 
             if (auraReaderRequired && !hasAuraReader && !AuraReaderManager.isDetected(inst.entityUuid)) {
-                continue;
+                if (ent instanceof PokemonEntity pe && pe.getPokemon().cosmeticItem().is(ModItems.SHADOW_SHARD.get())) {
+                    // Bypass Aura Reader requirement for Shadow Shard cosmetic item
+                } else {
+                    continue;
+                }
             }
 
             // Build matrices

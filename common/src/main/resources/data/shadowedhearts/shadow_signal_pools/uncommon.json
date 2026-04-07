@@ -1,0 +1,28 @@
+{
+  "description": "Uncommon shadow signal rarity pool (Tier 2 - Weak)",
+  "entries": [
+    { "pokemon": "raticate", "weight": 4 },
+    { "pokemon": "golbat", "weight": 4 },
+    { "pokemon": "haunter", "weight": 4 },
+    { "pokemon": "machoke", "weight": 4 },
+    { "pokemon": "graveler", "weight": 4 },
+    { "pokemon": "mightyena", "weight": 4 },
+    { "pokemon": "linoone", "weight": 4 },
+    { "pokemon": "luxio", "weight": 4 },
+    { "pokemon": "staravia", "weight": 4 },
+    { "pokemon": "herdier", "weight": 4 },
+    { "pokemon": "persian", "weight": 3 },
+    { "pokemon": "sandslash", "weight": 3 },
+    { "pokemon": "arbok", "weight": 3 },
+    { "pokemon": "weezing", "weight": 3 },
+    { "pokemon": "ariados", "weight": 3 },
+    { "pokemon": "houndoom", "weight": 3 },
+    { "pokemon": "ursaring", "weight": 3 },
+    { "pokemon": "sneasel", "weight": 4 },
+    { "pokemon": "murkrow", "weight": 4 },
+    { "pokemon": "gligar", "weight": 3 },
+    { "pokemon": "absol", "weight": 3 },
+    { "pokemon": "skuntank", "weight": 3 },
+    { "pokemon": "drapion", "weight": 3 }
+  ]
+}

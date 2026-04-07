@@ -71,10 +71,10 @@ public final class ShadowedheartsFabricClient implements ClientModInitializer {
         ModKeybinds.init();
         ModKeybindsPlatformImpl.register(ModKeybinds.AURA_SCANNER);
 //        ModKeybindsPlatformImpl.register(ModKeybinds.AURA_MODE_SELECTOR);
-        ModKeybindsPlatformImpl.register(ModKeybinds.AURA_PULSE);
-        ModKeybindsPlatformImpl.register(ModKeybinds.AURA_NEXT_SIGNAL);
-        ModKeybindsPlatformImpl.register(ModKeybinds.AURA_PREV_SIGNAL);
-        ModKeybindsPlatformImpl.register(ModKeybinds.DEBUG_REINIT_HUD);
+        //ModKeybindsPlatformImpl.register(ModKeybinds.AURA_PULSE);
+        //ModKeybindsPlatformImpl.register(ModKeybinds.AURA_NEXT_SIGNAL);
+        //ModKeybindsPlatformImpl.register(ModKeybinds.AURA_PREV_SIGNAL);
+        //ModKeybindsPlatformImpl.register(ModKeybinds.DEBUG_REINIT_HUD);
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             AuraReaderManager.tick();

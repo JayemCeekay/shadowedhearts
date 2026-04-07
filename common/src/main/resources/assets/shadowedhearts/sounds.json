@@ -62,5 +62,183 @@
         "volume": 1.0
       }
     ]
+  },
+  "hunt_trail_reveal": {
+    "subtitle": "subtitles.shadowedhearts.hunt_trail_reveal",
+    "sounds": [
+      {
+        "name": "shadowedhearts:aura_scanner_beep",
+        "volume": 0.8
+      }
+    ]
+  },
+  "hunt_calibration_prompt": {
+    "subtitle": "subtitles.shadowedhearts.hunt_calibration_prompt",
+    "sounds": [
+      {
+        "name": "shadowedhearts:aura_scanner_beep",
+        "volume": 0.6,
+        "pitch": 1.2
+      }
+    ]
+  },
+  "hunt_calibration_correct": {
+    "subtitle": "subtitles.shadowedhearts.hunt_calibration_correct",
+    "sounds": [
+      {
+        "name": "shadowedhearts:aura_scanner_beep",
+        "volume": 0.7,
+        "pitch": 1.5
+      }
+    ]
+  },
+  "hunt_calibration_wrong": {
+    "subtitle": "subtitles.shadowedhearts.hunt_calibration_wrong",
+    "sounds": [
+      {
+        "name": "shadowedhearts:aura_scanner_beep",
+        "volume": 0.7,
+        "pitch": 0.5
+      }
+    ]
+  },
+  "hunt_calibration_complete": {
+    "subtitle": "subtitles.shadowedhearts.hunt_calibration_complete",
+    "sounds": [
+      {
+        "name": "shadowedhearts:shadow_aura_initial_burst",
+        "volume": 0.6
+      }
+    ]
+  },
+  "hunt_node_scan": {
+    "subtitle": "subtitles.shadowedhearts.hunt_node_scan",
+    "sounds": [
+      {
+        "name": "shadowedhearts:aura_scanner_beep",
+        "volume": 0.8,
+        "pitch": 0.9
+      }
+    ]
+  },
+  "hunt_evidence_correct": {
+    "subtitle": "subtitles.shadowedhearts.hunt_evidence_correct",
+    "sounds": [
+      {
+        "name": "shadowedhearts:aura_scanner_beep",
+        "volume": 0.9,
+        "pitch": 1.4
+      }
+    ]
+  },
+  "hunt_evidence_wrong": {
+    "subtitle": "subtitles.shadowedhearts.hunt_evidence_wrong",
+    "sounds": [
+      {
+        "name": "shadowedhearts:aura_scanner_beep",
+        "volume": 0.6,
+        "pitch": 0.6
+      }
+    ]
+  },
+  "hunt_search_ping": {
+    "subtitle": "subtitles.shadowedhearts.hunt_search_ping",
+    "sounds": [
+      {
+        "name": "shadowedhearts:aura_scanner_beep",
+        "volume": 0.5,
+        "pitch": 1.1
+      }
+    ]
+  },
+  "hunt_wild_aggro": {
+    "subtitle": "subtitles.shadowedhearts.hunt_wild_aggro",
+    "sounds": [
+      {
+        "name": "shadowedhearts:shadow_aura_initial_burst",
+        "volume": 0.5,
+        "pitch": 0.7
+      }
+    ]
+  },
+  "hunt_provocation_buildup": {
+    "subtitle": "subtitles.shadowedhearts.hunt_provocation_buildup",
+    "sounds": [
+      {
+        "name": "shadowedhearts:shadow_aura_loop",
+        "volume": 0.4,
+        "pitch": 0.8
+      }
+    ]
+  },
+  "hunt_tension_ambient": {
+    "subtitle": "subtitles.shadowedhearts.hunt_tension_ambient",
+    "sounds": [
+      {
+        "name": "shadowedhearts:shadow_aura_loop",
+        "volume": 0.3,
+        "stream": true
+      }
+    ]
+  },
+  "hunt_manifestation_buildup": {
+    "subtitle": "subtitles.shadowedhearts.hunt_manifestation_buildup",
+    "sounds": [
+      {
+        "name": "shadowedhearts:shadow_aura_loop",
+        "volume": 0.7,
+        "pitch": 0.6
+      }
+    ]
+  },
+  "hunt_manifestation_reveal": {
+    "subtitle": "subtitles.shadowedhearts.hunt_manifestation_reveal",
+    "sounds": [
+      {
+        "name": "shadowedhearts:shadow_aura_initial_burst",
+        "volume": 1.0,
+        "pitch": 0.8
+      }
+    ]
+  },
+  "hunt_grade_perfect": {
+    "subtitle": "subtitles.shadowedhearts.hunt_grade_perfect",
+    "sounds": [
+      {
+        "name": "shadowedhearts:aura_scanner_beep",
+        "volume": 1.0,
+        "pitch": 1.8
+      }
+    ]
+  },
+  "hunt_grade_sloppy": {
+    "subtitle": "subtitles.shadowedhearts.hunt_grade_sloppy",
+    "sounds": [
+      {
+        "name": "shadowedhearts:aura_scanner_beep",
+        "volume": 0.7,
+        "pitch": 0.7
+      }
+    ]
+  },
+  "hunt_grade_failed": {
+    "subtitle": "subtitles.shadowedhearts.hunt_grade_failed",
+    "sounds": [
+      {
+        "name": "shadowedhearts:shadow_aura_initial_burst",
+        "volume": 0.5,
+        "pitch": 0.4
+      }
+    ]
+  },
+  "hunt_signal_blackout": {
+    "subtitle": "subtitles.shadowedhearts.hunt_signal_blackout",
+    "sounds": [
+      {
+        "name": "shadowedhearts:shadow_aura_initial_burst",
+        "volume": 0.6,
+        "pitch": 0.3
+      }
+    ]
   }
 }

@@ -2,7 +2,6 @@ package com.jayemceekay.shadowedhearts.world.gen;
 
 import com.jayemceekay.shadowedhearts.config.IWorldAlterationConfig;
 import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs;
-import com.jayemceekay.shadowedhearts.world.PlayerActivityHeatmap;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;

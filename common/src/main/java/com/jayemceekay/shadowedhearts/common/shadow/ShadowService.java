@@ -1,17 +1,19 @@
 package com.jayemceekay.shadowedhearts.common.shadow;
 
-import com.cobblemon.mod.common.api.moves.BenchedMove;
-import com.cobblemon.mod.common.api.moves.Move;
-import com.cobblemon.mod.common.api.moves.MoveTemplate;
+import com.cobblemon.mod.common.api.moves.*;
 import com.cobblemon.mod.common.api.pokemon.experience.SidemodExperienceSource;
 import com.cobblemon.mod.common.api.pokemon.stats.Stats;
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
 import com.cobblemon.mod.common.pokemon.Pokemon;
 import com.jayemceekay.shadowedhearts.Shadowedhearts;
 import com.jayemceekay.shadowedhearts.config.HeartGaugeConfig;
+import com.jayemceekay.shadowedhearts.config.IShadowConfig;
+import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs;
+import com.jayemceekay.shadowedhearts.integration.rctmod.RCTBridgeHolder;
 import com.jayemceekay.shadowedhearts.pokemon.properties.EVBufferProperty;
 import com.jayemceekay.shadowedhearts.pokemon.properties.HeartGaugeProperty;
 import com.jayemceekay.shadowedhearts.pokemon.properties.XPBufferProperty;
+import net.minecraft.server.level.ServerPlayer;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
@@ -88,7 +90,7 @@ public final class ShadowService {
         int allowed = ShadowAspectUtil.getAllowedVisibleNonShadowMoves(pokemon);
         if (allowed < 1) return;
 
-        // Count how many shadow moves we have
+        // Identify shadow moves in the active moveset
         List<Move> shadowMoves = new ArrayList<>();
         for (Move move : pokemon.getMoveSet()) {
             if (move != null && move.getType() == Shadowedhearts.SH_SHADOW_TYPE) {
@@ -98,54 +100,66 @@ public final class ShadowService {
 
         if (shadowMoves.isEmpty()) return;
 
-        // Get all legal level-up moves up to current level
+        // Get level-up move candidates (most recently learned first)
         List<MoveTemplate> levelUpMoves =
                 new ArrayList<>(pokemon.getForm().getMoves().getLevelUpMovesUpTo(pokemon.getLevel()));
-
-        // Reverse to get "most recently unlocked" first
         Collections.reverse(levelUpMoves);
 
-        // Filter out moves already in the moveset or benched
-        Set<String> currentMoveNames = new HashSet<>();
+        // Exclude moves already in the moveset or benched
+        Set<String> occupiedNames = new HashSet<>();
         for (Move m : pokemon.getMoveSet()) {
-            if (m != null) currentMoveNames.add(m.getTemplate().getName());
+            if (m != null) occupiedNames.add(m.getTemplate().getName());
         }
-        // Use a snapshot of benched moves to avoid ConcurrentModificationException
-        List<BenchedMove> benchedSnapshot = new ArrayList<>();
         for (BenchedMove bm : pokemon.getBenchedMoves()) {
-            benchedSnapshot.add(bm);
-        }
-        for (BenchedMove bm : benchedSnapshot) {
-            currentMoveNames.add(bm.getMoveTemplate().getName());
+            occupiedNames.add(bm.getMoveTemplate().getName());
         }
 
         List<MoveTemplate> candidates = new ArrayList<>();
         for (MoveTemplate template : levelUpMoves) {
-            if (!currentMoveNames.contains(template.getName())) {
+            if (!occupiedNames.contains(template.getName())) {
                 candidates.add(template);
             }
         }
 
         if (candidates.isEmpty()) return;
 
-
         int shadowMovesToReplace = 0;
         if (allowed >= 3) shadowMovesToReplace = shadowMoves.size() - 1;
 
         if (shadowMovesToReplace <= 0) return;
 
-        // Replace shadow moves with candidates
         int toReplace = Math.min(Math.min(shadowMoves.size(), candidates.size()), shadowMovesToReplace);
-        for (int i = 0; i < toReplace; i++) {
-            Move shadowMove = shadowMoves.get(i);
-            MoveTemplate newMoveTemplate = candidates.get(i);
 
-            if (pokemon.exchangeMove(shadowMove.getTemplate(), newMoveTemplate)) {
-                // Forget shadow move: remove from benched moves too
-                // Use a safe removal approach to avoid CME if this triggers a sync
-                pokemon.getBenchedMoves().remove(shadowMove.getTemplate());
+        // Record which shadow move names are being replaced
+        Set<String> replacedShadowNames = new HashSet<>();
+        for (int i = 0; i < toReplace; i++) {
+            replacedShadowNames.add(shadowMoves.get(i).getTemplate().getName());
+        }
+
+        // Build the desired MoveSet: swap replaced shadow slots for candidates, preserve others
+        MoveSet newMoveSet = new MoveSet();
+        List<Move> movesWithNulls = pokemon.getMoveSet().getMovesWithNulls();
+        int candidateIdx = 0;
+        for (int i = 0; i < 4; i++) {
+            Move m = movesWithNulls.get(i);
+            if (m != null && replacedShadowNames.contains(m.getTemplate().getName()) && candidateIdx < candidates.size()) {
+                newMoveSet.setMove(i, candidates.get(candidateIdx++).create());
+            } else {
+                newMoveSet.setMove(i, m != null ? m.copy() : null);
             }
         }
+
+        // Build the desired BenchedMoves: remove the replaced shadow moves
+        BenchedMoves newBenchedMoves = new BenchedMoves();
+        for (BenchedMove bm : pokemon.getBenchedMoves()) {
+            if (!replacedShadowNames.contains(bm.getMoveTemplate().getName())) {
+                newBenchedMoves.add(bm);
+            }
+        }
+
+        // Apply both atomically — each copyFrom does a single update() at the end
+        pokemon.getMoveSet().copyFrom(newMoveSet);
+        pokemon.getBenchedMoves().copyFrom(newBenchedMoves);
     }
 
     /**
@@ -166,7 +180,27 @@ public final class ShadowService {
         // 3. Apply buffered EXP/EVs and clear gauge/buffers
         int bufferedExp = ShadowAspectUtil.getBufferedExp(pokemon);
         if (bufferedExp > 0) {
-            pokemon.addExperience(new SidemodExperienceSource("shadowedhearts"), bufferedExp);
+            IShadowConfig config = ShadowedHeartsConfigs.getInstance().getShadowConfig();
+            if (config.rctIntegrationEnabled() && config.limitExpToRCTCap()) {
+                ServerPlayer player = pokemon.getOwnerPlayer();
+                if (player != null) {
+                    int levelCap = RCTBridgeHolder.INSTANCE.getLevelCap(player);
+                    if (pokemon.getLevel() >= levelCap) {
+                        bufferedExp = 0;
+                    } else {
+                        int xpToCap = pokemon.getExperienceToLevel(levelCap + 1) - 1;
+                        if (xpToCap > 0) {
+                            bufferedExp = Math.min(bufferedExp, xpToCap);
+                        } else {
+                            bufferedExp = 0;
+                        }
+                    }
+                }
+            }
+
+            if (bufferedExp > 0) {
+                pokemon.addExperience(new SidemodExperienceSource("shadowedhearts"), bufferedExp);
+            }
         }
 
         int[] bufferedEvs = ShadowAspectUtil.getBufferedEvs(pokemon);
@@ -202,61 +236,55 @@ public final class ShadowService {
     }
 
     private static void restoreAllMoves(Pokemon pokemon) {
+        // Get level-up move candidates (most recently learned first)
+        List<MoveTemplate> levelUpMoves =
+                new ArrayList<>(pokemon.getForm().getMoves().getLevelUpMovesUpTo(pokemon.getLevel()));
+        Collections.reverse(levelUpMoves);
 
-        // Identify all current shadow moves in the moveset to be replaced
-        List<Move> shadowMoves = new ArrayList<>();
-        for (Move move : pokemon.getMoveSet()) {
-            if (move != null && move.getType() == Shadowedhearts.SH_SHADOW_TYPE) {
-                shadowMoves.add(move);
+        // Exclude non-shadow moves already in the moveset or benched (shadow ones are being replaced)
+        Set<String> occupiedNames = new HashSet<>();
+        for (Move m : pokemon.getMoveSet()) {
+            if (m != null && m.getType() != Shadowedhearts.SH_SHADOW_TYPE) {
+                occupiedNames.add(m.getTemplate().getName());
+            }
+        }
+        for (BenchedMove bm : pokemon.getBenchedMoves()) {
+            if (bm.getMoveTemplate().getElementalType() != Shadowedhearts.SH_SHADOW_TYPE) {
+                occupiedNames.add(bm.getMoveTemplate().getName());
             }
         }
 
-        // Get candidates from level-up moves that the Pokemon has already qualified for
-        List<MoveTemplate> levelUpMoves =
-                new ArrayList<>(pokemon.getForm().getMoves().getLevelUpMovesUpTo(pokemon.getLevel()));
-        // Reverse to prioritize the most recently learned moves
-        Collections.reverse(levelUpMoves);
-
-
-        // Track names of moves already in moveset or benched to avoid duplicates
-        Set<String> currentMoveNames = new HashSet<>();
-        for (int i = 0; i < 4; i++) {
-            Move m = pokemon.getMoveSet().getMovesWithNulls().get(i);
-            if (m != null) currentMoveNames.add(m.getTemplate().getName());
-        }
-
-        // Use a snapshot of benched moves to avoid ConcurrentModificationException
-        List<BenchedMove> benchedSnapshotRestore = new ArrayList<>();
-        for (BenchedMove bm : pokemon.getBenchedMoves()) {
-            benchedSnapshotRestore.add(bm);
-        }
-
-        // Filter level-up moves to create a list of valid replacement candidates
         List<MoveTemplate> candidates = new ArrayList<>();
         for (MoveTemplate template : levelUpMoves) {
-            if (!currentMoveNames.contains(template.getName())) {
+            if (!occupiedNames.contains(template.getName())) {
                 candidates.add(template);
             }
         }
 
-        // Replace each shadow move with a candidate from the qualified moves list
-        int toReplace = Math.min(shadowMoves.size(), candidates.size());
-        for (int i = 0; i < toReplace; i++) {
-            pokemon.exchangeMove(shadowMoves.get(i).getTemplate(), candidates.get(i));
-        }
-
-        // Aggressively remove all shadow moves from benched moves as well
-        // Use a snapshot to avoid ConcurrentModificationException during iteration
-        List<BenchedMove> snapshot = new ArrayList<>();
-        for (BenchedMove bm : pokemon.getBenchedMoves()) {
-            snapshot.add(bm);
-        }
-
-        for (BenchedMove bm : snapshot) {
-            if (bm.getMoveTemplate().getElementalType() == Shadowedhearts.SH_SHADOW_TYPE) {
-                pokemon.getBenchedMoves().remove(bm.getMoveTemplate());
+        // Build the desired MoveSet: replace shadow slots with candidates, preserve others
+        MoveSet newMoveSet = new MoveSet();
+        List<Move> movesWithNulls = pokemon.getMoveSet().getMovesWithNulls();
+        int candidateIdx = 0;
+        for (int i = 0; i < 4; i++) {
+            Move m = movesWithNulls.get(i);
+            if (m != null && m.getType() == Shadowedhearts.SH_SHADOW_TYPE && candidateIdx < candidates.size()) {
+                newMoveSet.setMove(i, candidates.get(candidateIdx++).create());
+            } else {
+                newMoveSet.setMove(i, m != null ? m.copy() : null);
             }
         }
+
+        // Build the desired BenchedMoves: exclude all shadow-type moves
+        BenchedMoves newBenchedMoves = new BenchedMoves();
+        for (BenchedMove bm : pokemon.getBenchedMoves()) {
+            if (bm.getMoveTemplate().getElementalType() != Shadowedhearts.SH_SHADOW_TYPE) {
+                newBenchedMoves.add(bm);
+            }
+        }
+
+        // Apply both atomically — each copyFrom does a single update() at the end
+        pokemon.getMoveSet().copyFrom(newMoveSet);
+        pokemon.getBenchedMoves().copyFrom(newBenchedMoves);
     }
 
     /**

@@ -10,11 +10,11 @@ public final class ModKeybinds {
     private ModKeybinds() {}
 
     public static KeyMapping AURA_SCANNER;
-    public static KeyMapping AURA_MODE_SELECTOR;
+    /*public static KeyMapping AURA_MODE_SELECTOR;
     public static KeyMapping AURA_PULSE;
     public static KeyMapping AURA_NEXT_SIGNAL;
     public static KeyMapping AURA_PREV_SIGNAL;
-    public static KeyMapping DEBUG_REINIT_HUD;
+    public static KeyMapping DEBUG_REINIT_HUD;*/
 
     private static final String CAT = "key.categories.shadowedhearts";
     public static void init() {
@@ -34,15 +34,15 @@ public final class ModKeybinds {
             );
         }*/
 
-        if (AURA_PULSE == null) {
+        /*if (AURA_PULSE == null) {
             AURA_PULSE = new KeyMapping(
                     "key.shadowedhearts.aura_pulse",
                     GLFW.GLFW_KEY_B,
                     CAT
             );
-        }
+        }*/
 
-        if (AURA_NEXT_SIGNAL == null) {
+       /* if (AURA_NEXT_SIGNAL == null) {
             AURA_NEXT_SIGNAL = new KeyMapping(
                     "key.shadowedhearts.aura_next_signal",
                     GLFW.GLFW_KEY_RIGHT_BRACKET,
@@ -64,7 +64,7 @@ public final class ModKeybinds {
                     GLFW.GLFW_KEY_F8,
                     CAT
             );
-        }
+        }*/
     }
 
 
@@ -72,7 +72,7 @@ public final class ModKeybinds {
         return AURA_SCANNER != null && AURA_SCANNER.consumeClick();
     }
 
-    public static boolean consumeAuraModeSelectorPress() {
+    /*public static boolean consumeAuraModeSelectorPress() {
         return AURA_MODE_SELECTOR != null && AURA_MODE_SELECTOR.consumeClick();
     }
 
@@ -90,5 +90,5 @@ public final class ModKeybinds {
 
     public static boolean consumeDebugReinitHudPress() {
         return DEBUG_REINIT_HUD != null && DEBUG_REINIT_HUD.consumeClick();
-    }
+    }*/
 }

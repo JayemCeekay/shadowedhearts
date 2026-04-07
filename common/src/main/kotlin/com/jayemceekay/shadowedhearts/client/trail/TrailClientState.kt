@@ -1,5 +1,9 @@
 package com.jayemceekay.shadowedhearts.client.trail
 
+import com.jayemceekay.shadowedhearts.common.tracking.CalibrationSequence
+import com.jayemceekay.shadowedhearts.common.tracking.NodeEventType
+import com.jayemceekay.shadowedhearts.common.tracking.ShadowSignalTier
+import com.jayemceekay.shadowedhearts.common.tracking.ShadowSpeciesTrait
 import com.mojang.blaze3d.vertex.PoseStack
 import net.minecraft.client.Minecraft
 import net.minecraft.client.renderer.MultiBufferSource
@@ -65,6 +69,115 @@ object TrailClientState {
     private const val MAX_FLOAT_HEIGHT = 1.2   // maximum hover in open spaces
     private const val CEILING_PROBE_RANGE = 5  // blocks upward to probe for ceiling
 
+    // ── Hunt metadata (synced from server) ──
+    var currentTier: ShadowSignalTier = ShadowSignalTier.FAINT
+        private set
+    var eventTypes: List<NodeEventType> = emptyList()
+        private set
+    var tension: Float = 0.0f
+        private set
+    var trailQuality: Float = 1.0f
+        private set
+    var currentNodeIndex: Int = 0
+        private set
+    var huntSeed: Long = 0L
+        private set
+
+    // ── Calibration client state ──
+    var calibrationSequence: List<CalibrationSequence.Direction> = emptyList()
+        private set
+    var calibrationVariant: CalibrationSequence.Variant = CalibrationSequence.Variant.HARMONIC_LOCK
+        private set
+    var calibrationTimeLimitTicks: Int = 0
+        private set
+    var calibrationCurrentIndex: Int = 0
+        private set
+    var calibrationMistakes: Int = 0
+        private set
+    var calibrationElapsedTicks: Int = 0
+        private set
+    var calibrationCompleted: Boolean = false
+        private set
+    var calibrationFailed: Boolean = false
+        private set
+    var calibrationGrade: CalibrationSequence.Grade? = null
+        private set
+    var calibrationActive: Boolean = false
+        private set
+
+    // ── Node Event client state ──
+    var nodeEventType: NodeEventType? = null
+        private set
+    var nodeEventPhase: Int = 0 // NodeEventState.Phase ordinal
+        private set
+    var nodeEventTicksElapsed: Int = 0
+        private set
+    var nodeEventMaxTicks: Int = 0
+        private set
+    var nodeEventActive: Boolean = false
+        private set
+    // Evidence Interpretation
+    var nodeEventCluePositions: List<BlockPos> = emptyList()
+        private set
+    var nodeEventWrongGuesses: Int = 0
+        private set
+    var nodeEventRequiredValidCount: Int = 1
+        private set
+    var nodeEventFoundValidCount: Int = 0
+        private set
+    var nodeEventSelectedClueIndices: List<Int> = emptyList()
+        private set
+    // Environmental Search
+    var nodeEventSearchCenter: BlockPos? = null
+        private set
+    var nodeEventSearchRadius: Float = 0f
+        private set
+    var nodeEventSearchSignalStrength: Float = 0f
+        private set
+    // Wild Interruption
+    var nodeEventWildResolveTimer: Int = 0
+        private set
+    var nodeEventWildsResolved: Boolean = false
+        private set
+    // Provocation
+    var nodeEventSignalBuildup: Float = 0f
+        private set
+    var nodeEventProvocationRequiredTicks: Int = 0
+        private set
+
+    // ── Manifestation buildup client state ──
+    var manifestationPhase: Int = 0 // 0=inactive, 1=signal spike, 2=convergence, 3=crescendo, 4=ready
+        private set
+    var manifestationProgress: Float = 0f
+        private set
+    var manifestationConvergenceTarget: BlockPos? = null
+        private set
+    var manifestationActive: Boolean = false
+        private set
+
+    // ── Signal blackout client state ──
+    var signalBlackedOut: Boolean = false
+        private set
+    var signalBlackoutTicks: Int = 0
+        private set
+
+    // ── Grade flash display ──
+    var lastGradeText: String? = null
+        private set
+    var gradeFlashTicks: Int = 0
+        private set
+    var gradeFlashColor: Int = 0xFFFFFF
+        private set
+
+    // ── False trails (decoy branches) ──
+    var falseTrails: List<List<BlockPos>> = emptyList()
+        private set
+    private var falseTrailSmoothedPaths: List<List<Vec3>> = emptyList()
+
+    // ── Species trait ──
+    var speciesTrait: ShadowSpeciesTrait = ShadowSpeciesTrait.NEUTRAL
+        private set
+
     fun sync(newNodes: List<BlockPos>, hotspotPos: BlockPos?) {
         nodes.clear()
         nodes.addAll(newNodes)
@@ -73,6 +186,149 @@ object TrailClientState {
         tickCounter = 0
         // hotspot may have changed, request recompute next tick
         recomputeCooldown = 0
+    }
+
+    /**
+     * Extended sync that includes hunt metadata from the updated TrailSyncS2CPacket.
+     */
+    fun syncHuntData(
+        tier: ShadowSignalTier,
+        eventTypes: List<NodeEventType>,
+        tension: Float,
+        trailQuality: Float,
+        currentNodeIndex: Int,
+        huntSeed: Long
+    ) {
+        this.currentTier = tier
+        this.eventTypes = eventTypes
+        this.tension = tension
+        this.trailQuality = trailQuality
+        this.currentNodeIndex = currentNodeIndex
+        this.huntSeed = huntSeed
+    }
+
+    /**
+     * Sync calibration state from CalibrationSyncS2CPacket.
+     */
+    fun syncCalibration(
+        sequence: List<CalibrationSequence.Direction>,
+        variant: CalibrationSequence.Variant,
+        timeLimitTicks: Int,
+        currentInputIndex: Int,
+        mistakes: Int,
+        elapsedTicks: Int,
+        completed: Boolean,
+        failed: Boolean,
+        grade: CalibrationSequence.Grade?
+    ) {
+        this.calibrationSequence = sequence
+        this.calibrationVariant = variant
+        this.calibrationTimeLimitTicks = timeLimitTicks
+        this.calibrationCurrentIndex = currentInputIndex
+        this.calibrationMistakes = mistakes
+        this.calibrationElapsedTicks = elapsedTicks
+        this.calibrationCompleted = completed
+        this.calibrationFailed = failed
+        this.calibrationGrade = grade
+        this.calibrationActive = !completed && !failed && sequence.isNotEmpty()
+    }
+
+    /**
+     * Sync node event state from NodeEventSyncS2CPacket.
+     */
+    fun syncNodeEvent(
+        eventType: NodeEventType,
+        phase: Int,
+        ticksElapsed: Int,
+        maxTicks: Int,
+        cluePositions: List<BlockPos>,
+        wrongGuesses: Int,
+        requiredValidCount: Int = 1,
+        foundValidCount: Int = 0,
+        selectedClueIndices: List<Int> = emptyList(),
+        searchCenter: BlockPos?,
+        searchRadius: Float,
+        searchSignalStrength: Float,
+        wildResolveTimer: Int,
+        wildsResolved: Boolean,
+        signalBuildup: Float,
+        provocationRequiredTicks: Int
+    ) {
+        this.nodeEventType = eventType
+        this.nodeEventPhase = phase
+        this.nodeEventTicksElapsed = ticksElapsed
+        this.nodeEventMaxTicks = maxTicks
+        this.nodeEventCluePositions = cluePositions
+        this.nodeEventWrongGuesses = wrongGuesses
+        this.nodeEventRequiredValidCount = requiredValidCount
+        this.nodeEventFoundValidCount = foundValidCount
+        this.nodeEventSelectedClueIndices = selectedClueIndices
+        this.nodeEventSearchCenter = searchCenter
+        this.nodeEventSearchRadius = searchRadius
+        this.nodeEventSearchSignalStrength = searchSignalStrength
+        this.nodeEventWildResolveTimer = wildResolveTimer
+        this.nodeEventWildsResolved = wildsResolved
+        this.nodeEventSignalBuildup = signalBuildup
+        this.nodeEventProvocationRequiredTicks = provocationRequiredTicks
+        // Phase 1 = ACTIVE
+        this.nodeEventActive = (phase == 1)
+    }
+
+    /**
+     * Sync manifestation buildup state from ManifestationSyncS2CPacket.
+     */
+    fun syncManifestation(
+        phase: Int,
+        progress: Float,
+        convergenceTarget: BlockPos?,
+        tension: Float
+    ) {
+        this.manifestationPhase = phase
+        this.manifestationProgress = progress
+        this.manifestationConvergenceTarget = convergenceTarget
+        this.manifestationActive = phase in 1..3
+        this.tension = tension
+    }
+
+    /**
+     * Show a grade flash on the HUD (for non-calibration events too).
+     */
+    fun showGradeFlash(grade: String, color: Int) {
+        this.lastGradeText = grade
+        this.gradeFlashTicks = 40 // ~2 seconds display
+        this.gradeFlashColor = color
+    }
+
+    /**
+     * Sync false trail decoy branches from server.
+     */
+    fun syncFalseTrails(trails: List<List<BlockPos>>) {
+        this.falseTrails = trails
+        // Pre-generate smoothed paths for false trails
+        val mc = Minecraft.getInstance()
+        val level = mc.level
+        if (level != null && trails.isNotEmpty()) {
+            falseTrailSmoothedPaths = trails.map { trail ->
+                if (trail.size >= 2) generateSmoothedPath(trail) else emptyList()
+            }
+        } else {
+            falseTrailSmoothedPaths = emptyList()
+        }
+    }
+
+    /**
+     * Sync species trait ID from server.
+     */
+    fun syncSpeciesTrait(traitId: Int) {
+        this.speciesTrait = ShadowSpeciesTrait.fromId(traitId)
+    }
+
+    /**
+     * Sync signal blackout state.
+     */
+    fun syncSignalBlackout(blackedOut: Boolean, ticks: Int) {
+        this.signalBlackedOut = blackedOut
+        this.signalBlackoutTicks = ticks
     }
 
     fun clear() {
@@ -90,6 +346,57 @@ object TrailClientState {
         recomputeCooldown = 0
         pendingSmoothedPath = null
         crossfadeProgress = 1.0f
+        pathProgress = 0.0
+        // Calibration state
+        calibrationSequence = emptyList()
+        calibrationVariant = CalibrationSequence.Variant.HARMONIC_LOCK
+        calibrationTimeLimitTicks = 0
+        calibrationCurrentIndex = 0
+        calibrationMistakes = 0
+        calibrationElapsedTicks = 0
+        calibrationCompleted = false
+        calibrationFailed = false
+        calibrationGrade = null
+        calibrationActive = false
+        // Node event state
+        nodeEventType = null
+        nodeEventPhase = 0
+        nodeEventTicksElapsed = 0
+        nodeEventMaxTicks = 0
+        nodeEventActive = false
+        nodeEventCluePositions = emptyList()
+        nodeEventWrongGuesses = 0
+        nodeEventRequiredValidCount = 1
+        nodeEventFoundValidCount = 0
+        nodeEventSelectedClueIndices = emptyList()
+        nodeEventSearchCenter = null
+        nodeEventSearchRadius = 0f
+        nodeEventSearchSignalStrength = 0f
+        nodeEventWildResolveTimer = 0
+        nodeEventWildsResolved = false
+        nodeEventSignalBuildup = 0f
+        nodeEventProvocationRequiredTicks = 0
+        // Hunt metadata
+        currentTier = ShadowSignalTier.FAINT
+        eventTypes = emptyList()
+        tension = 0f
+        trailQuality = 1f
+        currentNodeIndex = 0
+        huntSeed = 0L
+        // Manifestation
+        manifestationPhase = 0
+        manifestationProgress = 0f
+        manifestationConvergenceTarget = null
+        manifestationActive = false
+        // Other overlays
+        signalBlackedOut = false
+        signalBlackoutTicks = 0
+        lastGradeText = null
+        gradeFlashTicks = 0
+        gradeFlashColor = 0xFFFFFF
+        falseTrails = emptyList()
+        falseTrailSmoothedPaths = emptyList()
+        speciesTrait = ShadowSpeciesTrait.NEUTRAL
     }
 
     fun tick() {
@@ -193,6 +500,16 @@ object TrailClientState {
 
         tickCounter++
 
+        // Tick down grade flash display
+        if (gradeFlashTicks > 0) gradeFlashTicks--
+        if (gradeFlashTicks <= 0) lastGradeText = null
+
+        // Tick down signal blackout
+        if (signalBlackoutTicks > 0) {
+            signalBlackoutTicks--
+            signalBlackedOut = signalBlackoutTicks > 0
+        }
+
         // Trail rendering is now handled by TrailRibbonRenderer in the render phase
         // (see render() below). No particle spawning here.
 
@@ -224,10 +541,18 @@ object TrailClientState {
 
     fun getHotspot(): BlockPos? = hotspot
 
+    // ── Progress-based Clairvoyance reveal ──
+    // Instead of showing the entire path, only reveal a moving window around
+    // the player's forward progress along the route.
+    private var pathProgress: Double = 0.0  // scalar distance along the smoothed path
+    private val BEHIND_BUFFER = 6.0   // blocks of trail visible behind the player
+    private val AHEAD_WINDOW = 48.0   // blocks of trail visible ahead of the player
+    private val FADE_EDGE = 4.0       // blocks over which the trail fades at each edge
+
     /**
      * Called from the world render event (AFTER_TRANSLUCENT) to draw the shadow aura tube trail.
-     * Interpolates between previous and current tick display paths using partialTicks for
-     * sub-frame smoothness (renders at 60+ FPS even though tick() runs at 20 Hz).
+     * Implements progress-based Clairvoyance reveal: only a moving window of the trail
+     * is visible, advancing with the player. Trail fades behind and ahead at the edges.
      */
     fun render(partialTicks: Float, poseStack: PoseStack, buffer: MultiBufferSource, hudAlpha: Float = 1.0f) {
         val mc = Minecraft.getInstance()
@@ -251,10 +576,56 @@ object TrailClientState {
             interpPath.add(currDisplayPath[i])
         }
 
-        val maxTrailDist = 64.0f // blocks — the "Clairvoyance window"
+        if (interpPath.size < 2) return
+
+        // --- Progress-based windowing ---
+        // Compute cumulative distances along the path
+        val cumDist = DoubleArray(interpPath.size)
+        cumDist[0] = 0.0
+        for (i in 1 until interpPath.size) {
+            cumDist[i] = cumDist[i - 1] + interpPath[i].distanceTo(interpPath[i - 1])
+        }
+        val totalPathLength = cumDist.last()
+
+        // Find player's projection onto the path (closest point + forward progress)
+        var bestIdx = 0
+        var bestDistSq = Double.MAX_VALUE
+        for (i in interpPath.indices) {
+            val d2 = interpPath[i].distanceToSqr(playerPos)
+            if (d2 < bestDistSq) {
+                bestDistSq = d2
+                bestIdx = i
+            }
+        }
+        val playerPathDist = cumDist[bestIdx]
+
+        // Advance progress monotonically (never goes backward) for stable Clairvoyance feel
+        if (playerPathDist > pathProgress) {
+            pathProgress = playerPathDist
+        }
+
+        // Quality affects the visible window: lower quality = shorter, noisier
+        val qualityMult = 0.6 + trailQuality * 0.4  // 0.6 to 1.0
+        val effectiveAhead = AHEAD_WINDOW * qualityMult
+
+        // Determine visibility window
+        val windowStart = pathProgress - BEHIND_BUFFER
+        val windowEnd = pathProgress + effectiveAhead
+
+        // Extract the visible portion of the path
+        val visiblePath = mutableListOf<Vec3>()
+        for (i in interpPath.indices) {
+            val d = cumDist[i]
+            if (d < windowStart - FADE_EDGE || d > windowEnd + FADE_EDGE) continue
+            visiblePath.add(interpPath[i])
+        }
+
+        if (visiblePath.size < 2) return
+
+        val maxTrailDist = 64.0f
 
         TrailRibbonRenderer.render(
-            interpPath,
+            visiblePath,
             playerPos,
             maxTrailDist,
             partialTicks,
@@ -262,6 +633,25 @@ object TrailClientState {
             buffer,
             hudAlpha
         )
+
+        // Render false/decoy trails with reduced opacity
+        if (falseTrailSmoothedPaths.isNotEmpty()) {
+            for (falsePath in falseTrailSmoothedPaths) {
+                if (falsePath.size < 2) continue
+                // Only show false trails within reasonable distance
+                val nearestDist = falsePath.minOf { it.distanceToSqr(playerPos) }
+                if (nearestDist > 64.0 * 64.0) continue
+                TrailRibbonRenderer.render(
+                    falsePath,
+                    playerPos,
+                    maxTrailDist,
+                    partialTicks,
+                    poseStack,
+                    buffer,
+                    hudAlpha * 0.4f // false trails are dimmer/more transparent
+                )
+            }
+        }
     }
 
     /**

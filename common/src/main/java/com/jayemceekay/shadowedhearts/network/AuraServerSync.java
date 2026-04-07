@@ -2,14 +2,19 @@ package com.jayemceekay.shadowedhearts.network;
 
 import com.cobblemon.mod.common.api.Priority;
 import com.cobblemon.mod.common.api.events.CobblemonEvents;
+import com.cobblemon.mod.common.api.events.pokemon.HeldItemEvent;
 import com.cobblemon.mod.common.api.events.pokemon.PokemonRecallEvent;
 import com.cobblemon.mod.common.api.events.pokemon.PokemonSentEvent;
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
 import com.cobblemon.mod.common.pokemon.Pokemon;
 import com.jayemceekay.shadowedhearts.common.shadow.ShadowAspectUtil;
+import dev.architectury.event.events.common.TickEvent;
 import kotlin.Unit;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerLevel;
 
 import java.lang.ref.WeakReference;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -31,19 +36,41 @@ public final class AuraServerSync {
         CobblemonEvents.POKEMON_SENT_POST.subscribe(Priority.NORMAL, (PokemonSentEvent.Post e) -> {
             var pe = e.getPokemonEntity();
             if (pe == null || pe.level().isClientSide()) return Unit.INSTANCE;
+            Pokemon p;
             try {
-                Pokemon p = pe.getPokemon();
+                p = pe.getPokemon();
+                if (p == null) return Unit.INSTANCE;
                 // Run occasional validation when sent out
                 ShadowAspectUtil.ensureRequiredShadowAspects(p);
-                if (!ShadowAspectUtil.hasShadowAspect(p))
+                if (!ShadowAspectUtil.shouldHaveShadowAura(p))
                     return Unit.INSTANCE;
             } catch (Exception ex) {
                 return Unit.INSTANCE;
             }
             TRACKING.put(pe.getId(), new WeakReference<>(pe));
             // Notify clients tracking this entity to start rendering the aura
-            S2CUtils.broadcastAuraStartToTracking(pe);
+            int sustain = ShadowAspectUtil.isHoldingShadowShard(p) ? Integer.MAX_VALUE / 2 : -1;
+            S2CUtils.broadcastAuraStartToTracking(pe, 1.0f, sustain);
             S2CUtils.broadcastLuminousMoteToTracking(pe);
+            return Unit.INSTANCE;
+        });
+
+        CobblemonEvents.COSMETIC_ITEM_POST.subscribe(Priority.NORMAL, (HeldItemEvent.Post e) -> {
+            Pokemon p = e.getPokemon();
+            PokemonEntity pe = p.getEntity();
+            if (pe == null || pe.level().isClientSide()) return Unit.INSTANCE;
+
+            if (ShadowAspectUtil.shouldHaveShadowAura(p)) {
+                TRACKING.put(pe.getId(), new WeakReference<>(pe));
+                int sustain = ShadowAspectUtil.isHoldingShadowShard(p) ? Integer.MAX_VALUE / 2 : -1;
+                S2CUtils.broadcastAuraStartToTracking(pe, 1.0f, sustain);
+                S2CUtils.broadcastLuminousMoteToTracking(pe);
+            } else {
+                if (TRACKING.containsKey(pe.getId())) {
+                    TRACKING.remove(pe.getId());
+                    S2CUtils.broadcastAuraFadeOutToTracking(pe, 10);
+                }
+            }
             return Unit.INSTANCE;
         });
 
@@ -51,7 +78,7 @@ public final class AuraServerSync {
         CobblemonEvents.POKEMON_ENTITY_SPAWN.subscribe(Priority.LOWEST, (e) -> {
             var pe = e.getEntity();
             if (pe == null || pe.level().isClientSide()) return Unit.INSTANCE;
-            if (ShadowAspectUtil.hasShadowAspect(pe.getPokemon())) {
+            if (ShadowAspectUtil.shouldHaveShadowAura(pe.getPokemon())) {
                 TRACKING.put(pe.getId(), new WeakReference<>(pe));
                 // We don't broadcast START here because listeners (like WildShadowSpawnListener)
                 // might want to broadcast a specialized one. The tick loop will pick it up
@@ -70,27 +97,10 @@ public final class AuraServerSync {
         });
 
         // Server tick: broadcast states and prune entries
-       // TickEvent.SERVER_POST.register(AuraServerSync::onServerTick);
+        TickEvent.SERVER_POST.register(AuraServerSync::onServerTick);
     }
 
-    /*private static void onServerTick(MinecraftServer server) {
-        // Automatically discover untracked Shadow Pokémon in all levels
-        for (ServerLevel level : server.getAllLevels()) {
-            for (Entity e : level.getAllEntities()) {
-                if (e instanceof PokemonEntity pe && pe.isAlive()) {
-                    if (PokemonAspectUtil.hasShadowAspect(pe.getPokemon())) {
-                        if (!TRACKING.containsKey(pe.getId())) {
-                            TRACKING.put(pe.getId(), new WeakReference<>(pe));
-                            // If it's a wild spawn or already in world, it might need an initial broadcast
-                            // but we usually want the specialized one from SpawnListener if it just spawned.
-                            // This serves as a safety catch-all.
-                            S2CUtils.broadcastAuraStartToTracking(pe);
-                        }
-                    }
-                }
-            }
-        }
-
+    private static void onServerTick(MinecraftServer server) {
         Iterator<Map.Entry<Integer, WeakReference<PokemonEntity>>> it = TRACKING.entrySet().iterator();
         while (it.hasNext()) {
             var en = it.next();
@@ -110,6 +120,13 @@ public final class AuraServerSync {
                 it.remove();
                 continue;
             }
+
+            if (!ShadowAspectUtil.shouldHaveShadowAura(pe.getPokemon())) {
+                S2CUtils.broadcastAuraFadeOutToTracking(pe, 10);
+                it.remove();
+                continue;
+            }
+
             // Broadcast to tracking players and the owner if present
             if (pe.level() instanceof ServerLevel level) {
                 long now = level.getGameTime();
@@ -118,5 +135,5 @@ public final class AuraServerSync {
                 it.remove();
             }
         }
-    }*/
+    }
 }

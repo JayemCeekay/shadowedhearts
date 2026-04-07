@@ -45,7 +45,7 @@ public abstract class MixinLivingEntityRenderer<T extends LivingEntity> {
 
     @Unique
     private boolean shadowedhearts$shouldDarken(LivingEntity e) {
-        return e instanceof PokemonEntity pokemonEntity && ShadowAspectUtil.hasShadowAspect(pokemonEntity.getPokemon());
+        return e instanceof PokemonEntity pokemonEntity && ShadowAspectUtil.shouldHaveShadowAura(pokemonEntity.getPokemon());
     }
 
     @Unique

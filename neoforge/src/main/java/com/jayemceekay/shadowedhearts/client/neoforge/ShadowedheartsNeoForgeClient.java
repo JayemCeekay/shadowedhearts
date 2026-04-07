@@ -65,10 +65,10 @@ public final class ShadowedheartsNeoForgeClient {
         ModKeybinds.init();
         event.register(ModKeybinds.AURA_SCANNER);
 //        event.register(ModKeybinds.AURA_MODE_SELECTOR);
-        event.register(ModKeybinds.AURA_PULSE);
-        event.register(ModKeybinds.AURA_NEXT_SIGNAL);
-        event.register(ModKeybinds.AURA_PREV_SIGNAL);
-        event.register(ModKeybinds.DEBUG_REINIT_HUD);
+//        event.register(ModKeybinds.AURA_PULSE);
+//        event.register(ModKeybinds.AURA_NEXT_SIGNAL);
+//        event.register(ModKeybinds.AURA_PREV_SIGNAL);
+//        event.register(ModKeybinds.DEBUG_REINIT_HUD);
     }
 
     public static void registerParticles(RegisterParticleProvidersEvent evt) {

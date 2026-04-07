@@ -1,0 +1,29 @@
+{
+  "description": "Common shadow signal rarity pool (Tier 1 - Faint)",
+  "entries": [
+    { "pokemon": "rattata", "weight": 5 },
+    { "pokemon": "pidgey", "weight": 5 },
+    { "pokemon": "zubat", "weight": 5 },
+    { "pokemon": "geodude", "weight": 4 },
+    { "pokemon": "machop", "weight": 4 },
+    { "pokemon": "gastly", "weight": 4 },
+    { "pokemon": "magikarp", "weight": 3 },
+    { "pokemon": "poochyena", "weight": 5 },
+    { "pokemon": "zigzagoon", "weight": 5 },
+    { "pokemon": "wurmple", "weight": 4 },
+    { "pokemon": "shinx", "weight": 4 },
+    { "pokemon": "starly", "weight": 4 },
+    { "pokemon": "bidoof", "weight": 5 },
+    { "pokemon": "patrat", "weight": 4 },
+    { "pokemon": "lillipup", "weight": 4 },
+    { "pokemon": "purrloin", "weight": 4 },
+    { "pokemon": "sandshrew", "weight": 4 },
+    { "pokemon": "oddish", "weight": 4 },
+    { "pokemon": "ekans", "weight": 4 },
+    { "pokemon": "meowth", "weight": 4 },
+    { "pokemon": "spinarak", "weight": 4 },
+    { "pokemon": "sentret", "weight": 4 },
+    { "pokemon": "teddiursa", "weight": 3 },
+    { "pokemon": "houndour", "weight": 3 }
+  ]
+}

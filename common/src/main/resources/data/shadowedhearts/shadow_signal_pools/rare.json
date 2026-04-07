@@ -1,0 +1,27 @@
+{
+  "description": "Rare shadow signal rarity pool (Tier 3 - Moderate)",
+  "entries": [
+    { "pokemon": "gengar", "weight": 4 },
+    { "pokemon": "machamp", "weight": 4 },
+    { "pokemon": "golem", "weight": 3 },
+    { "pokemon": "luxray", "weight": 4 },
+    { "pokemon": "staraptor", "weight": 4 },
+    { "pokemon": "stoutland", "weight": 3 },
+    { "pokemon": "weavile", "weight": 4 },
+    { "pokemon": "honchkrow", "weight": 4 },
+    { "pokemon": "gliscor", "weight": 3 },
+    { "pokemon": "crobat", "weight": 3 },
+    { "pokemon": "larvitar", "weight": 4 },
+    { "pokemon": "bagon", "weight": 4 },
+    { "pokemon": "beldum", "weight": 4 },
+    { "pokemon": "gible", "weight": 4 },
+    { "pokemon": "deino", "weight": 4 },
+    { "pokemon": "dratini", "weight": 3 },
+    { "pokemon": "riolu", "weight": 3 },
+    { "pokemon": "scyther", "weight": 3 },
+    { "pokemon": "eevee", "weight": 3 },
+    { "pokemon": "ralts", "weight": 3 },
+    { "pokemon": "togepi", "weight": 2 },
+    { "pokemon": "spiritomb", "weight": 2 }
+  ]
+}

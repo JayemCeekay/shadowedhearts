@@ -43,6 +43,116 @@ public final class ModSounds {
             () -> SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath(Shadowedhearts.MOD_ID, "aura_reader_unequip"))
     );
 
+    // ── Shadow Hunt Audio ──
+
+    /* TODO: Replace placeholder sound files in assets/shadowedhearts/sounds/hunt/ */
+    public static final RegistrySupplier<SoundEvent> HUNT_TRAIL_REVEAL = SOUNDS.register(
+            "hunt_trail_reveal",
+            () -> SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath(Shadowedhearts.MOD_ID, "hunt_trail_reveal"))
+    );
+
+    /* TODO: Replace placeholder sound file */
+    public static final RegistrySupplier<SoundEvent> HUNT_CALIBRATION_PROMPT = SOUNDS.register(
+            "hunt_calibration_prompt",
+            () -> SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath(Shadowedhearts.MOD_ID, "hunt_calibration_prompt"))
+    );
+
+    /* TODO: Replace placeholder sound file */
+    public static final RegistrySupplier<SoundEvent> HUNT_CALIBRATION_CORRECT = SOUNDS.register(
+            "hunt_calibration_correct",
+            () -> SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath(Shadowedhearts.MOD_ID, "hunt_calibration_correct"))
+    );
+
+    /* TODO: Replace placeholder sound file */
+    public static final RegistrySupplier<SoundEvent> HUNT_CALIBRATION_WRONG = SOUNDS.register(
+            "hunt_calibration_wrong",
+            () -> SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath(Shadowedhearts.MOD_ID, "hunt_calibration_wrong"))
+    );
+
+    /* TODO: Replace placeholder sound file */
+    public static final RegistrySupplier<SoundEvent> HUNT_CALIBRATION_COMPLETE = SOUNDS.register(
+            "hunt_calibration_complete",
+            () -> SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath(Shadowedhearts.MOD_ID, "hunt_calibration_complete"))
+    );
+
+    /* TODO: Replace placeholder sound file */
+    public static final RegistrySupplier<SoundEvent> HUNT_NODE_SCAN = SOUNDS.register(
+            "hunt_node_scan",
+            () -> SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath(Shadowedhearts.MOD_ID, "hunt_node_scan"))
+    );
+
+    /* TODO: Replace placeholder sound file */
+    public static final RegistrySupplier<SoundEvent> HUNT_EVIDENCE_CORRECT = SOUNDS.register(
+            "hunt_evidence_correct",
+            () -> SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath(Shadowedhearts.MOD_ID, "hunt_evidence_correct"))
+    );
+
+    /* TODO: Replace placeholder sound file */
+    public static final RegistrySupplier<SoundEvent> HUNT_EVIDENCE_WRONG = SOUNDS.register(
+            "hunt_evidence_wrong",
+            () -> SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath(Shadowedhearts.MOD_ID, "hunt_evidence_wrong"))
+    );
+
+    /* TODO: Replace placeholder sound file */
+    public static final RegistrySupplier<SoundEvent> HUNT_SEARCH_PING = SOUNDS.register(
+            "hunt_search_ping",
+            () -> SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath(Shadowedhearts.MOD_ID, "hunt_search_ping"))
+    );
+
+    /* TODO: Replace placeholder sound file */
+    public static final RegistrySupplier<SoundEvent> HUNT_WILD_AGGRO = SOUNDS.register(
+            "hunt_wild_aggro",
+            () -> SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath(Shadowedhearts.MOD_ID, "hunt_wild_aggro"))
+    );
+
+    /* TODO: Replace placeholder sound file */
+    public static final RegistrySupplier<SoundEvent> HUNT_PROVOCATION_BUILDUP = SOUNDS.register(
+            "hunt_provocation_buildup",
+            () -> SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath(Shadowedhearts.MOD_ID, "hunt_provocation_buildup"))
+    );
+
+    /* TODO: Replace placeholder sound file */
+    public static final RegistrySupplier<SoundEvent> HUNT_TENSION_AMBIENT = SOUNDS.register(
+            "hunt_tension_ambient",
+            () -> SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath(Shadowedhearts.MOD_ID, "hunt_tension_ambient"))
+    );
+
+    /* TODO: Replace placeholder sound file */
+    public static final RegistrySupplier<SoundEvent> HUNT_MANIFESTATION_BUILDUP = SOUNDS.register(
+            "hunt_manifestation_buildup",
+            () -> SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath(Shadowedhearts.MOD_ID, "hunt_manifestation_buildup"))
+    );
+
+    /* TODO: Replace placeholder sound file */
+    public static final RegistrySupplier<SoundEvent> HUNT_MANIFESTATION_REVEAL = SOUNDS.register(
+            "hunt_manifestation_reveal",
+            () -> SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath(Shadowedhearts.MOD_ID, "hunt_manifestation_reveal"))
+    );
+
+    /* TODO: Replace placeholder sound file */
+    public static final RegistrySupplier<SoundEvent> HUNT_GRADE_PERFECT = SOUNDS.register(
+            "hunt_grade_perfect",
+            () -> SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath(Shadowedhearts.MOD_ID, "hunt_grade_perfect"))
+    );
+
+    /* TODO: Replace placeholder sound file */
+    public static final RegistrySupplier<SoundEvent> HUNT_GRADE_SLOPPY = SOUNDS.register(
+            "hunt_grade_sloppy",
+            () -> SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath(Shadowedhearts.MOD_ID, "hunt_grade_sloppy"))
+    );
+
+    /* TODO: Replace placeholder sound file */
+    public static final RegistrySupplier<SoundEvent> HUNT_GRADE_FAILED = SOUNDS.register(
+            "hunt_grade_failed",
+            () -> SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath(Shadowedhearts.MOD_ID, "hunt_grade_failed"))
+    );
+
+    /* TODO: Replace placeholder sound file */
+    public static final RegistrySupplier<SoundEvent> HUNT_SIGNAL_BLACKOUT = SOUNDS.register(
+            "hunt_signal_blackout",
+            () -> SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath(Shadowedhearts.MOD_ID, "hunt_signal_blackout"))
+    );
+
     public static void init() {
         SOUNDS.register();
     }

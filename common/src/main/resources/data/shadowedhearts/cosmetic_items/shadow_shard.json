@@ -1,0 +1,13 @@
+{
+  "pokemon": [
+    ""
+  ],
+  "cosmeticItems": [
+    {
+      "consumedItem": "shadowedhearts:shadow_shard",
+      "aspects": [
+        "cosmetic_item-shadow_shard"
+      ]
+    }
+  ]
+}

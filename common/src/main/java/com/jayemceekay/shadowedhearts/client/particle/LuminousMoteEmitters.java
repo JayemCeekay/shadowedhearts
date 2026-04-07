@@ -49,11 +49,12 @@ public final class LuminousMoteEmitters {
     }
 
     public static void register(PokemonEntity pe) {
-        if (!ShadowAspectUtil.hasShadowAspect(pe.getPokemon())) return;
+        if (!ShadowAspectUtil.shouldHaveShadowAura(pe.getPokemon())) return;
         var mc = Minecraft.getInstance();
         if (mc == null || mc.level == null) return;
         long now = mc.level.getGameTime();
-        ACTIVE.put(pe.getId(), EmitterGroup.create(pe, now + EMIT_TICKS));
+        long ticks = ShadowAspectUtil.isHoldingShadowShard(pe.getPokemon()) ? Integer.MAX_VALUE / 2 : EMIT_TICKS;
+        ACTIVE.put(pe.getId(), EmitterGroup.create(pe, now + ticks));
     }
 
     /**
@@ -79,7 +80,12 @@ public final class LuminousMoteEmitters {
             }
 
             if (auraReaderRequired && !hasAuraReader && !AuraReaderManager.isDetected(group.getEntityUuid())) {
-                continue;
+                Entity ent = group.entityRef.get();
+                if (ent instanceof PokemonEntity pe && pe.getPokemon().cosmeticItem().is(com.jayemceekay.shadowedhearts.registry.ModItems.SHADOW_SHARD.get())) {
+                    // Bypass Aura Reader requirement for Shadow Shard cosmetic item
+                } else {
+                    continue;
+                }
             }
 
             if (!group.tickAndEmit(level, partialTicks)) {
@@ -168,7 +174,12 @@ public final class LuminousMoteEmitters {
 
         boolean isExpired(long now) {
             Entity ent = entityRef.get();
-            return ent == null || !ent.isAlive() || now >= endTick;
+            if (ent == null || !ent.isAlive()) return true;
+            if (now >= endTick) return true;
+            if (ent instanceof PokemonEntity pe && !ShadowAspectUtil.shouldHaveShadowAura(pe.getPokemon())) {
+                return true;
+            }
+            return false;
         }
 
         // Returns false if group should be removed

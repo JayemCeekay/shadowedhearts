@@ -1,4 +1,4 @@
-package com.jayemceekay.shadowedhearts.world;
+package com.jayemceekay.shadowedhearts.world.gen;
 
 import com.jayemceekay.shadowedhearts.Shadowedhearts;
 import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs;

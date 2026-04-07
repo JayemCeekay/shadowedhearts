@@ -61,6 +61,8 @@
     { "name": "uAuraFade",          "type": "float",     "count": 1,  "values": [ 1.0 ] },
     { "name": "uPlayerPosCS",      "type": "float",     "count": 3,  "values": [ 0.0, 0.0, 0.0 ] },
     { "name": "uNodes",            "type": "float",     "count": 144, "values": [ 0.0 ] },
-    { "name": "uNumNodes",         "type": "float",     "count": 1,  "values": [ 0.0 ] }
+    { "name": "uNumNodes",         "type": "float",     "count": 1,  "values": [ 0.0 ] },
+    { "name": "uTension",          "type": "float",     "count": 1,  "values": [ 0.0 ] },
+    { "name": "uTrailQuality",     "type": "float",     "count": 1,  "values": [ 1.0 ] }
   ]
 }

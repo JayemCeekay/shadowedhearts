@@ -20,7 +20,7 @@ public final class ClientHudOverlay {
 
     @SubscribeEvent
     public static void onHudRender(RenderGuiEvent.Post event) {
-        AuraReaderManager.render(event.getGuiGraphics(), event.getPartialTick().getRealtimeDeltaTicks());
+        AuraReaderManager.render(event.getGuiGraphics(), event.getPartialTick().getGameTimeDeltaPartialTick(true));
     }
 
     @SubscribeEvent

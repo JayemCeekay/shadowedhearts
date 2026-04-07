@@ -19,6 +19,8 @@ import com.jayemceekay.shadowedhearts.common.shadow.WildShadowSpawnListener;
 import com.jayemceekay.shadowedhearts.common.shadow.restrictions.ShadowRestrictions;
 import com.jayemceekay.shadowedhearts.common.snag.ShadowCatchRateListener;
 import com.jayemceekay.shadowedhearts.common.snag.SnagEvents;
+import com.jayemceekay.shadowedhearts.common.tracking.NodeEventTickHandler;
+import com.jayemceekay.shadowedhearts.common.tracking.ShadowSignalPoolRegistry;
 import com.jayemceekay.shadowedhearts.common.util.SpeciesTagManager;
 import com.jayemceekay.shadowedhearts.config.HeartGaugeConfig;
 import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs;
@@ -26,6 +28,7 @@ import com.jayemceekay.shadowedhearts.data.ShadowAspectPresets;
 import com.jayemceekay.shadowedhearts.data.ShadowPools;
 import com.jayemceekay.shadowedhearts.integration.accessories.SnagAccessoryBridgeHolder;
 import com.jayemceekay.shadowedhearts.integration.mega_showdown.MegaShowdownBridgeHolder;
+import com.jayemceekay.shadowedhearts.integration.rctmod.RCTBridgeHolder;
 import com.jayemceekay.shadowedhearts.network.AuraBroadcastQueue;
 import com.jayemceekay.shadowedhearts.network.AuraServerSync;
 import com.jayemceekay.shadowedhearts.pokemon.properties.PropertyRegistration;
@@ -34,9 +37,9 @@ import com.jayemceekay.shadowedhearts.registry.util.ModItemComponents;
 import com.jayemceekay.shadowedhearts.registry.util.ModParticleTypes;
 import com.jayemceekay.shadowedhearts.showdown.ShowdownRuntimePatcher;
 import com.jayemceekay.shadowedhearts.util.ShadowedHeartsPlayerData;
-import com.jayemceekay.shadowedhearts.world.PlayerActivityHeatmap;
 import com.jayemceekay.shadowedhearts.world.gen.ImpactScheduler;
 import com.jayemceekay.shadowedhearts.world.gen.ModStructures;
+import com.jayemceekay.shadowedhearts.world.gen.PlayerActivityHeatmap;
 import com.jayemceekay.shadowedhearts.world.handler.ShadowMeteoroidProximityHandler;
 import dev.architectury.event.events.common.LifecycleEvent;
 import dev.architectury.registry.ReloadListenerRegistry;
@@ -80,6 +83,7 @@ public final class Shadowedhearts {
         LOGGER.info("[ShadowedHearts] Initializing mod...");
         SnagAccessoryBridgeHolder.init();
         MegaShowdownBridgeHolder.init();
+        RCTBridgeHolder.init();
         ModItemComponents.init();
         ModBlocks.init();
         ModItems.init();
@@ -102,6 +106,7 @@ public final class Shadowedhearts {
         ShadowProgressionManager.init();
         ShadowRestrictions.init();
         PurificationStepTracker.INSTANCE.init();
+        NodeEventTickHandler.INSTANCE.init();
         BattleSentOnceListener.INSTANCE.init();
         WildShadowSpawnListener.init();
         ShadowCatchRateListener.init();
@@ -109,13 +114,18 @@ public final class Shadowedhearts {
         AuraBroadcastQueue.init();
         ShadowDropListener.init();
         NPCShadowInjector.init();
-        PlayerActivityHeatmap.init();
+        if( ShadowedHeartsConfigs.getInstance().getShadowConfig().worldAlteration().shadowfallActive()) {
+            PlayerActivityHeatmap.init();
+        }
         ImpactScheduler.init();
         ShadowMeteoroidProximityHandler.init();
         ModStructures.init();
         PlayerDataExtensionRegistry.INSTANCE.register(ShadowedHeartsPlayerData.NAME, ShadowedHeartsPlayerData.class, false);
         HeartGaugeConfig.ensureLoaded();
         ReloadListenerRegistry.register(PackType.SERVER_DATA, SpeciesTagManager.INSTANCE);
+
+        // Load shadow signal species pools when server starts
+        LifecycleEvent.SERVER_STARTED.register(ShadowSignalPoolRegistry::load);
 
         RULE_SHADOW_STARTERS = GameRules.register("doShadowStarters", GameRules.Category.MISC, GameRules.BooleanValue.create(false));
 

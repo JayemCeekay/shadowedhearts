@@ -1,18 +1,13 @@
 package com.jayemceekay.shadowedhearts.registry;
 
-import com.cobblemon.mod.common.api.pokeball.PokeBalls;
-import com.cobblemon.mod.common.item.PokeBallItem;
 import com.jayemceekay.shadowedhearts.Shadowedhearts;
+import com.jayemceekay.shadowedhearts.common.tracking.ShadowSignalTier;
 import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs;
-import com.jayemceekay.shadowedhearts.content.items.AuraReaderItem;
-import com.jayemceekay.shadowedhearts.content.items.PurifiedGemItem;
-import com.jayemceekay.shadowedhearts.content.items.ScentItem;
-import com.jayemceekay.shadowedhearts.content.items.SnagMachineItem;
+import com.jayemceekay.shadowedhearts.content.items.*;
 import com.jayemceekay.shadowedhearts.integration.mega_showdown.MegaShowdownBridgeHolder;
 import dev.architectury.registry.registries.DeferredRegister;
 import dev.architectury.registry.registries.RegistrySupplier;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 
@@ -124,12 +119,48 @@ public final class ModItems {
             "direction_arrow",
             () -> new Item(new Item.Properties()));
 
-    public static final RegistrySupplier<Item> POKEDEX_INTEGRATOR = ITEMS.register(
+   /* public static final RegistrySupplier<Item> POKEDEX_INTEGRATOR = ITEMS.register(
             "pokedex_integrator",
             () -> new com.jayemceekay.shadowedhearts.content.items.PokedexIntegratorItem(new net.minecraft.world.item.Item.Properties().arch$tab(ModCreativeTabs.SHADOWED_HEARTS_TAB).stacksTo(1))
-    );
+    );*/
 
-    public static final RegistrySupplier<Item> DARK_BALL = ITEMS.register(
+    // Shadow Signal Data — tiered hunt-initiating items (tiers 1–5)
+    public static final RegistrySupplier<Item> SHADOW_SIGNAL_DATA_FAINT = ITEMS.register(
+            "shadow_signal_data_faint",
+            () -> new ShadowSignalDataItem(
+                    new Item.Properties().arch$tab(ModCreativeTabs.SHADOWED_HEARTS_TAB).stacksTo(16)
+                            .rarity(ShadowSignalDataItem.tierToRarity(ShadowSignalTier.FAINT)),
+                    ShadowSignalTier.FAINT));
+
+    public static final RegistrySupplier<Item> SHADOW_SIGNAL_DATA_WEAK = ITEMS.register(
+            "shadow_signal_data_weak",
+            () -> new ShadowSignalDataItem(
+                    new Item.Properties().arch$tab(ModCreativeTabs.SHADOWED_HEARTS_TAB).stacksTo(16)
+                            .rarity(ShadowSignalDataItem.tierToRarity(ShadowSignalTier.WEAK)),
+                    ShadowSignalTier.WEAK));
+
+    public static final RegistrySupplier<Item> SHADOW_SIGNAL_DATA_MODERATE = ITEMS.register(
+            "shadow_signal_data_moderate",
+            () -> new ShadowSignalDataItem(
+                    new Item.Properties().arch$tab(ModCreativeTabs.SHADOWED_HEARTS_TAB).stacksTo(16)
+                            .rarity(ShadowSignalDataItem.tierToRarity(ShadowSignalTier.MODERATE)),
+                    ShadowSignalTier.MODERATE));
+
+    public static final RegistrySupplier<Item> SHADOW_SIGNAL_DATA_STRONG = ITEMS.register(
+            "shadow_signal_data_strong",
+            () -> new ShadowSignalDataItem(
+                    new Item.Properties().arch$tab(ModCreativeTabs.SHADOWED_HEARTS_TAB).stacksTo(16)
+                            .rarity(ShadowSignalDataItem.tierToRarity(ShadowSignalTier.STRONG)),
+                    ShadowSignalTier.STRONG));
+
+    public static final RegistrySupplier<Item> SHADOW_SIGNAL_DATA_RESONANT = ITEMS.register(
+            "shadow_signal_data_resonant",
+            () -> new ShadowSignalDataItem(
+                    new Item.Properties().arch$tab(ModCreativeTabs.SHADOWED_HEARTS_TAB).stacksTo(16)
+                            .rarity(ShadowSignalDataItem.tierToRarity(ShadowSignalTier.RESONANT)),
+                    ShadowSignalTier.RESONANT));
+
+    /*public static final RegistrySupplier<Item> DARK_BALL = ITEMS.register(
             "dark_ball",
             () -> {
                 var id = ResourceLocation.fromNamespaceAndPath("cobblemon", "dark_ball");
@@ -140,7 +171,7 @@ public final class ModItems {
                 PokeBallItem item = new PokeBallItem(pb);
                 pb.item = item;
                 return item;
-            });
+            });*/
 
     public static void init() {
         ITEMS.register();

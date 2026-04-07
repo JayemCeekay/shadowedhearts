@@ -78,6 +78,10 @@ uniform vec3  uPlayerPosCS;
 uniform float uNearFadeMin;
 uniform float uNearFadeMax;
 
+// Hunt state uniforms
+uniform float uTension;       // 0.0 (calm) to 1.0 (maximum tension)
+uniform float uTrailQuality;  // 1.0 (clean) to 0.0 (maximum noise/interference)
+
 out vec4 fragColor;
 
 // ===== Tunables =====
@@ -340,7 +344,26 @@ void main() {
         densitySample  *= trailFade;
 
         // Dynamic energy pulse: traveling wave of intensity from player toward objective
-        densitySample *= (1.0 + 0.5 * sin(trailT * 10.0 - uTime * 5.0));
+        // Tension increases pulse amplitude and speed
+        float pulseAmp = 0.5 + uTension * 0.4;
+        float pulseSpeed = 5.0 + uTension * 3.0;
+        densitySample *= (1.0 + pulseAmp * sin(trailT * 10.0 - uTime * pulseSpeed));
+
+        // Trail quality effects: low quality adds noise/flicker
+        float qualityNoise = 1.0;
+        if (uTrailQuality < 0.8) {
+            float noiseIntensity = (1.0 - uTrailQuality) * 0.6;
+            float flicker = sh_noise3(pAbsWorld * 2.0 + vec3(uTime * 3.0));
+            qualityNoise = mix(1.0, flicker, noiseIntensity);
+        }
+        densitySample *= qualityNoise;
+
+        // Tension-driven visual instability: at high tension, add interference flicker
+        if (uTension > 0.4) {
+            float tensionFlicker = sh_noise3(pAbsWorld * 0.5 + vec3(uTime * 8.0, 0.0, 0.0));
+            float flickerStrength = (uTension - 0.4) * 0.5;
+            densitySample *= mix(1.0, 0.5 + tensionFlicker, flickerStrength);
+        }
 
         // Proximity fade: fade out near the player to avoid sudden popping
         float nearFade  = smoothstep(uNearFadeMin, uNearFadeMax, distToPlayer);

@@ -1,0 +1,25 @@
+{
+  "description": "Legendary shadow signal rarity pool (Tier 5 - Resonant)",
+  "entries": [
+    { "pokemon": "tyranitar", "weight": 4 },
+    { "pokemon": "salamence", "weight": 4 },
+    { "pokemon": "metagross", "weight": 4 },
+    { "pokemon": "garchomp", "weight": 4 },
+    { "pokemon": "hydreigon", "weight": 4 },
+    { "pokemon": "dragonite", "weight": 4 },
+    { "pokemon": "goodra", "weight": 3 },
+    { "pokemon": "kommo-o", "weight": 3 },
+    { "pokemon": "dragapult", "weight": 3 },
+    { "pokemon": "volcarona", "weight": 3 },
+    { "pokemon": "chandelure", "weight": 3 },
+    { "pokemon": "haxorus", "weight": 3 },
+    { "pokemon": "bisharp", "weight": 3 },
+    { "pokemon": "kingambit", "weight": 2 },
+    { "pokemon": "baxcalibur", "weight": 2 },
+    { "pokemon": "roaring_moon", "weight": 1 },
+    { "pokemon": "iron_valiant", "weight": 1 },
+    { "pokemon": "ceruledge", "weight": 2 },
+    { "pokemon": "armarouge", "weight": 2 },
+    { "pokemon": "annihilape", "weight": 2 }
+  ]
+}

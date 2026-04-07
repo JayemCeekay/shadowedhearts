@@ -6,14 +6,17 @@ import com.jayemceekay.shadowedhearts.client.aura.AuraPulseRenderer;
 import com.jayemceekay.shadowedhearts.client.trail.TrailClientState;
 import com.jayemceekay.shadowedhearts.common.aura.AuraReaderCharge;
 import com.jayemceekay.shadowedhearts.common.aura.PokedexUsageContext;
+import com.jayemceekay.shadowedhearts.common.tracking.CalibrationSequence;
+import com.jayemceekay.shadowedhearts.common.tracking.NodeEventType;
 import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs;
 import com.jayemceekay.shadowedhearts.content.items.AuraReaderItem;
 import com.jayemceekay.shadowedhearts.integration.accessories.SnagAccessoryBridgeHolder;
 import com.jayemceekay.shadowedhearts.network.ShadowedHeartsNetwork;
-import com.jayemceekay.shadowedhearts.network.aura.AuraPulsePacket;
 import com.jayemceekay.shadowedhearts.network.aura.AuraScannerC2SPacket;
 import com.jayemceekay.shadowedhearts.network.aura.AuraTrackingStateC2SPacket;
+import com.jayemceekay.shadowedhearts.network.trail.CalibrationInputC2SPacket;
 import com.jayemceekay.shadowedhearts.network.trail.EvidenceScanCompleteC2SPacket;
+import com.jayemceekay.shadowedhearts.network.trail.NodeEventInputC2SPacket;
 import com.jayemceekay.shadowedhearts.registry.ModSounds;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
@@ -29,6 +32,10 @@ public class AuraScannerHudState {
     public static final float BOOT_DURATION = 0.5f;
     public static final float RENDER_UPDATES_PER_SECOND = (float) (1.0 / 0.0175);
     public static final int PULSE_COOLDOWN_TICKS = 400;
+    public static final float SLIDE_HIDDEN_Y = -300f;
+    public static final float SLIDE_VISIBLE_Y = 0f;
+    public static final float SLIDE_STEP = (SLIDE_VISIBLE_Y - SLIDE_HIDDEN_Y) / 10f; // 30f/tick → 10 ticks = 0.5s
+    public static final float FADE_STEP = 1.0f / 10f; // matches slide duration so both animate over 0.5s
     public static final int SCANNER_COOLDOWN_TICKS = 20;
 
     // Trail hotspot scanning (client-only, v1) — hold to scan
@@ -94,6 +101,8 @@ public class AuraScannerHudState {
     public float prevFadeAmountVal = 0.0f;
     public float bootTimerVal = 0.0f;
     public float prevBootTimerVal = 0.0f;
+    public float slideOffsetYVal = SLIDE_HIDDEN_Y;
+    public float prevSlideOffsetYVal = SLIDE_HIDDEN_Y;
     public float sweepAngleVal = 0.0f;
     public float prevSweepAngleVal = 0.0f;
     public float glitchTimerVal = 0.0f;
@@ -131,6 +140,22 @@ public class AuraScannerHudState {
     public int hotspotScanTicks = 0;
     public boolean hotspotScanningActive = false;
 
+    // Calibration arrow key debounce
+    private int calibrationInputCooldown = 0;
+
+    // Calibration HUD state (read from TrailClientState)
+    public boolean calibrationActiveVal = false;
+    public float calibrationProgressVal = 0.0f;
+    public float calibrationTimeRemainingVal = 1.0f;
+    public int calibrationCurrentIndexVal = 0;
+    public int calibrationSequenceLengthVal = 0;
+    public int calibrationLastCorrectFlash = 0; // ticks remaining for green flash
+    public int calibrationLastWrongFlash = 0;   // ticks remaining for red flash
+    public CalibrationSequence.Variant calibrationVariantVal = CalibrationSequence.Variant.HARMONIC_LOCK;
+    public List<CalibrationSequence.Direction> calibrationSequenceVal = new ArrayList<>();
+    public CalibrationSequence.Grade calibrationGradeVal = null;
+    public int calibrationGradeDisplayTicks = 0; // ticks to show grade result
+
     // Dowsing logic state
     public int selectedDowsingMaterialIndex = 0;
     public BlockPos dowsingTargetPosObj = null;
@@ -142,6 +167,7 @@ public class AuraScannerHudState {
     public final MutableValue<Float> bootTimer = new MutableValue<>(0f);
     public final MutableValue<Float> glitchTimer = new MutableValue<>(0f);
     public final MutableValue<Float> sweepAngle = new MutableValue<>(0f);
+    public final MutableValue<Float> slideOffsetY = new MutableValue<>(SLIDE_HIDDEN_Y);
     public final MutableValue<Float> innerRingRotation = new MutableValue<>(0f);
     public final MutableValue<Float> operationalTempC = new MutableValue<>(20f);
     public final MutableValue<Integer> charge = new MutableValue<>(0);
@@ -161,6 +187,82 @@ public class AuraScannerHudState {
     // Trail scanning HUD state
     public final MutableValue<Boolean> hotspotScanning = new MutableValue<>(false);
     public final MutableValue<Float> hotspotScanProgress = new MutableValue<>(0f);
+
+    // Calibration HUD reactive values
+    public final MutableValue<Boolean> calibrationActive = new MutableValue<>(false);
+    public final MutableValue<Float> calibrationProgress = new MutableValue<>(0f);
+    public final MutableValue<Float> calibrationTimeRemaining = new MutableValue<>(1f);
+    public final MutableValue<Integer> calibrationCurrentIndex = new MutableValue<>(0);
+    public final MutableValue<Integer> calibrationSequenceLength = new MutableValue<>(0);
+    public final MutableValue<List<CalibrationSequence.Direction>> calibrationDirections = new MutableValue<>(new ArrayList<>());
+    public final MutableValue<Integer> calibrationVariantId = new MutableValue<>(0);
+    public final MutableValue<Boolean> calibrationCorrectFlash = new MutableValue<>(false);
+    public final MutableValue<Boolean> calibrationWrongFlash = new MutableValue<>(false);
+    public final MutableValue<CalibrationSequence.Grade> calibrationGrade = new MutableValue<>(null);
+    public final MutableValue<Integer> calibrationGradeDisplay = new MutableValue<>(0);
+
+    // Hunt tension & trail quality for HUD effects
+    public final MutableValue<Float> huntTension = new MutableValue<>(0f);
+    public final MutableValue<Float> huntTrailQuality = new MutableValue<>(1f);
+
+    // Node event HUD state
+    public boolean nodeEventActiveVal = false;
+    public int nodeEventPhaseVal = 0;
+    public int nodeEventTypeVal = -1; // NodeEventType ordinal, -1 = none
+    public int nodeEventTicksElapsedVal = 0;
+    public int nodeEventMaxTicksVal = 0;
+    // Evidence Interpretation
+    public int nodeEventClueCountVal = 0;
+    public int nodeEventWrongGuessesVal = 0;
+    public int nodeEventRequiredValidCountVal = 1;
+    public int nodeEventFoundValidCountVal = 0;
+    public java.util.List<Integer> nodeEventSelectedClueIndicesVal = new java.util.ArrayList<>();
+    // Environmental Search
+    public float nodeEventSearchSignalVal = 0f;
+    public float nodeEventSearchRadiusVal = 0f;
+    // Wild Interruption
+    public int nodeEventWildTimerVal = 0;
+    public boolean nodeEventWildsResolvedVal = false;
+    // Provocation
+    public float nodeEventSignalBuildupVal = 0f;
+    public int nodeEventProvocationRequiredVal = 0;
+    // Reactive values
+    public final MutableValue<Boolean> nodeEventActive = new MutableValue<>(false);
+    public final MutableValue<Integer> nodeEventType = new MutableValue<>(-1);
+    public final MutableValue<Integer> nodeEventPhase = new MutableValue<>(0);
+    public final MutableValue<Float> nodeEventTimeRemaining = new MutableValue<>(1f);
+    // Evidence
+    public final MutableValue<Integer> nodeEventClueCount = new MutableValue<>(0);
+    public final MutableValue<Integer> nodeEventWrongGuesses = new MutableValue<>(0);
+    public final MutableValue<Integer> nodeEventRequiredValidCount = new MutableValue<>(1);
+    public final MutableValue<Integer> nodeEventFoundValidCount = new MutableValue<>(0);
+    public final MutableValue<java.util.List<Integer>> nodeEventSelectedClueIndices = new MutableValue<>(new java.util.ArrayList<>());
+    // Search
+    public final MutableValue<Float> nodeEventSearchSignal = new MutableValue<>(0f);
+    // Wild
+    public final MutableValue<Boolean> nodeEventWildsResolved = new MutableValue<>(false);
+    // Provocation
+    public final MutableValue<Float> nodeEventSignalBuildup = new MutableValue<>(0f);
+
+    // Manifestation buildup HUD state
+    public boolean manifestationActiveVal = false;
+    public int manifestationPhaseVal = 0;
+    public float manifestationProgressVal = 0f;
+    public final MutableValue<Boolean> manifestationActive = new MutableValue<>(false);
+    public final MutableValue<Integer> manifestationPhase = new MutableValue<>(0);
+    public final MutableValue<Float> manifestationProgress = new MutableValue<>(0f);
+
+    // Grade flash HUD state (for all event types)
+    public String gradeFlashTextVal = null;
+    public int gradeFlashTicksVal = 0;
+    public int gradeFlashColorVal = 0xFFFFFF;
+    public final MutableValue<String> gradeFlashText = new MutableValue<>(null);
+    public final MutableValue<Integer> gradeFlashTicks = new MutableValue<>(0);
+    public final MutableValue<Integer> gradeFlashColor = new MutableValue<>(0xFFFFFF);
+
+    // Signal blackout HUD state
+    public boolean signalBlackoutVal = false;
+    public final MutableValue<Boolean> signalBlackout = new MutableValue<>(false);
 
     public static record DirectionalPointer(float angle, float intensity,
                                             boolean isLocked,
@@ -188,6 +290,7 @@ public class AuraScannerHudState {
 
         prevFadeAmountVal = fadeAmountVal;
         prevBootTimerVal = bootTimerVal;
+        prevSlideOffsetYVal = slideOffsetYVal;
         prevSweepAngleVal = sweepAngleVal;
         prevGlitchTimerVal = glitchTimerVal;
         prevOperationalTempCVal = operationalTempCVal;
@@ -264,7 +367,8 @@ public class AuraScannerHudState {
                 }
             }
 
-            fadeAmountVal = Math.min(1.0f, fadeAmountVal + 0.1f);
+            fadeAmountVal = Math.min(1.0f, fadeAmountVal + FADE_STEP);
+            slideOffsetYVal = Math.min(SLIDE_VISIBLE_Y, slideOffsetYVal + SLIDE_STEP);
             if (bootTimerVal > 0) bootTimerVal -= 0.05f;
             sweepAngleVal += 0.1f;
             if (sweepAngleVal > (float) Math.PI * 2) {
@@ -292,7 +396,8 @@ public class AuraScannerHudState {
                 AuraReaderManager.POKEDEX_USAGE_CONTEXT.stopUsing(pokedexTicksInUse, null);
                 pokedexTicksInUse = 0;
             }
-            fadeAmountVal = Math.max(0.0f, fadeAmountVal - 0.1f);
+            fadeAmountVal = Math.max(0.0f, fadeAmountVal - FADE_STEP);
+            slideOffsetYVal = Math.max(SLIDE_HIDDEN_Y, slideOffsetYVal - SLIDE_STEP);
             beepTimer = 0;
             maxIntensityVal = 0;
             pulseQueue = 0;
@@ -342,6 +447,19 @@ public class AuraScannerHudState {
             float intensity = (float) Math.max(0, 1.0 - (dist / range));
             maxIntensityVal = Math.max(maxIntensityVal, intensity);
         }
+
+        // Sync calibration state from TrailClientState
+        tickCalibrationHud();
+
+        // Sync node event state from TrailClientState
+        tickNodeEventHud();
+
+        // Sync manifestation buildup state
+        tickManifestationHud();
+
+        // Sync grade flash state
+        tickGradeFlashHud();
+
         // Clear any legacy state to avoid HUD artifacts
         detectedShadows.clear();
         pendingResponses.clear();
@@ -350,6 +468,96 @@ public class AuraScannerHudState {
         currentSignals.clear();
         lockedTargetObj = null;
         isAcquisitionMode = false;
+    }
+
+    private void tickCalibrationHud() {
+        var tcs = TrailClientState.INSTANCE;
+        boolean wasActive = calibrationActiveVal;
+        calibrationActiveVal = tcs.getCalibrationActive();
+        calibrationVariantVal = tcs.getCalibrationVariant();
+
+        if (calibrationActiveVal) {
+            calibrationSequenceVal = tcs.getCalibrationSequence();
+            calibrationSequenceLengthVal = calibrationSequenceVal.size();
+            calibrationCurrentIndexVal = tcs.getCalibrationCurrentIndex();
+            calibrationProgressVal = calibrationSequenceLengthVal > 0
+                    ? (float) calibrationCurrentIndexVal / calibrationSequenceLengthVal : 0f;
+            int timeLimit = tcs.getCalibrationTimeLimitTicks();
+            int elapsed = tcs.getCalibrationElapsedTicks();
+            calibrationTimeRemainingVal = timeLimit > 0 ? Math.max(0f, 1.0f - (float) elapsed / timeLimit) : 1.0f;
+        } else {
+            if (wasActive) {
+                // Just finished — show grade
+                calibrationGradeVal = tcs.getCalibrationGrade();
+                if (calibrationGradeVal != null) {
+                    calibrationGradeDisplayTicks = 40; // 2 seconds
+                }
+            }
+            calibrationProgressVal = 0f;
+            calibrationTimeRemainingVal = 1f;
+        }
+
+        // Flash timers
+        if (calibrationLastCorrectFlash > 0) calibrationLastCorrectFlash--;
+        if (calibrationLastWrongFlash > 0) calibrationLastWrongFlash--;
+        if (calibrationInputCooldown > 0) calibrationInputCooldown--;
+        if (calibrationGradeDisplayTicks > 0) calibrationGradeDisplayTicks--;
+    }
+
+    private void tickNodeEventHud() {
+        var tcs = TrailClientState.INSTANCE;
+        nodeEventActiveVal = tcs.getNodeEventActive();
+        if (nodeEventActiveVal) {
+            var evtType = tcs.getNodeEventType();
+            nodeEventTypeVal = evtType != null ? evtType.toId() : -1;
+            nodeEventPhaseVal = tcs.getNodeEventPhase();
+            nodeEventTicksElapsedVal = tcs.getNodeEventTicksElapsed();
+            nodeEventMaxTicksVal = tcs.getNodeEventMaxTicks();
+            nodeEventClueCountVal = tcs.getNodeEventCluePositions().size();
+            nodeEventWrongGuessesVal = tcs.getNodeEventWrongGuesses();
+            nodeEventRequiredValidCountVal = tcs.getNodeEventRequiredValidCount();
+            nodeEventFoundValidCountVal = tcs.getNodeEventFoundValidCount();
+            nodeEventSelectedClueIndicesVal = tcs.getNodeEventSelectedClueIndices();
+            nodeEventSearchSignalVal = tcs.getNodeEventSearchSignalStrength();
+            nodeEventSearchRadiusVal = tcs.getNodeEventSearchRadius();
+            nodeEventWildTimerVal = tcs.getNodeEventWildResolveTimer();
+            nodeEventWildsResolvedVal = tcs.getNodeEventWildsResolved();
+            nodeEventSignalBuildupVal = tcs.getNodeEventSignalBuildup();
+            nodeEventProvocationRequiredVal = tcs.getNodeEventProvocationRequiredTicks();
+        } else {
+            nodeEventTypeVal = -1;
+        }
+    }
+
+    private void tickManifestationHud() {
+        var tcs = TrailClientState.INSTANCE;
+        manifestationActiveVal = tcs.getManifestationActive();
+        manifestationPhaseVal = tcs.getManifestationPhase();
+        manifestationProgressVal = tcs.getManifestationProgress();
+        manifestationActive.set(manifestationActiveVal);
+        manifestationPhase.set(manifestationPhaseVal);
+        manifestationProgress.set(manifestationProgressVal);
+        signalBlackoutVal = tcs.getSignalBlackedOut();
+        signalBlackout.set(signalBlackoutVal);
+    }
+
+    private void tickGradeFlashHud() {
+        var tcs = TrailClientState.INSTANCE;
+        String text = tcs.getLastGradeText();
+        int ticks = tcs.getGradeFlashTicks();
+        if (text != null && ticks > 0) {
+            gradeFlashTextVal = text;
+            gradeFlashTicksVal = ticks;
+            gradeFlashColorVal = tcs.getGradeFlashColor();
+            gradeFlashText.set(text);
+            gradeFlashTicks.set(ticks);
+            gradeFlashColor.set(gradeFlashColorVal);
+        } else {
+            if (gradeFlashTicksVal > 0) gradeFlashTicksVal = 0;
+            gradeFlashTextVal = null;
+            gradeFlashText.set(null);
+            gradeFlashTicks.set(0);
+        }
     }
 
     public void onDeactivate() {
@@ -407,33 +615,135 @@ public class AuraScannerHudState {
         selectedSignalIndex = 0;
     }
 
+    public void triggerLocalPulse(Minecraft mc) {
+        pulseQueue = 3;
+        pulseTimer = 0;
+        pulseCooldown = PULSE_COOLDOWN_TICKS;
+        mc.player.playSound(ModSounds.AURA_SCANNER_BEEP.get(), ShadowedHeartsConfigs.getInstance().getClientConfig().soundConfig().auraScannerBeepVolume(), 1.0f);
+    }
+
     public boolean handleInput(Minecraft mc) {
         // Evidence scan now handled as hold-to-scan in tickHotspotScan()
 
+        // If a node event is active, intercept relevant inputs
+        if (nodeEventActiveVal) {
+            return handleNodeEventInput(mc);
+        }
+
+        // If calibration is active, intercept WASD for directional inputs
+        if (calibrationActiveVal) {
+            return handleCalibrationInput(mc);
+        }
+
         AuraReaderManager.AuraScannerMode currentMode = AuraReaderManager.currentMode;
         if (currentMode == AuraReaderManager.AuraScannerMode.AURA_READER) {
-            if (ModKeybinds.consumeAuraPulsePress()) {
-                if (pulseCooldown <= 0) {
-                    // Start/reset the server-side trail
-                    ShadowedHeartsNetwork.sendToServer(new AuraPulsePacket());
-                    // Optional: still show a brief local pulse feedback
-                    pulseQueue = 3;
-                    pulseTimer = 0;
-                    pulseCooldown = PULSE_COOLDOWN_TICKS;
-                    mc.player.playSound(ModSounds.AURA_SCANNER_BEEP.get(), ShadowedHeartsConfigs.getInstance().getClientConfig().soundConfig().auraScannerBeepVolume(), 1.0f);
-                    return true;
-                }
-            }
+            // Pulse now handled by right-clicking Shadow Signal Data item
         } else if (currentMode == AuraReaderManager.AuraScannerMode.DOWSING_MACHINE) {
-            if (ModKeybinds.consumeAuraPulsePress()) {
-                if (pulseCooldown <= 0) {
-                    doDowsingPulse(mc);
-                    pulseCooldown = PULSE_COOLDOWN_TICKS;
-                    return true;
+            // Dowsing pulse formerly on 'B' disabled for consistency
+        }
+        return false;
+    }
+
+    /**
+     * Intercepts number keys during Evidence Interpretation node events
+     * to select clues. Keys 1-4 map to clue indices 0-3.
+     */
+    private boolean handleNodeEventInput(Minecraft mc) {
+        // Only Evidence Interpretation uses direct input (number keys for clue selection)
+        if (nodeEventTypeVal == NodeEventType.EVIDENCE_INTERPRETATION.toId()) {
+            // Check number keys 1-6 for up to 6 clue positions
+            for (int i = 0; i < 6; i++) {
+                if (com.mojang.blaze3d.platform.InputConstants.isKeyDown(
+                        mc.getWindow().getWindow(),
+                        com.mojang.blaze3d.platform.InputConstants.KEY_1 + i)) {
+                    if (i < nodeEventClueCountVal && !nodeEventSelectedClueIndicesVal.contains(i)) {
+                        ShadowedHeartsNetwork.sendToServer(new NodeEventInputC2SPacket(0, i));
+                        mc.player.playSound(ModSounds.AURA_SCANNER_BEEP.get(), 0.5f, 1.2f);
+                        return true;
+                    }
                 }
             }
         }
+        // Other event types (search, wild, provocation) don't need direct input —
+        // they resolve via proximity/timer on the server
         return false;
+    }
+
+    /**
+     * Intercepts Shift+WASD or Arrow keys during calibration and sends directional inputs to the server.
+     * Arrow keys are always accepted. WASD is only accepted when Shift is held to avoid moving the player.
+     */
+    private boolean handleCalibrationInput(Minecraft mc) {
+        CalibrationSequence.Direction dir = null;
+        long window = mc.getWindow().getWindow();
+        boolean shiftDown = com.mojang.blaze3d.platform.InputConstants.isKeyDown(window,
+                com.mojang.blaze3d.platform.InputConstants.KEY_LSHIFT)
+                || com.mojang.blaze3d.platform.InputConstants.isKeyDown(window,
+                com.mojang.blaze3d.platform.InputConstants.KEY_RSHIFT);
+
+        // Arrow keys — always accepted during calibration (with debounce)
+        if (calibrationInputCooldown > 0) return false;
+        if (com.mojang.blaze3d.platform.InputConstants.isKeyDown(window,
+                com.mojang.blaze3d.platform.InputConstants.KEY_UP)) {
+            dir = CalibrationSequence.Direction.UP;
+        } else if (com.mojang.blaze3d.platform.InputConstants.isKeyDown(window,
+                com.mojang.blaze3d.platform.InputConstants.KEY_DOWN)) {
+            dir = CalibrationSequence.Direction.DOWN;
+        } else if (com.mojang.blaze3d.platform.InputConstants.isKeyDown(window,
+                com.mojang.blaze3d.platform.InputConstants.KEY_LEFT)) {
+            dir = CalibrationSequence.Direction.LEFT;
+        } else if (com.mojang.blaze3d.platform.InputConstants.isKeyDown(window,
+                com.mojang.blaze3d.platform.InputConstants.KEY_RIGHT)) {
+            dir = CalibrationSequence.Direction.RIGHT;
+        }
+        // Shift+WASD — only accepted when shift is held
+        else if (shiftDown) {
+            if (mc.options.keyUp.consumeClick()) {
+                dir = CalibrationSequence.Direction.UP;
+            } else if (mc.options.keyDown.consumeClick()) {
+                dir = CalibrationSequence.Direction.DOWN;
+            } else if (mc.options.keyLeft.consumeClick()) {
+                dir = CalibrationSequence.Direction.LEFT;
+            } else if (mc.options.keyRight.consumeClick()) {
+                dir = CalibrationSequence.Direction.RIGHT;
+            }
+        }
+
+        if (dir != null) {
+            calibrationInputCooldown = 4; // debounce: ~200ms between arrow key inputs
+            ShadowedHeartsNetwork.sendToServer(new CalibrationInputC2SPacket(dir));
+            // Optimistic client-side feedback: check against local sequence
+            if (calibrationCurrentIndexVal < calibrationSequenceVal.size()) {
+                CalibrationSequence.Direction expected = calibrationSequenceVal.get(calibrationCurrentIndexVal);
+                // Handle REVERSE_INTERFERENCE variant inversion
+                if (calibrationVariantVal == CalibrationSequence.Variant.REVERSE_INTERFERENCE) {
+                    int len = calibrationSequenceVal.size();
+                    int start = len / 3;
+                    int end = (len * 2) / 3;
+                    if (calibrationCurrentIndexVal >= start && calibrationCurrentIndexVal <= end) {
+                        expected = invertDirection(expected);
+                    }
+                }
+                if (dir == expected) {
+                    calibrationLastCorrectFlash = 6;
+                    mc.player.playSound(ModSounds.AURA_SCANNER_BEEP.get(), 0.4f, 1.4f + calibrationProgressVal * 0.4f);
+                } else {
+                    calibrationLastWrongFlash = 8;
+                    mc.player.playSound(ModSounds.AURA_SCANNER_BEEP.get(), 0.5f, 0.6f);
+                }
+            }
+            return true;
+        }
+        return false;
+    }
+
+    private static CalibrationSequence.Direction invertDirection(CalibrationSequence.Direction d) {
+        return switch (d) {
+            case UP -> CalibrationSequence.Direction.DOWN;
+            case DOWN -> CalibrationSequence.Direction.UP;
+            case LEFT -> CalibrationSequence.Direction.RIGHT;
+            case RIGHT -> CalibrationSequence.Direction.LEFT;
+        };
     }
 
     private void tickHotspotScan(Minecraft mc) {
@@ -504,6 +814,7 @@ public class AuraScannerHudState {
         mode.set(AuraReaderManager.currentMode);
         active.set(isActive);
         fadeAmount.set(Mth.lerp(partialTick, prevFadeAmountVal, fadeAmountVal));
+        slideOffsetY.set(Mth.lerp(partialTick, prevSlideOffsetYVal, slideOffsetYVal));
         bootTimer.set(Mth.lerp(partialTick, prevBootTimerVal, bootTimerVal));
         glitchTimer.set(Mth.lerp(partialTick, prevGlitchTimerVal, glitchTimerVal));
         sweepAngle.set(Mth.lerp(partialTick, prevSweepAngleVal, sweepAngleVal));
@@ -530,6 +841,38 @@ public class AuraScannerHudState {
         // Trail scan HUD values
         hotspotScanning.set(hotspotScanningActive);
         hotspotScanProgress.set(Mth.clamp(hotspotScanTicks / (float) HOTSPOT_SCAN_REQUIRED_TICKS, 0.0f, 1.0f));
+
+        // Calibration HUD values
+        calibrationActive.set(calibrationActiveVal);
+        calibrationProgress.set(calibrationProgressVal);
+        calibrationTimeRemaining.set(calibrationTimeRemainingVal);
+        calibrationCurrentIndex.set(calibrationCurrentIndexVal);
+        calibrationSequenceLength.set(calibrationSequenceLengthVal);
+        calibrationDirections.set(calibrationSequenceVal);
+        calibrationVariantId.set(calibrationVariantVal.toId());
+        calibrationCorrectFlash.set(calibrationLastCorrectFlash > 0);
+        calibrationWrongFlash.set(calibrationLastWrongFlash > 0);
+        calibrationGrade.set(calibrationGradeVal);
+        calibrationGradeDisplay.set(calibrationGradeDisplayTicks);
+
+        // Hunt tension & quality
+        huntTension.set(TrailClientState.INSTANCE.getTension());
+        huntTrailQuality.set(TrailClientState.INSTANCE.getTrailQuality());
+
+        // Node event HUD values
+        nodeEventActive.set(nodeEventActiveVal);
+        nodeEventType.set(nodeEventTypeVal);
+        nodeEventPhase.set(nodeEventPhaseVal);
+        nodeEventTimeRemaining.set(nodeEventMaxTicksVal > 0
+                ? Math.max(0f, 1.0f - (float) nodeEventTicksElapsedVal / nodeEventMaxTicksVal) : 1f);
+        nodeEventClueCount.set(nodeEventClueCountVal);
+        nodeEventWrongGuesses.set(nodeEventWrongGuessesVal);
+        nodeEventRequiredValidCount.set(nodeEventRequiredValidCountVal);
+        nodeEventFoundValidCount.set(nodeEventFoundValidCountVal);
+        nodeEventSelectedClueIndices.set(nodeEventSelectedClueIndicesVal);
+        nodeEventSearchSignal.set(nodeEventSearchSignalVal);
+        nodeEventWildsResolved.set(nodeEventWildsResolvedVal);
+        nodeEventSignalBuildup.set(nodeEventSignalBuildupVal);
 
         dowsingTargetPos.set(dowsingTargetPosObj);
         dowsingMaterialIndex.set(selectedDowsingMaterialIndex);

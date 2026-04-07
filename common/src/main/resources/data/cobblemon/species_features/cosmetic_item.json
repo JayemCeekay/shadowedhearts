@@ -1,0 +1,37 @@
+{
+  "type": "choice",
+  "keys": [
+    "cosmetic_item"
+  ],
+  "default": "none",
+  "choices": [
+    "wise_glasses",
+    "black_glasses",
+    "silk_scarf",
+    "choice_scarf",
+    "minecart",
+    "composer",
+    "air_balloon",
+    "bundle",
+    "music",
+    "ender_pearl",
+    "stick",
+    "leaves",
+    "rage_candy_bar",
+    "lava_cookie",
+    "old_gateau",
+    "casteliacone",
+    "lumiose_galette",
+    "big_malasada",
+    "smoked_tail_curry",
+    "sinister_tea",
+    "leather_helmet",
+    "cocoa_beans",
+    "compass",
+    "shears",
+    "gold_armor",
+    "shadow_shard"
+  ],
+  "isAspect": true,
+  "aspectFormat": "cosmetic_item-{{choice}}"
+}
