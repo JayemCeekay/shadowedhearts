@@ -209,25 +209,27 @@ public class CobblemonBattleExtrasCustomBattleControllerMixin {
     // Both "Object" are CategoryChipStyle.
     @WrapOperation(method = "renderCustomMoveTile", at = @At(value = "INVOKE", target = "Lname/modid/client/CustomBattleController;resolveMoveCategoryChipStyle(Ljava/lang/String;)Lname/modid/client/CustomBattleController$CategoryChipStyle;"))
     private static @Coerce Object shadowedhearts$resolveChipStyle(String categoryKey, Operation<Object> original) {
-        try {
-            Class<?> clazz = Class.forName("name.modid.client.CustomBattleController$CategoryChipStyle");
-            Constructor<?> ctor = clazz.getDeclaredConstructor(
-                    String.class, int.class, int.class, int.class, int.class, int.class
-            );
-            ctor.setAccessible(true);
+        if (categoryKey.equals("???")) {
+            try {
+                Class<?> clazz = Class.forName("name.modid.client.CustomBattleController$CategoryChipStyle");
+                Constructor<?> ctor = clazz.getDeclaredConstructor(
+                        String.class, int.class, int.class, int.class, int.class, int.class
+                );
+                ctor.setAccessible(true);
 
-            // Same values as STA, copied from resolveMoveCategoryChipStyle
-            return ctor.newInstance(
-                    "???", // label
-                    16, // width
-                    -8683114, // bgTop
-                    -11907231, // bgBottom
-                    -3814695, // border
-                    -1 // text
-            );
-        } catch (Throwable e) {
-            //throw new RuntimeException(e);
-            return original.call(categoryKey);
+                // Same values as STA, copied from resolveMoveCategoryChipStyle
+                return ctor.newInstance(
+                        "???", // label
+                        16, // width
+                        -8683114, // bgTop
+                        -11907231, // bgBottom
+                        -3814695, // border
+                        -1 // text
+                );
+            } catch (Throwable e) {
+                //throw new RuntimeException(e);
+            }
         }
+        return original.call(categoryKey);
     }
 }

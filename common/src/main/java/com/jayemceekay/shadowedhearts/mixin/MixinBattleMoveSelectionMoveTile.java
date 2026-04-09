@@ -71,8 +71,7 @@ public abstract class MixinBattleMoveSelectionMoveTile {
         BattleMoveSelection.MoveTile self = (BattleMoveSelection.MoveTile) (Object) this;
         InBattleMove m = self.getMove();
         var pokemon = self.getPokemon();
-        if (m.getDisabled() || ShadowGate.isShadowMoveId(m.getId()) && pokemon != null
-                && ShadowGate.isShadowLockedClient(pokemon)) {
+        if (ShadowGate.isShadowMoveId(m.getId()) && pokemon != null && ShadowGate.isShadowLockedClient(pokemon)) {
             return Component.literal("??/??").copy().withStyle(s -> s.withBold(true));
         }
         return original;
