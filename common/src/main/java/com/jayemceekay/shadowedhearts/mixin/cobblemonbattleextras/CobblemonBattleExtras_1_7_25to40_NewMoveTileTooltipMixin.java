@@ -11,7 +11,7 @@ import org.spongepowered.asm.mixin.Pseudo;
 
 @Pseudo
 @Mixin(value = BattleMoveSelection.MoveTile.class, remap = false)
-public abstract class CobblemonBattleExtrasNewMoveTileTooltipMixin {
+public abstract class CobblemonBattleExtras_1_7_25to40_NewMoveTileTooltipMixin {
 
     @WrapMethod(
             method = "renderTooltipAtPosition"

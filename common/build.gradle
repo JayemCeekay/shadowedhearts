@@ -74,7 +74,7 @@ dependencies {
     modCompileOnly("maven.modrinth:YL57xq9U:zsoi0dso")
 
     //cobblemon battle extras
-    modCompileOnly("maven.modrinth:2iY8VFqL:xucilwgK")
+    modCompileOnly("maven.modrinth:2iY8VFqL:BBOCqBbU")
     //cobblemon party extras
     modCompileOnly("maven.modrinth:x2wZP9kQ:wxVvkEmX")
 

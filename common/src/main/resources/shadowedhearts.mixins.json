@@ -28,7 +28,15 @@
     "RenderTargetAccessor",
     "SummaryAccessor",
     "cobblemonbattleextras.CobblemonBattleExtras_1_7_24_MoveTileTooltipMixin",
-    "cobblemonbattleextras.CobblemonBattleExtrasNewMoveTileTooltipMixin",
+    "cobblemonbattleextras.CobblemonBattleExtras_1_7_25to40_NewMoveTileTooltipMixin",
+    "cobblemonbattleextras.CobblemonBattleExtras_1_7_41_NewMoveTileTooltipMixin",
+    "cobblemonbattleextras.CobblemonBattleExtrasBattleInfoPanelRendererMixin",
+    "cobblemonbattleextras.CobblemonBattleExtrasCustomBattleControllerMixin",
+    "cobblemonbattleextras.CobblemonBattleExtrasCustomTooltipRendererMixin",
+    "cobblemonbattleextras.CobblemonBattleExtrasMoveDisplayInfoAccessor",
+    "cobblemonbattleextras.CobblemonBattleExtrasMoveTileVisualDataAccessor",
+    "cobblemonbattleextras.CobblemonBattleExtrasPartySideRendererMixin",
+    "cobblemonbattleextras.CobblemonBattleExtrasTypeChartMixin",
     "cobblemonpartyextras.MixinCobblemonPartyExtrasSummaryUIMixin"
   ],
   "mixins": [
