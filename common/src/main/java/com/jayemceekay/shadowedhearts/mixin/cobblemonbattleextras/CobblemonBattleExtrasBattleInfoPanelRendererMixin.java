@@ -23,8 +23,11 @@ import org.spongepowered.asm.mixin.injection.invoke.arg.Args;
 public class CobblemonBattleExtrasBattleInfoPanelRendererMixin {
 
     // Mask Attack name and set white color
-    @ModifyArgs(method = "renderPanel",
+    @ModifyArgs(
+            method = "renderPanel(Lnet/minecraft/client/gui/GuiGraphics;Lnet/minecraft/client/Minecraft;IILname/modid/client/BattleInfoPanelRenderer$PanelContent;FLjava/lang/Object;Ljava/lang/String;Ljava/lang/String;)V",
+            remap = false,
             at = @At(value = "INVOKE", target = "Lname/modid/client/BattleInfoPanelRenderer;drawScaledText(Lnet/minecraft/client/gui/GuiGraphics;Lnet/minecraft/client/Minecraft;Ljava/lang/String;IIIFF)V",
+                    remap = false,
                     ordinal = 6)
     )
     private static void shadowedhearts$maskAttackNameAndColor(Args args, @Local(name = "move") RevealedBattleInfo.PokemonRevealedInfo.MoveInfo move, @Local(ordinal = 1, argsOnly = true) String side, @Local(argsOnly = true) Object battlePokemon) {
@@ -44,8 +47,11 @@ public class CobblemonBattleExtrasBattleInfoPanelRendererMixin {
     }
 
     // Replace type with "shadow-locked" if the move was locked
-    @ModifyArgs(method = "renderPanel",
-            at = @At(value = "INVOKE", target = "Lname/modid/client/BattleInfoPanelRenderer;renderTypeIconScaled(Lnet/minecraft/client/gui/GuiGraphics;IILjava/lang/String;FFI)V")
+    @ModifyArgs(
+            method = "renderPanel(Lnet/minecraft/client/gui/GuiGraphics;Lnet/minecraft/client/Minecraft;IILname/modid/client/BattleInfoPanelRenderer$PanelContent;FLjava/lang/Object;Ljava/lang/String;Ljava/lang/String;)V",
+            remap = false,
+            at = @At(value = "INVOKE", target = "Lname/modid/client/BattleInfoPanelRenderer;renderTypeIconScaled(Lnet/minecraft/client/gui/GuiGraphics;IILjava/lang/String;FFI)V",
+                    remap = false)
     )
     private static void shadowedhearts$changeTypeToLocked(Args args, @Local(name = "move") RevealedBattleInfo.PokemonRevealedInfo.MoveInfo move, @Local(ordinal = 1, argsOnly = true) String side, @Local(argsOnly = true) Object battlePokemon) {
         ClientBattlePokemon bp = (ClientBattlePokemon) battlePokemon;
@@ -63,7 +69,12 @@ public class CobblemonBattleExtrasBattleInfoPanelRendererMixin {
     }
 
     // Render the shadow/locked type icon
-    @Inject(method = "renderTypeIconScaled", at = @At("HEAD"), cancellable = true)
+    @Inject(
+            method = "renderTypeIconScaled(Lnet/minecraft/client/gui/GuiGraphics;IILjava/lang/String;FFI)V",
+            remap = false,
+            at = @At("HEAD"),
+            cancellable = true
+    )
     private static void shadowedhearts$renderShadowIcon(GuiGraphics gui, int x, int y, String type, float alpha, float brightness, int displaySize, CallbackInfo ci) {
         ResourceLocation texture = null;
         boolean customIcon = false;

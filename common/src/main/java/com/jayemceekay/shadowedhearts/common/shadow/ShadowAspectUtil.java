@@ -736,10 +736,8 @@ public final class ShadowAspectUtil {
 
         int nonShadowIndex = 0;
         int allowed = getAllowedVisibleNonShadowMoves(pokemon);
-        System.out.println("Allowed: " + allowed);
         for (var mv : pokemon.getMoveSet().getMovesWithNulls()) {
             if (mv == null) {
-                System.out.println("Null move!");
                 continue;
             }
             if (mv.getType() == Shadowedhearts.SH_SHADOW_TYPE) continue;
@@ -750,7 +748,9 @@ public final class ShadowAspectUtil {
     }
 
     public static boolean isNearMeteoroid(ServerLevel level, BlockPos pos, int radius, int verticalRadius) {
-        double searchRadius = Math.sqrt(2.0 * radius * radius + (double) verticalRadius * verticalRadius);
+        // Ensure search radius covers the furthest possible point in the sphere/cylinder
+        double searchRadius = Math.max(radius, verticalRadius);
+
         return level.getPoiManager().getInRange(
                 holder -> holder.value() == ModPoiTypes.SHADOWFALL_METEOROID.get(),
                 pos,
@@ -758,9 +758,19 @@ public final class ShadowAspectUtil {
                 PoiManager.Occupancy.ANY
         ).anyMatch(poiRecord -> {
             BlockPos p = poiRecord.getPos();
-            return Math.abs(p.getX() - pos.getX()) <= radius &&
-                    Math.abs(p.getZ() - pos.getZ()) <= radius &&
-                    Math.abs(p.getY() - pos.getY()) <= verticalRadius;
+            // Use squared distance for efficiency
+            double dx = p.getX() - pos.getX();
+            double dy = p.getY() - pos.getY();
+            double dz = p.getZ() - pos.getZ();
+
+            // Spherical check: x^2 + y^2 + z^2 <= radius^2
+            // If radius and verticalRadius differ, we use an ellipsoidal check
+            if (radius == verticalRadius) {
+                return (dx * dx + dy * dy + dz * dz) <= (double) radius * radius;
+            } else {
+                // Ellipsoidal check to handle vertical variance if configured differently
+                return (dx * dx + dz * dz) / (double) (radius * radius) + (dy * dy) / (double) (verticalRadius * verticalRadius) <= 1.0;
+            }
         });
     }
 }

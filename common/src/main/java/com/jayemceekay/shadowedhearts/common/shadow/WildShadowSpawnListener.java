@@ -47,7 +47,7 @@ public final class WildShadowSpawnListener {
 
             // Roll chance
             double chance = ShadowSpawnUtil.getChancePercent();
-            if (ShadowAspectUtil.isNearMeteoroid(level, entity.blockPosition(), 48, 8)) {
+            if (ShadowAspectUtil.isNearMeteoroid(level, entity.blockPosition(), 48, 48)) {
                 chance *= ShadowedHeartsConfigs.getInstance().getShadowConfig().worldAlteration().meteoroidShadowSpawnChanceMultiplier();
             }
 

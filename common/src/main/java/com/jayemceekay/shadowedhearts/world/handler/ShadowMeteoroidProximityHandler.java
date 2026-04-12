@@ -22,21 +22,20 @@ import java.util.HashSet;
 import java.util.Set;
 
 public class ShadowMeteoroidProximityHandler {
-    private static int checkTimer = 0;
 
+    // Instead of a static int, use the level's game time or a per-level timer
     public static void init() {
         TickEvent.SERVER_LEVEL_POST.register(level -> {
             IWorldAlterationConfig config = ShadowedHeartsConfigs.getInstance().getShadowConfig().worldAlteration();
             if (!config.meteoroidShadowTransformationEnabled()) return;
 
-            if (++checkTimer >= config.meteoroidShadowTransformationCheckIntervalTicks()) {
-                checkTimer = 0;
+            // Use the level's own time to ensure every level is checked at its own interval
+            if (level.getGameTime() % config.meteoroidShadowTransformationCheckIntervalTicks() == 0) {
                 processProximity(level);
                 processBallDecay(level);
             }
         });
     }
-
     private static void processProximity(ServerLevel level) {
         IWorldAlterationConfig config = ShadowedHeartsConfigs.getInstance().getShadowConfig().worldAlteration();
         int radius = config.meteoroidShadowTransformationRadius();
@@ -49,7 +48,7 @@ public class ShadowMeteoroidProximityHandler {
             if (e instanceof PokemonEntity entity && entity.isAlive()) {
                 Pokemon pokemon = entity.getPokemon();
                 if (pokemon != null && !pokemon.isBattleClone() && !ShadowAspectUtil.hasShadowAspect(pokemon) && !ShadowSpawnUtil.isBlacklisted(pokemon) && !ShadowAspectUtil.isImmunized(pokemon)) {
-                    if (ShadowAspectUtil.isNearMeteoroid(level, entity.blockPosition(), radius, 4)) {
+                    if (ShadowAspectUtil.isNearMeteoroid(level, entity.blockPosition(), radius, radius)) {
                         double currentExposure = ShadowAspectUtil.getExposure(pokemon);
                         currentExposure += config.meteoroidShadowTransformationExposureIncrease();
                         ShadowAspectUtil.setExposureProperty(pokemon, currentExposure);
@@ -69,7 +68,7 @@ public class ShadowMeteoroidProximityHandler {
                         }
                     }
                 } else if (pokemon != null && ShadowAspectUtil.hasShadowAspect(pokemon)) {
-                    if (ShadowAspectUtil.isNearMeteoroid(level, entity.blockPosition(), radius, 4)) {
+                    if (ShadowAspectUtil.isNearMeteoroid(level, entity.blockPosition(), radius, radius)) {
                         int currentGauge = ShadowAspectUtil.getHeartGaugeMeter(pokemon);
                         int maxGauge = HeartGaugeConfig.getMax(pokemon);
                         if (currentGauge < maxGauge) {

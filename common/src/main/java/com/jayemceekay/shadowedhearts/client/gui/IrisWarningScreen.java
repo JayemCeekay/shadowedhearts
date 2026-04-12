@@ -1,7 +1,7 @@
 package com.jayemceekay.shadowedhearts.client.gui;
 
 import com.jayemceekay.shadowedhearts.Shadowedhearts;
-import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs;
+import com.jayemceekay.shadowedhearts.client.util.IrisWarningState;
 import dev.architectury.platform.Platform;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.GuiGraphics;
@@ -45,7 +45,7 @@ public class IrisWarningScreen extends Screen {
         }).bounds(this.width / 2 - buttonWidth / 2, startY + 24, buttonWidth, 20).build());
 
         this.addRenderableWidget(Button.builder(Component.literal("Don't ask me again"), button -> {
-            ShadowedHeartsConfigs.getInstance().getClientConfig().setSkipIrisWarning(true);
+            IrisWarningState.setSkipWarning(true);
             this.minecraft.setScreen(new TitleScreen());
         }).bounds(this.width / 2 - buttonWidth / 2, startY + 48, buttonWidth, 20).build());
     }

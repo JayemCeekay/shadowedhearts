@@ -20,10 +20,12 @@ public class CobblemonBattleExtrasPartySideRendererMixin {
 
     // Mask attack name
     @WrapOperation(
-            method = "renderTooltip",
+            method = "renderTooltip(Lnet/minecraft/client/gui/GuiGraphics;Lnet/minecraft/client/Minecraft;Lcom/cobblemon/mod/common/pokemon/Pokemon;IIIIIIZIF)V",
+            remap = false,
             at = @At(
                     value = "INVOKE",
-                    target = "Lname/modid/client/PartyInfoSideRenderer;safeMoveDisplayName(Lcom/cobblemon/mod/common/api/moves/Move;)Ljava/lang/String;"
+                    target = "Lname/modid/client/PartyInfoSideRenderer;safeMoveDisplayName(Lcom/cobblemon/mod/common/api/moves/Move;)Ljava/lang/String;",
+                    remap = false
             )
     )
     private static String shadowedhearts$maskName(Move move, Operation<String> original, @Local(argsOnly = true) Pokemon pokemon) {
@@ -35,10 +37,12 @@ public class CobblemonBattleExtrasPartySideRendererMixin {
 
     // Mask attack color. Returning null makes it white
     @WrapOperation(
-            method = "renderTooltip",
+            method = "renderTooltip(Lnet/minecraft/client/gui/GuiGraphics;Lnet/minecraft/client/Minecraft;Lcom/cobblemon/mod/common/pokemon/Pokemon;IIIIIIZIF)V",
+            remap = false,
             at = @At(
                     value = "INVOKE",
-                    target = "Lname/modid/client/BattleMessageColorizer;getTypeColorByName(Ljava/lang/String;)Ljava/lang/Integer;"
+                    target = "Lname/modid/client/BattleMessageColorizer;getTypeColorByName(Ljava/lang/String;)Ljava/lang/Integer;",
+                    remap = false
             )
     )
     private static Integer shadowedhearts$maskColorName(String typeName, Operation<Integer> original, @Local(argsOnly = true) Pokemon pokemon, @Local(name = "move") Move move) {
@@ -51,10 +55,12 @@ public class CobblemonBattleExtrasPartySideRendererMixin {
     // Mask PP text
     // 8th call of drawScaledText
     @ModifyArgs(
-            method = "renderTooltip",
+            method = "renderTooltip(Lnet/minecraft/client/gui/GuiGraphics;Lnet/minecraft/client/Minecraft;Lcom/cobblemon/mod/common/pokemon/Pokemon;IIIIIIZIF)V",
+            remap = false,
             at = @At(
                     value = "INVOKE",
                     target = "Lname/modid/client/PartyInfoSideRenderer;drawScaledText(Lnet/minecraft/client/gui/GuiGraphics;Lnet/minecraft/client/gui/Font;Ljava/lang/String;IIIFZ)V",
+                    remap = false,
                     ordinal = 7
             )
     )

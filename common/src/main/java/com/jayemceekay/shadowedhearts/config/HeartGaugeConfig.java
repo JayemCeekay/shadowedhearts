@@ -1097,17 +1097,25 @@ public final class HeartGaugeConfig {
 
             // 1. Load from server config (authoritative)
             try {
-                List<? extends String> configOverrides = ShadowedHeartsConfigs.getInstance().getShadowConfig().heartGaugeMaxOverrides();
-                for (String entry : configOverrides) {
-                    if (entry == null || !entry.contains("=")) continue;
-                    String[] parts = entry.split("=", 2);
-                    String key = parts[0].toLowerCase(Locale.ROOT).trim();
-                    try {
-                        int val = Integer.parseInt(parts[1].trim());
-                        if (val > 0) {
-                            overrides.put(key, val);
+                ShadowedHeartsConfigs configInstance = ShadowedHeartsConfigs.getInstance();
+                if (configInstance != null) {
+                    IShadowConfig shadowConfig = configInstance.getShadowConfig();
+                    // Ensure the config is actually ready before calling heartGaugeMaxOverrides()
+                    if (shadowConfig != null && shadowConfig.isLoaded()) {
+                        List<? extends String> configOverrides = shadowConfig.heartGaugeMaxOverrides();
+                        if (configOverrides != null) {
+                            for (String entry : configOverrides) {
+                                if (entry == null || !entry.contains("=")) continue;
+                                String[] parts = entry.split("=", 2);
+                                String key = parts[0].toLowerCase(Locale.ROOT).trim();
+                                try {
+                                    int val = Integer.parseInt(parts[1].trim());
+                                    if (val > 0) {
+                                        overrides.put(key, val);
+                                    }
+                                } catch (NumberFormatException ignored) {}
+                            }
                         }
-                    } catch (NumberFormatException ignored) {
                     }
                 }
             } catch (IllegalStateException e) {

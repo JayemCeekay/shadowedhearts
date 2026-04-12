@@ -54,7 +54,7 @@ public final class ShadowedheartsNeoForgeClient {
         modContainer.getEventBus().addListener(ShadowedheartsNeoForgeClient::registerItemColors);
         modContainer.getEventBus().addListener(ShadowedheartsNeoForgeClient::onAddLayers);
         modContainer.getEventBus().addListener(ShadowedheartsNeoForgeClient::registerParticles);
-        ShadowedHeartsConfigs.getInstance().getClientConfig().load();
+       // ShadowedHeartsConfigs.getInstance().getClientConfig().load();
         modContainer.registerConfig(ModConfig.Type.CLIENT, ShadowedHeartsConfigs.getInstance().getClientConfig().getSpec(), "shadowedhearts/client.toml");
         ShadowedHeartsClient.init();
         // Register default aura interference effects (client)
@@ -64,11 +64,6 @@ public final class ShadowedheartsNeoForgeClient {
     public static void registerKeybinds(RegisterKeyMappingsEvent event) {
         ModKeybinds.init();
         event.register(ModKeybinds.AURA_SCANNER);
-//        event.register(ModKeybinds.AURA_MODE_SELECTOR);
-//        event.register(ModKeybinds.AURA_PULSE);
-//        event.register(ModKeybinds.AURA_NEXT_SIGNAL);
-//        event.register(ModKeybinds.AURA_PREV_SIGNAL);
-//        event.register(ModKeybinds.DEBUG_REINIT_HUD);
     }
 
     public static void registerParticles(RegisterParticleProvidersEvent evt) {

@@ -1,7 +1,7 @@
 package com.jayemceekay.shadowedhearts.mixin;
 
 import com.jayemceekay.shadowedhearts.client.gui.IrisWarningScreen;
-import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs;
+import com.jayemceekay.shadowedhearts.client.util.IrisWarningUtil;
 import dev.architectury.platform.Platform;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
@@ -18,7 +18,6 @@ import java.util.List;
 
 @Mixin(value = Minecraft.class, priority = 1001)
 public class MixinMinecraft {
-    private static boolean shadowedhearts$checkedIris = false;
 
     @Inject(method = "setScreen", at = @At("HEAD"), cancellable = true)
     private void shadowedhearts$onSetScreen(Screen screen, CallbackInfo ci) {
@@ -29,12 +28,8 @@ public class MixinMinecraft {
             checkScreen = new TitleScreen();
         }
 
-        if (checkScreen instanceof TitleScreen && !shadowedhearts$checkedIris) {
-            if (!ShadowedHeartsConfigs.getInstance().getClientConfig().isLoaded()) {
-                return;
-            }
-            shadowedhearts$checkedIris = true;
-            if (ShadowedHeartsConfigs.getInstance().getClientConfig().skipIrisWarning()) {
+        if (checkScreen instanceof TitleScreen) {
+            if (!IrisWarningUtil.shouldShowWarning()) {
                 return;
             }
 

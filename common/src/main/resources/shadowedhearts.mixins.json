@@ -70,7 +70,6 @@
     "cobblemonpartyextras.MixinCobblemonPartyExtrasMoveTooltipBuilder",
     "cobblemonpartyextras.MixinCobblemonPartyExtrasMoveTooltipHelper",
     "cobblemonpartyextras.MixinCobblemonPartyExtrasNatureTooltipBuilder",
-    "rctmod.MixinRCTModMakeBattle",
     "simpletms.MixinPokemonSelectingItemNonBattle"
   ],
   "injectors": {

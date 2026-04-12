@@ -20,7 +20,6 @@ public final class ClientConfig implements IClientConfig, ISoundConfig {
     private static final class Data {
         public ModConfigSpec.BooleanValue enableShadowAura;
         public ModConfigSpec.BooleanValue auraScannerEnabled;
-        public ModConfigSpec.BooleanValue skipIrisWarning;
         public ModConfigSpec.BooleanValue useFahrenheitDisplay;
         public ModConfigSpec.DoubleValue auraReaderYOffset;
 
@@ -40,10 +39,6 @@ public final class ClientConfig implements IClientConfig, ISoundConfig {
             auraScannerEnabled = builder
                     .comment("Whether the Aura Scanner HUD is enabled.")
                     .define("auraScannerEnabled", true);
-
-            skipIrisWarning = builder
-                    .comment("Whether to skip the Iris shader warning screen.")
-                    .define("skipIrisWarning", false);
 
             useFahrenheitDisplay = builder
                     .comment("Display temperatures in Fahrenheit instead of Celsius in the Aura Scanner HUD.")
@@ -86,18 +81,6 @@ public final class ClientConfig implements IClientConfig, ISoundConfig {
     public boolean auraScannerEnabled() {
         if (!isLoaded()) return IClientConfig.super.auraScannerEnabled();
         return DATA.auraScannerEnabled.get();
-    }
-
-    @Override
-    public boolean skipIrisWarning() {
-        if (!isLoaded()) return IClientConfig.super.skipIrisWarning();
-        return DATA.skipIrisWarning.get();
-    }
-
-    @Override
-    public void setSkipIrisWarning(boolean value) {
-        DATA.skipIrisWarning.set(value);
-        DATA.skipIrisWarning.save();
     }
 
     @Override

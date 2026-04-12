@@ -42,6 +42,7 @@ public class ShadowedHeartsMixinConfigPlugin implements IMixinConfigPlugin {
                     yield false;
                 }
             }
+
             case "com.jayemceekay.shadowedhearts.mixin.cobblemonbattleextras.CobblemonBattleExtras_1_7_41_NewMoveTileTooltipMixin",
                  "com.jayemceekay.shadowedhearts.mixin.cobblemonbattleextras.CobblemonBattleExtrasBattleInfoPanelRendererMixin",
                  "com.jayemceekay.shadowedhearts.mixin.cobblemonbattleextras.CobblemonBattleExtrasCustomBattleControllerMixin",
@@ -59,6 +60,7 @@ public class ShadowedHeartsMixinConfigPlugin implements IMixinConfigPlugin {
                     yield false;
                 }
             }
+
             case "com.jayemceekay.shadowedhearts.mixin.cobblemonpartyextras.MixinCobblemonPartyExtrasCustomTooltipRenderer",
                  "com.jayemceekay.shadowedhearts.mixin.cobblemonpartyextras.MixinCobblemonPartyExtrasNatureTooltipBuilder",
                  "com.jayemceekay.shadowedhearts.mixin.cobblemonpartyextras.MixinCobblemonPartyExtrasMoveTooltipBuilder",
