@@ -26,7 +26,7 @@ public abstract class CobblemonBattleExtrasTypeChartMixin {
         return 1.0F;
     }
 
-    @WrapMethod(method = "getEffectiveness", remap = false)
+    @WrapMethod(method = "getEffectiveness(Lcom/cobblemon/mod/common/api/moves/MoveTemplate;Lcom/cobblemon/mod/common/api/types/ElementalType;Lcom/cobblemon/mod/common/api/types/ElementalType;)F", remap = false)
     private static float shadowedhearts$getEffectiveness(MoveTemplate move, ElementalType defenderType1, ElementalType defenderType2, Operation<Float> original) {
         if (move == null) {
             return 1.0F;
@@ -38,7 +38,7 @@ public abstract class CobblemonBattleExtrasTypeChartMixin {
         }
     }
 
-    @WrapMethod(method = "getEffectivenessAgainstTypes", remap = false)
+    @WrapMethod(method = "getEffectivenessAgainstTypes(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)F", remap = false)
     private static float shadowedhearts$getEffectivenessAgainstTypes(String moveType, String defenderType1, String defenderType2, Operation<Float> original) {
         if (moveType.equals("shadow"))
             return shadowedhearts$getTypeMultiplier();

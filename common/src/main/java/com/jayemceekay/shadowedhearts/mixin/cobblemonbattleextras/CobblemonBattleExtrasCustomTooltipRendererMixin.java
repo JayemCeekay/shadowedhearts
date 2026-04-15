@@ -19,7 +19,7 @@ import org.spongepowered.asm.mixin.injection.invoke.arg.Args;
 public class CobblemonBattleExtrasCustomTooltipRendererMixin {
 
     // Render shadow icon
-    @WrapMethod(method = "renderTypeIcon")
+    @WrapMethod(method = "renderTypeIcon(Lnet/minecraft/client/gui/GuiGraphics;IILcom/cobblemon/mod/common/api/types/ElementalType;)V", remap = false)
     private static void shadowedhearts$renderTypeIcon(GuiGraphics graphics, int x, int y, ElementalType type, Operation<Void> original) {
         if (type.equals(ElementalTypes.get("shadow"))) {
             ResourceLocation texture = ResourceLocation.fromNamespaceAndPath("shadowedhearts", "textures/gui/shadow_type_small.png");
@@ -32,7 +32,7 @@ public class CobblemonBattleExtrasCustomTooltipRendererMixin {
     }
 
     // Render shadow icon
-    @WrapMethod(method = "renderTypeIconLarge")
+    @WrapMethod(method = "renderTypeIconLarge(Lnet/minecraft/client/gui/GuiGraphics;IILcom/cobblemon/mod/common/api/types/ElementalType;)V", remap = false)
     private static void shadowedhearts$renderTypeIconLarge(GuiGraphics graphics, int x, int y, ElementalType type, Operation<Void> original) {
         if (type.equals(ElementalTypes.get("shadow"))) {
             ResourceLocation texture = ResourceLocation.fromNamespaceAndPath("shadowedhearts", "textures/gui/shadow_type.png");
@@ -45,7 +45,7 @@ public class CobblemonBattleExtrasCustomTooltipRendererMixin {
     }
 
     // Render shadow icon
-    @WrapMethod(method = "renderTypeIconSmall")
+    @WrapMethod(method = "renderTypeIconSmall(Lnet/minecraft/client/gui/GuiGraphics;IILcom/cobblemon/mod/common/api/types/ElementalType;)V", remap = false)
     private static void shadowedhearts$renderTypeIconSmall(GuiGraphics graphics, int x, int y, ElementalType type, Operation<Void> original) {
         if (type.equals(ElementalTypes.get("shadow"))) {
             ResourceLocation texture = ResourceLocation.fromNamespaceAndPath("shadowedhearts", "textures/gui/shadow_type_small.png");
@@ -59,9 +59,11 @@ public class CobblemonBattleExtrasCustomTooltipRendererMixin {
 
     // Move the PP text a bit if the type is Shadow so it doesn't overlap with the bright area of the image
     @ModifyArgs(method = "renderClassicMoveTileForegroundOverlay",
+            remap = false,
             at = @At(
                     value = "INVOKE",
-                    target = "Lname/modid/client/CustomTooltipRenderer;drawScaledTextRightAligned(Lnet/minecraft/client/gui/GuiGraphics;Lnet/minecraft/client/gui/Font;Ljava/lang/String;IIIF)V"
+                    target = "Lname/modid/client/CustomTooltipRenderer;drawScaledTextRightAligned(Lnet/minecraft/client/gui/GuiGraphics;Lnet/minecraft/client/gui/Font;Ljava/lang/String;IIIF)V",
+                    remap = false
             ))
     private static void shadowedhearts$movePPText(Args args, @Local(argsOnly = true) ElementalType type) {
         if (type.equals(ElementalTypes.get("shadow"))) {
