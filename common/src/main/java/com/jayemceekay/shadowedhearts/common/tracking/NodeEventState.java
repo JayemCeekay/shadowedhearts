@@ -64,6 +64,8 @@ public class NodeEventState {
     private int provocationHoldTicks = 0;
     /** Required hold ticks to complete provocation. */
     private int provocationRequiredTicks = 60; // 3 seconds
+    /** Radius (in blocks) of the expanded provocation zone (15–20 blocks). */
+    private int provocationZoneRadius = 15;
     /** Signal buildup progress (0.0–1.0). */
     private float signalBuildup = 0.0f;
 
@@ -93,9 +95,9 @@ public class NodeEventState {
         NodeEventState state = new NodeEventState(NodeEventType.EVIDENCE_INTERPRETATION);
         state.biomeCategory = biome;
 
-        // Total clue count scales with tier: 3–6 scannable positions
-        int numClues = 3 + Math.min(3, tier.getTier()); // tier 1=3, tier 2=4, tier 3=5, tier 4+=6
-        numClues = Math.max(3, Math.min(numClues, 6));
+        // Total clue count scales with tier: 4–8 scannable positions (expanded for larger area)
+        int numClues = 4 + Math.min(4, tier.getTier()); // tier 1=5, tier 2=6, tier 3=7, tier 4+=8
+        numClues = Math.max(4, Math.min(numClues, 8));
 
         // Valid clue count: a subset are real evidence (1–3 valid out of the total)
         int validCount = 1 + rng.nextInt(Math.min(3, Math.max(1, numClues - 1))); // 1–3 valid
@@ -105,10 +107,13 @@ public class NodeEventState {
         // Generate biome-contextual clue descriptions
         List<String> descriptions = BiomeHuntFlavor.randomClueDescriptions(biome, numClues, rng);
 
+        // Clue spread scales with tier: Tier 1 = ±15 blocks, Tier 5 = ±25 blocks
+        int clueSpread = 15 + (tier.getTier() - 1) * 2; // 15–23 blocks radius
         for (int i = 0; i < numClues; i++) {
-            int dx = rng.nextInt(11) - 5; // -5 to +5 (wider spread)
-            int dz = rng.nextInt(11) - 5;
-            if (dx == 0 && dz == 0) dx = 2;
+            int dx = rng.nextInt(clueSpread * 2 + 1) - clueSpread;
+            int dz = rng.nextInt(clueSpread * 2 + 1) - clueSpread;
+            // Ensure minimum distance of 5 blocks from center
+            if (Math.abs(dx) < 5 && Math.abs(dz) < 5) dx = dx >= 0 ? 5 : -5;
             state.cluePositions.add(nodePos.offset(dx, 0, dz));
             if (i < descriptions.size()) {
                 state.clueDescriptions.add(descriptions.get(i));
@@ -141,10 +146,10 @@ public class NodeEventState {
         NodeEventState state = new NodeEventState(NodeEventType.ENVIRONMENTAL_SEARCH);
         state.biomeCategory = biome;
         state.searchHint = biome.getSearchHint();
-        state.searchRadius = 6.0f + tier.getTier() * 1.5f; // 7.5–13.5 blocks
-        // Place hidden clue at a random offset within the search radius
+        state.searchRadius = 12.0f + tier.getTier() * 3.2f; // 15.2–28 blocks (Tier 1→5)
+        // Place hidden clue at a random offset within the search radius, at least 8 blocks from center
         double angle = rng.nextDouble() * Math.PI * 2;
-        double dist = 3.0 + rng.nextDouble() * (state.searchRadius - 3.0);
+        double dist = 8.0 + rng.nextDouble() * (state.searchRadius - 8.0);
         int dx = (int) Math.round(Math.cos(angle) * dist);
         int dz = (int) Math.round(Math.sin(angle) * dist);
         state.hiddenCluePos = nodePos.offset(dx, 0, dz);
@@ -158,7 +163,7 @@ public class NodeEventState {
      */
     public static NodeEventState createWildInterruption(ShadowSignalTier tier, Random rng) {
         NodeEventState state = new NodeEventState(NodeEventType.WILD_INTERRUPTION);
-        state.wildResolveTimer = 200 + tier.getTier() * 40; // 10–18 seconds auto-resolve
+        state.wildResolveTimer = 300 + tier.getTier() * 50; // 15–25 seconds auto-resolve (expanded for larger area)
         state.maxTicks = state.wildResolveTimer + 100;
         state.phase = Phase.ACTIVE;
         return state;
@@ -170,6 +175,9 @@ public class NodeEventState {
     public static NodeEventState createProvocation(ShadowSignalTier tier, Random rng) {
         NodeEventState state = new NodeEventState(NodeEventType.PROVOCATION);
         state.provocationRequiredTicks = 40 + tier.getTier() * 15; // 2.75–4.75 seconds
+        // Store the expanded provocation zone radius (15–20 blocks); used by TrailSession.tickNodeEvent
+        // when determining if the player is "in zone" for provocation (replaces hotspot-only check).
+        state.provocationZoneRadius = 15 + tier.getTier(); // 16–20 blocks (Tier 1→5)
         state.maxTicks = state.provocationRequiredTicks + 200; // extra time for leaving/re-entering
         state.phase = Phase.ACTIVE;
         return state;
@@ -315,6 +323,7 @@ public class NodeEventState {
     public int getWildResolveTimer() { return wildResolveTimer; }
     public int getProvocationHoldTicks() { return provocationHoldTicks; }
     public int getProvocationRequiredTicks() { return provocationRequiredTicks; }
+    public int getProvocationZoneRadius() { return provocationZoneRadius; }
     public float getSignalBuildup() { return signalBuildup; }
     public BiomeHuntFlavor.BiomeCategory getBiomeCategory() { return biomeCategory; }
     public List<String> getClueDescriptions() { return clueDescriptions; }

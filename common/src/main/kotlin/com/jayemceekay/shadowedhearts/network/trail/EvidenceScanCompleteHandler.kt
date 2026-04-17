@@ -13,6 +13,7 @@ import com.jayemceekay.shadowedhearts.common.tracking.NodeEventType
 import com.jayemceekay.shadowedhearts.common.tracking.ShadowSignalTier
 import com.jayemceekay.shadowedhearts.common.tracking.TrailManager
 import com.jayemceekay.shadowedhearts.config.HeartGaugeConfig
+import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs
 import com.jayemceekay.shadowedhearts.network.ShadowedHeartsNetwork
 import com.jayemceekay.shadowedhearts.registry.ModItems
 import com.jayemceekay.shadowedhearts.registry.ModSounds
@@ -461,11 +462,38 @@ object EvidenceScanCompleteHandler : ServerNetworkPacketHandler<EvidenceScanComp
     }
 
     /**
-     * Guarantee a number of perfect IVs based on the tier.
+     * Guarantee a number of perfect IVs based on the shadow Pokémon config IV mode.
+     * Supports FIXED (exact count from config), SCALED (tier-proportional within config range),
+     * and NONE (0 perfect IVs). Falls back to tier-based values if config is unavailable.
      */
     private fun applyGuaranteedPerfectIVs(pokemon: Pokemon, tier: ShadowSignalTier, rng: java.util.Random) {
-        val numPerfect = tier.minGuaranteedPerfectIVs +
+        val shadowCfg = try {
+            ShadowedHeartsConfigs.getInstance().shadowConfig
+        } catch (e: Exception) {
+            null
+        }
+
+        val numPerfect: Int = if (shadowCfg != null) {
+            when (shadowCfg.shadowIVMode().uppercase()) {
+                "NONE" -> 0
+                "FIXED" -> shadowCfg.shadowFixedPerfectIVs()
+                "SCALED" -> {
+                    // Scale between 0 and shadowMaxPerfectIVs using the tier (1-5) as a fraction
+                    val tierFraction = (tier.tier - 1).toFloat() / 4.0f  // 0.0 (tier 1) to 1.0 (tier 5)
+                    (shadowCfg.shadowMaxPerfectIVs() * tierFraction).toInt().coerceIn(0, shadowCfg.shadowMaxPerfectIVs())
+                }
+                else -> {
+                    // Unknown mode — fall back to tier default
+                    tier.minGuaranteedPerfectIVs +
+                        rng.nextInt(max(1, tier.maxGuaranteedPerfectIVs - tier.minGuaranteedPerfectIVs + 1))
+                }
+            }
+        } else {
+            // Config not available — fall back to tier table values
+            tier.minGuaranteedPerfectIVs +
                 rng.nextInt(max(1, tier.maxGuaranteedPerfectIVs - tier.minGuaranteedPerfectIVs + 1))
+        }
+
         if (numPerfect <= 0) return
 
         val statList = listOf(Stats.HP, Stats.ATTACK, Stats.DEFENCE, Stats.SPECIAL_ATTACK, Stats.SPECIAL_DEFENCE, Stats.SPEED)

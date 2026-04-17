@@ -1,0 +1,54 @@
+{
+    "format_version": "1.10.0",
+    "particle_effect": {
+        "description": {
+            "identifier": "shadowedhearts:shadow_node_disc",
+            "basic_render_parameters": {
+                "material": "particles_alpha",
+                "texture": "shadowedhearts:textures/particle/shadow_disc"
+            }
+        },
+        "components": {
+            "minecraft:emitter_rate_steady": {
+                "spawn_rate": 1,
+                "max_particles": 1
+            },
+            "minecraft:emitter_lifetime_looping": {
+                "active_time": 100
+            },
+            "minecraft:emitter_shape_point": {
+                "offset": [0, 0.02, 0],
+                "direction": [0, 1, 0]
+            },
+            "minecraft:particle_lifetime_expression": {
+                "max_lifetime": 2.0
+            },
+            "minecraft:particle_initial_speed": 0,
+            "minecraft:particle_motion_dynamic": {},
+            "minecraft:particle_appearance_billboard": {
+                "size": [1.8, 1.8],
+                "facing_camera_mode": "direction_z",
+                "direction": {
+                    "mode": "custom",
+                    "custom_direction": [0, 1, 0]
+                },
+                "uv": {
+                    "texture_width": 32,
+                    "texture_height": 32,
+                    "uv": [0, 0],
+                    "uv_size": [32, 32]
+                }
+            },
+            "minecraft:particle_appearance_tinting": {
+                "color": {
+                    "interpolant": "v.particle_age / v.particle_lifetime",
+                    "gradient": {
+                        "0.0": "#CC000000",
+                        "0.5": "#CC000000",
+                        "1.0": "#00000000"
+                    }
+                }
+            }
+        }
+    }
+}

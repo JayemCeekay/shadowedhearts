@@ -362,7 +362,8 @@ public class TrailSession {
                 return true;
             }
         } else if (activeNodeEvent.getEventType() == NodeEventType.PROVOCATION) {
-            boolean inZone = currentHotspot != null && isWithinHotspot(playerPos);
+            // Use the expanded provocation zone radius from the event (15–20 blocks)
+            boolean inZone = isWithinProvocationZone(playerPos, activeNodeEvent.getProvocationZoneRadius());
             if (activeNodeEvent.tickProvocation(inZone)) {
                 return true;
             }
@@ -396,6 +397,18 @@ public class TrailSession {
         double dy = (playerPos.getY() + 0.5) - (currentHotspot.pos().getY() + 0.5);
         double dz = (playerPos.getZ() + 0.5) - (currentHotspot.pos().getZ() + 0.5);
         return (dx * dx + dy * dy + dz * dz) <= (currentHotspot.radius() * currentHotspot.radius() * 4);
+    }
+
+    /**
+     * Check if the player is within the expanded provocation zone radius around the current hotspot.
+     * Used for provocation events which operate over a 15–20 block radius instead of the tight hotspot area.
+     */
+    private boolean isWithinProvocationZone(net.minecraft.core.BlockPos playerPos, int zoneRadius) {
+        if (currentHotspot == null) return false;
+        double dx = (playerPos.getX() + 0.5) - (currentHotspot.pos().getX() + 0.5);
+        double dz = (playerPos.getZ() + 0.5) - (currentHotspot.pos().getZ() + 0.5);
+        // Use horizontal-only distance (ignore Y) so the zone is a cylinder
+        return (dx * dx + dz * dz) <= ((double) zoneRadius * zoneRadius);
     }
 
     public boolean isScanComplete() {
