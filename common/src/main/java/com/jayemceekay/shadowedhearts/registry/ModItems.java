@@ -98,7 +98,7 @@ public final class ModItems {
             () -> new Item(new Item.Properties()));
 
     // Shadow Signal Data — tiered hunt-initiating items (tiers 1–5)
-    public static final RegistrySupplier<Item> SHADOW_SIGNAL_DATA_FAINT = registerSignalData("faint", ShadowSignalTier.FAINT);
+    /*public static final RegistrySupplier<Item> SHADOW_SIGNAL_DATA_FAINT = registerSignalData("faint", ShadowSignalTier.FAINT);
     public static final RegistrySupplier<Item> SHADOW_SIGNAL_DATA_WEAK = registerSignalData("weak", ShadowSignalTier.WEAK);
     public static final RegistrySupplier<Item> SHADOW_SIGNAL_DATA_MODERATE = registerSignalData("moderate", ShadowSignalTier.MODERATE);
     public static final RegistrySupplier<Item> SHADOW_SIGNAL_DATA_STRONG = registerSignalData("strong", ShadowSignalTier.STRONG);
@@ -110,7 +110,7 @@ public final class ModItems {
                         new Item.Properties().arch$tab(ModCreativeTabs.SHADOWED_HEARTS_TAB).stacksTo(16)
                                 .rarity(ShadowSignalDataItem.tierToRarity(tier)),
                         tier));
-    }
+    }*/
 
     /*public static final RegistrySupplier<Item> DARK_BALL = ITEMS.register(
             "dark_ball",

@@ -8,8 +8,6 @@ import com.jayemceekay.shadowedhearts.util.ShadowMaskingUtil;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.mojang.blaze3d.vertex.PoseStack;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.ResourceLocation;
 import org.spongepowered.asm.mixin.Final;
@@ -118,7 +116,6 @@ public abstract class MixinMoveSlotWidget {
     }
 
     // Swap the type icon to a shadow-locked placeholder when masked
-    // Handler must be static because it targets a constructor invocation (<init>)
     @ModifyArg(
             method = "renderWidget",
             at = @At(
@@ -127,11 +124,10 @@ public abstract class MixinMoveSlotWidget {
             ),
             index = 2
     )
-    private static ElementalType shadowedhearts$swapType(ElementalType original) {
-        Screen screen = Minecraft.getInstance().screen;
-        if (!(screen instanceof com.cobblemon.mod.common.client.gui.summary.Summary summary)) return original;
-        var pokemon = summary.getSelectedPokemon$common();
-        if (pokemon == null) return original;
-        return ShadowAspectUtil.hasShadowAspect(pokemon) ? ShadowMaskingUtil.getLockedType() : original;
+    private ElementalType shadowedhearts$swapType(ElementalType original) {
+        if (shadowedhearts$shouldMask()) {
+            return ShadowMaskingUtil.getLockedType();
+        }
+        return original;
     }
 }
