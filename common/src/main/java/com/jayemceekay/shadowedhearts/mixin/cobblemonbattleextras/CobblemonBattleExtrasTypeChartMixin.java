@@ -6,15 +6,16 @@ import com.jayemceekay.shadowedhearts.config.IShadowConfig;
 import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs;
 import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
-import name.modid.client.TypeChart;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Pseudo;
 import org.spongepowered.asm.mixin.Unique;
 
 // Only for >=1.7.41
 // TypeChart is used to calculate effectiveness to display texts in some custom tooltips
 // The Mixin only modifies the methods so Shadow moves always display a x2 (if enabled in config)
 // TODO: This should check if the opposing Pokémon is a Shadow Pokémon too, but I don't think there is a way to do it here
-@Mixin(TypeChart.class)
+@Pseudo
+@Mixin(targets = "name.modid.client.TypeChart", remap = false)
 public abstract class CobblemonBattleExtrasTypeChartMixin {
 
     @Unique
@@ -26,7 +27,7 @@ public abstract class CobblemonBattleExtrasTypeChartMixin {
         return 1.0F;
     }
 
-    @WrapMethod(method = "getEffectiveness(Lcom/cobblemon/mod/common/api/moves/MoveTemplate;Lcom/cobblemon/mod/common/api/types/ElementalType;Lcom/cobblemon/mod/common/api/types/ElementalType;)F", remap = false)
+    @WrapMethod(method = "getEffectiveness", remap = false)
     private static float shadowedhearts$getEffectiveness(MoveTemplate move, ElementalType defenderType1, ElementalType defenderType2, Operation<Float> original) {
         if (move == null) {
             return 1.0F;
@@ -38,7 +39,7 @@ public abstract class CobblemonBattleExtrasTypeChartMixin {
         }
     }
 
-    @WrapMethod(method = "getEffectivenessAgainstTypes(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)F", remap = false)
+    @WrapMethod(method = "getEffectivenessAgainstTypes", remap = false)
     private static float shadowedhearts$getEffectivenessAgainstTypes(String moveType, String defenderType1, String defenderType2, Operation<Float> original) {
         if (moveType.equals("shadow"))
             return shadowedhearts$getTypeMultiplier();

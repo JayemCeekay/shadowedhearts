@@ -27,13 +27,18 @@ architectury {
     }
 }
 
+loom {
+    mixin {
+        useLegacyMixinAp = false
+        defaultRefmapName = "shadowedhearts.refmap.json"
+    }
+}
+
 task runMultiplayer {
     group = "loom"
     description = "Runs Client, DevClient2, and DevServer"
     dependsOn "runClient", "runDevClient2", "runDevServer"
 }
-
-
 
 configurations {
     common {
@@ -102,6 +107,7 @@ dependencies {
 
     //FluxUI
     modImplementation("com.jayemceekay:fluxui-neoforge:1.0-SNAPSHOT")
+    include("com.jayemceekay:fluxui-neoforge:1.0-SNAPSHOT")
 
     //iris shaders
     modCompileOnly("maven.modrinth:YL57xq9U:t3ruzodq")
@@ -130,31 +136,26 @@ dependencies {
     forgeRuntimeLibrary("io.wispforest.endec:netty:0.1.2")
     forgeRuntimeLibrary("blue.endless:jankson:1.2.2")
 
-    //modernFix
-    //modRuntimeOnly("maven.modrinth:nmDcB62a:8Be8uJW6")
-
-    //embeddium
-    //modRuntimeOnly("maven.modrinth:sk9rgfiA:J7b96IEd")
-
     //modRuntimeOnly("maven.modrinth:AANobbMI:Pb3OXVqC")
 
-    //concentration
-    //modRuntimeOnly("maven.modrinth:QyvWSZ5S:E7K9ZMD2")
-
     //cobblemon battle extras
-    modImplementation("maven.modrinth:2iY8VFqL:BBOCqBbU")
+    modImplementation("maven.modrinth:2iY8VFqL:dD1HHoh5")
 
     //cobblemon party extras
-    modImplementation("maven.modrinth:x2wZP9kQ:wxVvkEmX")
+    modImplementation("maven.modrinth:x2wZP9kQ:rTJMRXuL")
 
     //cobblemon tim core
     //modRuntimeOnly("maven.modrinth:lVP9aUaY:YhsWrN4q")
+
+
+    modImplementation("maven.modrinth:SszvX85I:bOTrftup")
 
     //simpleTMs
     modCompileOnly("maven.modrinth:yFqR0DNc:uaKfPMYS")
 
     //lost lore
-    modCompileOnly("maven.modrinth:49cNEVjn:pmWV3g7p")
+    modImplementation("maven.modrinth:49cNEVjn:IBU0110B")
+
 }
 
 processResources {

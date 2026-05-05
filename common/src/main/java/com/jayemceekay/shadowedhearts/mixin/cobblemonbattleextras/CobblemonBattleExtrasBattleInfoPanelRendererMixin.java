@@ -5,12 +5,12 @@ import com.cobblemon.mod.common.pokemon.Pokemon;
 import com.jayemceekay.shadowedhearts.common.shadow.ShadowAspectUtil;
 import com.llamalad7.mixinextras.sugar.Local;
 import com.mojang.blaze3d.systems.RenderSystem;
-import name.modid.client.BattleInfoPanelRenderer;
 import name.modid.client.LocalBattlePartyTracker;
 import name.modid.client.RevealedBattleInfo;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.resources.ResourceLocation;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Pseudo;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.ModifyArgs;
@@ -19,15 +19,14 @@ import org.spongepowered.asm.mixin.injection.invoke.arg.Args;
 
 // Only for >=1.7.41
 // BattleInfoPanel is the panel that appears when hovering over the top right/left Pokémon portraits/life bars
-@Mixin(BattleInfoPanelRenderer.class)
+@Pseudo
+@Mixin(targets = "name.modid.client.BattleInfoPanelRenderer", remap = false)
 public class CobblemonBattleExtrasBattleInfoPanelRendererMixin {
 
     // Mask Attack name and set white color
     @ModifyArgs(
-            method = "renderPanel(Lnet/minecraft/client/gui/GuiGraphics;Lnet/minecraft/client/Minecraft;IILname/modid/client/BattleInfoPanelRenderer$PanelContent;FLjava/lang/Object;Ljava/lang/String;Ljava/lang/String;)V",
-            remap = false,
+            method = "renderPanel",
             at = @At(value = "INVOKE", target = "Lname/modid/client/BattleInfoPanelRenderer;drawScaledText(Lnet/minecraft/client/gui/GuiGraphics;Lnet/minecraft/client/Minecraft;Ljava/lang/String;IIIFF)V",
-                    remap = false,
                     ordinal = 6)
     )
     private static void shadowedhearts$maskAttackNameAndColor(Args args, @Local(name = "move") RevealedBattleInfo.PokemonRevealedInfo.MoveInfo move, @Local(ordinal = 1, argsOnly = true) String side, @Local(argsOnly = true) Object battlePokemon) {
@@ -48,10 +47,8 @@ public class CobblemonBattleExtrasBattleInfoPanelRendererMixin {
 
     // Replace type with "shadow-locked" if the move was locked
     @ModifyArgs(
-            method = "renderPanel(Lnet/minecraft/client/gui/GuiGraphics;Lnet/minecraft/client/Minecraft;IILname/modid/client/BattleInfoPanelRenderer$PanelContent;FLjava/lang/Object;Ljava/lang/String;Ljava/lang/String;)V",
-            remap = false,
-            at = @At(value = "INVOKE", target = "Lname/modid/client/BattleInfoPanelRenderer;renderTypeIconScaled(Lnet/minecraft/client/gui/GuiGraphics;IILjava/lang/String;FFI)V",
-                    remap = false)
+            method = "renderPanel",
+            at = @At(value = "INVOKE", target = "Lname/modid/client/BattleInfoPanelRenderer;renderTypeIconScaled(Lnet/minecraft/client/gui/GuiGraphics;IILjava/lang/String;FFI)V")
     )
     private static void shadowedhearts$changeTypeToLocked(Args args, @Local(name = "move") RevealedBattleInfo.PokemonRevealedInfo.MoveInfo move, @Local(ordinal = 1, argsOnly = true) String side, @Local(argsOnly = true) Object battlePokemon) {
         ClientBattlePokemon bp = (ClientBattlePokemon) battlePokemon;
@@ -70,8 +67,7 @@ public class CobblemonBattleExtrasBattleInfoPanelRendererMixin {
 
     // Render the shadow/locked type icon
     @Inject(
-            method = "renderTypeIconScaled(Lnet/minecraft/client/gui/GuiGraphics;IILjava/lang/String;FFI)V",
-            remap = false,
+            method = "renderTypeIconScaled",
             at = @At("HEAD"),
             cancellable = true
     )

@@ -45,7 +45,6 @@ public final class ShadowedheartsNeoForgeClient {
     public static void onClientSetup(final FMLClientSetupEvent event) {
         // Client-side common init
         ClientSetupSubscriber.onClientSetup(event);
-        AuraReaderHud.init();
     }
 
     public ShadowedheartsNeoForgeClient(ModContainer modContainer) {
@@ -111,25 +110,6 @@ public final class ShadowedheartsNeoForgeClient {
     public static void onConfigReloading(ModConfigEvent.Reloading event) {
         if (event.getConfig().getSpec() == ClientConfig.SPEC) {
             ShadowedHeartsConfigs.getInstance().getClientConfig().load();
-        }
-    }
-
-    @SubscribeEvent
-    public static void onMouseScroll(InputEvent.MouseScrollingEvent event) {
-        // Positive delta usually means scrolling up
-        double delta;
-        try {
-            // NeoForge may expose axis-specific accessor
-            delta = (double) InputEvent.MouseScrollingEvent.class.getMethod("getScrollDeltaY").invoke(event);
-        } catch (Exception reflectFail) {
-            try {
-                delta = (double) InputEvent.MouseScrollingEvent.class.getMethod("getScrollDelta").invoke(event);
-            } catch (Exception ignored) {
-                delta = 0.0;
-            }
-        }
-        if (AuraReaderManager.handleShiftScroll(delta)) {
-            event.setCanceled(true);
         }
     }
 

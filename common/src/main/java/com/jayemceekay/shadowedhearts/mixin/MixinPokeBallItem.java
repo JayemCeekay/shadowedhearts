@@ -10,6 +10,7 @@ import com.jayemceekay.shadowedhearts.registry.ModCreativeTabs;
 import dev.architectury.registry.CreativeTabRegistry;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.Level;
+import com.llamalad7.mixinextras.sugar.Local;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -18,7 +19,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import java.util.HashSet;
 import java.util.Set;
 
-@Mixin(PokeBallItem.class)
+@Mixin(value = PokeBallItem.class, remap = false)
 public class MixinPokeBallItem {
 
     @Inject(method = "<init>(Lcom/cobblemon/mod/common/pokeball/PokeBall;)V", at = @At("TAIL"))
@@ -28,8 +29,8 @@ public class MixinPokeBallItem {
         }
     }
 
-    @Inject(method = "throwPokeBall", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/level/Level;addFreshEntity(Lnet/minecraft/world/entity/Entity;)Z"), locals = org.spongepowered.asm.mixin.injection.callback.LocalCapture.CAPTURE_FAILHARD)
-    public void shadowedhearts$throwSnagBall(Level world, ServerPlayer player, CallbackInfo ci, com.cobblemon.mod.common.entity.pokeball.EmptyPokeBallEntity pokeBallEntity) {
+    @Inject(method = "throwPokeBall", at = @At("RETURN"))
+    public void shadowedhearts$throwSnagBall(Level world, ServerPlayer player, CallbackInfo ci, @Local(ordinal = 0) com.cobblemon.mod.common.entity.pokeball.EmptyPokeBallEntity pokeBallEntity) {
         // Consume energy only when an empty Poké Ball is thrown while the Snag Machine is armed.
         // Also auto-disarm on throw regardless of energy consumption result.
         if (player != null && SnagCaps.hasMachineAvailable(player)) {

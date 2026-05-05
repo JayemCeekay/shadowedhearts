@@ -10,6 +10,8 @@ import com.jayemceekay.shadowedhearts.common.shadow.ShadowAspectUtil;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.mojang.blaze3d.vertex.PoseStack;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.ResourceLocation;
@@ -24,7 +26,7 @@ import org.spongepowered.asm.mixin.injection.ModifyArg;
  * when the selected Pokemon is Shadow-locked. Hides move name and stats,
  * neutralizes the colored bar, and swaps the type icon to a shadow-locked glyph.
  */
-@Mixin(value = MoveSwapScreen.MoveSlot.class)
+@Mixin(value = MoveSwapScreen.MoveSlot.class, remap = false)
 public abstract class MixinMoveSwapScreenMoveSlot {
 
     @Shadow public abstract MoveSwapScreen getPane();
@@ -38,6 +40,14 @@ public abstract class MixinMoveSwapScreenMoveSlot {
         MoveSwapScreen pane = getPane();
         MovesWidget mw = pane.getMovesWidget();
         Summary summary = mw.getSummary();
+        var pokemon = summary.getSelectedPokemon$common();
+        if (pokemon == null) return false;
+        return ShadowAspectUtil.hasShadowAspect(pokemon);
+    }
+
+    private static boolean shadowedhearts$shouldMaskFromScreen() {
+        Screen screen = Minecraft.getInstance().screen;
+        if (!(screen instanceof Summary summary)) return false;
         var pokemon = summary.getSelectedPokemon$common();
         if (pokemon == null) return false;
         return ShadowAspectUtil.hasShadowAspect(pokemon);
@@ -166,6 +176,7 @@ public abstract class MixinMoveSwapScreenMoveSlot {
     }
 
     // Swap the TypeIcon type to shadow-locked when masked
+    // Handler must be static because it targets a constructor invocation (<init>)
     @ModifyArg(
             method = "render",
             at = @At(
@@ -174,7 +185,7 @@ public abstract class MixinMoveSwapScreenMoveSlot {
             ),
             index = 2
     )
-    private ElementalType shadowedhearts$swapType(ElementalType original) {
-        return shadowedhearts$shouldMask() ? ElementalTypes.INSTANCE.get("shadow-locked") : original;
+    private static ElementalType shadowedhearts$swapType(ElementalType original) {
+        return shadowedhearts$shouldMaskFromScreen() ? ElementalTypes.INSTANCE.get("shadow-locked") : original;
     }
 }

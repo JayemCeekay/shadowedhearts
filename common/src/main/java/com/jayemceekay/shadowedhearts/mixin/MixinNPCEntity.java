@@ -6,7 +6,7 @@ import org.spongepowered.asm.mixin.Mixin;
 
 import java.util.Set;
 
-@Mixin(NPCEntity.class)
+@Mixin(value = NPCEntity.class, remap = false)
 public abstract class MixinNPCEntity implements AspectHolder {
     @Override
     public Set<String> shadowedhearts$getAspects() {

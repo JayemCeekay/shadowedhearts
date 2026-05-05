@@ -4,6 +4,7 @@
   "plugin": "com.jayemceekay.shadowedhearts.mixin.ShadowedHeartsMixinConfigPlugin",
   "compatibilityLevel": "JAVA_21",
   "minVersion": "0.8",
+  "refmap": "shadowedhearts.refmap.json",
   "client": [
     "MixinBattleGeneralActionSelection",
     "MixinBattleMoveSelectionMoveTile",
@@ -14,7 +15,7 @@
     "MixinLivingEntityRenderer",
     "MixinMinecraft",
     "MixinModelWidgetAura",
-    "MixinMouseHandler",
+    "MixinMoveSlotButton",
     "MixinMoveSlotWidget",
     "MixinMoveSwapScreenMoveSlot",
     "MixinMovesWidget",
@@ -23,7 +24,6 @@
     "MixinPCGUIMasking",
     "MixinStatWidget",
     "MixinStorageSlotAura",
-    "MouseHandlerAccessor",
     "MovesWidgetAccessor",
     "RenderTargetAccessor",
     "SummaryAccessor",
@@ -55,6 +55,9 @@
     "MixinNPCEntity",
     "MixinPokeballHitReserved",
     "MixinPokeBallItem",
+    "MixinAspectUtils",
+    "MixinBenchedMoves",
+    "MixinMoveSet",
     "MixinPokemon",
     "MixinPokemonEntity",
     "MixinRandomSpreadStructurePlacement",
@@ -70,6 +73,7 @@
     "cobblemonpartyextras.MixinCobblemonPartyExtrasMoveTooltipBuilder",
     "cobblemonpartyextras.MixinCobblemonPartyExtrasMoveTooltipHelper",
     "cobblemonpartyextras.MixinCobblemonPartyExtrasNatureTooltipBuilder",
+    "rctmod.MixinRCTModMakeBattle",
     "simpletms.MixinPokemonSelectingItemNonBattle"
   ],
   "injectors": {

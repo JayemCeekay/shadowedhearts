@@ -11,7 +11,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Pseudo
-@Mixin(targets = "party.extras.cobblemon.client.tooltip.NatureTooltipBuilder")
+@Mixin(targets = "party.extras.cobblemon.client.tooltip.NatureTooltipBuilder", remap = false)
 public class MixinCobblemonPartyExtrasNatureTooltipBuilder {
 
     @Inject(method = "buildNatureTooltip", at = @At("HEAD"), cancellable = true)

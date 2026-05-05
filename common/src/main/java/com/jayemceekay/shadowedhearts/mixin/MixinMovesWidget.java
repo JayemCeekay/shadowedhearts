@@ -19,7 +19,7 @@ import org.spongepowered.asm.mixin.injection.ModifyArg;
 import org.spongepowered.asm.mixin.injection.ModifyVariable;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-@Mixin(value = com.cobblemon.mod.common.client.gui.summary.widgets.screens.moves.MovesWidget.class)
+@Mixin(value = MovesWidget.class, remap = false)
 public abstract class MixinMovesWidget {
 
     @Shadow
@@ -30,7 +30,7 @@ public abstract class MixinMovesWidget {
         return ShadowAspectUtil.shouldMaskMove(pokemon, m);
     }
 
-    @Inject(method = "reorderMove", at = @At("HEAD"), cancellable = true, remap = false)
+    @Inject(method = "reorderMove", remap = false, at = @At("HEAD"), cancellable = true)
     private void shadowedhearts$disableReorder(
             MoveSlotWidget move, boolean up, CallbackInfo ci
     ) {

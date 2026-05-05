@@ -11,10 +11,10 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-@Mixin(value = BattleCaptureAction.class)
+@Mixin(value = BattleCaptureAction.class, remap = false)
 public class MixinBattleCaptureAction {
 
-    @Inject(method = "attach$lambda$3", at = @At(value = "INVOKE", target = "Lcom/cobblemon/mod/common/api/battles/model/PokemonBattle;writeShowdownAction([Ljava/lang/String;)V", shift = At.Shift.AFTER), require = 0, remap = false)
+    @Inject(method = "attach$lambda$3", remap = false, at = @At(value = "INVOKE", target = "Lcom/cobblemon/mod/common/api/battles/model/PokemonBattle;writeShowdownAction([Ljava/lang/String;)V", shift = At.Shift.AFTER), require = 0)
     private static void shadowedhearts$attachLambda5Head(BattleCaptureAction this$0, Boolean successful, CallbackInfoReturnable<Unit> cir) {
         if (successful) {
             if (this$0.getTargetPokemon().getBattlePokemon().getEffectedPokemon().getAspects().contains(SHAspects.SHADOW)) {

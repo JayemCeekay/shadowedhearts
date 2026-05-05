@@ -16,6 +16,7 @@ import com.jayemceekay.shadowedhearts.network.PokemonPropertyUpdatePacket;
 import com.jayemceekay.shadowedhearts.pokemon.properties.*;
 import com.jayemceekay.shadowedhearts.registry.ModItems;
 import com.jayemceekay.shadowedhearts.registry.ModPoiTypes;
+import kotlin.Unit;
 import kotlin.jvm.functions.Function0;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
@@ -250,7 +251,7 @@ public final class ShadowAspectUtil {
                         snapshot.setMove(i, move);
                     }
                 }
-                return null;
+                return Unit.INSTANCE;
             });
             pokemon.onChange(new MoveSetUpdatePacket(supplier, snapshot));
         } catch (Throwable t) {

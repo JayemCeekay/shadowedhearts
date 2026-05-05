@@ -8,7 +8,12 @@ architectury {
     fabric()
 }
 
-
+loom {
+    mixin {
+        useLegacyMixinAp = false
+        defaultRefmapName = "shadowedhearts.refmap.json"
+    }
+}
 
 configurations {
     common {
@@ -48,6 +53,7 @@ repositories {
         name = "Fuzs Mod Resources"
         url = "https://raw.githubusercontent.com/Fuzss/modresources/main/maven/"
     }
+    mavenLocal()
 }
 
 dependencies {
@@ -63,6 +69,15 @@ dependencies {
     modImplementation( "com.cobblemon:fabric:${cobblemon_version}")
 
     modCompileOnly("io.wispforest:accessories-fabric:${project.accessories_version}")
+
+    //FluxUI
+    modImplementation("com.jayemceekay:fluxui-fabric:1.0-SNAPSHOT")
+    include("com.jayemceekay:fluxui-fabric:1.0-SNAPSHOT")
+
+    //cobblemon battle extras
+    modImplementation("maven.modrinth:2iY8VFqL:R1pokY2q")
+
+    modImplementation("maven.modrinth:x2wZP9kQ:rWc7k8zM")
 
     //Fabric Language Kotlin
     modImplementation("maven.modrinth:Ha28R6CL:i6MmXDwA")

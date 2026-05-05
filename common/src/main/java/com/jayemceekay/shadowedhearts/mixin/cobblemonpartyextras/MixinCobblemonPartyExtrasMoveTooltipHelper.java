@@ -13,7 +13,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Pseudo;
 
 @Pseudo
-@Mixin(targets = "party.extras.cobblemon.client.tooltip.MoveTooltipHelper")
+@Mixin(targets = "party.extras.cobblemon.client.tooltip.MoveTooltipHelper", remap = false)
 public class MixinCobblemonPartyExtrasMoveTooltipHelper {
 
     @WrapMethod(method = "renderDeferredTooltip")

@@ -85,6 +85,10 @@ public final class ModItems {
             "shadowium_z",
             () -> MegaShowdownBridgeHolder.INSTANCE.createShadowiumZ(new Item.Properties().arch$tab(ModCreativeTabs.SHADOWED_HEARTS_TAB).stacksTo(1)));
 
+    public static final RegistrySupplier<Item> SHADOW_SCALE = ITEMS.register(
+            "shadow_scale",
+            () -> new ShadowScale(new Item.Properties().arch$tab(ModCreativeTabs.SHADOWED_HEARTS_TAB).stacksTo(16)));
+
     public static final RegistrySupplier<Item> AURA_READER = ITEMS.register(
             "aura_reader",
             () -> new AuraReaderItem(new Item.Properties().arch$tab(ModCreativeTabs.SHADOWED_HEARTS_TAB).stacksTo(1)));
@@ -92,11 +96,6 @@ public final class ModItems {
     public static final RegistrySupplier<Item> DIRECTION_ARROW = ITEMS.register(
             "direction_arrow",
             () -> new Item(new Item.Properties()));
-
-   /* public static final RegistrySupplier<Item> POKEDEX_INTEGRATOR = ITEMS.register(
-            "pokedex_integrator",
-            () -> new com.jayemceekay.shadowedhearts.content.items.PokedexIntegratorItem(new net.minecraft.world.item.Item.Properties().arch$tab(ModCreativeTabs.SHADOWED_HEARTS_TAB).stacksTo(1))
-    );*/
 
     // Shadow Signal Data — tiered hunt-initiating items (tiers 1–5)
     public static final RegistrySupplier<Item> SHADOW_SIGNAL_DATA_FAINT = registerSignalData("faint", ShadowSignalTier.FAINT);

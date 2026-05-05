@@ -7,7 +7,7 @@ import org.spongepowered.asm.mixin.gen.Accessor;
 
 import java.util.List;
 
-@Mixin(value = MovesWidget.class, remap = false)
+@Mixin(value = MovesWidget.class)
 public interface MovesWidgetAccessor {
     @Accessor("moves")
     List<MoveSlotWidget> getMoves();

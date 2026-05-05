@@ -18,7 +18,7 @@ public abstract class MixinStorageSlotAura {
         return rp != null && rp.getAspects() != null && rp.getAspects().contains(SHAspects.SHADOW);
     }
 
-    @Inject(method = "renderSlot", at = @At(value = "INVOKE", target = "Lcom/cobblemon/mod/common/client/gui/PokemonGuiUtilsKt;drawProfilePokemon$default(Lcom/cobblemon/mod/common/pokemon/RenderablePokemon;Lcom/mojang/blaze3d/vertex/PoseStack;Lorg/joml/Quaternionf;Lcom/cobblemon/mod/common/entity/PoseType;Lcom/cobblemon/mod/common/client/render/models/blockbench/PosableState;FFZZFFFFFFILjava/lang/Object;)V", ordinal = 0, shift = At.Shift.AFTER, remap = false))
+    @Inject(method = "renderSlot", at = @At(value = "INVOKE", target = "Lcom/cobblemon/mod/common/client/gui/PokemonGuiUtilsKt;drawProfilePokemon$default(Lcom/cobblemon/mod/common/pokemon/RenderablePokemon;Lcom/mojang/blaze3d/vertex/PoseStack;Lorg/joml/Quaternionf;Lcom/cobblemon/mod/common/entity/PoseType;Lcom/cobblemon/mod/common/client/render/models/blockbench/PosableState;FFZZFFFFFFILjava/lang/Object;)V", ordinal = 0, shift = At.Shift.AFTER))
     private void shadowedhearts$renderAura(GuiGraphics context, int posX, int posY, float partialTicks, CallbackInfo ci) {
         var p = getPokemon();
         if (p == null) return;

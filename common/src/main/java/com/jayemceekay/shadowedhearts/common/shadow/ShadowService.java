@@ -269,8 +269,9 @@ public final class ShadowService {
         int candidateIdx = 0;
         for (int i = 0; i < 4; i++) {
             Move m = movesWithNulls.get(i);
-            if (m != null && m.getType() == Shadowedhearts.SH_SHADOW_TYPE && candidateIdx < candidates.size()) {
-                newMoveSet.setMove(i, candidates.get(candidateIdx++).create());
+            if (m != null && m.getType() == Shadowedhearts.SH_SHADOW_TYPE) {
+                // Always remove shadow moves; replace with a candidate if available, otherwise null
+                newMoveSet.setMove(i, candidateIdx < candidates.size() ? candidates.get(candidateIdx++).create() : null);
             } else {
                 newMoveSet.setMove(i, m != null ? m.copy() : null);
             }

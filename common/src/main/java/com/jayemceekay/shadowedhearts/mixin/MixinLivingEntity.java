@@ -16,11 +16,12 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import java.util.HashSet;
 import java.util.Set;
 
-@Mixin(LivingEntity.class)
+@Mixin(value = LivingEntity.class)
 public abstract class MixinLivingEntity implements AspectHolder {
 
-    @Inject(method = "<clinit>", at = @At("TAIL"))
+    @Inject(method = "<clinit>", at = @At("TAIL"), remap = false)
     private static void shadowedhearts$clinit(CallbackInfo ci) {
+        SyncedEntityAspects.register();
         SyncedEntityAspects.register();
     }
 

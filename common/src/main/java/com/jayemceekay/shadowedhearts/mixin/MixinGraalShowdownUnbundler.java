@@ -9,7 +9,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(value = GraalShowdownUnbundler.class, remap = false)
 public class MixinGraalShowdownUnbundler {
-    @Inject(method = "attemptUnbundle", at = @At("TAIL"), order = 1100)
+    @Inject(method = "attemptUnbundle", remap = false, at = @At("TAIL"), order = 1100)
     private void afterUnbundle(CallbackInfo ci) {
         ShowdownRuntimePatcher.applyPatches();
     }

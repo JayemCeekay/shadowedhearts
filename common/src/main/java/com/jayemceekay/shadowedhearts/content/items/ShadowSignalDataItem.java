@@ -194,13 +194,13 @@ public class ShadowSignalDataItem extends Item {
         ItemStack stack = player.getItemInHand(hand);
         int slotIndex = (hand == InteractionHand.MAIN_HAND) ? player.getInventory().selected : 40;
 
-        if (level.isClientSide) {
+        /*if (level.isClientSide) {
             if (com.jayemceekay.shadowedhearts.client.util.ClientAuraPulseTrigger.isAuraReaderActive()) {
                 com.jayemceekay.shadowedhearts.client.util.ClientAuraPulseTrigger.trigger(slotIndex);
                 ShadowedHeartsNetwork.sendToServer(new AuraPulsePacket(slotIndex));
                 return InteractionResultHolder.sidedSuccess(stack, true);
             }
-        }
+        }*/
 
         return InteractionResultHolder.pass(stack);
     }

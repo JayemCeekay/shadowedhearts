@@ -11,7 +11,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-@Mixin(ItemStack.class)
+@Mixin(value = ItemStack.class)
 public abstract class MixinAuraReaderEquip {
 
     @Inject(method = "use", at = @At("HEAD"), cancellable = true)

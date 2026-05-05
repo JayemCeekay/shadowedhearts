@@ -27,7 +27,7 @@ import org.spongepowered.asm.mixin.Pseudo;
 import java.util.List;
 
 @Pseudo
-@Mixin(targets = "party.extras.cobblemon.client.CustomTooltipRenderer")
+@Mixin(targets = "party.extras.cobblemon.client.CustomTooltipRenderer", remap = false)
 public abstract class MixinCobblemonPartyExtrasCustomTooltipRenderer {
 
     @WrapMethod(method = "renderMoveTooltip(Lnet/minecraft/client/gui/GuiGraphics;Ljava/util/List;III)V")

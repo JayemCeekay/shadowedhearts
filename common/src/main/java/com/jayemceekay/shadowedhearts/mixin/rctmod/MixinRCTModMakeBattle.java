@@ -26,7 +26,7 @@ import java.util.Locale;
  * We leverage the existing NPCShadowInjector, which listens to BATTLE_STARTED_PRE and applies
  * APPEND or CONVERT based on entity tags. This keeps all mutations scoped to the battle instance.
  */
-@Mixin(value = RCTMod.class)
+@Mixin(value = RCTMod.class, remap = false)
 public abstract class MixinRCTModMakeBattle {
 
     @Inject(method = "makeBattle", at = @At("HEAD"))

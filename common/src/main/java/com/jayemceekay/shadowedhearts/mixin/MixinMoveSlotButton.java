@@ -1,15 +1,12 @@
 package com.jayemceekay.shadowedhearts.mixin;
 
-import com.cobblemon.mod.common.api.moves.Move;
+import com.cobblemon.mod.common.api.moves.MoveTemplate;
 import com.cobblemon.mod.common.api.types.ElementalType;
-import com.cobblemon.mod.common.client.gui.summary.widgets.screens.moves.MoveSlotWidget;
-import com.jayemceekay.shadowedhearts.common.shadow.ShadowAspectUtil;
+import com.cobblemon.mod.common.client.gui.interact.moveselect.MoveSlotButton;
 import com.jayemceekay.shadowedhearts.util.ShadowMaskingUtil;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.mojang.blaze3d.vertex.PoseStack;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.ResourceLocation;
 import org.spongepowered.asm.mixin.Final;
@@ -20,25 +17,23 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.ModifyArg;
 
 /**
- * Obfuscate locked moves in the Summary -> Moves screen.
- * When a Pokemon is Shadow-locked, non-Shadow moves have their name and PP masked.
- * Also neutralize the colored move bar tint and swap the TypeIcon to a shadow-locked placeholder.
+ * Masks locked moves in the MoveSelectGUI (used by Shadow Scale).
+ * When a move's template name is "shadow-locked", the name, PP, type icon,
+ * and background tint are replaced with shadow-locked placeholders.
  */
-@Mixin(value = MoveSlotWidget.class, remap = false)
-public abstract class MixinMoveSlotWidget {
+@Mixin(value = MoveSlotButton.class, remap = false)
+public abstract class MixinMoveSlotButton {
 
-    @Shadow public abstract Move getMove();
-
-    // Kotlin `private val pokemon: Pokemon` – shadow the backing field by name
     @Final
-    @Shadow private com.cobblemon.mod.common.pokemon.Pokemon pokemon;
+    @Shadow
+    private MoveTemplate move;
 
     @Unique
-    private boolean shadowedhearts$shouldMask() {
-        return ShadowAspectUtil.shouldMaskMove(pokemon, this.getMove());
+    private boolean shadowedhearts$isMasked() {
+        return move != null && move.getName().equalsIgnoreCase("shadow-locked");
     }
 
-    // Mask PP text (first drawScaledText call in MoveSlotWidget.renderWidget)
+    // Mask PP text (first drawScaledText call)
     @ModifyArg(
             method = "renderWidget",
             at = @At(
@@ -49,13 +44,13 @@ public abstract class MixinMoveSlotWidget {
             index = 2
     )
     private MutableComponent shadowedhearts$maskPP(MutableComponent original) {
-        if (shadowedhearts$shouldMask()) {
+        if (shadowedhearts$isMasked()) {
             return ShadowMaskingUtil.MASKED_PP;
         }
         return original;
     }
 
-    // Mask move name (second drawScaledText call in MoveSlotWidget.renderWidget)
+    // Mask move name (second drawScaledText call)
     @ModifyArg(
             method = "renderWidget",
             at = @At(
@@ -66,7 +61,7 @@ public abstract class MixinMoveSlotWidget {
             index = 2
     )
     private MutableComponent shadowedhearts$maskName(MutableComponent original) {
-        if (shadowedhearts$shouldMask()) {
+        if (shadowedhearts$isMasked()) {
             return ShadowMaskingUtil.MASKED_NAME;
         }
         return original;
@@ -102,23 +97,16 @@ public abstract class MixinMoveSlotWidget {
             Object marker,
             Operation<Void> original
     ) {
-        if (shadowedhearts$shouldMask()) {
-            // If the call attempts to tint (rgb != 1), override to a neutral dark gray.
-           // float r = red.floatValue();
-           // float g = green.floatValue();
-           // float b = blue.floatValue();
-            //if (!(r == 1F && g == 1F && b == 1F)) {
-                red = ShadowMaskingUtil.NEUTRAL_TINT[0]; 
-                green = ShadowMaskingUtil.NEUTRAL_TINT[1]; 
-                blue = ShadowMaskingUtil.NEUTRAL_TINT[2]; 
-                alpha = ShadowMaskingUtil.NEUTRAL_TINT[3];
-         //   }
+        if (shadowedhearts$isMasked()) {
+            red = ShadowMaskingUtil.NEUTRAL_TINT[0];
+            green = ShadowMaskingUtil.NEUTRAL_TINT[1];
+            blue = ShadowMaskingUtil.NEUTRAL_TINT[2];
+            alpha = ShadowMaskingUtil.NEUTRAL_TINT[3];
         }
         original.call(poseStack, texture, x, y, height, width, uOffset, vOffset, textureWidth, textureHeight, blitOffset, red, green, blue, alpha, blend, scale, something, marker);
     }
 
-    // Swap the type icon to a shadow-locked placeholder when masked
-    // Handler must be static because it targets a constructor invocation (<init>)
+    // Swap the type icon to shadow-locked
     @ModifyArg(
             method = "renderWidget",
             at = @At(
@@ -127,11 +115,10 @@ public abstract class MixinMoveSlotWidget {
             ),
             index = 2
     )
-    private static ElementalType shadowedhearts$swapType(ElementalType original) {
-        Screen screen = Minecraft.getInstance().screen;
-        if (!(screen instanceof com.cobblemon.mod.common.client.gui.summary.Summary summary)) return original;
-        var pokemon = summary.getSelectedPokemon$common();
-        if (pokemon == null) return original;
-        return ShadowAspectUtil.hasShadowAspect(pokemon) ? ShadowMaskingUtil.getLockedType() : original;
+    private ElementalType shadowedhearts$swapType(ElementalType original) {
+        if (shadowedhearts$isMasked()) {
+            return ShadowMaskingUtil.getLockedType();
+        }
+        return original;
     }
 }

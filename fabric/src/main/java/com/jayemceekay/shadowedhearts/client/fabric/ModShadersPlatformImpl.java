@@ -75,6 +75,11 @@ public final class ModShadersPlatformImpl {
                         DefaultVertexFormat.POSITION_TEX,
                         program -> ModShaders.AURA_STATIC_INTERFERENCE = program
                 );
+                registrationContext.register(
+                        ResourceLocation.parse("shadowedhearts:interference/heat_haze_interference"),
+                        DefaultVertexFormat.POSITION_TEX,
+                        program -> ModShaders.HEAT_HAZE_INTERFERENCE = program
+                );
 
                 registrationContext.register(
                         ResourceLocation.parse("shadowedhearts:hud/barrel_distortion"),

@@ -20,7 +20,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  * Inject into ItemRenderer#render so our quad is centered on the held item model's transform.
  * This makes the effect inherit the vanilla bobbing and hand sway naturally in both first- and third-person.
  */
-@Mixin(ItemInHandLayer.class)
+@Mixin(value = ItemInHandLayer.class)
 public abstract class MixinItemInHandLayer {
 
     @Inject(

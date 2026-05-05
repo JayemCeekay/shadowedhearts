@@ -12,6 +12,13 @@ configurations {
     }
 }
 
+loom {
+    mixin {
+        useLegacyMixinAp = false
+        defaultRefmapName = "shadowedhearts.refmap.json"
+    }
+}
+
 repositories {
     mavenLocal()
     maven {
@@ -86,7 +93,7 @@ dependencies {
     //cobblemon battle extras
     modCompileOnly("maven.modrinth:2iY8VFqL:R1pokY2q")
     //cobblemon party extras
-    modCompileOnly("maven.modrinth:x2wZP9kQ:wxVvkEmX")
+    modCompileOnly("maven.modrinth:x2wZP9kQ:rWc7k8zM")
 
     //mega showdown
     modCompileOnly("maven.modrinth:SszvX85I:QOT9kU2X")

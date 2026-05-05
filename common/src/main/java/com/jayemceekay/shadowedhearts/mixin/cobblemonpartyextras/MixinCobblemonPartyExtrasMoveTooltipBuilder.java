@@ -15,7 +15,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import java.util.List;
 
 @Pseudo
-@Mixin(targets = "party.extras.cobblemon.client.tooltip.MoveTooltipBuilder")
+@Mixin(targets = "party.extras.cobblemon.client.tooltip.MoveTooltipBuilder", remap = false)
 public class MixinCobblemonPartyExtrasMoveTooltipBuilder {
 
 

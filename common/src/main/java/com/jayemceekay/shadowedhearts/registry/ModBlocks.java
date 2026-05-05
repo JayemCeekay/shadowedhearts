@@ -32,9 +32,8 @@ public final class ModBlocks {
             "relic_stone",
             () -> new RelicStoneBlock(BlockBehaviour.Properties
                     .of().mapColor(MapColor.STONE)
-                    .strength(-1.0F, 3600000.0F)
+                    .strength(3.0F, 6.0F)
                     .sound(SoundType.STONE)
-                    .noLootTable()
                     .forceSolidOn())
     );
 

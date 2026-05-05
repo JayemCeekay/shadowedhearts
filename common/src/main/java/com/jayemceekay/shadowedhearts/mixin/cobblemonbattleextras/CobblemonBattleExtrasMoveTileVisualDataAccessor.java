@@ -3,7 +3,7 @@ package com.jayemceekay.shadowedhearts.mixin.cobblemonbattleextras;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.gen.Accessor;
 
-@Mixin(targets = "name.modid.client.CustomBattleController$MoveTileVisualData")
+@Mixin(targets = "name.modid.client.CustomBattleController$MoveTileVisualData", remap = false)
 public interface CobblemonBattleExtrasMoveTileVisualDataAccessor {
 
     @Accessor("moveName")

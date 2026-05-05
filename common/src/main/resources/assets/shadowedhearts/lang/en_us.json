@@ -5,6 +5,8 @@
   "block.shadowedhearts.relic_stone": "Relic Stone",
   "block.shadowedhearts.shadowfall_meteoroid": "Shadowfall Meteoroid Block",
 
+  "gui.shadowedhearts.shadow_scale.title": "Shadow Scale Move Swap",
+
   "item.shadowedhearts.snag_machine_prototype": "Snag Machine Prototype",
   "item.shadowedhearts.snag_machine_advanced": "Snag Machine Advanced",
   "item.shadowedhearts.joy_scent": "Joy Scent",
@@ -27,10 +29,12 @@
   "item.shadowedhearts.shadowium_z": "Shadowium-Z",
   "item.shadowedhearts.aura_reader": "Aura Reader",
   "item.shadowedhearts.pokedex_integrator": "Pokédex Integrator",
-  "item.shadowedhearts.dark_ball": "Dark Ball",
+  "item.shadowedhearts.shadow_scale": "Shadow Scale",
   "item.shadowedhearts.aura_reader.tooltip": "A device that detects and tracks shadow signatures in the environment.",
   "item.shadowedhearts.pokedex_integrator.tooltip": "An upgrade for the Aura Reader that integrates Pokédex scanning capabilities.",
+
   "message.shadowedhearts.pokedex_integrator_required": "Pokédex Integrator upgrade required.",
+
   "aura_scanner.mode.aura_reader": "Aura Reader",
   "aura_scanner.mode.pokedex_scanner": "Pokédex Scanner",
   "aura_scanner.mode.dowsing_machine": "Dowsing Machine",
@@ -150,7 +154,9 @@
   "subtitles.shadowedhearts.aura_scanner_beep": "Aura Scanner beeps",
   "subtitles.shadowedhearts.aura_reader_equip": "Aura Scanner booting up...",
   "subtitles.shadowedhearts.aura_reader_unequip": "Aura Scanner shutting down...",
+
   "shadowedhearts.npc.one_time_trainer": "Challenger",
+
   "tooltip.shadowedhearts.snag_machine.energy": "Energy: %d / %d",
   "tooltip.shadowedhearts.snag_machine.equippable.hand": "Equippable: Accessories Hand Slot",
   "tooltip.shadowedhearts.scent_type.soothing": "Scent Type: Soothing",
@@ -174,6 +180,10 @@
   "message.shadowedhearts.purified_gem.already_shadow": "This Pokémon has already been corrupted.",
   "message.shadowedhearts.purified_gem.already_immunized": "This Pokémon is already immunized.",
   "message.shadowedhearts.purified_gem.immunized": "%s has been immunized against shadow corruption!",
+  "message.shadowedhearts.shadow_scale.not_owned": "You do not own a this Pokémon.",
+  "message.shadowedhearts.shadow_scale.not_shadow": "This is not a Shadow Pokémon.",
+  "message.shadowedhearts.shadow_scale.battle_clone": "You can't use a Shadow Scale on a Shadow Pokémon in a battle!",
+
   "advancements.shadowedhearts.root.title": "Shadowed Hearts",
   "advancements.shadowedhearts.root.description": "The world of Shadow Pokémon awaits...",
   "advancements.shadowedhearts.wild_shadow_defeated.title": "Shadowed Encounter",
@@ -207,6 +217,7 @@
   "item.shadowedhearts.shadow_signal_data.origin": "Origin: %s",
   "item.shadowedhearts.shadow_signal_data.coords": "Coordinates: %d, %d, %d (Radius: %.1f)",
   "item.shadowedhearts.shadow_signal_data.hint": "Right-click to activate with the Aura Reader in the origin region.",
+
   "subtitles.shadowedhearts.hunt_trail_reveal": "Shadow trail reveals",
   "subtitles.shadowedhearts.hunt_calibration_prompt": "Calibration prompt",
   "subtitles.shadowedhearts.hunt_calibration_correct": "Calibration input correct",
@@ -225,6 +236,7 @@
   "subtitles.shadowedhearts.hunt_grade_sloppy": "Sloppy tracking",
   "subtitles.shadowedhearts.hunt_grade_failed": "Tracking failed",
   "subtitles.shadowedhearts.hunt_signal_blackout": "Signal lost",
+
   "hud.shadowedhearts.calibration.title": "CALIBRATING...",
   "hud.shadowedhearts.calibration.amplify": "AMPLIFY",
   "hud.shadowedhearts.calibration.dampen": "DAMPEN",
@@ -255,7 +267,10 @@
   "hud.shadowedhearts.provocation.hint": "Hold position in the hotspot",
   "hud.shadowedhearts.blackout.signal_lost": "◈ SIGNAL LOST ◈",
   "hud.shadowedhearts.scanning": "SCANNING…",
+
   "message.shadowedhearts.hunt.signal_locked": "The Aura Reader locks onto a %s shadow signal. A Shadow Pokémon is near!",
+
+
 
   "series.rctmod.colosseum.title": "Colosseum",
   "series.rctmod.xd.title": "XD: Gale of Darkness",

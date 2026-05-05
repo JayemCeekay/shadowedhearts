@@ -188,16 +188,27 @@ public class RelicStoneBlock extends Block implements EntityBlock {
         }
     }
 
+    private void removeDummyParts(Level level, BlockPos center) {
+        for (int layer = 0; layer <= 2; layer++) {
+            for (int part = 0; part < 9; part++) {
+                if (layer == 0 && part == CENTER_PART) continue;
+                BlockPos p = center.offset(OFFSETS[part][0], layer, OFFSETS[part][1]);
+                if (level.getBlockState(p).getBlock() == this) {
+                    level.setBlock(p, Blocks.AIR.defaultBlockState(), 3);
+                }
+            }
+        }
+    }
+
     @Override
     public @NotNull BlockState playerWillDestroy(Level level, BlockPos pos, BlockState state, Player player) {
         if (!level.isClientSide) {
             BlockPos center = getCenterPos(pos, state);
+            // Always remove dummy parts; leave the center for normal breaking to handle drops.
+            removeDummyParts(level, center);
             if (!pos.equals(center)) {
-                // Breaking any dummy part breaks the center (drops once, cleans up via onRemove/playerWillDestroy).
+                // Breaking a dummy part: also destroy the center (with drops).
                 level.destroyBlock(center, true, player);
-            } else {
-                // Breaking the center directly: ensure the whole structure is removed.
-                removeAllParts(level, center);
             }
         }
         super.playerWillDestroy(level, pos, state, player);
@@ -232,7 +243,7 @@ public class RelicStoneBlock extends Block implements EntityBlock {
         if (!level.isClientSide) {
             if (!state.is(newState.getBlock())) {
                 BlockPos center = getCenterPos(pos, state);
-                removeAllParts(level, center);
+                removeDummyParts(level, center);
 
                 // Send stop sound packet
                 RelicStoneMotePacket stopPacket = new RelicStoneMotePacket(center, true);

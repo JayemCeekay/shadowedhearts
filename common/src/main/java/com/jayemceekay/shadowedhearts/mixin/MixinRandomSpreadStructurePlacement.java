@@ -18,7 +18,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import java.util.Optional;
 
-@Mixin(RandomSpreadStructurePlacement.class)
+@Mixin(value = RandomSpreadStructurePlacement.class)
 public abstract class MixinRandomSpreadStructurePlacement extends StructurePlacement {
     protected MixinRandomSpreadStructurePlacement(Vec3i locateOffset, FrequencyReductionMethod frequencyReductionMethod, float frequency, int salt, Optional<ExclusionZone> exclusionZone) {
         super(locateOffset, frequencyReductionMethod, frequency, salt, exclusionZone);

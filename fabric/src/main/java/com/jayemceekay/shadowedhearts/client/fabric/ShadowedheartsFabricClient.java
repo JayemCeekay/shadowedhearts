@@ -7,14 +7,12 @@ import com.jayemceekay.shadowedhearts.client.ModShaders;
 import com.jayemceekay.shadowedhearts.client.aura.AuraEmitters;
 import com.jayemceekay.shadowedhearts.client.aura.AuraPulseRenderer;
 import com.jayemceekay.shadowedhearts.client.ball.BallEmitters;
-import com.jayemceekay.shadowedhearts.client.gui.AuraReaderManager;
 import com.jayemceekay.shadowedhearts.client.particle.LuminousMoteEmitters;
 import com.jayemceekay.shadowedhearts.client.particle.LuminousMoteParticle;
 import com.jayemceekay.shadowedhearts.client.particle.RelicStoneMoteParticle;
 import com.jayemceekay.shadowedhearts.client.render.DepthCapture;
 import com.jayemceekay.shadowedhearts.client.render.HeldBallSnagGlowRenderer;
 import com.jayemceekay.shadowedhearts.client.sound.RelicStoneSoundManager;
-import com.jayemceekay.shadowedhearts.client.trail.TrailClientState;
 import com.jayemceekay.shadowedhearts.config.ClientConfig;
 import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs;
 import com.jayemceekay.shadowedhearts.content.items.ScentItem;
@@ -35,7 +33,6 @@ import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientEntityEvents;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.particle.v1.ParticleFactoryRegistry;
 import net.fabricmc.fabric.api.client.rendering.v1.ColorProviderRegistry;
-import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.RenderType;
@@ -77,21 +74,14 @@ public final class ShadowedheartsFabricClient implements ClientModInitializer {
         //ModKeybindsPlatformImpl.register(ModKeybinds.DEBUG_REINIT_HUD);
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
-            AuraReaderManager.tick();
             AuraPulseRenderer.tick();
-            if (AuraReaderManager.isActive()) {
-                TrailClientState.INSTANCE.tick();
-            }
             RelicStoneSoundManager.tick();
         });
-        HudRenderCallback.EVENT.register((guiGraphics, tickCounter) -> AuraReaderManager.render(guiGraphics, tickCounter.getGameTimeDeltaPartialTick(true)));
         // Screens
         net.minecraft.client.gui.screens.MenuScreens.register(
                 com.jayemceekay.shadowedhearts.registry.ModMenuTypes.AURA_READER_UPGRADES.get(),
                 com.jayemceekay.shadowedhearts.client.gui.AuraReaderUpgradeScreen::new
         );
-
-        ClientRawInputEvent.MOUSE_SCROLLED.register((minecraft, v, v1) -> EventResult.interrupt(AuraReaderManager.handleShiftScroll(v1)));
 
         // Special Model Loader registration
         SpecialModelLoaderEvents.LOAD_SCOPE.register(() -> (resourceManager, location) -> Shadowedhearts.MOD_ID.equals(location.getNamespace()));
@@ -143,16 +133,6 @@ public final class ShadowedheartsFabricClient implements ClientModInitializer {
             AuraEmitters.onRender(context.camera(), context.camera().getPartialTickTime());
             BallEmitters.onRender(context.camera(), context.camera().getPartialTickTime());
 
-            // Shadow aura trail tube rendering — only when Aura Reader HUD is active
-            var mc = Minecraft.getInstance();
-            if (mc.level != null && AuraReaderManager.isActive()) {
-                PoseStack pose = context.matrixStack();
-                var buffers = mc.renderBuffers().bufferSource();
-                float pt = context.camera().getPartialTickTime();
-                float hudAlpha = AuraReaderManager.HUD_STATE.fadeAmountVal;
-                TrailClientState.INSTANCE.render(pt, pose, buffers, hudAlpha);
-                buffers.endBatch();
-            }
         });
 
         WorldRenderEvents.END.register(worldRenderContext -> {

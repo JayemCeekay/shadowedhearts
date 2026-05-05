@@ -10,7 +10,7 @@ import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.ModifyArg;
 
-@Mixin(LivingEntityRenderer.class)
+@Mixin(value = LivingEntityRenderer.class)
 public abstract class MixinLivingEntityRenderer<T extends LivingEntity> {
 
     @ModifyArg(
@@ -30,16 +30,6 @@ public abstract class MixinLivingEntityRenderer<T extends LivingEntity> {
         if (shadowedhearts$shouldDarken(livingEntity)) {
             color = shadowedhearts$mulRGB1(color, 0.65f); // 35% darker
         }
-       /* if (livingEntity instanceof PokemonEntity) {
-            // Red highlight when in target selection mode and under crosshair
-           /* if (TargetSelectionClient.isHighlighted(livingEntity.getId())) {
-                color = shadowedhearts$mulRGB3(color, TargetSelectionClient.HIL_R, TargetSelectionClient.HIL_G, TargetSelectionClient.HIL_B);
-            }
-            // Green tint for whistle brush-selected allies
-            if (WhistleSelectionClient.isSelected(livingEntity.getId())) {
-                color = shadowedhearts$mulRGB3(color, WhistleSelectionClient.SEL_R, WhistleSelectionClient.SEL_G, WhistleSelectionClient.SEL_B);
-            }
-        }*/
         return color;
     }
 

@@ -11,7 +11,7 @@ import org.spongepowered.asm.mixin.Pseudo;
 import org.spongepowered.asm.mixin.Shadow;
 
 @Pseudo
-@Mixin(value = Summary.class, remap = false)
+@Mixin(value = Summary.class)
 public abstract class MixinCobblemonPartyExtrasSummaryUIMixin {
 
     @Shadow

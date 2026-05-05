@@ -10,11 +10,11 @@ import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.llamalad7.mixinextras.sugar.Local;
 import com.llamalad7.mixinextras.sugar.ref.LocalRef;
-import name.modid.client.CustomBattleController;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Pseudo;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Coerce;
@@ -29,7 +29,8 @@ import java.util.List;
 // CustomBattleController manages the rendering of a few things:
 // * The tooptip that appears when hovering a Pokémon on the "Switch Pokémon" menu.
 // * The rendering of the custom Move Tiles when "enableCustomMoveTiles" is true in the config
-@Mixin(value = CustomBattleController.class)
+@Pseudo
+@Mixin(targets = "name.modid.client.CustomBattleController", remap = false)
 public class CobblemonBattleExtrasCustomBattleControllerMixin {
 
     /*
@@ -38,13 +39,11 @@ public class CobblemonBattleExtrasCustomBattleControllerMixin {
 
     // Mask attack details and change type in Switch Pokémon tooltip
     @Inject(
-            method = "renderSwitchMovesTooltip(Lnet/minecraft/client/gui/GuiGraphics;Ljava/lang/Object;IIII)V",
+            method = "renderSwitchMovesTooltip",
             remap = false,
             at = @At(
                     value = "INVOKE",
-                    target = "Lname/modid/client/CustomBattleController;renderClassicSwitchMovesTooltip(Lnet/minecraft/client/gui/GuiGraphics;Lnet/minecraft/client/gui/Font;Ljava/util/List;Ljava/util/List;Ljava/lang/String;Ljava/lang/Integer;Ljava/util/List;II)V",
-                    remap = false
-            )
+                    target = "Lname/modid/client/CustomBattleController;renderClassicSwitchMovesTooltip(Lnet/minecraft/client/gui/GuiGraphics;Lnet/minecraft/client/gui/Font;Ljava/util/List;Ljava/util/List;Ljava/lang/String;Ljava/lang/Integer;Ljava/util/List;II)V", remap = false)
     )
     private static void shadowedhearts$maskAttackDetailsSwitchMenu(CallbackInfo ci, @Local(name = "pokemon") Object pokemon, @Local(name = "moveInfos") List<?> moveInfos, @Local(name = "movePreviewLines") LocalRef<List<Component>> movePreviewLines) {
         List<Component> originalPreviewLines = movePreviewLines.get();
@@ -73,7 +72,7 @@ public class CobblemonBattleExtrasCustomBattleControllerMixin {
     }
 
     // Render Shadow icon in Switch Pokémon tooltip
-    @WrapOperation(method = "renderClassicSwitchMovesTooltip(Lnet/minecraft/client/gui/GuiGraphics;Lnet/minecraft/client/gui/Font;Ljava/util/List;Ljava/util/List;Ljava/lang/String;Ljava/lang/Integer;Ljava/util/List;II)V", remap = false, at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/GuiGraphics;blit(Lnet/minecraft/resources/ResourceLocation;IIIIFFIIII)V", remap = false))
+    @WrapOperation(method = "renderClassicSwitchMovesTooltip", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/GuiGraphics;blit(Lnet/minecraft/resources/ResourceLocation;IIIIFFIIII)V"))
     private static void shadowedhearts$renderShadowIconSwitchMenu(GuiGraphics instance, ResourceLocation resourceLocation, int x, int y, int renderSizeX, int renderSizeY, float texU, float texV, int uvWidth, int uvHeight, int imgSizeX, int imgSizeY, Operation<Void> original, @Local(name = "moveInfos") List<?> moveInfos, @Local(name = "i") int index) {
         CobblemonBattleExtrasMoveDisplayInfoAccessor moveInfo = (CobblemonBattleExtrasMoveDisplayInfoAccessor) moveInfos.get(index);
         ElementalType type = (ElementalType) moveInfo.shadowedhearts$getMoveType();
@@ -97,7 +96,7 @@ public class CobblemonBattleExtrasCustomBattleControllerMixin {
      */
 
     // Modify MoveTileVisualData for Custom Tiles
-    @WrapOperation(method = "renderCustomMoveTiles(Lnet/minecraft/client/gui/GuiGraphics;II)V", remap = false, at = @At(value = "INVOKE", target = "Lname/modid/client/CustomBattleController;resolveMoveTileVisualData(Ljava/lang/Object;)Lname/modid/client/CustomBattleController$MoveTileVisualData;", remap = false))
+    @WrapOperation(method = "renderCustomMoveTiles*", at = @At(value = "INVOKE", target = "Lname/modid/client/CustomBattleController;resolveMoveTileVisualData(Ljava/lang/Object;)Lname/modid/client/CustomBattleController$MoveTileVisualData;"))
     private static @Coerce Object shadowedhearts$shadowMoveTileVisualData(Object tile, Operation<Object> original) {
         Object originalObj = original.call(tile);
 
@@ -173,7 +172,7 @@ public class CobblemonBattleExtrasCustomBattleControllerMixin {
     }
 
     // Render shadow icon in Custom Tiles
-    @WrapOperation(method = "renderCustomMoveTile(Lnet/minecraft/client/gui/GuiGraphics;Lnet/minecraft/client/gui/Font;IIIILname/modid/client/CustomBattleController$MoveTileVisualData;ZZFLjava/util/List;)V", remap = false, at = @At(value = "INVOKE", target = "Lname/modid/client/CustomBattleController;renderMoveTypeBadgeIcon(Lnet/minecraft/client/gui/GuiGraphics;Lname/modid/client/CustomBattleController$MoveTileVisualData;IIF)V", remap = false))
+    @WrapOperation(method = "renderCustomMoveTile", at = @At(value = "INVOKE", target = "Lname/modid/client/CustomBattleController;renderMoveTypeBadgeIcon(Lnet/minecraft/client/gui/GuiGraphics;Lname/modid/client/CustomBattleController$MoveTileVisualData;IIF)V"))
     private static void shadowedhearts$renderShadowIcon(GuiGraphics graphics, @Coerce Object data, int x, int y, float opacity, Operation<Void> original) {
         CobblemonBattleExtrasMoveTileVisualDataAccessor tileVisualDataExt = (CobblemonBattleExtrasMoveTileVisualDataAccessor) data;
         if (tileVisualDataExt.shadowedhearts$getMoveTypeName().equals("shadow")) {
@@ -190,7 +189,7 @@ public class CobblemonBattleExtrasCustomBattleControllerMixin {
 
     // Create custom CategoryChipStyle with ??? data.
     // Both "Object" are CategoryChipStyle.
-    @WrapOperation(method = "renderCustomMoveTile(Lnet/minecraft/client/gui/GuiGraphics;Lnet/minecraft/client/gui/Font;IIIILname/modid/client/CustomBattleController$MoveTileVisualData;ZZFLjava/util/List;)V", remap = false, at = @At(value = "INVOKE", target = "Lname/modid/client/CustomBattleController;resolveMoveCategoryChipStyle(Ljava/lang/String;)Lname/modid/client/CustomBattleController$CategoryChipStyle;", remap = false))
+    @WrapOperation(method = "renderCustomMoveTile*", at = @At(value = "INVOKE", target = "Lname/modid/client/CustomBattleController;resolveMoveCategoryChipStyle(Ljava/lang/String;)Lname/modid/client/CustomBattleController$CategoryChipStyle;"))
     private static @Coerce Object shadowedhearts$resolveChipStyle(String categoryKey, Operation<Object> original) {
         if (categoryKey.equals("???")) {
             try {

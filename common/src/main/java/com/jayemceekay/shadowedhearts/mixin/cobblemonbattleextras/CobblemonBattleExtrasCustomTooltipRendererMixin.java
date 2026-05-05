@@ -5,21 +5,22 @@ import com.cobblemon.mod.common.api.types.ElementalTypes;
 import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.sugar.Local;
-import name.modid.client.CustomTooltipRenderer;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.resources.ResourceLocation;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Pseudo;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.ModifyArgs;
 import org.spongepowered.asm.mixin.injection.invoke.arg.Args;
 
 // Only for >=1.7.41
 // CustomTooltipRenderer renders the attack tooltip when selecting it
-@Mixin(CustomTooltipRenderer.class)
+@Pseudo
+@Mixin(targets = "name.modid.client.CustomTooltipRenderer", remap = false)
 public class CobblemonBattleExtrasCustomTooltipRendererMixin {
 
     // Render shadow icon
-    @WrapMethod(method = "renderTypeIcon(Lnet/minecraft/client/gui/GuiGraphics;IILcom/cobblemon/mod/common/api/types/ElementalType;)V", remap = false)
+    @WrapMethod(method = "renderTypeIcon")
     private static void shadowedhearts$renderTypeIcon(GuiGraphics graphics, int x, int y, ElementalType type, Operation<Void> original) {
         if (type.equals(ElementalTypes.get("shadow"))) {
             ResourceLocation texture = ResourceLocation.fromNamespaceAndPath("shadowedhearts", "textures/gui/shadow_type_small.png");
@@ -32,7 +33,7 @@ public class CobblemonBattleExtrasCustomTooltipRendererMixin {
     }
 
     // Render shadow icon
-    @WrapMethod(method = "renderTypeIconLarge(Lnet/minecraft/client/gui/GuiGraphics;IILcom/cobblemon/mod/common/api/types/ElementalType;)V", remap = false)
+    @WrapMethod(method = "renderTypeIconLarge")
     private static void shadowedhearts$renderTypeIconLarge(GuiGraphics graphics, int x, int y, ElementalType type, Operation<Void> original) {
         if (type.equals(ElementalTypes.get("shadow"))) {
             ResourceLocation texture = ResourceLocation.fromNamespaceAndPath("shadowedhearts", "textures/gui/shadow_type.png");
@@ -45,7 +46,7 @@ public class CobblemonBattleExtrasCustomTooltipRendererMixin {
     }
 
     // Render shadow icon
-    @WrapMethod(method = "renderTypeIconSmall(Lnet/minecraft/client/gui/GuiGraphics;IILcom/cobblemon/mod/common/api/types/ElementalType;)V", remap = false)
+    @WrapMethod(method = "renderTypeIconSmall")
     private static void shadowedhearts$renderTypeIconSmall(GuiGraphics graphics, int x, int y, ElementalType type, Operation<Void> original) {
         if (type.equals(ElementalTypes.get("shadow"))) {
             ResourceLocation texture = ResourceLocation.fromNamespaceAndPath("shadowedhearts", "textures/gui/shadow_type_small.png");
@@ -59,12 +60,10 @@ public class CobblemonBattleExtrasCustomTooltipRendererMixin {
 
     // Move the PP text a bit if the type is Shadow so it doesn't overlap with the bright area of the image
     @ModifyArgs(method = "renderClassicMoveTileForegroundOverlay",
-            remap = false,
+            
             at = @At(
                     value = "INVOKE",
-                    target = "Lname/modid/client/CustomTooltipRenderer;drawScaledTextRightAligned(Lnet/minecraft/client/gui/GuiGraphics;Lnet/minecraft/client/gui/Font;Ljava/lang/String;IIIF)V",
-                    remap = false
-            ))
+                    target = "Lname/modid/client/CustomTooltipRenderer;drawScaledTextRightAligned(Lnet/minecraft/client/gui/GuiGraphics;Lnet/minecraft/client/gui/Font;Ljava/lang/String;IIIF)V"))
     private static void shadowedhearts$movePPText(Args args, @Local(argsOnly = true) ElementalType type) {
         if (type.equals(ElementalTypes.get("shadow"))) {
             int x = args.get(3);
