@@ -140,6 +140,9 @@ class PurificationChamberGUI(
     private var currentStatIndex = 0
     private lateinit var setNameWidget: SetNameWidget
 
+    /** Tutorial overlay that renders step-by-step popups over the GUI. */
+    private val tutorialOverlay = PurificationTutorialOverlay()
+
     var ticksElapsed = 0
 
     // Animated select pointer offset (mirror PCGUI behavior)
@@ -331,6 +334,19 @@ class PurificationChamberGUI(
                 UnlinkPlayerFromPurificationChamberPacket().sendToServer()
                 Minecraft.getInstance().setScreen(null)
 
+            }
+        )
+
+        // Tutorial "?" button — opens the step-by-step tutorial overlay
+        this.addRenderableWidget(
+            PurificationActionButton(
+                x = x + 14,
+                y = y + 203,
+                labelSupplier = { Component.literal("Tutorial") },
+                visibleSupplier = { !tutorialOverlay.isActive }
+            ) {
+                playClick()
+                startTutorial()
             }
         )
 
@@ -828,6 +844,9 @@ class PurificationChamberGUI(
 
         super.render(context, mouseX, mouseY, partialTick)
 
+        // Render tutorial overlay on top of everything else
+        tutorialOverlay.render(context, mouseX, mouseY, partialTick)
+
         val centerPokemon = purificationStorage.get(PurificationPosition(0))
         if (centerPokemon != null && !ShadowAspectUtil.hasShadowAspect(
                 centerPokemon
@@ -909,11 +928,23 @@ class PurificationChamberGUI(
         }
     }
 
+    override fun mouseClicked(
+        mouseX: Double,
+        mouseY: Double,
+        button: Int
+    ): Boolean {
+        // Let the tutorial overlay consume clicks when active
+        if (tutorialOverlay.handleClick(mouseX, mouseY, button)) return true
+        return super.mouseClicked(mouseX, mouseY, button)
+    }
+
     override fun keyPressed(
         keyCode: Int,
         scanCode: Int,
         modifiers: Int
     ): Boolean {
+        // Let the tutorial overlay consume key presses when active
+        if (tutorialOverlay.handleKeyPress(keyCode)) return true
         when (keyCode) {
             InputConstants.KEY_ESCAPE -> {
                 playSound(CobblemonSounds.PC_OFF)
@@ -1059,6 +1090,72 @@ class PurificationChamberGUI(
         j: Int,
         f: Float
     ) {
+    }
+
+    /**
+     * Builds the tutorial steps and starts the overlay.
+     *
+     * Each [TutorialStep] defines a tooltip-style popup at (posX, posY) with the
+     * given text. Steps are shown sequentially; left-click or any key advances,
+     * right-click goes back, and Escape dismisses.
+     */
+    private fun startTutorial() {
+        val x = (width - BASE_WIDTH) / 2
+        val y = (height - BASE_HEIGHT) / 2
+
+        tutorialOverlay.steps = listOf(
+            // Step 1 — Placeholder: introduce the chamber
+            TutorialStep(
+                text = Component.literal("Welcome to the Purification Chamber! Here you can purify shadow Pokemon with the help of your other Pokemon."),
+                posX = x + BASE_WIDTH / 2,
+                posY = y + 40,
+                0,
+                width = width / 4
+            ),
+            // Step 2 — Placeholder: explain the center slot
+            TutorialStep(
+                text = Component.literal("Place a Shadow Pokemon in the top slot to begin purifying it. Click the slot and then click add and select a Shadow Pokemon from your PC!"),
+                posX = x + BASE_WIDTH / 2,
+                posY = y + 40,
+                width = width / 4,
+                arrowSide = ArrowSide.RIGHT,
+                arrowTargetX = x + BASE_WIDTH / 2 + 133,
+                arrowTargetY = y + 42,
+                highlightX = x + BASE_WIDTH / 2 + 121,
+                highlightY = y + 17,
+                highlightWidth = 25,
+                highlightHeight = 25
+            ),
+            // Step 3 — Placeholder: explain support slots
+            TutorialStep(
+                text = Component.literal("Add support Pokemon in the surrounding slots to accelerate the purification process."),
+                posX = x + BASE_WIDTH / 2,
+                posY = y + 40,
+                width = width / 4,
+                arrowSide = ArrowSide.RIGHT,
+                arrowTargetX = x + BASE_WIDTH / 2 + 120,
+                arrowTargetY = y + 82,
+                highlightX = x + BASE_WIDTH / 2 + 121,
+                highlightY = y + 48,
+                highlightWidth = 25,
+                highlightHeight = 109
+            ),
+            // Step 4 — Placeholder: explain tempo & flow
+            TutorialStep(
+                text = Component.literal("Tempo and Flow affect purification speed. It changes depending on the type effectiveness of the supporting Pokemon with each other. Green arrows are good, Red arrows are bad."),
+                posX = x + BASE_WIDTH / 2,
+                posY = y + 40,
+                width = width / 4,
+            ),
+            // Step 5 — Placeholder: explain purify button
+            TutorialStep(
+                text = Component.literal("Walk around for a while to lower the Heart Gauge. Press Purify when the Heart Gauge reaches zero!"),
+                posX = x + BASE_WIDTH / 2,
+                posY = y + 40,
+                width = width / 4,
+            )
+        )
+        tutorialOverlay.start()
     }
 
     override fun isPauseScreen() = false
