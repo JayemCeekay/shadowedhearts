@@ -1,5 +1,5 @@
 plugins {
-    id 'com.github.johnrengelman.shadow'
+    id 'com.gradleup.shadow'
     id 'org.jetbrains.kotlin.jvm' version '2.2.0'
 }
 
@@ -8,23 +8,6 @@ var devEnv = false;
 architectury {
     platformSetupLoomIde()
     neoForge()
-    loom {
-        runs {
-            devClient2 {
-                client()
-                runDir "runDevClient2"
-                ideConfigGenerated = true
-                programArgs "--username", "Ved"
-                devEnv = true
-            }
-            devServer {
-                server()
-                runDir "runDevServer"
-                ideConfigGenerated = true
-                devEnv = true
-            }
-        }
-    }
 }
 
 loom {
@@ -34,11 +17,6 @@ loom {
     }
 }
 
-task runMultiplayer {
-    group = "loom"
-    description = "Runs Client, DevClient2, and DevServer"
-    dependsOn "runClient", "runDevClient2", "runDevServer"
-}
 
 configurations {
     common {
