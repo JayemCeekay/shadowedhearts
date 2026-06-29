@@ -1,0 +1,13 @@
+{
+  "pokeball": "cobblemon:penumbra_ball",
+  "order": 0,
+  "variations": [
+    {
+      "aspects": [],
+      "poser": "cobblemon:poke_ball",
+      "model": "cobblemon:poke_ball.geo",
+      "texture": "shadowedhearts:textures/item/poke_balls/models/penumbra_ball.png",
+      "layers": []
+    }
+  ]
+}

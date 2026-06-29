@@ -10,7 +10,6 @@ architectury {
 
 loom {
     mixin {
-        useLegacyMixinAp = false
         defaultRefmapName = "shadowedhearts.refmap.json"
     }
 }
@@ -57,6 +56,8 @@ repositories {
 }
 
 dependencies {
+    minecraft "net.minecraft:minecraft:$rootProject.minecraft_version"
+    mappings loom.officialMojangMappings()
     modImplementation "net.fabricmc:fabric-loader:$rootProject.fabric_loader_version"
 
     modImplementation "net.fabricmc.fabric-api:fabric-api:$rootProject.fabric_api_version"
@@ -69,10 +70,6 @@ dependencies {
     modImplementation( "com.cobblemon:fabric:${cobblemon_version}")
 
     modCompileOnly("io.wispforest:accessories-fabric:${project.accessories_version}")
-
-    //FluxUI
-    modImplementation("com.jayemceekay:fluxui-fabric:1.0-SNAPSHOT")
-    include("com.jayemceekay:fluxui-fabric:1.0-SNAPSHOT")
 
     //cobblemon battle extras
     modImplementation("maven.modrinth:2iY8VFqL:R1pokY2q")

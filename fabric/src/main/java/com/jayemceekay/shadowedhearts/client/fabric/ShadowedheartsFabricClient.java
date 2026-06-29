@@ -78,10 +78,6 @@ public final class ShadowedheartsFabricClient implements ClientModInitializer {
             RelicStoneSoundManager.tick();
         });
         // Screens
-        net.minecraft.client.gui.screens.MenuScreens.register(
-                com.jayemceekay.shadowedhearts.registry.ModMenuTypes.AURA_READER_UPGRADES.get(),
-                com.jayemceekay.shadowedhearts.client.gui.AuraReaderUpgradeScreen::new
-        );
 
         // Special Model Loader registration
         SpecialModelLoaderEvents.LOAD_SCOPE.register(() -> (resourceManager, location) -> Shadowedhearts.MOD_ID.equals(location.getNamespace()));

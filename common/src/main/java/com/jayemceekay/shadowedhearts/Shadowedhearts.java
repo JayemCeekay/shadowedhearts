@@ -19,8 +19,6 @@ import com.jayemceekay.shadowedhearts.common.shadow.WildShadowSpawnListener;
 import com.jayemceekay.shadowedhearts.common.shadow.restrictions.ShadowRestrictions;
 import com.jayemceekay.shadowedhearts.common.snag.ShadowCatchRateListener;
 import com.jayemceekay.shadowedhearts.common.snag.SnagEvents;
-import com.jayemceekay.shadowedhearts.common.tracking.NodeEventTickHandler;
-import com.jayemceekay.shadowedhearts.common.tracking.ShadowSignalPoolRegistry;
 import com.jayemceekay.shadowedhearts.common.util.SpeciesTagManager;
 import com.jayemceekay.shadowedhearts.config.HeartGaugeConfig;
 import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs;
@@ -91,7 +89,6 @@ public final class Shadowedhearts {
         ModCreativeTabs.init();
         ModBlockEntities.init();
         ModPoiTypes.init();
-        ModMenuTypes.init();
         ModCriteriaTriggers.init();
         AuraServerSync.init();
         AuraReaderEvents.init();
@@ -106,7 +103,6 @@ public final class Shadowedhearts {
         ShadowProgressionManager.init();
         ShadowRestrictions.init();
         PurificationStepTracker.INSTANCE.init();
-        NodeEventTickHandler.INSTANCE.init();
         BattleSentOnceListener.INSTANCE.init();
         WildShadowSpawnListener.init();
         ShadowCatchRateListener.init();
@@ -123,9 +119,6 @@ public final class Shadowedhearts {
         PlayerDataExtensionRegistry.INSTANCE.register(ShadowedHeartsPlayerData.NAME, ShadowedHeartsPlayerData.class, false);
         HeartGaugeConfig.ensureLoaded();
         ReloadListenerRegistry.register(PackType.SERVER_DATA, SpeciesTagManager.INSTANCE);
-
-        // Load shadow signal species pools when server starts
-        LifecycleEvent.SERVER_STARTED.register(ShadowSignalPoolRegistry::load);
 
         RULE_SHADOW_STARTERS = GameRules.register("doShadowStarters", GameRules.Category.MISC, GameRules.BooleanValue.create(false));
 

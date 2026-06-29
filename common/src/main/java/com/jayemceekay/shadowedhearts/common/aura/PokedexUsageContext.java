@@ -12,8 +12,6 @@ import com.cobblemon.mod.common.net.messages.server.pokedex.scanner.FinishScanni
 import com.cobblemon.mod.common.net.messages.server.pokedex.scanner.StartScanningPacket;
 import com.cobblemon.mod.common.pokedex.scanner.PokemonScanner;
 import com.cobblemon.mod.common.pokedex.scanner.ScannableEntity;
-import com.jayemceekay.shadowedhearts.client.gui.AuraReaderManager;
-import com.jayemceekay.shadowedhearts.client.gui.AuraScannerHudState;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -76,7 +74,7 @@ public class PokedexUsageContext {
 
     public void renderUpdate(GuiGraphics graphics, DeltaTracker tickCounter) {
         float tickDelta = Minecraft.getInstance().isPaused() ? 0.0F : tickCounter.getRealtimeDeltaTicks();
-        float updateInterval = (tickDelta / 20.0F) * AuraScannerHudState.RENDER_UPDATES_PER_SECOND;
+        float updateInterval = (tickDelta / 20.0F) * (1.0F / 0.0175F);
 
         if (scanningGuiOpen && viewInfoTicks < VIEW_INFO_BUFFER_TICKS) {
             if (transitionIntervals < TRANSITION_INTERVALS) {
@@ -271,7 +269,6 @@ public class PokedexUsageContext {
 
         playSound(CobblemonSounds.POKEDEX_SCAN_ZOOM_INCREMENT);
         zoomLevel = Math.max(0.0F, Math.min(ZOOM_MAX_STEP, zoomLevel + (float) verticalScrollAmount));
-        AuraReaderManager.HUD_STATE.innerRingRotationVal = (AuraReaderManager.HUD_STATE.innerRingRotationVal + 15) % 360;
         double startLog = Math.log(ZOOM_BASE_FOV);
         double targetLog = Math.log(ZOOM_TARGET_FOV);
         double stepSize = (startLog - targetLog) / ZOOM_MAX_STEP;

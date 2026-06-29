@@ -1,6 +1,5 @@
-package com.jayemceekay.shadowedhearts.content.items;
+/*package com.jayemceekay.shadowedhearts.content.items;
 
-import com.jayemceekay.shadowedhearts.common.tracking.ShadowSignalTier;
 import com.jayemceekay.shadowedhearts.network.ShadowedHeartsNetwork;
 import com.jayemceekay.shadowedhearts.network.aura.AuraPulsePacket;
 import net.minecraft.ChatFormatting;
@@ -36,7 +35,7 @@ import java.util.Random;
  * <p>
  * Items can optionally carry a seed for deterministic hunt generation, and an
  * origin region tag to enforce location-based activation.
- */
+ *
 public class ShadowSignalDataItem extends Item {
 
     private static final String TAG_ROOT = "ShadowSignal";
@@ -63,7 +62,7 @@ public class ShadowSignalDataItem extends Item {
     /**
      * Write a hunt seed into the item's custom data.
      * If no seed is set, one will be generated on activation.
-     */
+     *
     public static void setSeed(ItemStack stack, long seed) {
         CustomData existing = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY);
         CompoundTag root = existing.copyTag();
@@ -75,7 +74,7 @@ public class ShadowSignalDataItem extends Item {
 
     /**
      * Read the hunt seed from the item. Returns 0 if not set.
-     */
+     *
     public static long getSeed(ItemStack stack) {
         CustomData data = stack.get(DataComponents.CUSTOM_DATA);
         if (data == null) return 0;
@@ -86,7 +85,7 @@ public class ShadowSignalDataItem extends Item {
 
     /**
      * Whether this item has a pre-set seed.
-     */
+     *
     public static boolean hasSeed(ItemStack stack) {
         CustomData data = stack.get(DataComponents.CUSTOM_DATA);
         if (data == null) return false;
@@ -97,7 +96,7 @@ public class ShadowSignalDataItem extends Item {
 
     /**
      * Write an origin region identifier (e.g. biome or dimension key).
-     */
+     *
     public static void setOrigin(ItemStack stack, String origin) {
         CustomData existing = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY);
         CompoundTag root = existing.copyTag();
@@ -109,7 +108,7 @@ public class ShadowSignalDataItem extends Item {
 
     /**
      * Read the origin region from the item. Returns empty string if not set.
-     */
+     *
     public static String getOrigin(ItemStack stack) {
         CustomData data = stack.get(DataComponents.CUSTOM_DATA);
         if (data == null) return "";
@@ -173,7 +172,7 @@ public class ShadowSignalDataItem extends Item {
     /**
      * Get the effective seed for hunt generation.
      * Uses the stored seed if present, otherwise generates one.
-     */
+     *
     public static long getEffectiveSeed(ItemStack stack) {
         if (hasSeed(stack)) return getSeed(stack);
         return new Random().nextLong();
@@ -181,7 +180,7 @@ public class ShadowSignalDataItem extends Item {
 
     /**
      * Get the tier from any ShadowSignalDataItem stack.
-     */
+     *
     public static ShadowSignalTier getTierFromStack(ItemStack stack) {
         if (stack.getItem() instanceof ShadowSignalDataItem signalItem) {
             return signalItem.getTier();
@@ -200,7 +199,7 @@ public class ShadowSignalDataItem extends Item {
                 ShadowedHeartsNetwork.sendToServer(new AuraPulsePacket(slotIndex));
                 return InteractionResultHolder.sidedSuccess(stack, true);
             }
-        }*/
+        }*
 
         return InteractionResultHolder.pass(stack);
     }
@@ -259,7 +258,7 @@ public class ShadowSignalDataItem extends Item {
 
     /**
      * Map tier to item rarity for display purposes.
-     */
+     *
     public static Rarity tierToRarity(ShadowSignalTier tier) {
         return switch (tier) {
             case FAINT, WEAK -> Rarity.COMMON;
@@ -268,4 +267,4 @@ public class ShadowSignalDataItem extends Item {
             case RESONANT -> Rarity.EPIC;
         };
     }
-}
+}*/

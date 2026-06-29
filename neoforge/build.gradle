@@ -12,9 +12,9 @@ architectury {
 
 loom {
     mixin {
-        useLegacyMixinAp = false
         defaultRefmapName = "shadowedhearts.refmap.json"
     }
+    silentMojangMappingsLicense()
 }
 
 
@@ -69,6 +69,8 @@ repositories {
 }
 
 dependencies {
+    minecraft "net.minecraft:minecraft:$rootProject.minecraft_version"
+    mappings loom.officialMojangMappings()
     neoForge "net.neoforged:neoforge:$rootProject.neoforge_version"
 
     modImplementation "dev.architectury:architectury-neoforge:$rootProject.architectury_api_version"
@@ -82,10 +84,6 @@ dependencies {
     //kotlin for forge
     modCompileOnly("maven.modrinth:ordsPcFz:4qCjWixP")
     runtimeOnly("maven.modrinth:ordsPcFz:4qCjWixP")
-
-    //FluxUI
-    modImplementation("com.jayemceekay:fluxui-neoforge:1.0-SNAPSHOT")
-    include("com.jayemceekay:fluxui-neoforge:1.0-SNAPSHOT")
 
     //iris shaders
     modCompileOnly("maven.modrinth:YL57xq9U:t3ruzodq")
@@ -125,14 +123,14 @@ dependencies {
     //cobblemon tim core
     //modRuntimeOnly("maven.modrinth:lVP9aUaY:YhsWrN4q")
 
-
-    modImplementation("maven.modrinth:SszvX85I:bOTrftup")
+    //cobblemon mega showdown
+    modImplementation("maven.modrinth:SszvX85I:BAOrFYvg")
 
     //simpleTMs
     modCompileOnly("maven.modrinth:yFqR0DNc:uaKfPMYS")
 
     //lost lore
-    modImplementation("maven.modrinth:49cNEVjn:IBU0110B")
+    modImplementation("maven.modrinth:49cNEVjn:IJowghCi")
 
 }
 

@@ -32,6 +32,11 @@ public final class PropertyRegistration {
                 return new HeartGaugeProperty(Integer.parseInt(val));
             }, () -> List.of("0", "50", "100"));
 
+            CustomPokemonProperty.Companion.register("sh_heartgaugemax", true, (val) -> {
+                if (val == null) return null;
+                return new HeartGaugeMaxProperty(Integer.parseInt(val));
+            }, () -> List.of("5000", "10000", "20000"));
+
             CustomPokemonProperty.Companion.register("sh_xp_buf", true, (val) -> {
                 if (val == null) return null;
                 return new XPBufferProperty(Integer.parseInt(val));

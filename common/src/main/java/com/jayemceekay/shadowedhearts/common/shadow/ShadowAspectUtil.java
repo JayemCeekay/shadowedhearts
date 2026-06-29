@@ -40,6 +40,7 @@ public final class ShadowAspectUtil {
     private static final String NBT_XP_BUF = "shadowedhearts:xpbuf";
     private static final String NBT_EV_BUF = "shadowedhearts:evbuf";
     private static final String NBT_SCENT_COOLDOWN = "shadowedhearts:scent_cooldown";
+    private static final String NBT_HEART_GAUGE_MAX = "shadowedhearts:heartgaugemax";
 
     /**
      * Add/remove the Shadow aspect on the Pokemon’s stored data.
@@ -368,6 +369,30 @@ public final class ShadowAspectUtil {
                 .map(p -> ((EVBufferProperty) p).getValues())
                 .findFirst()
                 .orElse(null);
+    }
+
+    public static void setHeartGaugeMaxProperty(Pokemon pokemon, int value) {
+        setHeartGaugeMaxProperty(pokemon, value, true);
+    }
+
+    public static void setHeartGaugeMaxProperty(Pokemon pokemon, int value, boolean sync) {
+        pokemon.getCustomProperties().removeIf(p -> p instanceof HeartGaugeMaxProperty);
+        pokemon.getCustomProperties().add(new HeartGaugeMaxProperty(value));
+        pokemon.getPersistentData().putInt(NBT_HEART_GAUGE_MAX, value);
+        if (sync) syncProperties(pokemon);
+    }
+
+    public static int getHeartGaugeMaxFromProperty(Pokemon pokemon) {
+        return pokemon.getCustomProperties().stream()
+                .filter(p -> p instanceof HeartGaugeMaxProperty)
+                .map(p -> ((HeartGaugeMaxProperty) p).getValue())
+                .findFirst()
+                .orElseGet(() -> {
+                    if (pokemon.getPersistentData().contains(NBT_HEART_GAUGE_MAX)) {
+                        return pokemon.getPersistentData().getInt(NBT_HEART_GAUGE_MAX);
+                    }
+                    return -1;
+                });
     }
 
     public static void setScentCooldown(Pokemon pokemon, long value) {

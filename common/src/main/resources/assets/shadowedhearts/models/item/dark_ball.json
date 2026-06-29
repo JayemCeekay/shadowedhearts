@@ -1,6 +1,0 @@
-{
-	"parent": "minecraft:item/generated",
-	"textures": {
-		"layer0": "shadowedhearts:item/poke_balls/dark_ball"
-	}
-}

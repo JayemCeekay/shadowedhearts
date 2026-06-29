@@ -1,7 +1,6 @@
 package com.jayemceekay.shadowedhearts.client.particle;
 
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
-import com.jayemceekay.shadowedhearts.client.gui.AuraReaderManager;
 import com.jayemceekay.shadowedhearts.common.shadow.ShadowAspectUtil;
 import com.jayemceekay.shadowedhearts.network.aura.LuminousMotePacket;
 import com.jayemceekay.shadowedhearts.registry.util.ModParticleTypes;
@@ -79,7 +78,7 @@ public final class LuminousMoteEmitters {
                 continue;
             }
 
-            if (auraReaderRequired && !hasAuraReader && !AuraReaderManager.isDetected(group.getEntityUuid())) {
+            if (auraReaderRequired && !hasAuraReader) {
                 Entity ent = group.entityRef.get();
                 if (ent instanceof PokemonEntity pe && pe.getPokemon().cosmeticItem().is(com.jayemceekay.shadowedhearts.registry.ModItems.SHADOW_SHARD.get())) {
                     // Bypass Aura Reader requirement for Shadow Shard cosmetic item

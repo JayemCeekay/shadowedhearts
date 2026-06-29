@@ -24,7 +24,7 @@ public class MixinPokeBallItem {
 
     @Inject(method = "<init>(Lcom/cobblemon/mod/common/pokeball/PokeBall;)V", at = @At("TAIL"))
     private void shadowedhearts$addTabToDarkBall(PokeBall pokeBall, CallbackInfo ci) {
-        if (pokeBall.getName().getPath().equals("dark_ball")) {
+        if (pokeBall.getName().getPath().equals("penumbra_ball")) {
             CreativeTabRegistry.append(ModCreativeTabs.SHADOWED_HEARTS_TAB, (PokeBallItem) (Object) this);
         }
     }

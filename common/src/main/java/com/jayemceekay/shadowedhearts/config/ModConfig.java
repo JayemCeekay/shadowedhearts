@@ -191,6 +191,12 @@ public final class ModConfig implements IShadowConfig {
     }
 
     @Override
+    public boolean expandedAuraReaderEnabled() {
+        if (!isLoaded()) return IShadowConfig.super.expandedAuraReaderEnabled();
+        return DATA.auraScanner.expandedAuraReaderEnabled.get();
+    }
+
+    @Override
     public int auraLockMaxSeconds() {
         if (!isLoaded()) return IShadowConfig.super.auraLockMaxSeconds();
         return DATA.auraScanner.auraLockMaxSeconds.get();
@@ -230,6 +236,36 @@ public final class ModConfig implements IShadowConfig {
     }
 
     @Override
+    public boolean shadowCanMegaEvolve() {
+        if (!isLoaded()) return IShadowConfig.super.shadowCanMegaEvolve();
+        return DATA.shadowGimmick.shadowCanMegaEvolve.get();
+    }
+
+    @Override
+    public boolean shadowCanDynamax() {
+        if (!isLoaded()) return IShadowConfig.super.shadowCanDynamax();
+        return DATA.shadowGimmick.shadowCanDynamax.get();
+    }
+
+    @Override
+    public boolean shadowCanTerastallize() {
+        if (!isLoaded()) return IShadowConfig.super.shadowCanTerastallize();
+        return DATA.shadowGimmick.shadowCanTerastallize.get();
+    }
+
+    @Override
+    public boolean shadowCanUseZMoves() {
+        if (!isLoaded()) return IShadowConfig.super.shadowCanUseZMoves();
+        return DATA.shadowGimmick.shadowCanUseZMoves.get();
+    }
+
+    @Override
+    public boolean shadowCanUltraBurst() {
+        if (!isLoaded()) return IShadowConfig.super.shadowCanUltraBurst();
+        return DATA.shadowGimmick.shadowCanUltraBurst.get();
+    }
+
+    @Override
     public IWorldAlterationConfig worldAlteration() {
         return DATA.worldAlteration;
     }
@@ -255,6 +291,7 @@ public final class ModConfig implements IShadowConfig {
         public final RelicStoneConfig relicStone = new RelicStoneConfig();
         public final PurificationChamberConfig purificationChamber = new PurificationChamberConfig();
         public final RCTIntegrationConfig rctIntegration = new RCTIntegrationConfig();
+        public final ShadowGimmickConfig shadowGimmick = new ShadowGimmickConfig();
         public final WorldAlterationConfig worldAlteration = new WorldAlterationConfig();
 
         private void build(ModConfigSpec.Builder builder) {
@@ -310,6 +347,10 @@ public final class ModConfig implements IShadowConfig {
             shadowSpawnBlacklist = builder
                     .comment("List of Pokémon species or tags that cannot spawn as Shadow Pokémon.")
                     .defineList("blacklist", List.of("#shadowedhearts:legendaries", "#shadowedhearts:mythical"), o -> o instanceof String);
+            builder.pop();
+
+            builder.push("shadowGimmickRestrictions");
+            shadowGimmick.build(builder);
             builder.pop();
 
             builder.push("modIntegrations");
@@ -742,6 +783,7 @@ public final class ModConfig implements IShadowConfig {
         public ModConfigSpec.IntValue trailMinNodeDistance;
         public ModConfigSpec.IntValue trailMaxNodeDistance;
         public ModConfigSpec.BooleanValue auraReaderRequiredForAura;
+        public ModConfigSpec.BooleanValue expandedAuraReaderEnabled;
         public ModConfigSpec.IntValue auraLockMaxSeconds;
         public ModConfigSpec.IntValue auraLockRange;
         public ModConfigSpec.BooleanValue auraLockPersistsWhenAFK;
@@ -767,6 +809,10 @@ public final class ModConfig implements IShadowConfig {
                     .comment("Whether the Aura Reader is required to see Shadow Auras in the overworld.")
                     .define("auraReaderRequiredForAura", false);
 
+            expandedAuraReaderEnabled = builder
+                    .comment("If true, the expanded Aura Reader system (charge, recharge, scanning, and pulse mechanics) is enabled.")
+                    .define("expandedAuraReaderEnabled", true);
+
             builder.push("auraLock");
             auraLockMaxSeconds = builder
                     .comment("Maximum seconds a single aura lock request can persist before expiring.")
@@ -790,6 +836,32 @@ public final class ModConfig implements IShadowConfig {
             maxOverrides = builder
                     .comment("List of species-specific maximum Heart Gauge values. Format: species=max")
                     .defineList("maxOverrides", List.of(), o -> o instanceof String && ((String) o).contains("="));
+        }
+    }
+
+    public static final class ShadowGimmickConfig {
+        public ModConfigSpec.BooleanValue shadowCanMegaEvolve;
+        public ModConfigSpec.BooleanValue shadowCanDynamax;
+        public ModConfigSpec.BooleanValue shadowCanTerastallize;
+        public ModConfigSpec.BooleanValue shadowCanUseZMoves;
+        public ModConfigSpec.BooleanValue shadowCanUltraBurst;
+
+        private void build(ModConfigSpec.Builder builder) {
+            shadowCanMegaEvolve = builder
+                    .comment("Allow shadow Pokémon to mega evolve.")
+                    .define("shadowCanMegaEvolve", false);
+            shadowCanDynamax = builder
+                    .comment("Allow shadow Pokémon to dynamax/gigantamax.")
+                    .define("shadowCanDynamax", false);
+            shadowCanTerastallize = builder
+                    .comment("Allow shadow Pokémon to terastallize.")
+                    .define("shadowCanTerastallize", false);
+            shadowCanUseZMoves = builder
+                    .comment("Allow shadow Pokémon to use Z-moves.")
+                    .define("shadowCanUseZMoves", false);
+            shadowCanUltraBurst = builder
+                    .comment("Allow shadow Pokémon to ultra burst.")
+                    .define("shadowCanUltraBurst", false);
         }
     }
 

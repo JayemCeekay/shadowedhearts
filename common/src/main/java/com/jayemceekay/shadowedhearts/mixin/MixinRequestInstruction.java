@@ -4,8 +4,11 @@ import com.cobblemon.mod.common.api.battles.model.PokemonBattle;
 import com.cobblemon.mod.common.api.battles.model.actor.ActorType;
 import com.cobblemon.mod.common.api.battles.model.actor.BattleActor;
 import com.cobblemon.mod.common.battles.ShowdownActionRequest;
+import com.cobblemon.mod.common.battles.ShowdownMoveset;
 import com.cobblemon.mod.common.battles.interpreter.instructions.RequestInstruction;
 import com.jayemceekay.shadowedhearts.common.shadow.ShadowAspectUtil;
+import com.jayemceekay.shadowedhearts.config.IShadowConfig;
+import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs;
 import kotlin.Unit;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -52,6 +55,14 @@ public abstract class MixinRequestInstruction {
             var moveset = reqMovesets.get(i);
             if (moveset == null || moveset.getMoves() == null) continue;
 
+            // Block gimmick flags on the moveset for shadow Pokémon based on config
+            IShadowConfig cfg = ShadowedHeartsConfigs.getInstance().getShadowConfig();
+            if (!cfg.shadowCanMegaEvolve()) moveset.blockGimmick(ShowdownMoveset.Gimmick.MEGA_EVOLUTION);
+            if (!cfg.shadowCanUltraBurst()) moveset.blockGimmick(ShowdownMoveset.Gimmick.ULTRA_BURST);
+            if (!cfg.shadowCanUseZMoves()) moveset.blockGimmick(ShowdownMoveset.Gimmick.Z_POWER);
+            if (!cfg.shadowCanDynamax()) moveset.blockGimmick(ShowdownMoveset.Gimmick.DYNAMAX);
+            if (!cfg.shadowCanTerastallize()) moveset.blockGimmick(ShowdownMoveset.Gimmick.TERASTALLIZATION);
+
             for (var m : moveset.getMoves()) {
                 if (m == null) continue;
                 String id = m.getId();
@@ -61,6 +72,17 @@ public abstract class MixinRequestInstruction {
                     m.setDisabled(true);
                     var gm = m.getGimmickMove();
                     if (gm != null) gm.setDisabled(true);
+                } else {
+                    // Even if the base move is allowed, disable its gimmick move if config blocks it
+                    var gm = m.getGimmickMove();
+                    if (gm != null) {
+                        boolean shouldDisableGimmick =
+                                (!cfg.shadowCanUseZMoves() && moveset.getCanZMove() != null) ||
+                                (!cfg.shadowCanDynamax() && moveset.getMaxMoves() != null);
+                        if (shouldDisableGimmick) {
+                            gm.setDisabled(true);
+                        }
+                    }
                 }
             }
         }

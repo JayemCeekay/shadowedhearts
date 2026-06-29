@@ -2,6 +2,7 @@ package com.jayemceekay.shadowedhearts.config;
 
 import com.cobblemon.mod.common.pokemon.Pokemon;
 import com.cobblemon.mod.common.pokemon.Species;
+import com.jayemceekay.shadowedhearts.common.shadow.ShadowAspectUtil;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -1170,11 +1171,14 @@ public final class HeartGaugeConfig {
     }
 
     /**
-     * Returns the configured maximum Heart Gauge for a given Pokemon's species.
-     * If not configured, returns species-specific default or DEFAULT_MAX.
+     * Returns the maximum Heart Gauge for a given Pokemon.
+     * First checks for a per-pokemon HeartGaugeMaxProperty override,
+     * then falls back to species config or DEFAULT_MAX.
      */
     public static int getMax(Pokemon pokemon) {
         if (pokemon == null) return DEFAULT_MAX;
+        int propertyMax = ShadowAspectUtil.getHeartGaugeMaxFromProperty(pokemon);
+        if (propertyMax > 0) return propertyMax;
         Species species = pokemon.getSpecies();
         if (species == null) return DEFAULT_MAX;
         return getMax(species);

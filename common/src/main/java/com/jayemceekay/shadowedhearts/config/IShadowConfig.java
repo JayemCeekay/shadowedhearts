@@ -55,6 +55,7 @@ public interface IShadowConfig extends IModConfig {
     default int trailMinNodeDistance() { return 32; }
     default int trailMaxNodeDistance() { return 64; }
     default boolean auraReaderRequiredForAura() { return true; }
+    default boolean expandedAuraReaderEnabled() { return true; }
 
     // Aura Lock (scanner lock to prevent despawn)
     default int auraLockMaxSeconds() { return 60; }
@@ -63,6 +64,13 @@ public interface IShadowConfig extends IModConfig {
 
     // Heart Gauge
     default List<? extends String> heartGaugeMaxOverrides() { return List.of(); }
+
+    // Shadow Gimmick Restrictions (requires Mega Showdown)
+    default boolean shadowCanMegaEvolve() { return false; }
+    default boolean shadowCanDynamax() { return false; }
+    default boolean shadowCanTerastallize() { return false; }
+    default boolean shadowCanUseZMoves() { return false; }
+    default boolean shadowCanUltraBurst() { return false; }
 
     IRCTSection append();
     IRCTSection convert();

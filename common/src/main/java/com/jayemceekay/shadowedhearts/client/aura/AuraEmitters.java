@@ -6,7 +6,6 @@ import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
 import com.cobblemon.mod.common.pokemon.RenderablePokemon;
 import com.cobblemon.mod.common.util.math.QuaternionUtilsKt;
 import com.jayemceekay.shadowedhearts.client.ModShaders;
-import com.jayemceekay.shadowedhearts.client.gui.AuraReaderManager;
 import com.jayemceekay.shadowedhearts.client.render.geom.CylinderBuffers;
 import com.jayemceekay.shadowedhearts.client.render.rendertypes.AuraRenderTypes;
 import com.jayemceekay.shadowedhearts.common.shadow.SHAspects;
@@ -678,15 +677,12 @@ public final class AuraEmitters {
                 ACTIVE.remove(en.getKey());
                 continue;
             }
-            if (inst.isExpired(now) && !AuraReaderManager.isDetected(inst.entityUuid)) {
+            if (inst.isExpired(now)) {
                 inst.stopSound();
                 ACTIVE.remove(en.getKey());
                 continue;
             }
 
-            if (AuraReaderManager.isDetected(inst.entityUuid)) {
-                inst.lastDetectedTick = now;
-            }
 
             inst.updateSound();
 
@@ -723,7 +719,7 @@ public final class AuraEmitters {
             boolean hasVisibility = fade > 0.001f && corruption > 0.01f;
             if (!hasVisibility) continue;
 
-            if (auraReaderRequired && !hasAuraReader && !AuraReaderManager.isDetected(inst.entityUuid)) {
+            if (auraReaderRequired && !hasAuraReader) {
                 if (ent instanceof PokemonEntity pe && pe.getPokemon().cosmeticItem().is(ModItems.SHADOW_SHARD.get())) {
                     // Bypass Aura Reader requirement for Shadow Shard cosmetic item
                 } else {
@@ -889,7 +885,7 @@ public final class AuraEmitters {
             boolean auraReaderRequired = ShadowedHeartsConfigs.getInstance().getShadowConfig().auraReaderRequiredForAura();
             boolean hasAuraReader = auraReaderRequired && SnagAccessoryBridgeHolder.INSTANCE.isAuraReaderEquipped(mc.player);
 
-            if (auraReaderRequired && !hasAuraReader && !AuraReaderManager.isDetected(this.entityUuid)) {
+            if (auraReaderRequired && !hasAuraReader) {
                 stopSound();
                 return;
             }
@@ -916,7 +912,6 @@ public final class AuraEmitters {
             long total = (long) fadeInTicks + (long) sustainTicks + (long) fadeOutTicks;
             boolean originalExpired = now - startTick >= total;
             if (originalExpired) {
-                if (AuraReaderManager.isDetected(this.entityUuid)) return false;
                 if (lastDetectedTick != -1L && now - lastDetectedTick < fadeOutTicks) return false;
                 return true;
             }
@@ -939,7 +934,6 @@ public final class AuraEmitters {
                 }
             }
 
-            if (AuraReaderManager.isDetected(this.entityUuid)) return 1.0f;
             float pulseFade = 0f;
             if (lastDetectedTick != -1L) {
                 long pulseAge = now - lastDetectedTick;

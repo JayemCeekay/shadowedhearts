@@ -1,30 +1,13 @@
 package com.jayemceekay.shadowedhearts.network.aura
 
 import com.cobblemon.mod.common.api.net.ServerNetworkPacketHandler
-import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
 import com.jayemceekay.shadowedhearts.Shadowedhearts
-import com.jayemceekay.shadowedhearts.common.aura.AuraReaderCharge
-import com.jayemceekay.shadowedhearts.common.shadow.ShadowPokemonData
-import com.jayemceekay.shadowedhearts.common.tracking.ShadowSignalPoolRegistry
-import com.jayemceekay.shadowedhearts.common.tracking.ShadowSignalTier
-import com.jayemceekay.shadowedhearts.common.tracking.ShadowSpeciesTrait
-import com.jayemceekay.shadowedhearts.common.tracking.TrailManager
-import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs
 import com.jayemceekay.shadowedhearts.content.items.AuraReaderItem
-import com.jayemceekay.shadowedhearts.content.items.ShadowSignalDataItem
 import com.jayemceekay.shadowedhearts.integration.accessories.SnagAccessoryBridgeHolder
-import com.jayemceekay.shadowedhearts.network.AuraBroadcastQueue
-import com.jayemceekay.shadowedhearts.network.ShadowedHeartsNetwork
-import com.jayemceekay.shadowedhearts.network.trail.TrailSyncS2CPacket
 import com.jayemceekay.shadowedhearts.registry.util.ModItemComponents
-import net.minecraft.ChatFormatting
-import net.minecraft.network.chat.Component
 import net.minecraft.server.MinecraftServer
 import net.minecraft.server.level.ServerPlayer
-import net.minecraft.world.entity.Entity
 import net.minecraft.world.item.ItemStack
-import java.util.concurrent.CompletableFuture
-import java.util.concurrent.TimeUnit
 
 object AuraPulseHandler : ServerNetworkPacketHandler<AuraPulsePacket> {
     private val LOG = Shadowedhearts.LOGGER
@@ -36,7 +19,7 @@ object AuraPulseHandler : ServerNetworkPacketHandler<AuraPulsePacket> {
         if (!auraReader.isEmpty && auraReader.item is AuraReaderItem) {
             val isActive = auraReader.get(ModItemComponents.AURA_SCANNER_ACTIVE.get()) ?: false
             if (isActive) {
-                val stack = if (packet.slotIndex >= 0) {
+                /*val stack = if (packet.slotIndex >= 0) {
                     player.inventory.getItem(packet.slotIndex)
                 } else {
                     findSignalData(player)?.third?.let { player.inventory.getItem(it) } ?: ItemStack.EMPTY
@@ -46,12 +29,13 @@ object AuraPulseHandler : ServerNetworkPacketHandler<AuraPulsePacket> {
                     triggerPulse(player, stack, server)
                 } else {
                     LOG.debug("[ShadowHunt] No valid Shadow Signal Data found.")
-                }
+                }*/
             }
         }
     }
 
     fun triggerPulse(player: ServerPlayer, stack: ItemStack, server: MinecraftServer): Boolean {
+        /*
         val auraReader = SnagAccessoryBridgeHolder.INSTANCE.getAuraReaderStack(player)
         if (auraReader.isEmpty || auraReader.item !is AuraReaderItem) return false
 
@@ -158,7 +142,7 @@ object AuraPulseHandler : ServerNetworkPacketHandler<AuraPulsePacket> {
             if (entity is PokemonEntity && ShadowPokemonData.isShadow(entity)) {
                 AuraBroadcastQueue.queueBroadcast(entity, 2.5f, 100, 100)
             }
-        }
+        }*/
         return true
     }
 
@@ -166,7 +150,7 @@ object AuraPulseHandler : ServerNetworkPacketHandler<AuraPulsePacket> {
      * Search the player's inventory for a Shadow Signal Data item.
      * Returns a Triple of (tier, seed, inventorySlotIndex), or null if none found.
      * Prefers higher-tier signals if the player has multiple.
-     */
+     *
     private fun findSignalData(player: ServerPlayer): Triple<ShadowSignalTier, Long, Int>? {
         var bestTier: ShadowSignalTier? = null
         var bestSeed: Long = 0
@@ -190,5 +174,5 @@ object AuraPulseHandler : ServerNetworkPacketHandler<AuraPulsePacket> {
         } else {
             null
         }
-    }
+    }*/
 }
