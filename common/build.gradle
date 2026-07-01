@@ -71,13 +71,13 @@ dependencies {
 
     compileOnly("name:molang-1.1.20")
 
-    modCompileOnlyApi("curse.maven:radical-cobblemon-trainers-api-1152792:7483015")
+    modCompileOnlyApi("curse.maven:radical-cobblemon-trainers-api-1152792:7952421")
 
     // Forge Config API Port
     compileOnly "fuzs.forgeconfigapiport:forgeconfigapiport-common-neoforgeapi:$rootProject.fcap_version"
 
     //rctmod
-    modCompileOnlyApi("curse.maven:rctmod-1009534:7279673")
+    modCompileOnlyApi("curse.maven:rctmod-1009534:7913182")
 
     //accessories
     modCompileOnlyApi("io.wispforest:accessories-common:${project.accessories_version}")

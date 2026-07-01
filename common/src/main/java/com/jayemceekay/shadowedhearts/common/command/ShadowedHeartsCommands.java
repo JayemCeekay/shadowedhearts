@@ -18,9 +18,6 @@ import com.jayemceekay.shadowedhearts.data.ShadowPools;
 import com.jayemceekay.shadowedhearts.network.AuraBroadcastQueue;
 import com.jayemceekay.shadowedhearts.showdown.ShowdownRuntimePatcher;
 import com.jayemceekay.shadowedhearts.storage.purification.PurificationChamberStore;
-import com.jayemceekay.shadowedhearts.world.gen.CraterGenerator;
-import com.jayemceekay.shadowedhearts.world.gen.ImpactScheduler;
-import com.jayemceekay.shadowedhearts.world.gen.PlayerActivityHeatmap;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
@@ -605,27 +602,6 @@ public class ShadowedHeartsCommands {
                                         ctx.getSource().sendFailure(Component.literal("Failed to spawn: " + e.getMessage()));
                                         return 0;
                                     }
-                                })))
-                .then(Commands.literal("impact")
-                        .requires(src -> src.hasPermission(2))
-                        .then(Commands.literal("force")
-                                .executes(ctx -> {
-                                    ImpactScheduler.attemptImpact(ctx.getSource().getLevel());
-                                    ctx.getSource().sendSuccess(() -> Component.literal("Forced an impact attempt."), true);
-                                    return 1;
-                                }))
-                        .then(Commands.literal("at")
-                                .executes(ctx -> {
-                                    CraterGenerator.generateCrater(ctx.getSource().getLevel(), net.minecraft.core.BlockPos.containing(ctx.getSource().getPosition()));
-                                    ctx.getSource().sendSuccess(() -> Component.literal("Generated crater at current position."), true);
-                                    return 1;
-                                }))
-                        .then(Commands.literal("heatmap")
-                                .executes(ctx -> {
-                                    ServerPlayer player = ctx.getSource().getPlayerOrException();
-                                    double activity = PlayerActivityHeatmap.getActivity(ctx.getSource().getLevel(), player.chunkPosition().x, player.chunkPosition().z);
-                                    ctx.getSource().sendSuccess(() -> Component.literal("Current chunk activity: " + activity), false);
-                                    return 1;
                                 })))
                 .then(Commands.literal("inspect")
                         .requires(src -> src.hasPermission(2))

@@ -366,26 +366,8 @@ public final class ModConfig implements IShadowConfig {
     }
 
     public static final class WorldAlterationConfig implements IWorldAlterationConfig {
-        public ModConfigSpec.BooleanValue shadowfallActive;
-        public ModConfigSpec.IntValue impactChanceOneInTicks;
-        public ModConfigSpec.IntValue civilizedHeatmapThreshold;
-        public ModConfigSpec.IntValue heatmapDecayTicks;
-        public ModConfigSpec.DoubleValue heatmapDecayAmount;
-        public ModConfigSpec.IntValue minImpactDistanceToPlayer;
-        public ModConfigSpec.IntValue maxImpactDistanceToPlayer;
-        public ModConfigSpec.IntValue minImpactDistanceToStructures;
-        public ModConfigSpec.IntValue minImpactDistanceToSpawn;
         public ModConfigSpec.IntValue minCraterRadius;
         public ModConfigSpec.IntValue maxCraterRadius;
-        public ModConfigSpec.IntValue heatmapPresenceRadius;
-        public ModConfigSpec.IntValue heatmapFlushIntervalTicks;
-        public ModConfigSpec.IntValue meteoroidImpactBroadcastRadius;
-        public ModConfigSpec.BooleanValue meteoroidShadowTransformationEnabled;
-        public ModConfigSpec.IntValue meteoroidShadowTransformationRadius;
-        public ModConfigSpec.IntValue meteoroidShadowTransformationCheckIntervalTicks;
-        public ModConfigSpec.DoubleValue meteoroidShadowTransformationChancePerInterval;
-        public ModConfigSpec.DoubleValue meteoroidShadowTransformationExposureIncrease;
-        public ModConfigSpec.DoubleValue meteoroidShadowTransformationExposureDecay;
         public ModConfigSpec.DoubleValue meteoroidShadowSpawnChanceMultiplier;
         public ModConfigSpec.BooleanValue meteoroidWorldGenEnabled;
         public ModConfigSpec.IntValue meteoroidSpacing;
@@ -394,42 +376,6 @@ public final class ModConfig implements IShadowConfig {
         public ModConfigSpec.ConfigValue<List<? extends String>> meteoroidBiomeWhitelist;
 
         private void build(ModConfigSpec.Builder builder) {
-            shadowfallActive = builder
-                    .comment("Whether the Shadowfall event is active, enabling meteoroid impacts.")
-                    .define("shadowfallActive", false);
-            
-            impactChanceOneInTicks = builder
-                    .comment("The average number of ticks between impact attempts. (e.g., 12000 ticks = 10 minutes)")
-                    .defineInRange("impactChanceOneInTicks", 12000, 1, Integer.MAX_VALUE);
-            
-            civilizedHeatmapThreshold = builder
-                    .comment("Chunks with activity heatmap above this value are considered 'civilized' and protected from impacts.")
-                    .defineInRange("civilizedHeatmapThreshold", 100, 0, Integer.MAX_VALUE);
-            
-            heatmapDecayTicks = builder
-                    .comment("How often (in ticks) the player activity heatmap decays.")
-                    .defineInRange("heatmapDecayTicks", 1200, 1, Integer.MAX_VALUE);
-            
-            heatmapDecayAmount = builder
-                    .comment("The amount of activity that decays from each chunk every decay cycle.")
-                    .defineInRange("heatmapDecayAmount", 1.0, 0.0, 1000.0);
-            
-            minImpactDistanceToPlayer = builder
-                    .comment("Minimum distance (in blocks) from any player for an impact to occur.")
-                    .defineInRange("minImpactDistanceToPlayer", 64, 0, Integer.MAX_VALUE);
-            
-            maxImpactDistanceToPlayer = builder
-                    .comment("Maximum distance (in blocks) from a player to consider for an impact.")
-                    .defineInRange("maxImpactDistanceToPlayer", 256, 1, Integer.MAX_VALUE);
-            
-            minImpactDistanceToStructures = builder
-                    .comment("Minimum distance (in blocks) from any generated structures for an impact to occur.")
-                    .defineInRange("minImpactDistanceToStructures", 64, 0, Integer.MAX_VALUE);
-            
-            minImpactDistanceToSpawn = builder
-                    .comment("Minimum distance (in blocks) from the world spawn point for an impact to occur.")
-                    .defineInRange("minImpactDistanceToSpawn", 128, 0, Integer.MAX_VALUE);
-            
             minCraterRadius = builder
                     .comment("Minimum radius of generated craters.")
                     .defineInRange("minCraterRadius", 8, 1, 100);
@@ -437,44 +383,8 @@ public final class ModConfig implements IShadowConfig {
             maxCraterRadius = builder
                     .comment("Maximum radius of generated craters.")
                     .defineInRange("maxCraterRadius", 16, 1, 100);
-            
-            heatmapPresenceRadius = builder
-                    .comment("Radius (in chunks) around players where activity heatmap is increased.")
-                    .defineInRange("heatmapPresenceRadius", 2, 0, 16);
-            
-            heatmapFlushIntervalTicks = builder
-                    .comment("How often (in ticks) the activity heatmap is flushed to disk.")
-                    .defineInRange("heatmapFlushIntervalTicks", 1200, 1, Integer.MAX_VALUE);
-            
-            meteoroidImpactBroadcastRadius = builder
-                    .comment("Radius (in blocks) within which players will receive a message and hear a sound when a meteoroid impacts.")
-                    .defineInRange("meteoroidImpactBroadcastRadius", 256, 0, Integer.MAX_VALUE);
-            
-            meteoroidShadowTransformationEnabled = builder
-                    .comment("Whether wild Pokemon near shadowfall meteoroids can become Shadow Pokemon over time.")
-                    .define("meteoroidShadowTransformationEnabled", true);
-            
-            meteoroidShadowTransformationRadius = builder
-                    .comment("Radius around meteoroids to check for wild Pokemon.")
-                    .defineInRange("meteoroidShadowTransformationRadius", 16, 1, 64);
-            
-            meteoroidShadowTransformationCheckIntervalTicks = builder
-                    .comment("How often (in ticks) to check for wild Pokemon near meteoroids.")
-                    .defineInRange("meteoroidShadowTransformationCheckIntervalTicks", 100, 20, 12000);
-            
-            meteoroidShadowTransformationChancePerInterval = builder
-                    .comment("The base chance per check interval for a wild Pokemon near a meteoroid to become a Shadow Pokemon.")
-                    .defineInRange("meteoroidShadowTransformationChancePerInterval", 0.05, 0.0, 1.0);
-            
-            meteoroidShadowTransformationExposureIncrease = builder
-                    .comment("The amount of exposure a wild Pokemon gains per check interval when near a meteoroid.")
-                    .defineInRange("meteoroidShadowTransformationExposureIncrease", 1.0, 0.0, 100.0);
-            
-            meteoroidShadowTransformationExposureDecay = builder
-                    .comment("The amount of exposure a wild Pokemon loses per check interval when NOT near a meteoroid.")
-                    .defineInRange("meteoroidShadowTransformationExposureDecay", 0.5, 0.0, 100.0);
-            
-            meteoroidShadowSpawnChanceMultiplier = builder
+
+                        meteoroidShadowSpawnChanceMultiplier = builder
                     .comment("The multiplier applied to the base shadow spawn chance when a Pokemon spawns near a meteoroid.")
                     .defineInRange("meteoroidShadowSpawnChanceMultiplier", 5.0, 0.0, 100.0);
             
@@ -499,59 +409,8 @@ public final class ModConfig implements IShadowConfig {
                     .defineList("meteoroidBiomeWhitelist", Collections.emptyList(), o -> o instanceof String);
         }
 
-        @Override
-        public boolean shadowfallActive() {
-            if (!ShadowedHeartsConfigs.getInstance().getShadowConfig().isLoaded()) return IWorldAlterationConfig.super.shadowfallActive();
-            return shadowfallActive.get();
-        }
 
-        @Override
-        public int impactChanceOneInTicks() {
-            if (!ShadowedHeartsConfigs.getInstance().getShadowConfig().isLoaded()) return IWorldAlterationConfig.super.impactChanceOneInTicks();
-            return impactChanceOneInTicks.get();
-        }
 
-        @Override
-        public int civilizedHeatmapThreshold() {
-            if (!ShadowedHeartsConfigs.getInstance().getShadowConfig().isLoaded()) return IWorldAlterationConfig.super.civilizedHeatmapThreshold();
-            return civilizedHeatmapThreshold.get();
-        }
-
-        @Override
-        public int heatmapDecayTicks() {
-            if (!ShadowedHeartsConfigs.getInstance().getShadowConfig().isLoaded()) return IWorldAlterationConfig.super.heatmapDecayTicks();
-            return heatmapDecayTicks.get();
-        }
-
-        @Override
-        public double heatmapDecayAmount() {
-            if (!ShadowedHeartsConfigs.getInstance().getShadowConfig().isLoaded()) return IWorldAlterationConfig.super.heatmapDecayAmount();
-            return heatmapDecayAmount.get();
-        }
-
-        @Override
-        public int minImpactDistanceToPlayer() {
-            if (!ShadowedHeartsConfigs.getInstance().getShadowConfig().isLoaded()) return IWorldAlterationConfig.super.minImpactDistanceToPlayer();
-            return minImpactDistanceToPlayer.get();
-        }
-
-        @Override
-        public int maxImpactDistanceToPlayer() {
-            if (!ShadowedHeartsConfigs.getInstance().getShadowConfig().isLoaded()) return IWorldAlterationConfig.super.maxImpactDistanceToPlayer();
-            return maxImpactDistanceToPlayer.get();
-        }
-
-        @Override
-        public int minImpactDistanceToStructures() {
-            if (!ShadowedHeartsConfigs.getInstance().getShadowConfig().isLoaded()) return IWorldAlterationConfig.super.minImpactDistanceToStructures();
-            return minImpactDistanceToStructures.get();
-        }
-
-        @Override
-        public int minImpactDistanceToSpawn() {
-            if (!ShadowedHeartsConfigs.getInstance().getShadowConfig().isLoaded()) return IWorldAlterationConfig.super.minImpactDistanceToSpawn();
-            return minImpactDistanceToSpawn.get();
-        }
 
         @Override
         public int minCraterRadius() {
@@ -565,59 +424,6 @@ public final class ModConfig implements IShadowConfig {
             return maxCraterRadius.get();
         }
 
-        @Override
-        public int heatmapPresenceRadius() {
-            if (!ShadowedHeartsConfigs.getInstance().getShadowConfig().isLoaded()) return IWorldAlterationConfig.super.heatmapPresenceRadius();
-            return heatmapPresenceRadius.get();
-        }
-
-        @Override
-        public int heatmapFlushIntervalTicks() {
-            if (!ShadowedHeartsConfigs.getInstance().getShadowConfig().isLoaded()) return IWorldAlterationConfig.super.heatmapFlushIntervalTicks();
-            return heatmapFlushIntervalTicks.get();
-        }
-
-        @Override
-        public int meteoroidImpactBroadcastRadius() {
-            if (!ShadowedHeartsConfigs.getInstance().getShadowConfig().isLoaded()) return IWorldAlterationConfig.super.meteoroidImpactBroadcastRadius();
-            return meteoroidImpactBroadcastRadius.get();
-        }
-
-        @Override
-        public boolean meteoroidShadowTransformationEnabled() {
-            if (!ShadowedHeartsConfigs.getInstance().getShadowConfig().isLoaded()) return IWorldAlterationConfig.super.meteoroidShadowTransformationEnabled();
-            return meteoroidShadowTransformationEnabled.get();
-        }
-
-        @Override
-        public int meteoroidShadowTransformationRadius() {
-            if (!ShadowedHeartsConfigs.getInstance().getShadowConfig().isLoaded()) return IWorldAlterationConfig.super.meteoroidShadowTransformationRadius();
-            return meteoroidShadowTransformationRadius.get();
-        }
-
-        @Override
-        public int meteoroidShadowTransformationCheckIntervalTicks() {
-            if (!ShadowedHeartsConfigs.getInstance().getShadowConfig().isLoaded()) return IWorldAlterationConfig.super.meteoroidShadowTransformationCheckIntervalTicks();
-            return meteoroidShadowTransformationCheckIntervalTicks.get();
-        }
-
-        @Override
-        public double meteoroidShadowTransformationChancePerInterval() {
-            if (!ShadowedHeartsConfigs.getInstance().getShadowConfig().isLoaded()) return IWorldAlterationConfig.super.meteoroidShadowTransformationChancePerInterval();
-            return meteoroidShadowTransformationChancePerInterval.get();
-        }
-
-        @Override
-        public double meteoroidShadowTransformationExposureIncrease() {
-            if (!ShadowedHeartsConfigs.getInstance().getShadowConfig().isLoaded()) return IWorldAlterationConfig.super.meteoroidShadowTransformationExposureIncrease();
-            return meteoroidShadowTransformationExposureIncrease.get();
-        }
-
-        @Override
-        public double meteoroidShadowTransformationExposureDecay() {
-            if (!ShadowedHeartsConfigs.getInstance().getShadowConfig().isLoaded()) return IWorldAlterationConfig.super.meteoroidShadowTransformationExposureDecay();
-            return meteoroidShadowTransformationExposureDecay.get();
-        }
 
         @Override
         public double meteoroidShadowSpawnChanceMultiplier() {

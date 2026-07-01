@@ -35,10 +35,7 @@ import com.jayemceekay.shadowedhearts.registry.util.ModItemComponents;
 import com.jayemceekay.shadowedhearts.registry.util.ModParticleTypes;
 import com.jayemceekay.shadowedhearts.showdown.ShowdownRuntimePatcher;
 import com.jayemceekay.shadowedhearts.util.ShadowedHeartsPlayerData;
-import com.jayemceekay.shadowedhearts.world.gen.ImpactScheduler;
 import com.jayemceekay.shadowedhearts.world.gen.ModStructures;
-import com.jayemceekay.shadowedhearts.world.gen.PlayerActivityHeatmap;
-import com.jayemceekay.shadowedhearts.world.handler.ShadowMeteoroidProximityHandler;
 import dev.architectury.event.events.common.LifecycleEvent;
 import dev.architectury.registry.ReloadListenerRegistry;
 import kotlin.Unit;
@@ -110,11 +107,6 @@ public final class Shadowedhearts {
         AuraBroadcastQueue.init();
         ShadowDropListener.init();
         NPCShadowInjector.init();
-        if( ShadowedHeartsConfigs.getInstance().getShadowConfig().worldAlteration().shadowfallActive()) {
-            PlayerActivityHeatmap.init();
-        }
-        ImpactScheduler.init();
-        ShadowMeteoroidProximityHandler.init();
         ModStructures.init();
         PlayerDataExtensionRegistry.INSTANCE.register(ShadowedHeartsPlayerData.NAME, ShadowedHeartsPlayerData.class, false);
         HeartGaugeConfig.ensureLoaded();

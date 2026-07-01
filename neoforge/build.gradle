@@ -89,7 +89,10 @@ dependencies {
     modCompileOnly("maven.modrinth:YL57xq9U:t3ruzodq")
 
     //rctapi
-    modCompileOnlyApi("curse.maven:radical-cobblemon-trainers-api-1152792:7319959")
+    modImplementation("curse.maven:radical-cobblemon-trainers-api-1152792:7952419")
+
+    //rctmod
+    modImplementation("curse.maven:rctmod-1009534:7913180")
 
     //owo lib
     modImplementation("io.wispforest:owo-lib-neoforge:${project.owo_version}")
@@ -120,9 +123,6 @@ dependencies {
     //cobblemon party extras
     modImplementation("maven.modrinth:x2wZP9kQ:rTJMRXuL")
 
-    //cobblemon tim core
-    //modRuntimeOnly("maven.modrinth:lVP9aUaY:YhsWrN4q")
-
     //cobblemon mega showdown
     modImplementation("maven.modrinth:SszvX85I:BAOrFYvg")
 
@@ -132,6 +132,11 @@ dependencies {
     //lost lore
     modImplementation("maven.modrinth:49cNEVjn:IJowghCi")
 
+    //wild battle api
+    modImplementation("curse.maven:wild-battle-api-1478863:7765020")
+
+    //cobblemon battle tower
+    modImplementation("curse.maven:cobblemon-battle-tower-1441260:7957421")
 }
 
 processResources {
