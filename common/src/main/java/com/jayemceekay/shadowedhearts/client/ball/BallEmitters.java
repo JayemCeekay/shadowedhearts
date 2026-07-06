@@ -2,6 +2,7 @@ package com.jayemceekay.shadowedhearts.client.ball;
 
 import com.cobblemon.mod.common.entity.pokeball.EmptyPokeBallEntity;
 import com.jayemceekay.shadowedhearts.client.ModShaders;
+import com.jayemceekay.shadowedhearts.client.particle.PenumbraTrailSystem;
 import com.jayemceekay.shadowedhearts.client.render.rendertypes.BallRenderTypes;
 import com.jayemceekay.shadowedhearts.client.trail.BallTrailManager;
 import com.mojang.blaze3d.shaders.Uniform;
@@ -15,6 +16,10 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Matrix4f;
+
+import com.jayemceekay.shadowedhearts.registry.util.ModParticleTypes;
+
+import net.minecraft.world.phys.Vec3;
 
 import java.lang.ref.WeakReference;
 import java.util.Map;
@@ -34,12 +39,16 @@ public final class BallEmitters {
      * Called on client when a ball entity is created/loaded.
      */
     public static void startForEntity(EmptyPokeBallEntity entity) {
-        if (!entity.getAspects().contains("snag_ball")) return;
+        boolean isSnag = entity.getAspects().contains("snag_ball");
+        boolean isPenumbra = entity.getPokeBall().getName().getPath().equals("penumbra_ball");
+
+        if (!isSnag && !isPenumbra) return;
 
         var mc = Minecraft.getInstance();
         if (mc == null || mc.level == null) return;
         long now = mc.level.getGameTime();
-        ACTIVE.put(entity.getId(), new BallInstance(entity.getId(), entity, now, 4, 400, 8));
+
+        ACTIVE.put(entity.getId(), new BallInstance(entity.getId(), entity, now, 4, 400, 8, isSnag, isPenumbra));
     }
 
     public static void onEntityDespawn(int entityId) {
@@ -83,17 +92,26 @@ public final class BallEmitters {
             // We use the interpolated world position
             BallTrailManager.addPointForId(inst.entityId, ix, iy, iz);
 
+            // Emit penumbra trail particles (shadow aura fog puffs) behind the ball
+            if (inst.isPenumbraBall && ent instanceof EmptyPokeBallEntity) {
+                emitPenumbraTrailParticles(mc, ent, ix, iy, iz, inst);
+            }
+
             // Render from entity-local pose
             PoseStack poseStack = new PoseStack();
             var camPos = camera.getPosition();
-            poseStack.translate(ix  - camPos.x, iy + (ent.getBbHeight() / 8f) - camPos.y, iz - camPos.z);
+            poseStack.translate(ix - camPos.x, iy + (ent.getBbHeight() / 8f) - camPos.y, iz - camPos.z);
             MultiBufferSource.BufferSource buf = Minecraft.getInstance().renderBuffers().bufferSource();
 
-            // Render orb billboard at center
-            renderOrb(poseStack, buf, partialTicks);
+            // Render orb billboard for snag ball at center
+            if (inst.isSnagBall) {
+                renderOrb(poseStack, buf, partialTicks);
+            }
 
-            // Render trail using existing manager (expects current pose at ball origin)
-            BallTrailManager.renderForId(inst.entityId, partialTicks, poseStack, buf);
+            // Render trail for snag ball
+            if (inst.isSnagBall) {
+                BallTrailManager.renderSnagRibbonForId(inst.entityId, partialTicks, poseStack, buf);
+            }
 
             buf.endBatch();
         }
@@ -159,7 +177,7 @@ public final class BallEmitters {
         poseStack.scale(s, s, s);
         if (ModShaders.BALL_GLOW != null) {
             try {
-                apply(ModShaders.BALL_GLOW );
+                apply(ModShaders.BALL_GLOW);
             } catch (Throwable ignored) {
             }
         }
@@ -198,17 +216,92 @@ public final class BallEmitters {
                 .setNormal(last, 0f, 0f, 1f);
     }
 
+    /** Particles emitted per block of travel distance when the ball is in motion. */
+    private static final double PARTICLES_PER_BLOCK = 12.0;
+
+    /**
+     * Spawns penumbra trail particles along the previous-to-current motion segment
+     * so fast throws do not leave gaps.
+     * <p>
+     * Emission rate: 8–20 particles/tick while thrown (velocity-scaled).
+     */
+    private static void emitPenumbraTrailParticles(Minecraft mc, Entity ent, double ix, double iy, double iz, BallInstance inst) {
+        if (mc.level == null) return;
+
+        // Throttle spawning to once per game tick to avoid frame-rate dependent
+        // particle density (e.g. 3x more particles at 60 FPS than 20 FPS).
+        long gameTime = mc.level.getGameTime();
+        if (gameTime == inst.lastSpawnTick) {
+            // Still update lastTrailPos so the next tick's gap calculation is accurate
+            inst.lastTrailPos = new Vec3(ix, iy + 0.22, iz);
+            return;
+        }
+        inst.lastSpawnTick = gameTime;
+
+        double vx = ent.getDeltaMovement().x;
+        double vy = ent.getDeltaMovement().y;
+        double vz = ent.getDeltaMovement().z;
+
+        Vec3 curr = new Vec3(ix, iy + 0.22, iz);
+        Vec3 prev = inst.lastTrailPos;
+
+        if (prev != null) {
+            double gap = prev.distanceTo(curr);
+            // Scale particle count by distance traveled — enough for coverage without overcrowding
+            int count = Math.max(6, Math.min(24, (int) (gap * PARTICLES_PER_BLOCK)));
+            for (int i = 0; i < count; i++) {
+                double t = (double) i / count;
+                // More aggressive perpendicular spread for smokier trails (suggestion L)
+                double lx = Mth.lerp(t, prev.x, curr.x) + (mc.level.random.nextFloat() - 0.5) * 0.2;
+                double ly = Mth.lerp(t, prev.y, curr.y) + (mc.level.random.nextFloat() - 0.5) * 0.2;
+                double lz = Mth.lerp(t, prev.z, curr.z) + (mc.level.random.nextFloat() - 0.5) * 0.2;
+                spawnPenumbraTrailPuff(mc, lx, ly, lz, vx, vy, vz);
+            }
+        } else {
+            // First frame: seed a small cluster at the current position
+            for (int i = 0; i < 3; i++) {
+                double ox = curr.x + (mc.level.random.nextFloat() - 0.5) * 0.40;
+                double oy = curr.y + (mc.level.random.nextFloat() - 0.5) * 0.30;
+                double oz = curr.z + (mc.level.random.nextFloat() - 0.5) * 0.40;
+                spawnPenumbraTrailPuff(mc, ox, oy, oz, vx, vy, vz);
+            }
+        }
+        inst.lastTrailPos = curr;
+    }
+
+    private static void spawnPenumbraTrailPuff(Minecraft mc,
+                                                double x, double y, double z,
+                                                double vx, double vy, double vz) {
+        if (mc.level == null) return;
+
+        mc.level.addParticle(
+                ModParticleTypes.PENUMBRA_TRAIL.get(),
+                x, y, z,
+                vx, vy, vz
+        );
+
+        // Mirror the same spawn into our dedicated density trail manager.
+        // This keeps the FBO pipeline independent from ParticleEngine internals.
+        PenumbraTrailSystem.registerPuff(x, y, z, vx, vy, vz);
+    }
+
     private static final class BallInstance {
         final int entityId;
         final WeakReference<Entity> entityRef;
+        final boolean isSnagBall;
+        final boolean isPenumbraBall;
         long startTick;
         int fadeInTicks;
         int sustainTicks;
         int fadeOutTicks;
+        Vec3 lastTrailPos;
+        long lastSpawnTick = Long.MIN_VALUE;
 
-        BallInstance(int entityId, @Nullable Entity ent, long startTick, int fi, int sus, int fo) {
+        BallInstance(int entityId, @Nullable Entity ent, long startTick, int fi, int sus, int fo, boolean isSnagBall, boolean isPenumbraBall) {
             this.entityId = entityId;
             this.entityRef = new WeakReference<>(ent);
+            this.isSnagBall = isSnagBall;
+            this.isPenumbraBall = isPenumbraBall;
             this.startTick = startTick;
             this.fadeInTicks = Math.max(1, fi);
             this.sustainTicks = Math.max(0, sus);

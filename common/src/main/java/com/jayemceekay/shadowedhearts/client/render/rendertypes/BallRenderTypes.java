@@ -87,6 +87,26 @@ public final class BallRenderTypes {
     }
 
     /**
+     * Penumbra (shadow aura) ribbon trail — uses alpha blending for dark fog core visibility.
+     */
+    public static RenderType penumbraTrailRibbon() {
+        ResourceLocation tex = ResourceLocation.parse("shadowedhearts:textures/particle/penumbra_ribbon_trail.png");
+        RenderType.CompositeState state = RenderType.CompositeState.builder()
+                .setShaderState(new RenderStateShard.ShaderStateShard(() -> ModShaders.PENUMBRA_TRAIL_RIBBON != null
+                        ? ModShaders.PENUMBRA_TRAIL_RIBBON
+                        : GameRenderer.getPositionColorShader()))
+                .setTextureState(new RenderStateShard.TextureStateShard(tex, false, false))
+                .setTransparencyState(RenderStateShard.TRANSLUCENT_TRANSPARENCY)
+                .setLightmapState(RenderStateShard.NO_LIGHTMAP)
+                .setDepthTestState(RenderStateShard.LEQUAL_DEPTH_TEST)
+                .setWriteMaskState(RenderStateShard.COLOR_WRITE)
+                .setCullState(RenderStateShard.NO_CULL)
+                .setLayeringState(RenderStateShard.NO_LAYERING)
+                .createCompositeState(true);
+        return RenderType.create("shadowedhearts:penumbra_trail_ribbon", DefaultVertexFormat.NEW_ENTITY, VertexFormat.Mode.QUADS, 512, false, true, state);
+    }
+
+    /**
      * Secondary, thinner core streak texture for trails.
      */
     public static RenderType trailCoreAdditive() {

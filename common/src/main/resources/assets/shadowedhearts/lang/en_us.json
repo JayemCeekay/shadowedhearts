@@ -28,10 +28,11 @@
   "item.shadowedhearts.purified_gem": "Purified Gem",
   "item.shadowedhearts.shadowium_z": "Shadowium-Z",
   "item.shadowedhearts.aura_reader": "Aura Reader",
-  "item.shadowedhearts.pokedex_integrator": "Pokédex Integrator",
+  "item.shadowedhearts.penumbra_ball": "Penumbra Ball",
   "item.shadowedhearts.shadow_scale": "Shadow Scale",
   "item.shadowedhearts.aura_reader.tooltip": "A device that detects and tracks shadow signatures in the environment.",
   "item.shadowedhearts.pokedex_integrator.tooltip": "An upgrade for the Aura Reader that integrates Pokédex scanning capabilities.",
+
 
   "message.shadowedhearts.pokedex_integrator_required": "Pokédex Integrator upgrade required.",
 

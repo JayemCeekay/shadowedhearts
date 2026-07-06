@@ -57,6 +57,21 @@ public class ModShadersPlatformImpl {
             evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:aura/luminous_mote", DefaultVertexFormat.PARTICLE),
                     shader -> ModShaders.LUMINOUS_MOTE = shader);
 
+            evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:aura/penumbra_trail", DefaultVertexFormat.PARTICLE),
+                    shader -> ModShaders.PENUMBRA_TRAIL = shader);
+
+            evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:aura/penumbra_trail_ribbon", DefaultVertexFormat.NEW_ENTITY),
+                    shader -> ModShaders.PENUMBRA_TRAIL_RIBBON = shader);
+
+            evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:aura/penumbra_density_splat", DefaultVertexFormat.PARTICLE),
+                    shader -> ModShaders.PENUMBRA_DENSITY_SPLAT = shader);
+
+            evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:aura/penumbra_blur", DefaultVertexFormat.POSITION_TEX),
+                    shader -> ModShaders.PENUMBRA_BLUR = shader);
+
+            evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:aura/penumbra_composite", DefaultVertexFormat.POSITION_TEX),
+                    shader -> ModShaders.PENUMBRA_COMPOSITE = shader);
+
             // Screen-space electromagnetic static overlay
             evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:interference/aura_static_interference", DefaultVertexFormat.POSITION_TEX),
                     shader -> ModShaders.AURA_STATIC_INTERFERENCE = shader);

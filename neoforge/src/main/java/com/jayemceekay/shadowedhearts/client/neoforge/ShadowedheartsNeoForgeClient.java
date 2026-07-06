@@ -10,6 +10,9 @@ import com.jayemceekay.shadowedhearts.client.aura.AuraPulseRenderer;
 import com.jayemceekay.shadowedhearts.client.ball.BallEmitters;
 import com.jayemceekay.shadowedhearts.client.particle.LuminousMoteEmitters;
 import com.jayemceekay.shadowedhearts.client.particle.LuminousMoteParticle;
+import com.jayemceekay.shadowedhearts.client.particle.PenumbraDensityFBO;
+import com.jayemceekay.shadowedhearts.client.particle.PenumbraTrailSystem;
+import com.jayemceekay.shadowedhearts.client.particle.PenumbraTrailParticle;
 import com.jayemceekay.shadowedhearts.client.particle.RelicStoneMoteParticle;
 import com.jayemceekay.shadowedhearts.client.render.HeldBallSnagGlowRenderer;
 import com.jayemceekay.shadowedhearts.config.ClientConfig;
@@ -71,6 +74,10 @@ public final class ShadowedheartsNeoForgeClient {
                 ModParticleTypes.RELIC_STONE_MOTE.get(),
                 RelicStoneMoteParticle.Provider::new
         );
+        evt.registerSpriteSet(
+                ModParticleTypes.PENUMBRA_TRAIL.get(),
+                PenumbraTrailParticle.Provider::new
+        );
     }
 
     @SubscribeEvent
@@ -119,17 +126,20 @@ public final class ShadowedheartsNeoForgeClient {
         }
 
         if (e.getStage() == RenderLevelStageEvent.Stage.AFTER_PARTICLES) {
-            float pt = e.getPartialTick().getGameTimeDeltaTicks() + e.getPartialTick().getGameTimeDeltaPartialTick(true);
+            float pt = e.getPartialTick().getGameTimeDeltaPartialTick(true);
             LuminousMoteEmitters.onRender(pt);
+            PenumbraTrailSystem.renderDensityPipeline(e.getCamera(), pt);
         }
 
         if (e.getStage() == RenderLevelStageEvent.Stage.AFTER_WEATHER) {
+            float pt = e.getPartialTick().getGameTimeDeltaPartialTick(true);
+
+
             var mc = Minecraft.getInstance();
             if (mc.level == null) return;
 
             PoseStack pose = e.getPoseStack();
             var buffers = mc.renderBuffers().bufferSource();
-            float pt = e.getPartialTick().getGameTimeDeltaTicks() + e.getPartialTick().getGameTimeDeltaPartialTick(true);
 
             // "frame id" so we only use anchors captured this same frame
             int frameId = mc.getFrameTimeNs() != 0 ? (int) (mc.getFrameTimeNs() & 0x7fffffff) : (int) (System.nanoTime() & 0x7fffffff);
@@ -169,7 +179,6 @@ public final class ShadowedheartsNeoForgeClient {
             buffers.endBatch();
         }
     }
-
 
     @SubscribeEvent
     public static void onEntityLeave(EntityLeaveLevelEvent e) {

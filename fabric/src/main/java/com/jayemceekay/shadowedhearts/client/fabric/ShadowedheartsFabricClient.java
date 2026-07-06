@@ -9,6 +9,9 @@ import com.jayemceekay.shadowedhearts.client.aura.AuraPulseRenderer;
 import com.jayemceekay.shadowedhearts.client.ball.BallEmitters;
 import com.jayemceekay.shadowedhearts.client.particle.LuminousMoteEmitters;
 import com.jayemceekay.shadowedhearts.client.particle.LuminousMoteParticle;
+import com.jayemceekay.shadowedhearts.client.particle.PenumbraDensityFBO;
+import com.jayemceekay.shadowedhearts.client.particle.PenumbraTrailSystem;
+import com.jayemceekay.shadowedhearts.client.particle.PenumbraTrailParticle;
 import com.jayemceekay.shadowedhearts.client.particle.RelicStoneMoteParticle;
 import com.jayemceekay.shadowedhearts.client.render.DepthCapture;
 import com.jayemceekay.shadowedhearts.client.render.HeldBallSnagGlowRenderer;
@@ -22,8 +25,6 @@ import com.jayemceekay.shadowedhearts.registry.ModItems;
 import com.jayemceekay.shadowedhearts.registry.util.ModParticleTypes;
 import com.jayemceekay.shadowedhearts.util.HeldItemAnchorCache;
 import com.mojang.blaze3d.vertex.PoseStack;
-import dev.architectury.event.EventResult;
-import dev.architectury.event.events.client.ClientRawInputEvent;
 import dev.felnull.specialmodelloader.api.event.SpecialModelLoaderEvents;
 import fuzs.forgeconfigapiport.fabric.api.neoforge.v4.NeoForgeConfigRegistry;
 import fuzs.forgeconfigapiport.fabric.api.neoforge.v4.NeoForgeModConfigEvents;
@@ -121,6 +122,10 @@ public final class ShadowedheartsFabricClient implements ClientModInitializer {
                 ModParticleTypes.RELIC_STONE_MOTE.get(),
                 RelicStoneMoteParticle.Provider::new
         );
+        ParticleFactoryRegistry.getInstance().register(
+                ModParticleTypes.PENUMBRA_TRAIL.get(),
+                PenumbraTrailParticle.Provider::new
+        );
 
         // Subscribe luminous mote emitters to Cobblemon events
         LuminousMoteEmitters.init();
@@ -132,12 +137,19 @@ public final class ShadowedheartsFabricClient implements ClientModInitializer {
         });
 
         WorldRenderEvents.END.register(worldRenderContext -> {
+            PenumbraTrailSystem.renderDensityPipeline(
+                    worldRenderContext.camera(),
+                    worldRenderContext.camera().getPartialTickTime()
+            );
             if ((AuraPulseRenderer.IRIS_HANDLER == null || !AuraPulseRenderer.IRIS_HANDLER.isShaderPackInUse())) {
                 AuraPulseRenderer.onRenderWorld(worldRenderContext.camera(), worldRenderContext.projectionMatrix(), worldRenderContext.positionMatrix(), worldRenderContext.camera().getPartialTickTime());
             }
         });
 
-        WorldRenderEvents.AFTER_ENTITIES.register(context -> LuminousMoteEmitters.onRender(context.tickCounter().getGameTimeDeltaPartialTick(true)));
+        WorldRenderEvents.AFTER_ENTITIES.register(context -> {
+            LuminousMoteEmitters.onRender(context.tickCounter().getGameTimeDeltaPartialTick(true));
+
+        });
 
         WorldRenderEvents.LAST.register(context -> {
             var mc = Minecraft.getInstance();

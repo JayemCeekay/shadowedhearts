@@ -30,6 +30,13 @@ public final class ModShaders {
 
     public static ShaderInstance AURA_PULSE;
     public static ShaderInstance LUMINOUS_MOTE;
+    public static ShaderInstance PENUMBRA_TRAIL;
+    public static ShaderInstance PENUMBRA_TRAIL_RIBBON;
+
+    // Penumbra density metaball pipeline
+    public static ShaderInstance PENUMBRA_DENSITY_SPLAT;
+    public static ShaderInstance PENUMBRA_BLUR;
+    public static ShaderInstance PENUMBRA_COMPOSITE;
 
     // Screen-space electromagnetic static overlay for Aura Scanner
     public static ShaderInstance AURA_STATIC_INTERFERENCE;

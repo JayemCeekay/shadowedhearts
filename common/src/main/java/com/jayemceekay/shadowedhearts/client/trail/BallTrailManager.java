@@ -30,8 +30,8 @@ public final class BallTrailManager {
     // Motion → strength parameters
     private static final float MIN_SPEED = 0.00f;      // blocks/sec below which we consider "stopped"
     private static final float MAX_SPEED = 0.50f;      // blocks/sec for full strength
-    private static final float STRENGTH_LERP = 0.1f;  // smoothing toward target per tick
-    private static final float EXTRA_DECAY_PER_TICK = 0.08f; // boosts age while stopped
+    private static final float STRENGTH_LERP = 0.05f;  // smoothing toward target per tick (slower decay)
+    private static final float EXTRA_DECAY_PER_TICK = 0.03f; // boosts age while stopped (reduced for longer-lasting trail)
 
     public static void addPoint(Entity entity, double x, double y, double z) {
         RIBBONS.computeIfAbsent(entity.getId(), id -> new TrailRibbon())
@@ -187,7 +187,7 @@ public final class BallTrailManager {
      * Id-based render which assumes the current poseStack has been translated to the entity origin already.
      * Uses a fixed base width suitable for Poké Balls.
      */
-    public static void renderForId(int entityId, float partialTicks, PoseStack poseStack, MultiBufferSource buffer) {
+    public static void renderSnagRibbonForId(int entityId, float partialTicks, PoseStack poseStack, MultiBufferSource buffer) {
         TrailRibbon ribbon = RIBBONS.get(entityId);
         if (ribbon == null || ribbon.size() < 2) return;
 
@@ -292,6 +292,88 @@ public final class BallTrailManager {
     }
 
     /**
+     * Renders a penumbra (shadow aura) ribbon trail for the given entity ID.
+     * Uses the penumbra_trail_ribbon shader with dark fog colors instead of the bright additive trail.
+     * Designed to work alongside penumbra trail particles for a hybrid gap-free effect.
+     */
+    public static void renderPenumbraRibbonForId(int entityId, float partialTicks, PoseStack poseStack, MultiBufferSource buffer) {
+        TrailRibbon ribbon = RIBBONS.get(entityId);
+        if (ribbon == null || ribbon.size() < 2) return;
+
+        Camera cam = Minecraft.getInstance().gameRenderer.getMainCamera();
+        Vec3 camPos = cam.getPosition();
+
+        Vec3 origin = ribbon.get(ribbon.size() - 1);
+
+        // Set the strength uniform for the penumbra ribbon shader (no palette uniforms needed)
+        setPenumbraStrengthUniform(ribbon.strength);
+
+        VertexConsumer vc = buffer.getBuffer(BallRenderTypes.penumbraTrailRibbon());
+
+        // Match penumbra particle volume (~0.8-1.5 quadSize)
+        float baseWidth = 1.0f;
+        int n = ribbon.size();
+        int effectiveN = Math.max(2, n);
+        int start = n - effectiveN;
+
+        for (int i = 0; i < effectiveN - 1; i++) {
+            int i0 = start + i;
+            Vec3 p1w = ribbon.get(i0);
+            Vec3 p2w = ribbon.get(i0 + 1);
+            Vec3 seg = p2w.subtract(p1w);
+            if (seg.lengthSqr() < 1e-6) continue;
+
+            // Billboard toward camera: side = normalize(seg × (point - camPos))
+            Vec3 midpoint = p1w.add(p2w).scale(0.5);
+            Vec3 toCamera = camPos.subtract(midpoint);
+            Vec3 side = seg.cross(toCamera);
+            double len2 = side.lengthSqr();
+            if (len2 < 1e-6) continue;
+            side = side.scale(1.0 / Math.sqrt(len2));
+
+            float ageFrac = (float) (effectiveN - 1 - i) / (float) (effectiveN - 1);
+            float decayBoost = 1.0f + ribbon.stoppedTicks * EXTRA_DECAY_PER_TICK;
+            float ageEff = Mth.clamp(ageFrac * decayBoost, 0.0f, 1.0f);
+            float width = baseWidth * (0.55f + 0.45f * (float) Math.pow(1.0f - ageEff, 1.4f));
+            width *= ribbon.strength;
+
+            // Shadow aura dark purple vertex colors — shader handles the detail coloring
+            int r = 140, g = 60, b = 180;
+            int aHead = 255, aTail = 100;
+            int a = (int) Mth.lerp(ageEff, aHead, aTail);
+            a = (int) (a * ribbon.strength);
+
+            Vec3 sScaled = side.scale(width);
+            Vec3 p1a = p1w.add(sScaled);
+            Vec3 p1b = p1w.subtract(sScaled);
+            Vec3 p2a = p2w.add(sScaled);
+            Vec3 p2b = p2w.subtract(sScaled);
+
+            emitQuad(vc,
+                    p1a.subtract(origin),
+                    p1b.subtract(origin),
+                    p2b.subtract(origin),
+                    p2a.subtract(origin),
+                    r, g, b, a,
+                    1.0f - ((float) i / (float) (effectiveN - 1)),
+                    1.0f - ((float) (i + 1) / (float) (effectiveN - 1)),
+                    poseStack);
+        }
+    }
+
+    /**
+     * Sets the uStrength uniform for the penumbra ribbon shader (no palette uniforms needed).
+     */
+    private static void setPenumbraStrengthUniform(float strength) {
+        try {
+            ShaderInstance sh = RenderSystem.getShader();
+            if (sh == null) return;
+            set1f(sh, "uStrength", Math.min(strength, 1.0f));
+        } catch (Throwable ignored) {
+        }
+    }
+
+    /**
      * Mirrors AuraEmitters' pattern: push tweakable uniforms every render so shader hot-reloads reflect changes.
      * Safe even if a different shader is bound; we guard by uniform presence.
      */
@@ -388,7 +470,7 @@ public final class BallTrailManager {
     }
 
     private static final class TrailRibbon {
-        private static final int MAX_POINTS = 40;
+        private static final int MAX_POINTS = 80;
         private final Deque<Vec3> points = new ArrayDeque<>(MAX_POINTS);
         private Vec3 lastPos = null;
         private float strength = 0.0f;

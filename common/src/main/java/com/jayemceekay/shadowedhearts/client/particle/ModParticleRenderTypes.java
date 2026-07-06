@@ -43,4 +43,20 @@ public class ModParticleRenderTypes {
         public String toString() { return "LUMINOUS_MOTE_RENDER_TYPE"; }
     };
 
+    public static final ParticleRenderType PENUMBRA_TRAIL_RENDER_TYPE = new ParticleRenderType() {
+        @Override
+        public BufferBuilder begin(Tesselator tesselator, TextureManager texManager) {
+            RenderSystem.depthMask(false);
+            RenderSystem.enableBlend();
+            // Keep a visible fallback pass while density FBO debugging is active.
+            RenderSystem.blendFunc(GlStateManager.SourceFactor.ZERO, GlStateManager.DestFactor.ONE);
+            RenderSystem.setShader(() -> ModShaders.PENUMBRA_TRAIL);
+            RenderSystem.setShaderTexture(0, TextureAtlas.LOCATION_PARTICLES);
+            return tesselator.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.PARTICLE);
+        }
+
+        @Override
+        public String toString() { return "PENUMBRA_TRAIL_RENDER_TYPE"; }
+    };
+
 }

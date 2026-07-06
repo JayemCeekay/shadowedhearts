@@ -21,6 +21,9 @@ public final class ModParticleTypes {
     public static final RegistrySupplier<SimpleParticleType> RELIC_STONE_MOTE =
             PARTICLE_TYPES.register("relic_stone_mote", () -> new SimpleParticleType(false) {});
 
+    public static final RegistrySupplier<SimpleParticleType> PENUMBRA_TRAIL =
+            PARTICLE_TYPES.register("penumbra_trail", () -> new SimpleParticleType(false) {});
+
     public static void register() {
         PARTICLE_TYPES.register();
     }

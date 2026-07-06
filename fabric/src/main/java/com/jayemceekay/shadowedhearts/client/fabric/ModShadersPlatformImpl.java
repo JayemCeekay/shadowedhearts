@@ -69,6 +69,36 @@ public final class ModShadersPlatformImpl {
                         program -> ModShaders.LUMINOUS_MOTE = program
                 );
 
+                registrationContext.register(
+                        ResourceLocation.parse("shadowedhearts:aura/penumbra_trail"),
+                        DefaultVertexFormat.PARTICLE,
+                        program -> ModShaders.PENUMBRA_TRAIL = program
+                );
+
+                registrationContext.register(
+                        ResourceLocation.parse("shadowedhearts:aura/penumbra_trail_ribbon"),
+                        DefaultVertexFormat.NEW_ENTITY,
+                        program -> ModShaders.PENUMBRA_TRAIL_RIBBON = program
+                );
+
+                registrationContext.register(
+                        ResourceLocation.parse("shadowedhearts:aura/penumbra_density_splat"),
+                        DefaultVertexFormat.PARTICLE,
+                        program -> ModShaders.PENUMBRA_DENSITY_SPLAT = program
+                );
+
+                registrationContext.register(
+                        ResourceLocation.parse("shadowedhearts:aura/penumbra_blur"),
+                        DefaultVertexFormat.POSITION_TEX,
+                        program -> ModShaders.PENUMBRA_BLUR = program
+                );
+
+                registrationContext.register(
+                        ResourceLocation.parse("shadowedhearts:aura/penumbra_composite"),
+                        DefaultVertexFormat.POSITION_TEX,
+                        program -> ModShaders.PENUMBRA_COMPOSITE = program
+                );
+
                 // Screen-space electromagnetic static overlay
                 registrationContext.register(
                         ResourceLocation.parse("shadowedhearts:interference/aura_static_interference"),
