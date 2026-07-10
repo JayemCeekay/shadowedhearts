@@ -15,6 +15,15 @@ loom {
         defaultRefmapName = "shadowedhearts.refmap.json"
     }
     silentMojangMappingsLicense()
+
+    runs {
+        client2 {
+            client()
+            name = "Minecraft Client 2"
+            programArgs "--username", "Dev2"
+            runDir "run/client2"
+        }
+    }
 }
 
 

@@ -96,6 +96,11 @@ dependencies {
     //mega showdown
     modCompileOnly("maven.modrinth:SszvX85I:BAOrFYvg")
 
+    // FTB Chunks integration
+    modCompileOnly("dev.ftb.mods:ftb-chunks:${project.ftb_chunks_version}")
+    modCompileOnly("dev.ftb.mods:ftb-library:${project.ftb_library_version}")
+    modCompileOnly("dev.ftb.mods:ftb-teams:${project.ftb_teams_version}")
+
 }
 
 // Default for all resource/copy tasks

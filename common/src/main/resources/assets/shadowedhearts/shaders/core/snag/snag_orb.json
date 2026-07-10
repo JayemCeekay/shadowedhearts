@@ -1,0 +1,38 @@
+{
+  "blend": {
+    "func": "add",
+    "srcrgb": "one",
+    "dstrgb": "one",
+    "srcalpha": "one",
+    "dstalpha": "one"
+  },
+  "vertex": "minecraft:rendertype_entity_translucent_emissive",
+  "fragment": "shadowedhearts:snag/snag_orb",
+  "attributes": [
+    "Position",
+    "Color",
+    "UV0",
+    "UV1",
+    "Normal"
+  ],
+  "samplers": [
+    { "name": "Sampler0" }
+  ],
+  "uniforms": [
+    { "name": "ModelViewMat", "type": "matrix4x4", "count": 16, "values": [ 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0 ] },
+    { "name": "ProjMat", "type": "matrix4x4", "count": 16, "values": [ 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0 ] },
+    { "name": "ColorModulator", "type": "float", "count": 4, "values": [ 1.0, 1.0, 1.0, 1.0 ] },
+    { "name": "FogStart", "type": "float", "count": 1, "values": [ 0.0 ] },
+    { "name": "FogEnd", "type": "float", "count": 1, "values": [ 1.0 ] },
+    { "name": "FogColor", "type": "float", "count": 4, "values": [ 0.0, 0.0, 0.0, 0.0 ] },
+    { "name": "u_time", "type": "float", "count": 1, "values": [ 0.0 ] },
+    { "name": "u_orbTint", "type": "float", "count": 3, "values": [ 0.70, 0.35, 0.90 ] },
+    { "name": "u_orbIntensity", "type": "float", "count": 1, "values": [ 1.5 ] },
+    { "name": "u_shellInner", "type": "float", "count": 1, "values": [ 0.70 ] },
+    { "name": "u_shellOuter", "type": "float", "count": 1, "values": [ 0.90 ] },
+    { "name": "u_noiseScrollX", "type": "float", "count": 1, "values": [ 0.08 ] },
+    { "name": "u_noiseScrollY", "type": "float", "count": 1, "values": [ 0.03 ] },
+    { "name": "u_rimPower", "type": "float", "count": 1, "values": [ 2.0 ] },
+    { "name": "u_crackleScale", "type": "float", "count": 1, "values": [ 1.5 ] }
+  ]
+}

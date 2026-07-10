@@ -1,5 +1,7 @@
 #version 150
 
+#moj_import <shadowedhearts:palette_fire.glsl>
+
 uniform sampler2D Sampler0; // trail gradient texture (soft center, soft edges)
 uniform float GameTime;
 
@@ -54,42 +56,6 @@ float posterize(float v, float steps, float ditherAmt) {
     return floor(v * steps + dither + 0.5) / steps;
 }
 
-vec3 quantize3D(vec3 p, float voxelsPerRad) {
-    if (voxelsPerRad <= 0.0) return p;
-    vec3 q = floor(p * voxelsPerRad + 0.5) / max(voxelsPerRad, 1.0);
-    return q;
-}
-
-// Vertical gradient palette driven by uniforms:
-// y is 0 at center and 1 at the edges. Segments:
-//  [0..u_t1]: u_c0 -> u_c1
-//  [u_t1..u_t2]: u_c1 -> u_c2
-//  [u_t2..u_t3]: u_c2 -> u_c3
-vec3 palette_vertical_fire(float y) {
-    // Ensure monotonic thresholds in-shader defensively
-    float t1b = max(0.0, min(u_t1, u_t2));
-    float t2b = max(t1b, min(u_t2, u_t3));
-    float t3b = max(t2b, max(u_t3, 0.00001));
-
-    float k1 = smoothstep(0.0, t1b, y);
-    vec3 m1 = mix(u_c0, u_c1, k1);
-    float k2 = smoothstep(t1b, t2b, y);
-    vec3 m2 = mix(u_c1, u_c2, k2);
-    float k3 = smoothstep(t2b, t3b, y);
-    vec3 m3 = mix(u_c2, u_c3, k3);
-
-    // Segment pick weights
-    float w1 = step(y, t1b);
-    float w2 = step(t1b, y) * step(y, t2b);
-    float w3 = step(t2b, y);
-    vec3 c = m1 * w1 + m2 * w2 + m3 * w3;
-
-    // Optional saturation control
-    float lum = dot(c, u_lumaCoeff);
-    c = mix(vec3(lum), c, saturate(u_paletteSaturation));
-    return c;
-}
-
 void main() {
     vec2 uv = vUv;
 
@@ -116,7 +82,7 @@ void main() {
     // Snapping the palette lookup to discrete steps (e.g., 8 steps)
     float steps = 8.0;
     float ySnapped = floor(yFromCenter * steps) / steps;
-    vec3 pal = palette_vertical_fire(ySnapped);
+    vec3 pal = palette_vertical_fire(ySnapped, u_c0, u_c1, u_c2, u_c3, u_t1, u_t2, u_t3, u_lumaCoeff, u_paletteSaturation);
 
     // Apply posterization to the mask to get "stepped" alpha/intensity
     float mask = tex.a * edge * tailFade * uStrength;

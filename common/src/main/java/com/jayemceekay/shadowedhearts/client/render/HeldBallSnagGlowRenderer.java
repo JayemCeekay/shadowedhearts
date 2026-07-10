@@ -62,7 +62,7 @@ public final class HeldBallSnagGlowRenderer {
 
 
         if(Minecraft.getInstance().options.getCameraType().isFirstPerson()) {
-            BallEmitters.apply(ModShaders.BALL_GLOW);
+            BallEmitters.apply(ModShaders.BALL_ORB_GLOW);
 
             poseStack.pushPose();
             LocalPlayer playerEntity = Minecraft.getInstance().player;
@@ -112,7 +112,7 @@ public final class HeldBallSnagGlowRenderer {
             poseStack.translate(-0.5f, -0.5f, -0.5f);
             poseStack.translate(1.1f, 0.35f, 0f);
 
-            VertexConsumer orb = buffers.getBuffer(BallRenderTypes.ballGlow(null));
+            VertexConsumer orb = buffers.getBuffer(BallRenderTypes.ballOrbGlow());
             emitUnitQuad(orb, poseStack, bakedmodel.getTransforms().getTransform(ItemDisplayContext.FIRST_PERSON_RIGHT_HAND).rotation);
 
             // Three scrolling rings around the held item (third-person hand pose)
@@ -208,13 +208,13 @@ public final class HeldBallSnagGlowRenderer {
             float partialTicks, PoseStack poseStack, MultiBufferSource buffers
     ) {
         poseStack.pushPose();
-        BallEmitters.apply(ModShaders.BALL_GLOW);
+        BallEmitters.apply(ModShaders.BALL_ORB_GLOW);
 
         var cam = Minecraft.getInstance().gameRenderer.getMainCamera();
 
         //poseStack.mulPose(Minecraft.getInstance().getEntityRenderDispatcher().cameraOrientation());
         poseStack.translate(0f, -0.05f, 0f);
-        VertexConsumer orb = buffers.getBuffer(BallRenderTypes.ballGlow(null));
+        VertexConsumer orb = buffers.getBuffer(BallRenderTypes.ballOrbGlow());
         // Don’t apply extra per-quad rotations; the facing is handled above
         emitUnitQuad(orb, poseStack, null);
 

@@ -142,7 +142,7 @@ public final class AuraEmitters {
 
     // Timings (ticks): ~0.25s fade-in, ~5s sustain, ~0.5s fade-out
     private static final int FADE_IN = 10;
-    private static final int SUSTAIN = 60; // can be tuned; original recent value ~90-100
+    private static final int SUSTAIN = 3600; // can be tuned; original recent value ~90-100
     private static final int FADE_OUT = 10;
     // If a position update jumps farther than this squared distance, snap to avoid long lerp streaks
     private static final double TELEPORT_SNAP_DIST2 = 36.0; // 6 blocks squared
@@ -154,12 +154,59 @@ public final class AuraEmitters {
     public static void onPokemonDespawn(int entityId) {
         // Start a quick fade-out if we still have an instance; if missing, nothing to do
         var mc = Minecraft.getInstance();
+        ShadowPokemonAuraSystem.onPokemonDespawn(entityId);
         long now = (mc != null && mc.level != null) ? mc.level.getGameTime() : 0L;
         ACTIVE.computeIfPresent(entityId, (id, inst) -> {
             inst.stopSound();
             inst.beginImmediateFadeOut(now, 10);
             return inst;
         });
+    }
+
+    public static float getFboAuraMaskStrength(PokemonEntity entity) {
+        if (entity == null || !ShadowedHeartsConfigs.getInstance().getClientConfig().enableShadowAura()) {
+            return 0.0f;
+        }
+
+        var mc = Minecraft.getInstance();
+        if (mc == null || mc.level == null) {
+            return 0.0f;
+        }
+
+        AuraInstance inst = ACTIVE.get(entity.getId());
+        if (inst == null) {
+            return 0.0f;
+        }
+
+        UUID entityUuid = entity.getUUID();
+        if (inst.entityUuid != null && !inst.entityUuid.equals(entityUuid)) {
+            return 0.0f;
+        }
+        if (inst.entityUuid == null) {
+            inst.entityUuid = entityUuid;
+            inst.entityRef = new WeakReference<>(entity);
+        }
+
+        long now = mc.level.getGameTime();
+        if (inst.isExpired(now)) {
+            return 0.0f;
+        }
+
+        boolean auraReaderRequired = ShadowedHeartsConfigs.getInstance().getShadowConfig().auraReaderRequiredForAura();
+        if (auraReaderRequired && !SnagAccessoryBridgeHolder.INSTANCE.isAuraReaderEquipped(mc.player)) {
+            if (!entity.getPokemon().cosmeticItem().is(ModItems.SHADOW_SHARD.get())) {
+                return 0.0f;
+            }
+        }
+
+        float fade = inst.fadeFactor(now);
+        float partialTicks = mc.getTimer().getGameTimeDeltaPartialTick(true);
+        float corruption = Mth.lerp(partialTicks, inst.prevCorruption, inst.lastCorruption);
+        if (fade <= 0.001f || corruption <= 0.01f) {
+            return 0.0f;
+        }
+
+        return Mth.clamp(fade * (0.55f + corruption * 0.65f), 0.0f, 1.0f);
     }
 
     /**
@@ -736,6 +783,23 @@ public final class AuraEmitters {
             if (ent instanceof PokemonEntity pokemonEntity) {
                 float entityHeight = Math.max(0.1f, Mth.lerp(partialTicks, inst.prevBbH, inst.lastBbH));
                 float radius = Math.max(0.25f, Mth.lerp(partialTicks, (float) inst.prevBbSize, (float) inst.lastBbSize));
+
+                boolean useFboShadowAura = true;
+                if (useFboShadowAura) {
+                    ShadowPokemonAuraSystem.observe(
+                            pokemonEntity,
+                            ix,
+                            iy,
+                            iz,
+                            radius,
+                            entityHeight,
+                            fade,
+                            corruption,
+                            partialTicks
+                    );
+                    continue;
+                }
+
                 // Screen-space radius for LOD selection
                 double cy = y;
                 double distCenter = Math.sqrt(x * x + cy * cy + z * z);

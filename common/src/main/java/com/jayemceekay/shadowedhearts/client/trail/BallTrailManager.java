@@ -438,6 +438,10 @@ public final class BallTrailManager {
         if (u != null) u.set(x, y, z);
     }
 
+    public static void emitQuadPublic(@NotNull VertexConsumer vc, Vec3 v0, Vec3 v1, Vec3 v2, Vec3 v3, int r, int g, int b, int a, float u1, float u2, PoseStack poseStack) {
+        emitQuad(vc, v0, v1, v2, v3, r, g, b, a, u1, u2, poseStack);
+    }
+
     private static void emitQuad(@NotNull VertexConsumer vc, Vec3 v0, Vec3 v1, Vec3 v2, Vec3 v3, int r, int g, int b, int a, float u1, float u2, PoseStack poseStack) {
         var last = poseStack.last();
         var mat = last.pose();

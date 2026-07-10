@@ -8,6 +8,7 @@ import com.mojang.blaze3d.vertex.VertexFormat;
 import net.minecraft.client.renderer.GameRenderer;
 import net.minecraft.client.renderer.RenderStateShard;
 import net.minecraft.client.renderer.RenderType;
+import net.minecraft.resources.ResourceLocation;
 
 public final class AuraRenderTypes {
 
@@ -112,6 +113,22 @@ public final class AuraRenderTypes {
                 .setLayeringState(RenderStateShard.VIEW_OFFSET_Z_LAYERING)
                 .createCompositeState(true);
         return RenderType.create("shadowedhearts:shadow_trail", DefaultVertexFormat.POSITION, VertexFormat.Mode.QUADS, 256, false, true, state);
+    }
+
+    public static RenderType shadowPokemonAuraMask(ResourceLocation texture) {
+        RenderType.CompositeState state = RenderType.CompositeState.builder()
+                .setShaderState(new RenderStateShard.ShaderStateShard(() -> ModShaders.SHADOW_POKEMON_AURA_MASK != null
+                        ? ModShaders.SHADOW_POKEMON_AURA_MASK
+                        : GameRenderer.getRendertypeEntityCutoutShader()))
+                .setTextureState(new RenderStateShard.TextureStateShard(texture, false, false))
+                .setTransparencyState(RenderStateShard.NO_TRANSPARENCY)
+                .setLightmapState(RenderStateShard.LIGHTMAP)
+                .setOverlayState(RenderStateShard.OVERLAY)
+                .setDepthTestState(RenderStateShard.LEQUAL_DEPTH_TEST)
+                .setWriteMaskState(RenderStateShard.COLOR_WRITE)
+                .setCullState(RenderStateShard.NO_CULL)
+                .createCompositeState(true);
+        return RenderType.create("shadowedhearts:shadow_pokemon_aura_mask", DefaultVertexFormat.NEW_ENTITY, VertexFormat.Mode.QUADS, 512, true, false, state);
     }
 
     public static RenderType screen_decal() {

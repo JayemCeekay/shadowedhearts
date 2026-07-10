@@ -19,11 +19,39 @@ public final class ModShaders {
     public static ShaderInstance WHISTLE_GROUND_OVERLAY;
     public static ShaderInstance PURIFICATION_CHAMBER_BACKGROUND;
 
-    // New: Poké Ball glow overlay shader (additive + fullbright)
+    // Poké Ball glow overlay shader — texture-based glow only (additive + fullbright)
     public static ShaderInstance BALL_GLOW;
+
+    // Procedural radial orb glow + starburst + halo (split from ball_glow)
+    public static ShaderInstance BALL_ORB_GLOW;
 
     // Trail ribbon shader (uses UV scrolling texture)
     public static ShaderInstance BALL_TRAIL;
+
+    // Lens flare shader (procedural streak + spike pattern)
+    public static ShaderInstance SNAG_FLARE;
+
+    // Orb shell shader (sphere-projected noise with shell band)
+    public static ShaderInstance SNAG_ORB;
+
+    // Pokémon dissolve shader (noise-based dissolution with glowing edge)
+    public static ShaderInstance SNAG_DISSOLVE;
+
+    // Bloom pipeline shaders (simple Gaussian blur + additive composite)
+    public static ShaderInstance SNAG_BLOOM_BLUR;
+    public static ShaderInstance SNAG_BLOOM_COMPOSITE;
+
+    // Snag beam density metaball pipeline (replaces ribbon beams)
+    public static ShaderInstance SNAG_BEAM_DENSITY;
+    public static ShaderInstance SNAG_BEAM_COMPOSITE;
+
+    // Snag trail orange smoke density pipeline (FBM noise + warm orange composite)
+    public static ShaderInstance SNAG_TRAIL_DENSITY;
+    public static ShaderInstance SNAG_TRAIL_COMPOSITE;
+
+    // Snag trail purple mote density pipeline (separate from capture beam colors/effects)
+    public static ShaderInstance SNAG_MOTE_DENSITY;
+    public static ShaderInstance SNAG_MOTE_COMPOSITE;
 
     // Shadow aura trail tube shader (lightweight 2-octave noise on 6-sided tube)
     public static ShaderInstance SHADOW_AURA_TRAIL;
@@ -37,6 +65,11 @@ public final class ModShaders {
     public static ShaderInstance PENUMBRA_DENSITY_SPLAT;
     public static ShaderInstance PENUMBRA_BLUR;
     public static ShaderInstance PENUMBRA_COMPOSITE;
+
+    // Shadow Pokemon aura density pipeline
+    public static ShaderInstance SHADOW_POKEMON_AURA_MASK;
+    public static ShaderInstance SHADOW_POKEMON_AURA_DENSITY;
+    public static ShaderInstance SHADOW_POKEMON_AURA_COMPOSITE;
 
     // Screen-space electromagnetic static overlay for Aura Scanner
     public static ShaderInstance AURA_STATIC_INTERFERENCE;

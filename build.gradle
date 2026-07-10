@@ -65,6 +65,13 @@ subprojects {
         maven { url 'https://dl.cloudsmith.io/public/geckolib3/geckolib/maven/' }
         maven { url 'https://maven.impactdev.net/repository/development/' }
         maven { url 'https://maven.neoforged.net/releases' }
+        maven {
+            name = "FTB Maven"
+            url = "https://maven.ftb.dev/releases"
+            content {
+                includeGroup "dev.ftb.mods"
+            }
+        }
         maven { url 'https://thedarkcolour.github.io/KotlinForForge/' }
         // For GitHub-hosted dependencies via JitPack
         maven { url 'https://jitpack.io' }

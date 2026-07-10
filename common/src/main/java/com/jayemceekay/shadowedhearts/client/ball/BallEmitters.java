@@ -1,9 +1,12 @@
 package com.jayemceekay.shadowedhearts.client.ball;
 
 import com.cobblemon.mod.common.entity.pokeball.EmptyPokeBallEntity;
+import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
 import com.jayemceekay.shadowedhearts.client.ModShaders;
 import com.jayemceekay.shadowedhearts.client.particle.PenumbraTrailSystem;
 import com.jayemceekay.shadowedhearts.client.render.rendertypes.BallRenderTypes;
+import com.jayemceekay.shadowedhearts.config.IClientConfig;
+import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs;
 import com.jayemceekay.shadowedhearts.client.trail.BallTrailManager;
 import com.mojang.blaze3d.shaders.Uniform;
 import com.mojang.blaze3d.vertex.PoseStack;
@@ -39,16 +42,11 @@ public final class BallEmitters {
      * Called on client when a ball entity is created/loaded.
      */
     public static void startForEntity(EmptyPokeBallEntity entity) {
-        boolean isSnag = entity.getAspects().contains("snag_ball");
-        boolean isPenumbra = entity.getPokeBall().getName().getPath().equals("penumbra_ball");
-
-        if (!isSnag && !isPenumbra) return;
-
         var mc = Minecraft.getInstance();
         if (mc == null || mc.level == null) return;
         long now = mc.level.getGameTime();
-
-        ACTIVE.put(entity.getId(), new BallInstance(entity.getId(), entity, now, 4, 400, 8, isSnag, isPenumbra));
+        // Register all balls; snag/penumbra classification is deferred until aspects sync
+        ACTIVE.put(entity.getId(), new BallInstance(entity.getId(), entity, now, 4, 400, 8, false, false));
     }
 
     public static void onEntityDespawn(int entityId) {
@@ -64,6 +62,23 @@ public final class BallEmitters {
         var mc = Minecraft.getInstance();
         if (mc == null || mc.level == null) return;
 
+        // Tick and render all active Snag Capture VFX sequences
+        SnagCaptureVfx.tickAll(1f / 20f);
+
+        // Main pass: billboards, flashes, orb, lens flare (non-density effects)
+        SnagCaptureVfx.renderAll(camera, partialTicks);
+
+        // Snag throw VFX: orange glow + diffraction spikes on in-flight snag balls
+        SnagThrowVfx.pruneAll();
+        SnagThrowVfx.renderAll(camera, partialTicks);
+
+        // Tick and render shake-phase VFX for Snag Balls
+        IClientConfig cfg = ShadowedHeartsConfigs.getInstance().getClientConfig();
+        if (cfg.snagShakeVfxEnabled()) {
+            SnagShakeVfx.tickAll();
+            SnagShakeVfx.renderAll(camera, partialTicks);
+        }
+
         for (Map.Entry<Integer, BallInstance> en : ACTIVE.entrySet()) {
             BallInstance inst = en.getValue();
             if (inst == null) {
@@ -77,16 +92,29 @@ public final class BallEmitters {
 
             Entity ent = inst.entityRef != null ? inst.entityRef.get() : null;
             boolean useEnt = ent != null && ent.isAlive() && ent.getId() == inst.entityId;
+            if (!useEnt) continue;
+
+            // Lazy-resolve snag/penumbra once aspects sync arrives from server
+            if (!inst.resolved && ent instanceof EmptyPokeBallEntity ball) {
+                boolean isSnag = ball.getAspects().contains("snag_ball");
+                boolean isPenumbra = ball.getPokeBall().getName().getPath().equals("penumbra_ball");
+                if (isSnag || isPenumbra) {
+                    inst.isSnagBall = isSnag;
+                    inst.isPenumbraBall = isPenumbra;
+                    inst.resolved = true;
+                }
+                // If neither after ~5 ticks, remove to avoid tracking every ball forever
+                if (!inst.resolved && mc.level.getGameTime() - inst.startTick > 5) {
+                    ACTIVE.remove(en.getKey());
+                    continue;
+                }
+                if (!inst.resolved) continue; // still waiting for sync
+            }
 
             double ix, iy, iz;
-            if (useEnt) {
-                ix = Mth.lerp(partialTicks, ent.xOld, ent.getX());
-                iy = Mth.lerp(partialTicks, ent.yOld, ent.getY());
-                iz = Mth.lerp(partialTicks, ent.zOld, ent.getZ());
-            } else {
-                // If entity ref is gone, skip
-                continue;
-            }
+            ix = Mth.lerp(partialTicks, ent.xOld, ent.getX());
+            iy = Mth.lerp(partialTicks, ent.yOld, ent.getY());
+            iz = Mth.lerp(partialTicks, ent.zOld, ent.getZ());
 
             // Feed trail samples in world space; render in the entity-origin pose later
             // We use the interpolated world position
@@ -97,23 +125,78 @@ public final class BallEmitters {
                 emitPenumbraTrailParticles(mc, ent, ix, iy, iz, inst);
             }
 
-            // Render from entity-local pose
-            PoseStack poseStack = new PoseStack();
-            var camPos = camera.getPosition();
-            poseStack.translate(ix - camPos.x, iy + (ent.getBbHeight() / 8f) - camPos.y, iz - camPos.z);
-            MultiBufferSource.BufferSource buf = Minecraft.getInstance().renderBuffers().bufferSource();
-
-            // Render orb billboard for snag ball at center
+            // Emit snag trail density puffs along the ball's trajectory
             if (inst.isSnagBall) {
-                renderOrb(poseStack, buf, partialTicks);
+                emitSnagTrailPuffs(mc, ent, ix, iy, iz, inst);
             }
 
-            // Render trail for snag ball
-            if (inst.isSnagBall) {
-                BallTrailManager.renderSnagRibbonForId(inst.entityId, partialTicks, poseStack, buf);
+            // Start throw VFX while the ball is in flight (suppressed once capture VFX takes over)
+            boolean captureVfxActive = SnagCaptureVfx.get(inst.entityId) != null;
+            if (inst.isSnagBall && !captureVfxActive && ent instanceof EmptyPokeBallEntity ball) {
+                if(ball.getCaptureState() == EmptyPokeBallEntity.CaptureState.NOT) {
+                    SnagThrowVfx.start(ball);
+                }
             }
 
-            buf.endBatch();
+            // Detect when a Snag Ball enters the capture beam phase (beamMode == 3 on the phased Pokémon)
+            // and start the SnagCaptureVfx if not already running.
+            if (inst.isSnagBall && !captureVfxActive && ent instanceof EmptyPokeBallEntity ball) {
+                maybeStartSnagVfx(ball, mc);
+            }
+
+            // Track Snag Balls that have entered the shake phase
+            if (inst.isSnagBall && ent instanceof EmptyPokeBallEntity ball2) {
+                SnagShakeVfx.maybeTrack(ball2);
+            }
+        }
+    }
+
+    /**
+     * Renders the FBO-dependent density and bloom pipelines for Snag Capture VFX.
+     * <p>
+     * This must be called at a late render stage (e.g. {@code WorldRenderEvents.END}
+     * on Fabric or {@code AFTER_PARTICLES} on NeoForge) so that Iris/Oculus has
+     * already finished its own pipeline and restored the vanilla framebuffer.
+     * Non-FBO rendering (billboards, trails, sparks) stays in {@link #onRender}.
+     */
+    public static void onRenderFBO(net.minecraft.client.Camera camera, float partialTicks) {
+        var mc = Minecraft.getInstance();
+        if (mc == null || mc.level == null) return;
+
+        // Snag trail density pipeline (orange smoke and purple motes)
+        SnagTrailDensitySystem.renderDensityPipeline(camera, partialTicks);
+
+        // Density FBO pass: render beam splats + particle splats → blur → composite
+        if (!SnagCaptureVfx.getActiveInstances().isEmpty()
+                && SnagDensityFBO.beginDensityPass()) {
+            SnagCaptureVfx.renderAllDensityPass(camera, partialTicks);
+            SnagDensityFBO.endDensityPass();
+            SnagDensityFBO.blur();
+            SnagDensityFBO.composite();
+        }
+
+        // Bloom pass: re-render snag VFX into a half-res FBO, blur, composite
+        IClientConfig cfg = ShadowedHeartsConfigs.getInstance().getClientConfig();
+        if (cfg.snagBloomEnabled() && SnagBloomFBO.shouldRun() && SnagBloomFBO.beginBloomPass()) {
+            SnagCaptureVfx.renderAll(camera, partialTicks);
+            SnagBloomFBO.endBloomPass();
+            SnagBloomFBO.blurAndComposite();
+        }
+    }
+
+    /**
+     * Scans the level for a PokemonEntity whose {@code phasingTargetId} matches this ball's ID
+     * and whose {@code beamMode} is 3 (the capture-beam recall phase). If found, starts the
+     * {@link SnagCaptureVfx} for this ball.
+     */
+    private static void maybeStartSnagVfx(EmptyPokeBallEntity ball, Minecraft mc) {
+        if (mc.level == null) return;
+        for (var entity : mc.level.entitiesForRendering()) {
+            if (!(entity instanceof PokemonEntity pokemon)) continue;
+            if (pokemon.getPhasingTargetId() == ball.getId() && pokemon.getBeamMode() == 3) {
+                SnagCaptureVfx.start(ball, pokemon);
+                return;
+            }
         }
     }
 
@@ -123,14 +206,13 @@ public final class BallEmitters {
         poseStack.mulPose(Minecraft.getInstance().getEntityRenderDispatcher().cameraOrientation());
         float base = 0.85f;
         poseStack.scale(base, base, base);
-        if (ModShaders.BALL_GLOW != null) {
+        if (ModShaders.BALL_ORB_GLOW != null) {
             try {
-                apply(ModShaders.BALL_GLOW);
+                apply(ModShaders.BALL_ORB_GLOW);
             } catch (Throwable ignored) {
             }
         }
-        // Use any texture; shader in orb mode ignores it. We route via BallRenderTypes to bind the glow shader.
-        VertexConsumer vc = buffer.getBuffer(BallRenderTypes.ballGlow(null));
+        VertexConsumer vc = buffer.getBuffer(BallRenderTypes.ballOrbGlow());
         emitUnitQuad(vc, poseStack, FULLBRIGHT);
         poseStack.popPose();
     }
@@ -175,13 +257,13 @@ public final class BallEmitters {
         poseStack.pushPose();
         float s = sizePx * 0.5f; // our quad is [-1,1]
         poseStack.scale(s, s, s);
-        if (ModShaders.BALL_GLOW != null) {
+        if (ModShaders.BALL_ORB_GLOW != null) {
             try {
-                apply(ModShaders.BALL_GLOW);
+                apply(ModShaders.BALL_ORB_GLOW);
             } catch (Throwable ignored) {
             }
         }
-        VertexConsumer vc = buffers.getBuffer(BallRenderTypes.ballGlowHud());
+        VertexConsumer vc = buffers.getBuffer(BallRenderTypes.ballOrbGlowHud());
         emitUnitQuadAlpha(vc, poseStack, FULLBRIGHT, alpha);
         poseStack.popPose();
     }
@@ -285,17 +367,73 @@ public final class BallEmitters {
         PenumbraTrailSystem.registerPuff(x, y, z, vx, vy, vz);
     }
 
+    /** Particles emitted per block of travel distance for snag ball trails. */
+    private static final double SNAG_PARTICLES_PER_BLOCK = 14.0;
+
+    /**
+     * Spawns snag trail density puffs along the ball's trajectory, similar to
+     * {@link #emitPenumbraTrailParticles} but feeding into
+     * {@link SnagTrailDensitySystem} instead of the penumbra particle system.
+     */
+    private static void emitSnagTrailPuffs(Minecraft mc, Entity ent,
+                                            double ix, double iy, double iz,
+                                            BallInstance inst) {
+        if (mc.level == null) return;
+
+        long gameTime = mc.level.getGameTime();
+        if (gameTime == inst.lastSnagSpawnTick) {
+            inst.lastSnagTrailPos = new Vec3(ix, iy + 0.15, iz);
+            return;
+        }
+        inst.lastSnagSpawnTick = gameTime;
+
+        double vx = ent.getDeltaMovement().x;
+        double vy = ent.getDeltaMovement().y;
+        double vz = ent.getDeltaMovement().z;
+
+        Vec3 curr = new Vec3(ix, iy + 0.15, iz);
+        Vec3 prev = inst.lastSnagTrailPos;
+
+        if (prev != null) {
+            double gap = prev.distanceTo(curr);
+            int count = Math.max(6, Math.min(28, (int) (gap * SNAG_PARTICLES_PER_BLOCK)));
+            for (int i = 0; i < count; i++) {
+                double t = (double) i / count;
+                double lx = Mth.lerp(t, prev.x, curr.x) + (mc.level.random.nextFloat() - 0.5) * 0.52;
+                double ly = Mth.lerp(t, prev.y, curr.y) + (mc.level.random.nextFloat() - 0.5) * 0.52;
+                double lz = Mth.lerp(t, prev.z, curr.z) + (mc.level.random.nextFloat() - 0.5) * 0.52;
+                SnagTrailDensitySystem.registerOrangeSmokePuff(lx, ly, lz, vx, vy, vz);
+                // Emit purple motes at lower density (roughly 1 in 3 positions)
+                if (i % 3 == 0) {
+                    SnagTrailDensitySystem.registerPurpleMote(lx, ly, lz, vx, vy, vz);
+                }
+            }
+        } else {
+            for (int i = 0; i < 4; i++) {
+                double ox = curr.x + (mc.level.random.nextFloat() - 0.5) * 0.25;
+                double oy = curr.y + (mc.level.random.nextFloat() - 0.5) * 0.20;
+                double oz = curr.z + (mc.level.random.nextFloat() - 0.5) * 0.25;
+                SnagTrailDensitySystem.registerOrangeSmokePuff(ox, oy, oz, vx, vy, vz);
+                SnagTrailDensitySystem.registerPurpleMote(ox, oy, oz, vx, vy, vz);
+            }
+        }
+        inst.lastSnagTrailPos = curr;
+    }
+
     private static final class BallInstance {
         final int entityId;
         final WeakReference<Entity> entityRef;
-        final boolean isSnagBall;
-        final boolean isPenumbraBall;
+        boolean isSnagBall;
+        boolean isPenumbraBall;
+        boolean resolved = false;
         long startTick;
         int fadeInTicks;
         int sustainTicks;
         int fadeOutTicks;
         Vec3 lastTrailPos;
         long lastSpawnTick = Long.MIN_VALUE;
+        Vec3 lastSnagTrailPos;
+        long lastSnagSpawnTick = Long.MIN_VALUE;
 
         BallInstance(int entityId, @Nullable Entity ent, long startTick, int fi, int sus, int fo, boolean isSnagBall, boolean isPenumbraBall) {
             this.entityId = entityId;
@@ -335,14 +473,10 @@ public final class BallEmitters {
 
         float[] u_glowTint = null;
 
-        set1f(shader, "u_orbMode", 1.0f);
         set1f(shader, "u_time", time);
 
         set1f(shader, "u_rimStrength", null);
         set1f(shader, "u_pulseSpeed", 0.125f);
-        set1f(shader, "u_useMask", 1.0f);
-
-        set1f(shader, "u_orbMode", null);
         set1f(shader, "u_orbIntensity", 1.4f);
         set1f(shader, "u_orbSoftness", 1.0f);
 

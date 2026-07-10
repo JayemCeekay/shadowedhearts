@@ -25,6 +25,7 @@ import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs;
 import com.jayemceekay.shadowedhearts.data.ShadowAspectPresets;
 import com.jayemceekay.shadowedhearts.data.ShadowPools;
 import com.jayemceekay.shadowedhearts.integration.accessories.SnagAccessoryBridgeHolder;
+import com.jayemceekay.shadowedhearts.integration.ftbchunks.FTBChunksClaimBridgeHolder;
 import com.jayemceekay.shadowedhearts.integration.mega_showdown.MegaShowdownBridgeHolder;
 import com.jayemceekay.shadowedhearts.integration.rctmod.RCTBridgeHolder;
 import com.jayemceekay.shadowedhearts.network.AuraBroadcastQueue;
@@ -77,6 +78,7 @@ public final class Shadowedhearts {
     public static void init() {
         LOGGER.info("[ShadowedHearts] Initializing mod...");
         SnagAccessoryBridgeHolder.init();
+        FTBChunksClaimBridgeHolder.init();
         MegaShowdownBridgeHolder.init();
         RCTBridgeHolder.init();
         ModItemComponents.init();

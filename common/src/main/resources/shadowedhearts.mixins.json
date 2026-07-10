@@ -6,6 +6,8 @@
   "minVersion": "0.8",
   "refmap": "shadowedhearts.refmap.json",
   "client": [
+    "client.MixinPosableModelAuraMask",
+    "client.MixinPokemonRenderer",
     "MixinBattleGeneralActionSelection",
     "MixinBattleMoveSelectionMoveTile",
     "MixinInfoWidget",

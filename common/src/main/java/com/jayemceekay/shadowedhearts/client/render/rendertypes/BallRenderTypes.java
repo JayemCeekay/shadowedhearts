@@ -69,6 +69,46 @@ public final class BallRenderTypes {
         return RenderType.create("shadowedhearts:ball_glow_hud", DefaultVertexFormat.NEW_ENTITY, VertexFormat.Mode.QUADS, 256, false, true, state);
     }
 
+    /**
+     * Procedural radial orb glow + starburst + halo — uses ball_orb_glow shader.
+     */
+    public static RenderType ballOrbGlow() {
+        RenderType.CompositeState state = RenderType.CompositeState.builder()
+                .setShaderState(new RenderStateShard.ShaderStateShard(() ->
+                        ModShaders.BALL_ORB_GLOW != null
+                                ? ModShaders.BALL_ORB_GLOW
+                                : GameRenderer.getParticleShader()
+                ))
+                .setTextureState(RenderStateShard.NO_TEXTURE)
+                .setTransparencyState(ADDITIVE_TRANSPARENCY)
+                .setLightmapState(RenderStateShard.NO_LIGHTMAP)
+                .setDepthTestState(RenderStateShard.LEQUAL_DEPTH_TEST)
+                .setWriteMaskState(RenderStateShard.COLOR_WRITE)
+                .setCullState(RenderStateShard.NO_CULL)
+                .createCompositeState(true);
+        return RenderType.create("shadowedhearts:ball_orb_glow", DefaultVertexFormat.NEW_ENTITY, VertexFormat.Mode.QUADS, 256, false, true, state);
+    }
+
+    /**
+     * HUD variant of orb glow.
+     */
+    public static RenderType ballOrbGlowHud() {
+        RenderType.CompositeState state = RenderType.CompositeState.builder()
+                .setShaderState(new RenderStateShard.ShaderStateShard(() ->
+                        ModShaders.BALL_ORB_GLOW != null
+                                ? ModShaders.BALL_ORB_GLOW
+                                : GameRenderer.getParticleShader()
+                ))
+                .setTextureState(RenderStateShard.NO_TEXTURE)
+                .setTransparencyState(ADDITIVE_TRANSPARENCY)
+                .setLightmapState(RenderStateShard.NO_LIGHTMAP)
+                .setDepthTestState(RenderStateShard.LEQUAL_DEPTH_TEST)
+                .setWriteMaskState(RenderStateShard.COLOR_WRITE)
+                .setCullState(RenderStateShard.NO_CULL)
+                .createCompositeState(true);
+        return RenderType.create("shadowedhearts:ball_orb_glow_hud", DefaultVertexFormat.NEW_ENTITY, VertexFormat.Mode.QUADS, 256, false, true, state);
+    }
+
     public static RenderType trailAdditive() {
         ResourceLocation tex = ResourceLocation.parse("shadowedhearts:textures/particle/ball_trail128x32.png");
         RenderType.CompositeState state = RenderType.CompositeState.builder()
@@ -104,6 +144,154 @@ public final class BallRenderTypes {
                 .setLayeringState(RenderStateShard.NO_LAYERING)
                 .createCompositeState(true);
         return RenderType.create("shadowedhearts:penumbra_trail_ribbon", DefaultVertexFormat.NEW_ENTITY, VertexFormat.Mode.QUADS, 512, false, true, state);
+    }
+
+    /**
+     * Lens flare billboard — uses snag_flare shader with additive blending.
+     * Renders procedural streak/spike patterns; texture is optional overlay.
+     */
+    public static RenderType flareAdditive() {
+        RenderType.CompositeState state = RenderType.CompositeState.builder()
+                .setShaderState(new RenderStateShard.ShaderStateShard(() ->
+                        ModShaders.SNAG_FLARE != null
+                                ? ModShaders.SNAG_FLARE
+                                : GameRenderer.getParticleShader()
+                ))
+                .setTextureState(RenderStateShard.NO_TEXTURE)
+                .setTransparencyState(ADDITIVE_TRANSPARENCY)
+                .setLightmapState(RenderStateShard.NO_LIGHTMAP)
+                .setDepthTestState(RenderStateShard.LEQUAL_DEPTH_TEST)
+                .setWriteMaskState(RenderStateShard.COLOR_WRITE)
+                .setCullState(RenderStateShard.NO_CULL)
+                .createCompositeState(true);
+        return RenderType.create("shadowedhearts:snag_flare", DefaultVertexFormat.NEW_ENTITY, VertexFormat.Mode.QUADS, 256, false, true, state);
+    }
+
+    /**
+     * Orb shell billboard — uses snag_orb shader with noise texture for crackling sphere shell.
+     */
+    public static RenderType orbShell() {
+        ResourceLocation tex = ResourceLocation.parse("shadowedhearts:textures/vfx/orb_shell_noise.png");
+        RenderType.CompositeState state = RenderType.CompositeState.builder()
+                .setShaderState(new RenderStateShard.ShaderStateShard(() ->
+                        ModShaders.SNAG_ORB != null
+                                ? ModShaders.SNAG_ORB
+                                : GameRenderer.getParticleShader()
+                ))
+                .setTextureState(new RenderStateShard.TextureStateShard(tex, false, false))
+                .setTransparencyState(ADDITIVE_TRANSPARENCY)
+                .setLightmapState(RenderStateShard.NO_LIGHTMAP)
+                .setDepthTestState(RenderStateShard.LEQUAL_DEPTH_TEST)
+                .setWriteMaskState(RenderStateShard.COLOR_WRITE)
+                .setCullState(RenderStateShard.NO_CULL)
+                .createCompositeState(true);
+        return RenderType.create("shadowedhearts:snag_orb", DefaultVertexFormat.NEW_ENTITY, VertexFormat.Mode.QUADS, 256, false, true, state);
+    }
+
+    /**
+     * VFX particle additive — uses ball_trail shader with a specified VFX texture.
+     * Used for spark streaks, shock rings, soft glow motes, etc.
+     */
+    public static RenderType vfxAdditive(ResourceLocation texture) {
+        RenderType.CompositeState state = RenderType.CompositeState.builder()
+                .setShaderState(new RenderStateShard.ShaderStateShard(() -> ModShaders.BALL_TRAIL != null
+                        ? ModShaders.BALL_TRAIL
+                        : GameRenderer.getPositionColorShader()))
+                .setTextureState(new RenderStateShard.TextureStateShard(texture, false, false))
+                .setTransparencyState(ADDITIVE_TRANSPARENCY)
+                .setLightmapState(RenderStateShard.NO_LIGHTMAP)
+                .setDepthTestState(RenderStateShard.LEQUAL_DEPTH_TEST)
+                .setWriteMaskState(RenderStateShard.COLOR_WRITE)
+                .setCullState(RenderStateShard.NO_CULL)
+                .createCompositeState(true);
+        return RenderType.create("shadowedhearts:vfx_add", DefaultVertexFormat.NEW_ENTITY, VertexFormat.Mode.QUADS, 512, false, true, state);
+    }
+
+    private static final RenderStateShard.TransparencyStateShard ALPHA_TRANSPARENCY = new RenderStateShard.TransparencyStateShard(
+            "shadowedhearts_alpha",
+            () -> {
+                RenderSystem.enableBlend();
+                RenderSystem.blendFuncSeparate(
+                        GlStateManager.SourceFactor.SRC_ALPHA,
+                        GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA,
+                        GlStateManager.SourceFactor.ONE,
+                        GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA
+                );
+            },
+            () -> {
+                RenderSystem.disableBlend();
+                RenderSystem.defaultBlendFunc();
+            }
+    );
+
+    /**
+     * Pokémon dissolve render type — replaces entityCutout during snag absorption.
+     * Uses the snag_dissolve shader with the entity's own texture on Sampler0
+     * and dissolve noise on Sampler3 (bound manually before drawing).
+     */
+    public static RenderType dissolve(ResourceLocation entityTexture) {
+        RenderType.CompositeState state = RenderType.CompositeState.builder()
+                .setShaderState(new RenderStateShard.ShaderStateShard(() ->
+                        ModShaders.SNAG_DISSOLVE != null
+                                ? ModShaders.SNAG_DISSOLVE
+                                : GameRenderer.getRendertypeEntityCutoutShader()
+                ))
+                .setTextureState(new RenderStateShard.TextureStateShard(entityTexture, false, false))
+                .setTransparencyState(ALPHA_TRANSPARENCY)
+                .setLightmapState(RenderStateShard.LIGHTMAP)
+                .setOverlayState(RenderStateShard.OVERLAY)
+                .setDepthTestState(RenderStateShard.LEQUAL_DEPTH_TEST)
+                .setWriteMaskState(RenderStateShard.COLOR_DEPTH_WRITE)
+                .setCullState(RenderStateShard.NO_CULL)
+                .createCompositeState(true);
+        return RenderType.create("shadowedhearts:snag_dissolve", DefaultVertexFormat.NEW_ENTITY, VertexFormat.Mode.QUADS, 256, true, false, state);
+    }
+
+    // Pre-built VFX render types for common particle textures
+    private static final ResourceLocation SPARK_STREAK_TEX = ResourceLocation.parse("shadowedhearts:textures/vfx/spark_streak.png");
+    private static final ResourceLocation SOFT_GLOW_TEX = ResourceLocation.parse("shadowedhearts:textures/vfx/soft_glow.png");
+    private static final ResourceLocation SHOCK_RING_TEX = ResourceLocation.parse("shadowedhearts:textures/vfx/shock_ring.png");
+    private static final ResourceLocation CONVERGENCE_RING_TEX = ResourceLocation.parse("shadowedhearts:textures/vfx/convergence_ring.png");
+
+    public static RenderType sparkStreakAdditive() { return vfxAdditive(SPARK_STREAK_TEX); }
+    public static RenderType softGlowAdditive()    { return vfxAdditive(SOFT_GLOW_TEX); }
+    public static RenderType shockRingAdditive()   { return vfxAdditive(SHOCK_RING_TEX); }
+
+    /**
+     * Shock ring glow — uses the vanilla entity-cutout shader (no custom uniforms)
+     * so it renders texture × vertex-color directly without uStrength dependency.
+     */
+    public static RenderType shockRingGlowAdditive() {
+        RenderType.CompositeState state = RenderType.CompositeState.builder()
+                .setShaderState(new RenderStateShard.ShaderStateShard(
+                        GameRenderer::getRendertypeEntityCutoutShader))
+                .setTextureState(new RenderStateShard.TextureStateShard(CONVERGENCE_RING_TEX, false, false))
+                .setTransparencyState(RenderStateShard.TRANSLUCENT_TRANSPARENCY)
+                .setLightmapState(RenderStateShard.NO_LIGHTMAP)
+                .setDepthTestState(RenderStateShard.LEQUAL_DEPTH_TEST)
+                .setWriteMaskState(RenderStateShard.COLOR_WRITE)
+                .setCullState(RenderStateShard.NO_CULL)
+                .createCompositeState(true);
+        return RenderType.create("shadowedhearts:shock_ring_glow_add", DefaultVertexFormat.NEW_ENTITY, VertexFormat.Mode.QUADS, 512, false, true, state);
+    }
+
+    /**
+     * Simple additive spark glow — uses the vanilla entity-cutout shader so it
+     * just renders texture × vertex-color with no custom uniforms required.
+     * Suitable for simple billboard spark quads.
+     */
+    public static RenderType sparkGlowAdditive() {
+        RenderType.CompositeState state = RenderType.CompositeState.builder()
+                .setShaderState(new RenderStateShard.ShaderStateShard(
+                        GameRenderer::getRendertypeEntityCutoutShader))
+                .setTextureState(new RenderStateShard.TextureStateShard(SPARK_STREAK_TEX, false, false))
+                .setTransparencyState(ADDITIVE_TRANSPARENCY)
+                .setLightmapState(RenderStateShard.NO_LIGHTMAP)
+                .setDepthTestState(RenderStateShard.LEQUAL_DEPTH_TEST)
+                .setWriteMaskState(RenderStateShard.COLOR_WRITE)
+                .setCullState(RenderStateShard.NO_CULL)
+                .createCompositeState(true);
+        return RenderType.create("shadowedhearts:spark_glow_add", DefaultVertexFormat.NEW_ENTITY, VertexFormat.Mode.QUADS, 512, false, true, state);
     }
 
     /**

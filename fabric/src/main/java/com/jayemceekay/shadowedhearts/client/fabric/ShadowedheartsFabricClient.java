@@ -6,6 +6,7 @@ import com.jayemceekay.shadowedhearts.client.ModKeybinds;
 import com.jayemceekay.shadowedhearts.client.ModShaders;
 import com.jayemceekay.shadowedhearts.client.aura.AuraEmitters;
 import com.jayemceekay.shadowedhearts.client.aura.AuraPulseRenderer;
+import com.jayemceekay.shadowedhearts.client.aura.ShadowPokemonAuraSystem;
 import com.jayemceekay.shadowedhearts.client.ball.BallEmitters;
 import com.jayemceekay.shadowedhearts.client.particle.LuminousMoteEmitters;
 import com.jayemceekay.shadowedhearts.client.particle.LuminousMoteParticle;
@@ -63,12 +64,10 @@ public final class ShadowedheartsFabricClient implements ClientModInitializer {
         DepthCapture.init();
         ModShaders.initClient();
         ModShadersPlatformImpl.registerShaders();
-        // Register default aura interference effects
-        com.jayemceekay.shadowedhearts.client.aura.effects.AuraInterferenceRegistry.initDefault();
         // Register keybinds
         ModKeybinds.init();
         ModKeybindsPlatformImpl.register(ModKeybinds.AURA_SCANNER);
-//        ModKeybindsPlatformImpl.register(ModKeybinds.AURA_MODE_SELECTOR);
+        //ModKeybindsPlatformImpl.register(ModKeybinds.AURA_MODE_SELECTOR);
         //ModKeybindsPlatformImpl.register(ModKeybinds.AURA_PULSE);
         //ModKeybindsPlatformImpl.register(ModKeybinds.AURA_NEXT_SIGNAL);
         //ModKeybindsPlatformImpl.register(ModKeybinds.AURA_PREV_SIGNAL);
@@ -138,6 +137,14 @@ public final class ShadowedheartsFabricClient implements ClientModInitializer {
 
         WorldRenderEvents.END.register(worldRenderContext -> {
             PenumbraTrailSystem.renderDensityPipeline(
+                    worldRenderContext.camera(),
+                    worldRenderContext.camera().getPartialTickTime()
+            );
+            ShadowPokemonAuraSystem.renderDensityPipeline(
+                    worldRenderContext.camera(),
+                    worldRenderContext.camera().getPartialTickTime()
+            );
+            BallEmitters.onRenderFBO(
                     worldRenderContext.camera(),
                     worldRenderContext.camera().getPartialTickTime()
             );

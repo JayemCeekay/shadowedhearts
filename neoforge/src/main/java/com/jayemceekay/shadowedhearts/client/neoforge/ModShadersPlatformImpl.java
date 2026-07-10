@@ -39,13 +39,55 @@ public class ModShadersPlatformImpl {
             evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:purification/purification_chamber_background", DefaultVertexFormat.POSITION_TEX),
                     shader -> ModShaders.PURIFICATION_CHAMBER_BACKGROUND = shader);
 
-            // Poké Ball glow overlay (additive + fullbright)
+            // Poké Ball glow overlay — texture-based (additive + fullbright)
             evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:snag/ball_glow", DefaultVertexFormat.NEW_ENTITY),
                     shader -> ModShaders.BALL_GLOW = shader);
+
+            // Procedural orb glow + starburst + halo (split from ball_glow)
+            evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:snag/ball_orb_glow", DefaultVertexFormat.NEW_ENTITY),
+                    shader -> ModShaders.BALL_ORB_GLOW = shader);
 
             // Ball trail ribbon
             evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:snag/ball_trail", DefaultVertexFormat.NEW_ENTITY),
                     shader -> ModShaders.BALL_TRAIL = shader);
+
+            // Lens flare (procedural streak + spike pattern)
+            evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:snag/snag_flare", DefaultVertexFormat.NEW_ENTITY),
+                    shader -> ModShaders.SNAG_FLARE = shader);
+
+            // Orb shell (sphere-projected noise with shell band)
+            evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:snag/snag_orb", DefaultVertexFormat.NEW_ENTITY),
+                    shader -> ModShaders.SNAG_ORB = shader);
+
+            // Pokémon dissolve (noise-based dissolution with glowing edge)
+            evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:snag/snag_dissolve", DefaultVertexFormat.NEW_ENTITY),
+                    shader -> ModShaders.SNAG_DISSOLVE = shader);
+
+            // Bloom pipeline — simple Gaussian blur (no depth awareness)
+            evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:snag/snag_bloom_blur", DefaultVertexFormat.POSITION_TEX),
+                    shader -> ModShaders.SNAG_BLOOM_BLUR = shader);
+
+            // Bloom pipeline — additive composite over scene
+            evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:snag/snag_bloom_composite", DefaultVertexFormat.POSITION_TEX),
+                    shader -> ModShaders.SNAG_BLOOM_COMPOSITE = shader);
+
+            // Snag beam density metaball pipeline (density splat + composite)
+            evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:snag/snag_beam_density", DefaultVertexFormat.PARTICLE),
+                    shader -> ModShaders.SNAG_BEAM_DENSITY = shader);
+            evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:snag/snag_beam_composite", DefaultVertexFormat.POSITION_TEX),
+                    shader -> ModShaders.SNAG_BEAM_COMPOSITE = shader);
+
+            // Snag trail orange smoke density pipeline (FBM noise + warm orange composite)
+            evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:snag/snag_trail_density", DefaultVertexFormat.PARTICLE),
+                    shader -> ModShaders.SNAG_TRAIL_DENSITY = shader);
+            evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:snag/snag_trail_composite", DefaultVertexFormat.POSITION_TEX),
+                    shader -> ModShaders.SNAG_TRAIL_COMPOSITE = shader);
+
+            // Snag trail purple mote density pipeline (separate from capture beam)
+            evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:snag/snag_mote_density", DefaultVertexFormat.PARTICLE),
+                    shader -> ModShaders.SNAG_MOTE_DENSITY = shader);
+            evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:snag/snag_mote_composite", DefaultVertexFormat.POSITION_TEX),
+                    shader -> ModShaders.SNAG_MOTE_COMPOSITE = shader);
 
             // Shadow aura trail (fullscreen quad, sphere-traced SDF raymarching)
             evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:aura/shadow_aura_trail", DefaultVertexFormat.POSITION),
@@ -71,6 +113,15 @@ public class ModShadersPlatformImpl {
 
             evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:aura/penumbra_composite", DefaultVertexFormat.POSITION_TEX),
                     shader -> ModShaders.PENUMBRA_COMPOSITE = shader);
+
+            evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:aura/shadow_pokemon_aura_density", DefaultVertexFormat.PARTICLE),
+                    shader -> ModShaders.SHADOW_POKEMON_AURA_DENSITY = shader);
+
+            evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:aura/shadow_pokemon_aura_mask", DefaultVertexFormat.NEW_ENTITY),
+                    shader -> ModShaders.SHADOW_POKEMON_AURA_MASK = shader);
+
+            evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:aura/shadow_pokemon_aura_composite", DefaultVertexFormat.POSITION_TEX),
+                    shader -> ModShaders.SHADOW_POKEMON_AURA_COMPOSITE = shader);
 
             // Screen-space electromagnetic static overlay
             evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:interference/aura_static_interference", DefaultVertexFormat.POSITION_TEX),

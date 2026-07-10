@@ -30,6 +30,15 @@ public final class ClientConfig implements IClientConfig, ISoundConfig {
         public ModConfigSpec.DoubleValue auraReaderEquipVolume;
         public ModConfigSpec.DoubleValue auraReaderUnequipVolume;
 
+        // Snag Ball VFX
+        public ModConfigSpec.DoubleValue snagParticleMultiplier;
+        public ModConfigSpec.BooleanValue snagBloomEnabled;
+        public ModConfigSpec.DoubleValue snagBloomIntensity;
+        public ModConfigSpec.BooleanValue snagLensFlareEnabled;
+        public ModConfigSpec.BooleanValue snagDissolveEnabled;
+        public ModConfigSpec.BooleanValue snagShakeVfxEnabled;
+        public ModConfigSpec.BooleanValue snagReducedMotion;
+
         private void build(ModConfigSpec.Builder builder) {
             enableShadowAura = builder
                     .comment("Master toggle for client-side Shadow aura rendering.")
@@ -67,6 +76,30 @@ public final class ClientConfig implements IClientConfig, ISoundConfig {
             auraReaderUnequipVolume = builder
                     .comment("The volume of the Aura Reader unequip sound.")
                     .defineInRange("auraReaderUnequipVolume", 1.0, 0.0, 10.0);
+            builder.pop();
+
+            builder.push("snagVfx");
+            snagParticleMultiplier = builder
+                    .comment("Multiplier for particle counts in snag ball VFX (0.0 = none, 1.0 = default, 2.0 = double).")
+                    .defineInRange("snagParticleMultiplier", 1.0, 0.0, 3.0);
+            snagBloomEnabled = builder
+                    .comment("Whether the bloom/glow post-processing pass is enabled for snag ball VFX.")
+                    .define("snagBloomEnabled", true);
+            snagBloomIntensity = builder
+                    .comment("Intensity of the bloom effect (0.0-2.0).")
+                    .defineInRange("snagBloomIntensity", 0.8, 0.0, 2.0);
+            snagLensFlareEnabled = builder
+                    .comment("Whether lens flare is rendered at beam convergence.")
+                    .define("snagLensFlareEnabled", true);
+            snagDissolveEnabled = builder
+                    .comment("Whether the dissolve shader is applied to the Pok\u00e9mon during absorption.")
+                    .define("snagDissolveEnabled", true);
+            snagShakeVfxEnabled = builder
+                    .comment("Whether shake-phase VFX (seam glow, ground pulses, sparks) are enabled.")
+                    .define("snagShakeVfxEnabled", true);
+            snagReducedMotion = builder
+                    .comment("Reduced motion mode: disables fast-moving particles, flashes, and screen effects.")
+                    .define("snagReducedMotion", false);
             builder.pop();
         }
     }
@@ -134,6 +167,50 @@ public final class ClientConfig implements IClientConfig, ISoundConfig {
     public float auraReaderUnequipVolume() {
         if (!isLoaded()) return ISoundConfig.super.auraReaderUnequipVolume();
         return DATA.auraReaderUnequipVolume.get().floatValue();
+    }
+
+    // ── Snag Ball VFX ────────────────────────────────────────────────────
+
+    @Override
+    public float snagParticleMultiplier() {
+        if (!isLoaded()) return IClientConfig.super.snagParticleMultiplier();
+        return DATA.snagParticleMultiplier.get().floatValue();
+    }
+
+    @Override
+    public boolean snagBloomEnabled() {
+        if (!isLoaded()) return IClientConfig.super.snagBloomEnabled();
+        return DATA.snagBloomEnabled.get();
+    }
+
+    @Override
+    public float snagBloomIntensity() {
+        if (!isLoaded()) return IClientConfig.super.snagBloomIntensity();
+        return DATA.snagBloomIntensity.get().floatValue();
+    }
+
+    @Override
+    public boolean snagLensFlareEnabled() {
+        if (!isLoaded()) return IClientConfig.super.snagLensFlareEnabled();
+        return DATA.snagLensFlareEnabled.get();
+    }
+
+    @Override
+    public boolean snagDissolveEnabled() {
+        if (!isLoaded()) return IClientConfig.super.snagDissolveEnabled();
+        return DATA.snagDissolveEnabled.get();
+    }
+
+    @Override
+    public boolean snagShakeVfxEnabled() {
+        if (!isLoaded()) return IClientConfig.super.snagShakeVfxEnabled();
+        return DATA.snagShakeVfxEnabled.get();
+    }
+
+    @Override
+    public boolean snagReducedMotion() {
+        if (!isLoaded()) return IClientConfig.super.snagReducedMotion();
+        return DATA.snagReducedMotion.get();
     }
 
     @Override

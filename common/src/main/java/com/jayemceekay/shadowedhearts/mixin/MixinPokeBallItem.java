@@ -35,16 +35,16 @@ public class MixinPokeBallItem {
         // Also auto-disarm on throw regardless of energy consumption result.
         if (player != null && SnagCaps.hasMachineAvailable(player)) {
             var cap = SnagCaps.get(player);
-            if (cap.isArmed()) {
-                cap.consumeEnergy(ShadowedHeartsConfigs.getInstance().getSnagConfig().energyPerAttempt());
-                cap.setArmed(false);
-                ShadowedHeartsNetwork.sendToPlayer(player, new SnagArmedPacket(false));
+            //if (cap.isArmed()) {
+            cap.consumeEnergy(ShadowedHeartsConfigs.getInstance().getSnagConfig().energyPerAttempt());
+            cap.setArmed(false);
+            ShadowedHeartsNetwork.sendToPlayer(player, new SnagArmedPacket(false));
 
-                // Add "snag_ball" aspect to the entity for client-side emitter attachment
-                Set<String> aspects = new HashSet<>(pokeBallEntity.getAspects());
-                aspects.add("snag_ball");
-                pokeBallEntity.setAspects(aspects);
-            }
+            // Mark the ball entity as a snag ball via Aspects (auto-synced to client)
+            Set<String> aspects = new HashSet<>(pokeBallEntity.getAspects());
+            aspects.add("snag_ball");
+            pokeBallEntity.setAspects(aspects);
         }
+        // }
     }
 }

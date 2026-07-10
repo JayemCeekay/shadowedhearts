@@ -7,6 +7,7 @@ import com.jayemceekay.shadowedhearts.client.ModKeybinds;
 import com.jayemceekay.shadowedhearts.client.ShadowedHeartsClient;
 import com.jayemceekay.shadowedhearts.client.aura.AuraEmitters;
 import com.jayemceekay.shadowedhearts.client.aura.AuraPulseRenderer;
+import com.jayemceekay.shadowedhearts.client.aura.ShadowPokemonAuraSystem;
 import com.jayemceekay.shadowedhearts.client.ball.BallEmitters;
 import com.jayemceekay.shadowedhearts.client.particle.LuminousMoteEmitters;
 import com.jayemceekay.shadowedhearts.client.particle.LuminousMoteParticle;
@@ -56,8 +57,6 @@ public final class ShadowedheartsNeoForgeClient {
        // ShadowedHeartsConfigs.getInstance().getClientConfig().load();
         modContainer.registerConfig(ModConfig.Type.CLIENT, ShadowedHeartsConfigs.getInstance().getClientConfig().getSpec(), "shadowedhearts/client.toml");
         ShadowedHeartsClient.init();
-        // Register default aura interference effects (client)
-        com.jayemceekay.shadowedhearts.client.aura.effects.AuraInterferenceRegistry.initDefault();
     }
 
     public static void registerKeybinds(RegisterKeyMappingsEvent event) {
@@ -129,6 +128,8 @@ public final class ShadowedheartsNeoForgeClient {
             float pt = e.getPartialTick().getGameTimeDeltaPartialTick(true);
             LuminousMoteEmitters.onRender(pt);
             PenumbraTrailSystem.renderDensityPipeline(e.getCamera(), pt);
+            ShadowPokemonAuraSystem.renderDensityPipeline(e.getCamera(), pt);
+            BallEmitters.onRenderFBO(e.getCamera(), pt);
         }
 
         if (e.getStage() == RenderLevelStageEvent.Stage.AFTER_WEATHER) {
