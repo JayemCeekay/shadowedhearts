@@ -1,0 +1,22 @@
+{
+  "vertex": "shadowedhearts:darkball/dark_ball_volume",
+  "fragment": "shadowedhearts:darkball/dark_ball_density_advect",
+  "attributes": [ "Position", "UV0" ],
+  "samplers": [
+    { "name": "PreviousDensitySampler" },
+    { "name": "ShapeSampler" }
+  ],
+  "uniforms": [
+    { "name": "VolumeSize", "type": "float", "count": 3, "values": [ 1.0, 1.0, 1.0 ] },
+    { "name": "OutletLocal", "type": "float", "count": 3, "values": [ 0.0, 0.0, 0.0 ] },
+    { "name": "SiphonP0", "type": "float", "count": 3, "values": [ 0.0, 0.0, 0.0 ] },
+    { "name": "SiphonP1", "type": "float", "count": 3, "values": [ 0.0, 0.0, 0.0 ] },
+    { "name": "BodyRadius", "type": "float", "count": 1, "values": [ 1.0 ] },
+    { "name": "VoxelSize", "type": "float", "count": 1, "values": [ 0.03 ] },
+    { "name": "DeltaTime", "type": "float", "count": 1, "values": [ 0.05 ] },
+    { "name": "PreviousSiphonProgress", "type": "float", "count": 1, "values": [ 0.0 ] },
+    { "name": "SiphonProgress", "type": "float", "count": 1, "values": [ 0.0 ] },
+    { "name": "PreviousFinalCollapse", "type": "float", "count": 1, "values": [ 0.0 ] },
+    { "name": "FinalCollapse", "type": "float", "count": 1, "values": [ 0.0 ] }
+  ]
+}

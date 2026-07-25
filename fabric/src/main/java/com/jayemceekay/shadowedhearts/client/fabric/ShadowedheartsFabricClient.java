@@ -5,6 +5,8 @@ import com.jayemceekay.shadowedhearts.Shadowedhearts;
 import com.jayemceekay.shadowedhearts.client.ModKeybinds;
 import com.jayemceekay.shadowedhearts.client.ModShaders;
 import com.jayemceekay.shadowedhearts.client.aura.AuraEmitters;
+import com.jayemceekay.shadowedhearts.client.aura.AuraReaderInputHandler;
+import com.jayemceekay.shadowedhearts.client.aura.AuraReaderHud;
 import com.jayemceekay.shadowedhearts.client.aura.AuraPulseRenderer;
 import com.jayemceekay.shadowedhearts.client.aura.ShadowPokemonAuraSystem;
 import com.jayemceekay.shadowedhearts.client.ball.BallEmitters;
@@ -35,6 +37,7 @@ import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientEntityEvents;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.particle.v1.ParticleFactoryRegistry;
 import net.fabricmc.fabric.api.client.rendering.v1.ColorProviderRegistry;
+import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.RenderType;
@@ -67,15 +70,21 @@ public final class ShadowedheartsFabricClient implements ClientModInitializer {
         // Register keybinds
         ModKeybinds.init();
         ModKeybindsPlatformImpl.register(ModKeybinds.AURA_SCANNER);
-        //ModKeybindsPlatformImpl.register(ModKeybinds.AURA_MODE_SELECTOR);
-        //ModKeybindsPlatformImpl.register(ModKeybinds.AURA_PULSE);
-        //ModKeybindsPlatformImpl.register(ModKeybinds.AURA_NEXT_SIGNAL);
-        //ModKeybindsPlatformImpl.register(ModKeybinds.AURA_PREV_SIGNAL);
-        //ModKeybindsPlatformImpl.register(ModKeybinds.DEBUG_REINIT_HUD);
+        ModKeybindsPlatformImpl.register(ModKeybinds.AURA_MODE_SELECTOR);
+        ModKeybindsPlatformImpl.register(ModKeybinds.AURA_PULSE);
+        ModKeybindsPlatformImpl.register(ModKeybinds.AURA_LOCK);
+        ModKeybindsPlatformImpl.register(ModKeybinds.AURA_NEXT_SIGNAL);
+        ModKeybindsPlatformImpl.register(ModKeybinds.AURA_PREV_SIGNAL);
+        ModKeybindsPlatformImpl.register(ModKeybinds.DEBUG_REINIT_HUD);
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
+            AuraReaderInputHandler.tick(client);
             AuraPulseRenderer.tick();
             RelicStoneSoundManager.tick();
+        });
+        HudRenderCallback.EVENT.register((graphics, tickCounter) -> {
+            AuraReaderHud.render(graphics);
+            ShadowPokemonAuraSystem.renderDebugHud(graphics);
         });
         // Screens
 
@@ -140,10 +149,13 @@ public final class ShadowedheartsFabricClient implements ClientModInitializer {
                     worldRenderContext.camera(),
                     worldRenderContext.camera().getPartialTickTime()
             );
-            ShadowPokemonAuraSystem.renderDensityPipeline(
-                    worldRenderContext.camera(),
-                    worldRenderContext.camera().getPartialTickTime()
-            );
+            if (!ShadowPokemonAuraSystem.isIrisShaderPackActive()) {
+                ShadowPokemonAuraSystem.renderDensityPipeline(
+                        worldRenderContext.camera(),
+                        worldRenderContext.camera().getPartialTickTime(),
+                        worldRenderContext.projectionMatrix()
+                );
+            }
             BallEmitters.onRenderFBO(
                     worldRenderContext.camera(),
                     worldRenderContext.camera().getPartialTickTime()

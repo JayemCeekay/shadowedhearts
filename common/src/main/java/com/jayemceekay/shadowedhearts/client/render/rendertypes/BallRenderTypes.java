@@ -10,11 +10,34 @@ import net.minecraft.client.renderer.RenderStateShard;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.resources.ResourceLocation;
 
+/**
+ * Central factory for RenderTypes used by ball, capture, and trail VFX.
+ *
+ * <p>Shader states are supplied lazily so resource reloads can swap shader
+ * instances without rebuilding all call sites. Most methods also fall back to
+ * vanilla shaders while custom shader registration is unavailable.
+ */
 public final class BallRenderTypes {
 
     private BallRenderTypes() {
     }
 
+    /**
+     * Offscreen passes bind their target FBO before entity rendering. A no-op
+     * output state prevents RenderType setup from rebinding Minecraft's main
+     * target when the hidden Pokemon buffers flush.
+     */
+    private static final RenderStateShard.OutputStateShard CURRENT_BOUND_TARGET = new RenderStateShard.OutputStateShard(
+            "shadowedhearts_current_bound_target",
+            () -> {
+            },
+            () -> {
+            }
+    );
+
+    /**
+     * Full additive blend used by glow, flare, and density-splat quads.
+     */
     private static final RenderStateShard.TransparencyStateShard ADDITIVE_TRANSPARENCY = new RenderStateShard.TransparencyStateShard(
             "shadowedhearts_additive",
             () -> {
@@ -32,6 +55,11 @@ public final class BallRenderTypes {
             }
     );
 
+    /**
+     * Additive world-space ball glow billboard.
+     *
+     * @param texture retained for API compatibility; this shader path is procedural
+     */
     public static RenderType ballGlow(ResourceLocation texture) {
         RenderType.CompositeState state = RenderType.CompositeState.builder()
                 .setShaderState(new RenderStateShard.ShaderStateShard(() ->
@@ -109,6 +137,9 @@ public final class BallRenderTypes {
         return RenderType.create("shadowedhearts:ball_orb_glow_hud", DefaultVertexFormat.NEW_ENTITY, VertexFormat.Mode.QUADS, 256, false, true, state);
     }
 
+    /**
+     * Textured additive ribbon used for in-flight ball trails.
+     */
     public static RenderType trailAdditive() {
         ResourceLocation tex = ResourceLocation.parse("shadowedhearts:textures/particle/ball_trail128x32.png");
         RenderType.CompositeState state = RenderType.CompositeState.builder()
@@ -207,6 +238,10 @@ public final class BallRenderTypes {
         return RenderType.create("shadowedhearts:vfx_add", DefaultVertexFormat.NEW_ENTITY, VertexFormat.Mode.QUADS, 512, false, true, state);
     }
 
+    /**
+     * Standard alpha blending for entity replacement passes that still need to
+     * write depth.
+     */
     private static final RenderStateShard.TransparencyStateShard ALPHA_TRANSPARENCY = new RenderStateShard.TransparencyStateShard(
             "shadowedhearts_alpha",
             () -> {
@@ -245,6 +280,51 @@ public final class BallRenderTypes {
                 .setCullState(RenderStateShard.NO_CULL)
                 .createCompositeState(true);
         return RenderType.create("shadowedhearts:snag_dissolve", DefaultVertexFormat.NEW_ENTITY, VertexFormat.Mode.QUADS, 256, true, false, state);
+    }
+
+    /**
+     * Dark Ball field mask rendered into the currently bound density FBO.
+     */
+    public static RenderType darkBallMask(ResourceLocation entityTexture) {
+        RenderType.CompositeState state = RenderType.CompositeState.builder()
+                .setShaderState(new RenderStateShard.ShaderStateShard(() ->
+                        ModShaders.DARK_BALL_MASK != null
+                                ? ModShaders.DARK_BALL_MASK
+                                : GameRenderer.getRendertypeEntityCutoutShader()
+                ))
+                .setTextureState(new RenderStateShard.TextureStateShard(entityTexture, false, false))
+                .setTransparencyState(RenderStateShard.NO_TRANSPARENCY)
+                .setLightmapState(RenderStateShard.LIGHTMAP)
+                .setOverlayState(RenderStateShard.OVERLAY)
+                .setDepthTestState(RenderStateShard.LEQUAL_DEPTH_TEST)
+                .setWriteMaskState(RenderStateShard.COLOR_DEPTH_WRITE)
+                .setCullState(RenderStateShard.NO_CULL)
+                .setOutputState(CURRENT_BOUND_TARGET)
+                .createCompositeState(true);
+        return RenderType.create("shadowedhearts:dark_ball_mask", DefaultVertexFormat.NEW_ENTITY, VertexFormat.Mode.QUADS, 512, true, false, state);
+    }
+
+    /**
+     * Dark Ball proxy-depth pass rendered into the currently bound front/back
+     * depth proxy FBO. The caller selects front/back by setting GL cull face.
+     */
+    public static RenderType darkBallProxyDepth(ResourceLocation entityTexture) {
+        RenderType.CompositeState state = RenderType.CompositeState.builder()
+                .setShaderState(new RenderStateShard.ShaderStateShard(() ->
+                        ModShaders.DARK_BALL_PROXY_DEPTH != null
+                                ? ModShaders.DARK_BALL_PROXY_DEPTH
+                                : GameRenderer.getRendertypeEntityCutoutShader()
+                ))
+                .setTextureState(new RenderStateShard.TextureStateShard(entityTexture, false, false))
+                .setTransparencyState(ALPHA_TRANSPARENCY)
+                .setLightmapState(RenderStateShard.LIGHTMAP)
+                .setOverlayState(RenderStateShard.OVERLAY)
+                .setDepthTestState(RenderStateShard.LEQUAL_DEPTH_TEST)
+                .setWriteMaskState(RenderStateShard.COLOR_DEPTH_WRITE)
+                .setCullState(RenderStateShard.CULL)
+                .setOutputState(CURRENT_BOUND_TARGET)
+                .createCompositeState(true);
+        return RenderType.create("shadowedhearts:dark_ball_proxy_depth", DefaultVertexFormat.NEW_ENTITY, VertexFormat.Mode.QUADS, 512, true, false, state);
     }
 
     // Pre-built VFX render types for common particle textures

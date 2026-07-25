@@ -1,6 +1,7 @@
 package com.jayemceekay.shadowedhearts.mixin;
 
 import com.jayemceekay.shadowedhearts.client.aura.AuraPulseRenderer;
+import com.jayemceekay.shadowedhearts.client.aura.ShadowPokemonAuraSystem;
 import net.irisshaders.iris.pipeline.IrisRenderingPipeline;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -12,5 +13,16 @@ public class MixinIrisRenderingPipeline {
     @Inject(method = "beginTranslucents", at = @At(value = "HEAD"))
     private void shadowedhearts$onFinalizeLevelRendering(CallbackInfo ci) {
         AuraPulseRenderer.renderIris();
+    }
+
+    @Inject(method = "beginTranslucents", at = @At(value = "TAIL"))
+    private void shadowedhearts$renderShadowPokemonAura(CallbackInfo ci) {
+        ((IrisRenderingPipeline) (Object) this).bindDefault();
+        ShadowPokemonAuraSystem.renderIris();
+    }
+
+    @Inject(method = "finalizeLevelRendering", at = @At(value = "TAIL"))
+    private void shadowedhearts$compositeShadowPokemonAura(CallbackInfo ci) {
+        ShadowPokemonAuraSystem.compositeIris();
     }
 }

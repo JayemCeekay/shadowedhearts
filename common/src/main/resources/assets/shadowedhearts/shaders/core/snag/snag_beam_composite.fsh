@@ -16,7 +16,7 @@ void main() {
     // Discard empty regions early
     if (density < 0.001) discard;
 
-    // ===== Metaball threshold — tighter than penumbra for defined energy streaks =====
+    // ===== Metaball threshold - tighter than penumbra for defined energy streaks =====
     float fog = smoothstep(0.05, 0.30, density);
     fog = pow(fog, 0.7);  // moderate gamma for readable energy shapes
 
@@ -31,7 +31,7 @@ void main() {
     // ===== Density-responsive coloring =====
     float densityNorm = smoothstep(0.02, 0.35, density);
 
-    // Color palette — purple/magenta snag energy with orange/white hot cores
+    // Color palette - purple/magenta snag energy with orange/white hot cores
     vec3 colorCore   = vec3(1.0, 0.95, 0.90);        // bright warm white core
     vec3 colorMid    = vec3(0.90, 0.55, 0.30);       // warm orange mid
     vec3 colorEdge   = vec3(0.55, 0.22, 0.85);       // deep purple edge
@@ -50,14 +50,14 @@ void main() {
     float whiteHot = smoothstep(0.50, 0.85, heat) * smoothstep(0.6, 1.0, densityNorm);
     layerCol = mix(layerCol, vec3(1.0, 0.97, 0.92), whiteHot * 0.4);
 
-    // ===== Gradient-based rim lighting — thick purple-magenta glow =====
+    // ===== Gradient-based rim lighting - thick purple-magenta glow =====
     layerCol += colorRim * rimStrength * 0.85;
 
-    // ===== Emissive rim at fog boundary — wider purple fringe =====
+    // ===== Emissive rim at fog boundary - wider purple fringe =====
     float rim = 1.0 - smoothstep(0.10, 0.55, fog);
     layerCol += colorEdge * rim * 0.4;
 
-    // ===== Additive composite — energy glows on top of scene =====
+    // ===== Additive composite - energy glows on top of scene =====
     float alpha = fog * 0.85;
     alpha = min(alpha, 1.0);
 

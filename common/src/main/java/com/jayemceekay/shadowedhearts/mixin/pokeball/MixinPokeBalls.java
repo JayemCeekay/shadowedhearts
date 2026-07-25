@@ -5,6 +5,7 @@ import com.cobblemon.mod.common.api.pokeball.catching.CaptureEffect;
 import com.cobblemon.mod.common.api.pokeball.catching.modifiers.MultiplierModifier;
 import com.cobblemon.mod.common.pokeball.PokeBall;
 import com.jayemceekay.shadowedhearts.Shadowedhearts;
+import com.jayemceekay.shadowedhearts.api.pokeball.catching.effects.DarkBallCaptureEffect;
 import com.jayemceekay.shadowedhearts.api.pokeball.catching.effects.PenumbraBallCaptureEffect;
 import com.jayemceekay.shadowedhearts.common.shadow.SHAspects;
 import net.minecraft.resources.ResourceLocation;
@@ -32,7 +33,7 @@ public abstract class MixinPokeBalls {
     );
 
     @Inject(method = "<clinit>", at = @At("TAIL"))
-    private static void shadowedhearts$registerPenumbraBall(CallbackInfo ci) {
+    private static void shadowedhearts$registerCustomBalls(CallbackInfo ci) {
         // Build the Penumbra Ball using Cobblemon's helper that populates defaults
         ResourceLocation model2d = ResourceLocation.fromNamespaceAndPath(Shadowedhearts.MOD_ID, "penumbra_ball");
         ResourceLocation model3d = ResourceLocation.fromNamespaceAndPath(Shadowedhearts.MOD_ID, "item/penumbra_ball_model");
@@ -49,6 +50,22 @@ public abstract class MixinPokeBalls {
                 0.8f,
                 model2d,
                 model3d,
+                1.25f,
+                false
+        );
+
+        ResourceLocation darkModel2d = ResourceLocation.fromNamespaceAndPath(Shadowedhearts.MOD_ID, "dark_ball");
+        ResourceLocation darkModel3d = ResourceLocation.fromNamespaceAndPath(Shadowedhearts.MOD_ID, "item/dark_ball_model");
+        var darkModifier = new MultiplierModifier(1.0f, (livingEntity, pokemon) -> true);
+        var darkEffects = List.<CaptureEffect>of(new DarkBallCaptureEffect());
+
+        ((MixinPokeBalls) (Object) PokeBalls.INSTANCE).createDefault(
+                "dark_ball",
+                darkModifier,
+                darkEffects,
+                0.8f,
+                darkModel2d,
+                darkModel3d,
                 1.25f,
                 false
         );

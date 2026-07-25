@@ -11,6 +11,7 @@ import com.cobblemon.mod.common.entity.pokemon.PokemonServerDelegate;
 import com.cobblemon.mod.common.net.messages.client.battle.BattleCaptureStartPacket;
 import com.cobblemon.mod.common.pokemon.properties.UncatchableProperty;
 import com.google.common.collect.Iterables;
+import com.jayemceekay.shadowedhearts.common.capture.DarkBallCaptureTimings;
 import com.jayemceekay.shadowedhearts.common.shadow.SHAspects;
 import com.jayemceekay.shadowedhearts.common.snag.SnagCaps;
 import com.jayemceekay.shadowedhearts.network.ShadowedHeartsNetwork;
@@ -31,12 +32,15 @@ import net.minecraft.world.phys.Vec3;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.injection.Constant;
+import org.spongepowered.asm.mixin.injection.ModifyConstant;
 
 import static com.cobblemon.mod.common.util.LocalizationUtilsKt.lang;
 
 @Mixin(value = EmptyPokeBallEntity.class, priority = 10000)
 public abstract class MixinEmptyPokeBallEntity extends ThrowableItemProjectile {
 
+    private static final String DARK_BALL_NAME = "dark_ball";
 
     public MixinEmptyPokeBallEntity(EntityType<? extends ThrowableItemProjectile> entityType, Level level) {
         super(entityType, level);
@@ -55,6 +59,14 @@ public abstract class MixinEmptyPokeBallEntity extends ThrowableItemProjectile {
 
     @Shadow
     protected abstract void attemptCatch(PokemonEntity pokemonEntity);
+
+    @ModifyConstant(method = "attemptCatch", constant = @Constant(floatValue = 2.2F), remap = false)
+    private float shadowedhearts$extendDarkBallHitStage(float original) {
+        EmptyPokeBallEntity ball = (EmptyPokeBallEntity) (Object) this;
+        return DARK_BALL_NAME.equals(ball.getPokeBall().getName().getPath())
+                ? DarkBallCaptureTimings.HIT_TO_FALL_DELAY_SECONDS
+                : original;
+    }
 
     /**
      * @author JayemCeekay

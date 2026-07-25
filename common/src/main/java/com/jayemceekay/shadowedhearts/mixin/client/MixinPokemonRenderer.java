@@ -5,6 +5,7 @@ import com.cobblemon.mod.common.client.render.models.blockbench.repository.Varyi
 import com.cobblemon.mod.common.client.render.pokemon.PokemonRenderer;
 import com.cobblemon.mod.common.entity.pokeball.EmptyPokeBallEntity;
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
+import com.jayemceekay.shadowedhearts.client.ball.DarkBallCaptureVfx;
 import com.jayemceekay.shadowedhearts.client.ball.SnagCaptureVfx;
 import com.jayemceekay.shadowedhearts.client.render.DissolveBufferSource;
 import com.mojang.blaze3d.vertex.PoseStack;
@@ -31,10 +32,11 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  * so that Cobblemon's default shrink (which starts at 0.2 s) is replaced by
  * our own timing that delays the shrink until {@link SnagCaptureVfx#DISSOLVE_START}.
  *
- * <p>During the absorption window (DISSOLVE_START → DISSOLVE_END), we wrap the
- * {@link MultiBufferSource} with a {@link DissolveBufferSource} that redirects
- * entity render types to the snag dissolve shader for a noise-based dissolution
- * with a glowing purple edge.
+ * <p>During the Snag Ball absorption window, we wrap the
+ * {@link MultiBufferSource} with a {@link DissolveBufferSource} for its noisy
+ * purple-edge dissolve. On a Dark Ball hit, one capture-only render records
+ * the model's texture-aware silhouette without submitting its color or depth;
+ * later model renders are suppressed while the FBO representation takes ove    r.
  */
 @Mixin(value = PokemonRenderer.class, remap = false)
 public abstract class MixinPokemonRenderer {
@@ -47,7 +49,8 @@ public abstract class MixinPokemonRenderer {
      */
     @Inject(
             method = "render(Lcom/cobblemon/mod/common/entity/pokemon/PokemonEntity;FFLcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/MultiBufferSource;I)V",
-            at = @At("HEAD")
+            at = @At("HEAD"),
+            cancellable = true
     )
     private void shadowedhearts$overrideSnagScale(
             PokemonEntity entity,
@@ -58,14 +61,25 @@ public abstract class MixinPokemonRenderer {
             int packedLight,
             CallbackInfo ci
     ) {
-        if (entity.getBeamMode() != 3) return;
+        if (DarkBallCaptureVfx.shouldHideOriginalModel(entity)) {
+            ci.cancel();
+            return;
+        }
 
-        SnagCaptureVfx vfx = SnagCaptureVfx.getByPokemonId(entity.getId());
-        if (vfx == null) return;
+        if (entity.getBeamMode() != 3) return;
 
         // Override Cobblemon's default shrink with our own timing
         PokemonClientDelegate delegate = (PokemonClientDelegate) entity.getDelegate();
-        delegate.setEntityScaleModifier(vfx.getDesiredPokemonScale());
+        DarkBallCaptureVfx darkVfx = DarkBallCaptureVfx.getByPokemonId(entity.getId());
+        if (darkVfx != null) {
+            delegate.setEntityScaleModifier(darkVfx.getDesiredPokemonScale());
+            return;
+        }
+
+        SnagCaptureVfx vfx = SnagCaptureVfx.getByPokemonId(entity.getId());
+        if (vfx != null) {
+            delegate.setEntityScaleModifier(vfx.getDesiredPokemonScale());
+        }
     }
 
     /**
@@ -90,8 +104,21 @@ public abstract class MixinPokemonRenderer {
             CallbackInfo ci,
             @Local(argsOnly = true, ordinal = 0) LocalRef<MultiBufferSource> bufferRef
     ) {
-        if (entity.getBeamMode() != 3) return;
+        if (DarkBallCaptureVfx.shouldHideOriginalModel(entity)) return;
 
+        if (DarkBallCaptureVfx.wantsSnapshotCapture(entity)) {
+            PokemonClientDelegate delegate = (PokemonClientDelegate) entity.getDelegate();
+            ResourceLocation texture = VaryingModelRepository.INSTANCE.getTexture(
+                    entity.getPokemon().getSpecies().getResourceIdentifier(), delegate);
+            bufferRef.set(DarkBallCaptureVfx.wrapSnapshotBuffer(entity, texture, bufferRef.get()));
+            return;
+        }
+
+        // Dark Ball model suppression is handled by the cancellable HEAD
+        // injection. Do not route it through the Snag dissolve mesh.
+        if (DarkBallCaptureVfx.getByPokemonId(entity.getId()) != null) return;
+
+        if (entity.getBeamMode() != 3) return;
         SnagCaptureVfx vfx = SnagCaptureVfx.getByPokemonId(entity.getId());
         if (vfx == null) return;
 
@@ -108,6 +135,22 @@ public abstract class MixinPokemonRenderer {
                 entity.getPokemon().getSpecies().getResourceIdentifier(), delegate);
 
         bufferRef.set(new DissolveBufferSource(buffer, texture, progress, vfx.getAge()));
+    }
+
+    @Inject(
+            method = "render(Lcom/cobblemon/mod/common/entity/pokemon/PokemonEntity;FFLcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/MultiBufferSource;I)V",
+            at = @At("TAIL")
+    )
+    private void shadowedhearts$finishDarkBallSnapshotCapture(
+            PokemonEntity entity,
+            float entityYaw,
+            float partialTicks,
+            PoseStack poseMatrix,
+            MultiBufferSource buffer,
+            int packedLight,
+            CallbackInfo ci
+    ) {
+        DarkBallCaptureVfx.finishTexturedSnapshotCapture(entity);
     }
 
     /**
@@ -132,9 +175,11 @@ public abstract class MixinPokemonRenderer {
     ) {
         if (beamTarget instanceof EmptyPokeBallEntity ball) {
             // Only suppress the beam if this specific ball has an active Snag VFX sequence
-            if (SnagCaptureVfx.get(ball.getId()) != null) {
+            if (SnagCaptureVfx.get(ball.getId()) != null
+                    || DarkBallCaptureVfx.isReplacementReady(ball.getId())) {
                 ci.cancel(); // Suppress the vanilla red beacon beam — our VFX takes over
             }
         }
     }
+
 }

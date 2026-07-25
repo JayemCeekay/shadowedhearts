@@ -1,0 +1,13 @@
+{
+  "pokeball": "cobblemon:dark_ball",
+  "order": 1,
+  "variations": [
+    {
+      "aspects": [],
+      "poser": "cobblemon:poke_ball",
+      "model": "shadowedhearts:dark_ball.geo",
+      "texture": "shadowedhearts:textures/item/poke_balls/bedrock/dark_ball.png",
+      "layers": []
+    }
+  ]
+}

@@ -8,6 +8,7 @@ import com.cobblemon.mod.common.battles.runner.graal.GraalShowdownService;
 import com.cobblemon.mod.relocations.graalvm.polyglot.Context;
 import com.jayemceekay.shadowedhearts.advancements.ModCriteriaTriggers;
 import com.jayemceekay.shadowedhearts.common.aura.AuraReaderEvents;
+import com.jayemceekay.shadowedhearts.common.aura.AuraReaderService;
 import com.jayemceekay.shadowedhearts.common.event.battle.BattleSentOnceListener;
 import com.jayemceekay.shadowedhearts.common.event.battle.ShadowDropListener;
 import com.jayemceekay.shadowedhearts.common.event.player.PurificationStepTracker;
@@ -90,6 +91,7 @@ public final class Shadowedhearts {
         ModPoiTypes.init();
         ModCriteriaTriggers.init();
         AuraServerSync.init();
+        AuraReaderService.init();
         AuraReaderEvents.init();
         ModSounds.init();
         ShadowAspectValidator.init();

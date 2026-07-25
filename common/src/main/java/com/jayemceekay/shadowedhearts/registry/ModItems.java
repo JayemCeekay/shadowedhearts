@@ -127,6 +127,19 @@ public final class ModItems {
                 return item;
             });
 
+    public static final RegistrySupplier<Item> DARK_BALL = ITEMS.register(
+            "dark_ball",
+            () -> {
+                var id = ResourceLocation.fromNamespaceAndPath("cobblemon", "dark_ball");
+                var pb = PokeBalls.getPokeBall(id);
+                if (pb == null) {
+                    throw new IllegalStateException("PokeBall 'cobblemon:dark_ball' was not registered (mixin failed?).");
+                }
+                PokeBallItem item = new PokeBallItem(pb);
+                pb.item = item;
+                return item;
+            });
+
     public static void init() {
         ITEMS.register();
     }

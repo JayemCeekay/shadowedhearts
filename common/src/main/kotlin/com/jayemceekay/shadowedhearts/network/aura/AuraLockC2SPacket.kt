@@ -5,12 +5,16 @@ import com.jayemceekay.shadowedhearts.Shadowedhearts
 import net.minecraft.network.RegistryFriendlyByteBuf
 import net.minecraft.resources.ResourceLocation
 
-data class AuraLockC2SPacket(val entityId: Int, val durationTicks: Int) : NetworkPacket<AuraLockC2SPacket> {
+data class AuraLockC2SPacket(val action: Action) : NetworkPacket<AuraLockC2SPacket> {
     override val id: ResourceLocation = ID
 
-    override fun encode(buf: RegistryFriendlyByteBuf) {
-        buf.writeVarInt(entityId)
-        buf.writeVarInt(durationTicks)
+    override fun encode(buffer: RegistryFriendlyByteBuf) {
+        buffer.writeEnum(action)
+    }
+
+    enum class Action {
+        LOCK_FOCUSED,
+        CLEAR
     }
 
     companion object {
@@ -18,9 +22,7 @@ data class AuraLockC2SPacket(val entityId: Int, val durationTicks: Int) : Networ
 
         @JvmStatic
         fun decode(buf: RegistryFriendlyByteBuf): AuraLockC2SPacket {
-            val id = buf.readVarInt()
-            val dur = buf.readVarInt()
-            return AuraLockC2SPacket(id, dur)
+            return AuraLockC2SPacket(buf.readEnum(Action::class.java))
         }
     }
 }

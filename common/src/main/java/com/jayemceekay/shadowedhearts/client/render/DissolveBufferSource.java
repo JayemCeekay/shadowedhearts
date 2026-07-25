@@ -29,27 +29,67 @@ public class DissolveBufferSource implements MultiBufferSource {
     private final ResourceLocation entityTexture;
     private final float dissolveProgress;
     private final float time;
+    private final float edgeR;
+    private final float edgeG;
+    private final float edgeB;
+    private final float edgeWidth;
+    private final float noiseScale;
+    private final float conversionR;
+    private final float conversionG;
+    private final float conversionB;
+    private final float conversionStrength;
 
+    /**
+     * Wraps a buffer source so eligible entity geometry is rendered with the
+     * snag dissolve shader.
+     *
+     * @param delegate original buffer source supplied by the entity renderer
+     * @param entityTexture texture normally used by the entity render type
+     * @param dissolveProgress normalized dissolve amount, where {@code 0} is
+     *                         intact and {@code 1} is fully dissolved
+     * @param time animation time passed to the noise shader
+     */
     public DissolveBufferSource(MultiBufferSource delegate, ResourceLocation entityTexture,
                                 float dissolveProgress, float time) {
+        this(delegate, entityTexture, dissolveProgress, time,
+                0.72f, 0.30f, 1.0f,
+                0.08f, 3.0f,
+                0.0f, 0.0f, 0.0f, 0.0f);
+    }
+
+    public DissolveBufferSource(MultiBufferSource delegate, ResourceLocation entityTexture,
+                                float dissolveProgress, float time,
+                                float edgeR, float edgeG, float edgeB,
+                                float edgeWidth, float noiseScale,
+                                float conversionR, float conversionG, float conversionB,
+                                float conversionStrength) {
         this.delegate = delegate;
         this.entityTexture = entityTexture;
         this.dissolveProgress = dissolveProgress;
         this.time = time;
+        this.edgeR = edgeR;
+        this.edgeG = edgeG;
+        this.edgeB = edgeB;
+        this.edgeWidth = edgeWidth;
+        this.noiseScale = noiseScale;
+        this.conversionR = conversionR;
+        this.conversionG = conversionG;
+        this.conversionB = conversionB;
+        this.conversionStrength = conversionStrength;
     }
 
     @Override
     public @NotNull VertexConsumer getBuffer(@NotNull RenderType renderType) {
-        // Check if this is an entity render type we should redirect
+        // Only replace model/material buffers. Non-entity buffers continue to
+        // the delegate so held items, debug overlays, and unrelated layers do
+        // not inherit dissolve state accidentally.
         String name = renderType.toString();
-        if (isEntityRenderType(name) && ModShaders.SNAG_DISSOLVE != null) {
-            // Bind dissolve noise to texture unit 3 (Sampler3)
+        if (isEntityRenderType(name) && shaderAvailable()) {
+            // Bind noise and uniforms before returning the replacement buffer;
+            // RenderType setup will bind Sampler0 from the entity texture.
             bindDissolveNoise();
-            // Upload dissolve uniforms
-            applyDissolveUniforms();
-            // Redirect to our dissolve render type
-            RenderType dissolveType = BallRenderTypes.dissolve(entityTexture);
-            return delegate.getBuffer(dissolveType);
+            applyShaderUniforms();
+            return delegate.getBuffer(BallRenderTypes.dissolve(entityTexture));
         }
         return delegate.getBuffer(renderType);
     }
@@ -65,25 +105,36 @@ public class DissolveBufferSource implements MultiBufferSource {
         RenderSystem.setShaderTexture(3, tex.getId());
     }
 
-    private void applyDissolveUniforms() {
+    private boolean shaderAvailable() {
+        return ModShaders.SNAG_DISSOLVE != null;
+    }
+
+    private void applyShaderUniforms() {
         ShaderInstance shader = ModShaders.SNAG_DISSOLVE;
         if (shader == null) return;
 
+        // Uniforms are optional so the wrapper remains compatible with shader
+        // variants used while tuning the dissolve effect.
         if (shader.getUniform("u_dissolveProgress") != null) {
             shader.getUniform("u_dissolveProgress").set(dissolveProgress);
         }
         if (shader.getUniform("u_dissolveColor") != null) {
-            // Purple-magenta edge glow matching Colosseum snag energy
-            shader.getUniform("u_dissolveColor").set(0.72f, 0.30f, 1.0f);
+            shader.getUniform("u_dissolveColor").set(edgeR, edgeG, edgeB);
         }
         if (shader.getUniform("u_edgeWidth") != null) {
-            shader.getUniform("u_edgeWidth").set(0.08f);
+            shader.getUniform("u_edgeWidth").set(edgeWidth);
         }
         if (shader.getUniform("u_noiseScale") != null) {
-            shader.getUniform("u_noiseScale").set(3.0f);
+            shader.getUniform("u_noiseScale").set(noiseScale);
         }
         if (shader.getUniform("u_time") != null) {
             shader.getUniform("u_time").set(time);
+        }
+        if (shader.getUniform("u_conversionColor") != null) {
+            shader.getUniform("u_conversionColor").set(conversionR, conversionG, conversionB);
+        }
+        if (shader.getUniform("u_conversionStrength") != null) {
+            shader.getUniform("u_conversionStrength").set(conversionStrength);
         }
     }
 }

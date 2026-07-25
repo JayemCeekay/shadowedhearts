@@ -3,8 +3,9 @@ package com.jayemceekay.shadowedhearts.network.aura
 import com.cobblemon.mod.common.api.net.ServerNetworkPacketHandler
 import com.jayemceekay.shadowedhearts.Shadowedhearts
 import com.jayemceekay.shadowedhearts.content.items.AuraReaderItem
+import com.jayemceekay.shadowedhearts.common.aura.AuraReaderService
 import com.jayemceekay.shadowedhearts.integration.accessories.SnagAccessoryBridgeHolder
-import com.jayemceekay.shadowedhearts.registry.util.ModItemComponents
+import com.jayemceekay.shadowedhearts.network.ShadowedHeartsNetwork
 import net.minecraft.server.MinecraftServer
 import net.minecraft.server.level.ServerPlayer
 import net.minecraft.world.item.ItemStack
@@ -17,20 +18,8 @@ object AuraPulseHandler : ServerNetworkPacketHandler<AuraPulsePacket> {
         val auraReader = SnagAccessoryBridgeHolder.INSTANCE.getAuraReaderStack(player)
 
         if (!auraReader.isEmpty && auraReader.item is AuraReaderItem) {
-            val isActive = auraReader.get(ModItemComponents.AURA_SCANNER_ACTIVE.get()) ?: false
-            if (isActive) {
-                /*val stack = if (packet.slotIndex >= 0) {
-                    player.inventory.getItem(packet.slotIndex)
-                } else {
-                    findSignalData(player)?.third?.let { player.inventory.getItem(it) } ?: ItemStack.EMPTY
-                }
-
-                if (!stack.isEmpty && stack.item is ShadowSignalDataItem) {
-                    triggerPulse(player, stack, server)
-                } else {
-                    LOG.debug("[ShadowHunt] No valid Shadow Signal Data found.")
-                }*/
-            }
+            val result = AuraReaderService.pulse(player, auraReader)
+            ShadowedHeartsNetwork.sendToPlayer(player, AuraReaderPulseResultS2CPacket.fromReadings(result.readings, true, result.accepted))
         }
     }
 

@@ -77,6 +77,22 @@ public class ModShadersPlatformImpl {
             evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:snag/snag_beam_composite", DefaultVertexFormat.POSITION_TEX),
                     shader -> ModShaders.SNAG_BEAM_COMPOSITE = shader);
 
+            // Dark Ball cohesive volumetric siphon pipeline
+            evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:darkball/dark_ball_mask", DefaultVertexFormat.NEW_ENTITY),
+                    shader -> ModShaders.DARK_BALL_MASK = shader);
+            evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:darkball/dark_ball_proxy_depth", DefaultVertexFormat.NEW_ENTITY),
+                    shader -> ModShaders.DARK_BALL_PROXY_DEPTH = shader);
+            evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:darkball/dark_ball_volume_composite", DefaultVertexFormat.POSITION_TEX),
+                    shader -> ModShaders.DARK_BALL_VOLUME_COMPOSITE = shader);
+            evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:darkball/dark_ball_density_advect", DefaultVertexFormat.POSITION_TEX),
+                    shader -> ModShaders.DARK_BALL_DENSITY_ADVECT = shader);
+            evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:darkball/dark_ball_siphon_advect", DefaultVertexFormat.POSITION_TEX),
+                    shader -> ModShaders.DARK_BALL_SIPHON_ADVECT = shader);
+            evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:darkball/dark_ball_advected_volume", DefaultVertexFormat.POSITION_TEX),
+                    shader -> ModShaders.DARK_BALL_ADVECTED_VOLUME = shader);
+            evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:darkball/dark_ball_edge_tongues", DefaultVertexFormat.POSITION_TEX),
+                    shader -> ModShaders.DARK_BALL_EDGE_TONGUES = shader);
+
             // Snag trail orange smoke density pipeline (FBM noise + warm orange composite)
             evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:snag/snag_trail_density", DefaultVertexFormat.PARTICLE),
                     shader -> ModShaders.SNAG_TRAIL_DENSITY = shader);

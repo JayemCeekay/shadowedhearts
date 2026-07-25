@@ -20,6 +20,8 @@ uniform vec3  u_dissolveColor;     // edge glow color (e.g., purple/magenta)
 uniform float u_edgeWidth;         // width of the glowing edge band (default 0.08)
 uniform float u_noiseScale;        // UV scale for noise sampling (default 3.0)
 uniform float u_time;              // animation time for scrolling noise
+uniform vec3  u_conversionColor;   // optional material tint for conversion effects
+uniform float u_conversionStrength;
 
 // ─── Varyings from vertex shader ─────────────────────────────────────────────
 in float vertexDistance;
@@ -68,7 +70,9 @@ void main() {
     // Fade edge glow near the end to prevent lingering bright spots
     edgeIntensity *= (1.0 - smoothstep(0.85, 1.0, u_dissolveProgress));
 
-    vec3 finalColor = baseColor.rgb + u_dissolveColor * edgeIntensity;
+    vec3 convertedBase = mix(baseColor.rgb, u_conversionColor,
+                             clamp(u_conversionStrength * u_dissolveProgress, 0.0, 1.0));
+    vec3 finalColor = convertedBase + u_dissolveColor * edgeIntensity;
 
     // Apply lightmap (sample from Sampler2 using texCoord1)
     vec4 lightColor = texture(Sampler2, texCoord1);

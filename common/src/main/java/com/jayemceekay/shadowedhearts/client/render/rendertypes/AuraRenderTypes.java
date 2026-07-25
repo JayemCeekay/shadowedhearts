@@ -131,6 +131,47 @@ public final class AuraRenderTypes {
         return RenderType.create("shadowedhearts:shadow_pokemon_aura_mask", DefaultVertexFormat.NEW_ENTITY, VertexFormat.Mode.QUADS, 512, true, false, state);
     }
 
+    public static RenderType shadowPokemonAuraClassification(ResourceLocation texture) {
+        RenderType.CompositeState state = RenderType.CompositeState.builder()
+                .setShaderState(new RenderStateShard.ShaderStateShard(GameRenderer::getRendertypeEntityTranslucentShader))
+                .setTextureState(new RenderStateShard.TextureStateShard(texture, false, false))
+                .setTransparencyState(RenderStateShard.TRANSLUCENT_TRANSPARENCY)
+                .setLightmapState(RenderStateShard.LIGHTMAP)
+                .setOverlayState(RenderStateShard.OVERLAY)
+                .setDepthTestState(RenderStateShard.LEQUAL_DEPTH_TEST)
+                .setWriteMaskState(RenderStateShard.COLOR_WRITE)
+                .setCullState(RenderStateShard.NO_CULL)
+                .setLayeringState(RenderStateShard.VIEW_OFFSET_Z_LAYERING)
+                .createCompositeState(true);
+        return RenderType.create("shadowedhearts:shadow_pokemon_aura_classification", DefaultVertexFormat.NEW_ENTITY, VertexFormat.Mode.QUADS, 1024, true, true, state);
+    }
+
+    public static RenderType shadowPokemonAuraClassificationBoxes() {
+        RenderType.CompositeState state = RenderType.CompositeState.builder()
+                .setShaderState(new RenderStateShard.ShaderStateShard(GameRenderer::getPositionColorShader))
+                .setTextureState(RenderStateShard.NO_TEXTURE)
+                .setTransparencyState(RenderStateShard.TRANSLUCENT_TRANSPARENCY)
+                .setDepthTestState(RenderStateShard.NO_DEPTH_TEST)
+                .setWriteMaskState(RenderStateShard.COLOR_WRITE)
+                .setCullState(RenderStateShard.NO_CULL)
+                .setLayeringState(RenderStateShard.VIEW_OFFSET_Z_LAYERING)
+                .createCompositeState(true);
+        return RenderType.create("shadowedhearts:shadow_pokemon_aura_classification_boxes", DefaultVertexFormat.POSITION_COLOR, VertexFormat.Mode.QUADS, 2048, false, true, state);
+    }
+
+    public static RenderType shadowPokemonAuraDebugMarkers() {
+        RenderType.CompositeState state = RenderType.CompositeState.builder()
+                .setShaderState(new RenderStateShard.ShaderStateShard(GameRenderer::getParticleShader))
+                .setTextureState(RenderStateShard.NO_TEXTURE)
+                .setTransparencyState(RenderStateShard.TRANSLUCENT_TRANSPARENCY)
+                .setLightmapState(RenderStateShard.LIGHTMAP)
+                .setDepthTestState(RenderStateShard.NO_DEPTH_TEST)
+                .setWriteMaskState(RenderStateShard.COLOR_WRITE)
+                .setCullState(RenderStateShard.NO_CULL)
+                .createCompositeState(true);
+        return RenderType.create("shadowedhearts:shadow_pokemon_aura_debug_markers", DefaultVertexFormat.PARTICLE, VertexFormat.Mode.TRIANGLES, 4096, false, true, state);
+    }
+
     public static RenderType screen_decal() {
         RenderType.CompositeState state = RenderType.CompositeState.builder()
                 .setShaderState(new RenderStateShard.ShaderStateShard(GameRenderer::getPositionColorShader))

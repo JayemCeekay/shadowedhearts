@@ -27,6 +27,7 @@ import net.minecraft.world.phys.Vec3;
 import java.lang.ref.WeakReference;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.BooleanSupplier;
 
 /**
  * Client-side emitter system for thrown Poké Balls. Mirrors AuraEmitters pattern but renders
@@ -37,18 +38,26 @@ public final class BallEmitters {
     }
 
     private static final Map<Integer, BallInstance> ACTIVE = new ConcurrentHashMap<>();
+    private static WeakReference<Object> clientLevelRef = new WeakReference<>(null);
 
     /**
      * Called on client when a ball entity is created/loaded.
+     *
+     * <p>Balls may need a few ticks before aspects arrive from the
+     * server, so unresolved instances are tracked briefly and classified later
+     * in {@link #onRender(net.minecraft.client.Camera, float)}.
      */
     public static void startForEntity(EmptyPokeBallEntity entity) {
         var mc = Minecraft.getInstance();
-        if (mc == null || mc.level == null) return;
+        if (!prepareClientLevel(mc)) return;
         long now = mc.level.getGameTime();
         // Register all balls; snag/penumbra classification is deferred until aspects sync
-        ACTIVE.put(entity.getId(), new BallInstance(entity.getId(), entity, now, 4, 400, 8, false, false));
+        ACTIVE.put(entity.getId(), new BallInstance(entity.getId(), entity, now, 4, 400, 8, false, false, false));
     }
 
+    /**
+     * Begins a short fade-out for the despawned entity.
+     */
     public static void onEntityDespawn(int entityId) {
         var mc = Minecraft.getInstance();
         long now = (mc != null && mc.level != null) ? mc.level.getGameTime() : 0L;
@@ -58,12 +67,21 @@ public final class BallEmitters {
         });
     }
 
+    /**
+     * Per-frame world-render entry point for CPU-side tracking and non-FBO VFX.
+     *
+     * <p>Framebuffer-dependent effects are intentionally deferred to
+     * {@link #onRenderFBO(net.minecraft.client.Camera, float)} so shader mods and
+     * the vanilla renderer have restored a predictable target before offscreen
+     * passes run.
+     */
     public static void onRender(net.minecraft.client.Camera camera, float partialTicks) {
         var mc = Minecraft.getInstance();
-        if (mc == null || mc.level == null) return;
+        if (!prepareClientLevel(mc)) return;
 
         // Tick and render all active Snag Capture VFX sequences
         SnagCaptureVfx.tickAll(1f / 20f);
+        DarkBallCaptureVfx.tickAll(1f / 20f);
 
         // Main pass: billboards, flashes, orb, lens flare (non-density effects)
         SnagCaptureVfx.renderAll(camera, partialTicks);
@@ -96,11 +114,14 @@ public final class BallEmitters {
 
             // Lazy-resolve snag/penumbra once aspects sync arrives from server
             if (!inst.resolved && ent instanceof EmptyPokeBallEntity ball) {
-                boolean isSnag = ball.getAspects().contains("snag_ball");
-                boolean isPenumbra = ball.getPokeBall().getName().getPath().equals("penumbra_ball");
-                if (isSnag || isPenumbra) {
-                    inst.isSnagBall = isSnag;
+                boolean hasSnagAspect = ball.getAspects().contains("snag_ball");
+                String ballName = ball.getPokeBall().getName().getPath();
+                boolean isPenumbra = ballName.equals("penumbra_ball");
+                boolean isDarkBall = ballName.equals("dark_ball");
+                if (hasSnagAspect || isPenumbra || isDarkBall) {
+                    inst.isSnagBall = hasSnagAspect && !isDarkBall;
                     inst.isPenumbraBall = isPenumbra;
+                    inst.isDarkBall = isDarkBall;
                     inst.resolved = true;
                 }
                 // If neither after ~5 ticks, remove to avoid tracking every ball forever
@@ -131,8 +152,8 @@ public final class BallEmitters {
             }
 
             // Start throw VFX while the ball is in flight (suppressed once capture VFX takes over)
-            boolean captureVfxActive = SnagCaptureVfx.get(inst.entityId) != null;
-            if (inst.isSnagBall && !captureVfxActive && ent instanceof EmptyPokeBallEntity ball) {
+            boolean snagCaptureVfxActive = SnagCaptureVfx.get(inst.entityId) != null;
+            if (inst.isSnagBall && !snagCaptureVfxActive && ent instanceof EmptyPokeBallEntity ball) {
                 if(ball.getCaptureState() == EmptyPokeBallEntity.CaptureState.NOT) {
                     SnagThrowVfx.start(ball);
                 }
@@ -140,8 +161,13 @@ public final class BallEmitters {
 
             // Detect when a Snag Ball enters the capture beam phase (beamMode == 3 on the phased Pokémon)
             // and start the SnagCaptureVfx if not already running.
-            if (inst.isSnagBall && !captureVfxActive && ent instanceof EmptyPokeBallEntity ball) {
+            if (inst.isSnagBall && !snagCaptureVfxActive && ent instanceof EmptyPokeBallEntity ball) {
                 maybeStartSnagVfx(ball, mc);
+            }
+            if (inst.isDarkBall && ent instanceof EmptyPokeBallEntity ball) {
+                inst.darkCaptureStart.tryStart(
+                        ball.getCaptureState() == EmptyPokeBallEntity.CaptureState.HIT,
+                        () -> maybeStartDarkBallVfx(ball, mc));
             }
 
             // Track Snag Balls that have entered the shake phase
@@ -161,7 +187,7 @@ public final class BallEmitters {
      */
     public static void onRenderFBO(net.minecraft.client.Camera camera, float partialTicks) {
         var mc = Minecraft.getInstance();
-        if (mc == null || mc.level == null) return;
+        if (!prepareClientLevel(mc)) return;
 
         // Snag trail density pipeline (orange smoke and purple motes)
         SnagTrailDensitySystem.renderDensityPipeline(camera, partialTicks);
@@ -175,6 +201,16 @@ public final class BallEmitters {
             SnagDensityFBO.composite();
         }
 
+        if (!DarkBallCaptureVfx.getActiveInstances().isEmpty()) {
+            DarkBallCaptureVfx.beginDirectCompositeFrame();
+            if (DarkBallDensityFBO.beginDensityPass(true, true)) {
+                DarkBallCaptureVfx.renderAllDensityPass(camera, partialTicks);
+                DarkBallDensityFBO.endDensityPass();
+                DarkBallCaptureVfx.finishDirectCompositeFrame(
+                        DarkBallDensityFBO.composite());
+            }
+        }
+
         // Bloom pass: re-render snag VFX into a half-res FBO, blur, composite
         IClientConfig cfg = ShadowedHeartsConfigs.getInstance().getClientConfig();
         if (cfg.snagBloomEnabled() && SnagBloomFBO.shouldRun() && SnagBloomFBO.beginBloomPass()) {
@@ -182,6 +218,25 @@ public final class BallEmitters {
             SnagBloomFBO.endBloomPass();
             SnagBloomFBO.blurAndComposite();
         }
+
+    }
+
+    private static boolean prepareClientLevel(Minecraft mc) {
+        Object currentLevel = mc == null ? null : mc.level;
+        if (currentLevel == null) {
+            DarkBallCaptureVfx.clearAll();
+            clientLevelRef = new WeakReference<>(null);
+            return false;
+        }
+
+        if (clientLevelRef.get() != currentLevel) {
+            // A render callback is not guaranteed while the title screen is
+            // active. Clear stale per-capture GPU resources on the first hook
+            // for a replacement world as well as on an observed null world.
+            DarkBallCaptureVfx.clearAll();
+            clientLevelRef = new WeakReference<>(currentLevel);
+        }
+        return true;
     }
 
     /**
@@ -197,6 +252,31 @@ public final class BallEmitters {
                 SnagCaptureVfx.start(ball, pokemon);
                 return;
             }
+        }
+    }
+
+    private static boolean maybeStartDarkBallVfx(EmptyPokeBallEntity ball, Minecraft mc) {
+        if (mc.level == null) return false;
+        if (ball.getCaptureState() != EmptyPokeBallEntity.CaptureState.HIT) return false;
+        for (var entity : mc.level.entitiesForRendering()) {
+            if (!(entity instanceof PokemonEntity pokemon)) continue;
+            if (pokemon.getPhasingTargetId() == ball.getId()) {
+                DarkBallCaptureVfx.startAtHit(ball, pokemon);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    static final class OneShotStartLatch {
+        private boolean started;
+
+        boolean tryStart(boolean eligible, BooleanSupplier starter) {
+            if (!eligible || started || !starter.getAsBoolean()) {
+                return false;
+            }
+            started = true;
+            return true;
         }
     }
 
@@ -421,10 +501,19 @@ public final class BallEmitters {
     }
 
     private static final class BallInstance {
+        /**
+         * Lightweight tracking state for one rendered ball entity.
+         *
+         * <p>It stores only classification and trail-emission bookkeeping; the
+         * actual particles, trails, and density fields are owned by their
+         * specialized systems.
+         */
         final int entityId;
         final WeakReference<Entity> entityRef;
         boolean isSnagBall;
         boolean isPenumbraBall;
+        boolean isDarkBall;
+        final OneShotStartLatch darkCaptureStart = new OneShotStartLatch();
         boolean resolved = false;
         long startTick;
         int fadeInTicks;
@@ -435,11 +524,13 @@ public final class BallEmitters {
         Vec3 lastSnagTrailPos;
         long lastSnagSpawnTick = Long.MIN_VALUE;
 
-        BallInstance(int entityId, @Nullable Entity ent, long startTick, int fi, int sus, int fo, boolean isSnagBall, boolean isPenumbraBall) {
+        BallInstance(int entityId, @Nullable Entity ent, long startTick, int fi, int sus, int fo,
+                     boolean isSnagBall, boolean isPenumbraBall, boolean isDarkBall) {
             this.entityId = entityId;
             this.entityRef = new WeakReference<>(ent);
             this.isSnagBall = isSnagBall;
             this.isPenumbraBall = isPenumbraBall;
+            this.isDarkBall = isDarkBall;
             this.startTick = startTick;
             this.fadeInTicks = Math.max(1, fi);
             this.sustainTicks = Math.max(0, sus);
@@ -461,6 +552,8 @@ public final class BallEmitters {
         if (shader == null) return;
 
         float time = Minecraft.getInstance().level.getGameTime() + Minecraft.getInstance().getTimer().getGameTimeDeltaPartialTick(true);
+        // These defaults are intentionally sparse: null means "leave the shader
+        // JSON/default uniform alone" so older shader variants keep working.
         // Palette stops and thresholds
         float[] u_c0 = null;
         float[] u_c1 = new float[]{1.25f, 0.72f, 0.12f};

@@ -19,6 +19,7 @@ public final class ClientConfig implements IClientConfig, ISoundConfig {
 
     private static final class Data {
         public ModConfigSpec.BooleanValue enableShadowAura;
+        public ModConfigSpec.BooleanValue debugShadowAuraEmitters;
         public ModConfigSpec.BooleanValue auraScannerEnabled;
         public ModConfigSpec.BooleanValue useFahrenheitDisplay;
         public ModConfigSpec.DoubleValue auraReaderYOffset;
@@ -38,11 +39,16 @@ public final class ClientConfig implements IClientConfig, ISoundConfig {
         public ModConfigSpec.BooleanValue snagDissolveEnabled;
         public ModConfigSpec.BooleanValue snagShakeVfxEnabled;
         public ModConfigSpec.BooleanValue snagReducedMotion;
+        public ModConfigSpec.ConfigValue<String> darkBallVfxQuality;
 
         private void build(ModConfigSpec.Builder builder) {
             enableShadowAura = builder
                     .comment("Master toggle for client-side Shadow aura rendering.")
                     .define("enableShadowAura", true);
+
+            debugShadowAuraEmitters = builder
+                    .comment("Debug: render tiny red marker spheres at Shadow aura emitter anchor positions.")
+                    .define("debugShadowAuraEmitters", false);
             
 
             auraScannerEnabled = builder
@@ -101,6 +107,15 @@ public final class ClientConfig implements IClientConfig, ISoundConfig {
                     .comment("Reduced motion mode: disables fast-moving particles, flashes, and screen effects.")
                     .define("snagReducedMotion", false);
             builder.pop();
+
+            builder.push("darkBallVfx");
+            darkBallVfxQuality = builder
+                    .comment("Dark Ball volume quality: low, medium, or high.")
+                    .define("quality", "medium", value -> value instanceof String text
+                            && (text.equalsIgnoreCase("low")
+                            || text.equalsIgnoreCase("medium")
+                            || text.equalsIgnoreCase("high")));
+            builder.pop();
         }
     }
 
@@ -108,6 +123,12 @@ public final class ClientConfig implements IClientConfig, ISoundConfig {
     public boolean enableShadowAura() {
         if (!isLoaded()) return IClientConfig.super.enableShadowAura();
         return DATA.enableShadowAura.get();
+    }
+
+    @Override
+    public boolean debugShadowAuraEmitters() {
+        if (!isLoaded()) return IClientConfig.super.debugShadowAuraEmitters();
+        return DATA.debugShadowAuraEmitters.get();
     }
 
     @Override
@@ -211,6 +232,12 @@ public final class ClientConfig implements IClientConfig, ISoundConfig {
     public boolean snagReducedMotion() {
         if (!isLoaded()) return IClientConfig.super.snagReducedMotion();
         return DATA.snagReducedMotion.get();
+    }
+
+    @Override
+    public String darkBallVfxQuality() {
+        if (!isLoaded()) return IClientConfig.super.darkBallVfxQuality();
+        return DATA.darkBallVfxQuality.get();
     }
 
     @Override

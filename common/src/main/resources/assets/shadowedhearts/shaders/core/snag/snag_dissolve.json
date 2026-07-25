@@ -33,6 +33,8 @@
     { "name": "u_dissolveColor",     "type": "float", "count": 3, "values": [ 0.72, 0.30, 1.0 ] },
     { "name": "u_edgeWidth",         "type": "float", "count": 1, "values": [ 0.08 ] },
     { "name": "u_noiseScale",        "type": "float", "count": 1, "values": [ 3.0 ] },
-    { "name": "u_time",              "type": "float", "count": 1, "values": [ 0.0 ] }
+    { "name": "u_time",              "type": "float", "count": 1, "values": [ 0.0 ] },
+    { "name": "u_conversionColor",   "type": "float", "count": 3, "values": [ 0.0, 0.0, 0.0 ] },
+    { "name": "u_conversionStrength","type": "float", "count": 1, "values": [ 0.0 ] }
   ]
 }

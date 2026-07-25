@@ -1,0 +1,34 @@
+{
+  "vertex": "shadowedhearts:darkball/dark_ball_volume",
+  "fragment": "shadowedhearts:darkball/dark_ball_siphon_advect",
+  "attributes": [ "Position", "UV0" ],
+  "samplers": [
+    { "name": "PreviousSiphonDensitySampler" },
+    { "name": "BodyDensitySampler" }
+  ],
+  "uniforms": [
+    { "name": "VolumeSize", "type": "float", "count": 3, "values": [ 1.0, 1.0, 1.0 ] },
+    { "name": "SiphonP0", "type": "float", "count": 3, "values": [ 0.0, 0.0, 0.0 ] },
+    { "name": "SiphonP3", "type": "float", "count": 3, "values": [ 1.0, 0.0, 0.0 ] },
+    { "name": "SiphonBolt1", "type": "float", "count": 3, "values": [ 0.077, 0.0, 0.0 ] },
+    { "name": "SiphonBolt2", "type": "float", "count": 3, "values": [ 0.154, 0.0, 0.0 ] },
+    { "name": "SiphonBolt3", "type": "float", "count": 3, "values": [ 0.231, 0.0, 0.0 ] },
+    { "name": "SiphonBolt4", "type": "float", "count": 3, "values": [ 0.308, 0.0, 0.0 ] },
+    { "name": "SiphonBolt5", "type": "float", "count": 3, "values": [ 0.385, 0.0, 0.0 ] },
+    { "name": "SiphonBolt6", "type": "float", "count": 3, "values": [ 0.462, 0.0, 0.0 ] },
+    { "name": "SiphonBolt7", "type": "float", "count": 3, "values": [ 0.538, 0.0, 0.0 ] },
+    { "name": "SiphonBolt8", "type": "float", "count": 3, "values": [ 0.615, 0.0, 0.0 ] },
+    { "name": "SiphonBolt9", "type": "float", "count": 3, "values": [ 0.692, 0.0, 0.0 ] },
+    { "name": "SiphonBolt10", "type": "float", "count": 3, "values": [ 0.769, 0.0, 0.0 ] },
+    { "name": "SiphonBolt11", "type": "float", "count": 3, "values": [ 0.846, 0.0, 0.0 ] },
+    { "name": "SiphonBolt12", "type": "float", "count": 3, "values": [ 0.923, 0.0, 0.0 ] },
+    { "name": "BodyRadius", "type": "float", "count": 1, "values": [ 1.0 ] },
+    { "name": "VoxelSize", "type": "float", "count": 1, "values": [ 0.03 ] },
+    { "name": "SiphonEndRadius", "type": "float", "count": 1, "values": [ 0.085 ] },
+    { "name": "DeltaTime", "type": "float", "count": 1, "values": [ 0.05 ] },
+    { "name": "SiphonProgress", "type": "float", "count": 1, "values": [ 0.0 ] },
+    { "name": "FinalCollapse", "type": "float", "count": 1, "values": [ 0.0 ] },
+    { "name": "Destabilization", "type": "float", "count": 1, "values": [ 0.0 ] },
+    { "name": "GameTime", "type": "float", "count": 1, "values": [ 0.0 ] }
+  ]
+}

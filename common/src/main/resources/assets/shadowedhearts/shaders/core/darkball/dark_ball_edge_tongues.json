@@ -1,0 +1,32 @@
+{
+  "blend": {
+    "func": "add",
+    "srcrgb": "one",
+    "dstrgb": "zero"
+  },
+  "vertex": "shadowedhearts:darkball/dark_ball_volume_composite",
+  "fragment": "shadowedhearts:darkball/dark_ball_edge_tongues",
+  "attributes": [ "Position", "UV0" ],
+  "samplers": [
+    { "name": "Sampler0" },
+    { "name": "SceneDepthSampler" },
+    { "name": "MaskSampler" },
+    { "name": "ProxyFrontSampler" }
+  ],
+  "uniforms": [
+    { "name": "InvProjMat", "type": "matrix4x4", "count": 16, "values": [ 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0 ] },
+    { "name": "TurbulenceBlend", "type": "float", "count": 1, "values": [ 0.0 ] },
+    { "name": "SignedBodyAuthority", "type": "float", "count": 1, "values": [ 0.0 ] },
+    { "name": "SiphonProgress", "type": "float", "count": 1, "values": [ 0.0 ] },
+    { "name": "DeformationTime", "type": "float", "count": 1, "values": [ 0.0 ] },
+    { "name": "ProjectedUp", "type": "float", "count": 2, "values": [ 0.0, 1.0 ] },
+    { "name": "BodyUvBounds", "type": "float", "count": 4, "values": [ 0.0, 0.0, 1.0, 1.0 ] },
+    { "name": "BallUv", "type": "float", "count": 2, "values": [ 0.5, 0.5 ] },
+    { "name": "SurfaceDepthScale", "type": "float", "count": 1, "values": [ 1.0 ] },
+    { "name": "SceneDepthAvailable", "type": "int", "count": 1, "values": [ 0 ] },
+    { "name": "ProxyFrontAvailable", "type": "int", "count": 1, "values": [ 0 ] },
+    { "name": "BodyVolumeAvailable", "type": "int", "count": 1, "values": [ 0 ] },
+    { "name": "EdgeTonguesEnabled", "type": "int", "count": 1, "values": [ 0 ] },
+    { "name": "DeformationDebugMode", "type": "int", "count": 1, "values": [ 0 ] }
+  ]
+}

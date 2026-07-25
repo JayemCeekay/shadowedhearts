@@ -62,6 +62,12 @@ public final class ShadowedheartsNeoForgeClient {
     public static void registerKeybinds(RegisterKeyMappingsEvent event) {
         ModKeybinds.init();
         event.register(ModKeybinds.AURA_SCANNER);
+        event.register(ModKeybinds.AURA_MODE_SELECTOR);
+        event.register(ModKeybinds.AURA_PULSE);
+        event.register(ModKeybinds.AURA_LOCK);
+        event.register(ModKeybinds.AURA_NEXT_SIGNAL);
+        event.register(ModKeybinds.AURA_PREV_SIGNAL);
+        event.register(ModKeybinds.DEBUG_REINIT_HUD);
     }
 
     public static void registerParticles(RegisterParticleProvidersEvent evt) {
@@ -128,12 +134,14 @@ public final class ShadowedheartsNeoForgeClient {
             float pt = e.getPartialTick().getGameTimeDeltaPartialTick(true);
             LuminousMoteEmitters.onRender(pt);
             PenumbraTrailSystem.renderDensityPipeline(e.getCamera(), pt);
-            ShadowPokemonAuraSystem.renderDensityPipeline(e.getCamera(), pt);
             BallEmitters.onRenderFBO(e.getCamera(), pt);
         }
 
         if (e.getStage() == RenderLevelStageEvent.Stage.AFTER_WEATHER) {
             float pt = e.getPartialTick().getGameTimeDeltaPartialTick(true);
+            if (!ShadowPokemonAuraSystem.isIrisShaderPackActive()) {
+                ShadowPokemonAuraSystem.renderDensityPipeline(e.getCamera(), pt, e.getProjectionMatrix());
+            }
 
 
             var mc = Minecraft.getInstance();

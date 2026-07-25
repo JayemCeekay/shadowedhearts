@@ -50,6 +50,10 @@ object AuraLockManager {
         }
     }
 
+    fun clear(entity: Entity) {
+        locks.remove(entity.uuid)
+    }
+
     /** Utility to check if an entity is currently under an aura lock. */
     fun isLocked(entity: Entity, nowTick: Long): Boolean {
         return (locks[entity.uuid] ?: 0L) > nowTick

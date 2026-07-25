@@ -11,6 +11,7 @@ import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs;
 import com.jayemceekay.shadowedhearts.content.items.AuraReaderItem;
 import com.jayemceekay.shadowedhearts.integration.accessories.SnagAccessoryBridgeHolder;
 import com.jayemceekay.shadowedhearts.network.ShadowedHeartsNetwork;
+import com.jayemceekay.shadowedhearts.network.aura.AuraReaderPulseResultS2CPacket;
 import com.jayemceekay.shadowedhearts.network.aura.AuraScannerS2CPacket;
 import com.jayemceekay.shadowedhearts.registry.util.ModItemComponents;
 import dev.architectury.event.events.common.TickEvent;
@@ -96,19 +97,35 @@ public final class AuraReaderEvents {
 
         if (!auraReader.isEmpty()) {
             tickAuraReader(player, auraReader);
+            if (player instanceof ServerPlayer sp && sp.tickCount % 10 == 0) {
+                AuraReaderService.validateLock(sp, auraReader);
+                if (AuraReaderPlayerState.isActive(sp)) {
+                    ShadowedHeartsNetwork.sendToPlayer(
+                            sp,
+                            AuraReaderPulseResultS2CPacket.fromReadings(AuraReaderService.targetedScan(sp, auraReader), false)
+                    );
+                }
+                AuraReaderService.sendState(sp, auraReader);
+            }
+        } else if (player instanceof ServerPlayer sp) {
+            if (AuraReaderPlayerState.isActive(sp)) {
+                AuraReaderService.setActive(sp, ItemStack.EMPTY, false);
+            }
         }
     }
 
     private static void tickAuraReader(Player player, ItemStack stack) {
         Boolean active = stack.get(ModItemComponents.AURA_SCANNER_ACTIVE.get());
-        if (active != null && active) {
-            if(player.isCreative()) return;
-            boolean hasCharge = AuraReaderCharge.consume(stack, 1, AuraReaderItem.MAX_CHARGE);
+        boolean isActive = active != null && active;
+        if (player instanceof ServerPlayer sp && AuraReaderPlayerState.isActive(sp) != isActive) {
+            AuraReaderService.syncActiveFromStack(sp, stack);
+        }
+
+        if (isActive) {
+            if (!(player instanceof ServerPlayer sp)) return;
+            boolean hasCharge = AuraReaderService.consumeActiveCharge(sp, stack);
             if (!hasCharge) {
-                stack.set(ModItemComponents.AURA_SCANNER_ACTIVE.get(), false);
-                if (player instanceof ServerPlayer sp) {
-                    ShadowedHeartsNetwork.sendToPlayer(sp, new AuraScannerS2CPacket(false));
-                }
+                ShadowedHeartsNetwork.sendToPlayer(sp, new AuraScannerS2CPacket(false));
             }
         }
     }

@@ -104,6 +104,43 @@ public final class ModShadersPlatformImpl {
                         program -> ModShaders.SNAG_BEAM_COMPOSITE = program
                 );
 
+                // Dark Ball cohesive volumetric siphon pipeline
+                registrationContext.register(
+                        ResourceLocation.parse("shadowedhearts:darkball/dark_ball_mask"),
+                        DefaultVertexFormat.NEW_ENTITY,
+                        program -> ModShaders.DARK_BALL_MASK = program
+                );
+                registrationContext.register(
+                        ResourceLocation.parse("shadowedhearts:darkball/dark_ball_proxy_depth"),
+                        DefaultVertexFormat.NEW_ENTITY,
+                        program -> ModShaders.DARK_BALL_PROXY_DEPTH = program
+                );
+                registrationContext.register(
+                        ResourceLocation.parse("shadowedhearts:darkball/dark_ball_volume_composite"),
+                        DefaultVertexFormat.POSITION_TEX,
+                        program -> ModShaders.DARK_BALL_VOLUME_COMPOSITE = program
+                );
+                registrationContext.register(
+                        ResourceLocation.parse("shadowedhearts:darkball/dark_ball_density_advect"),
+                        DefaultVertexFormat.POSITION_TEX,
+                        program -> ModShaders.DARK_BALL_DENSITY_ADVECT = program
+                );
+                registrationContext.register(
+                        ResourceLocation.parse("shadowedhearts:darkball/dark_ball_siphon_advect"),
+                        DefaultVertexFormat.POSITION_TEX,
+                        program -> ModShaders.DARK_BALL_SIPHON_ADVECT = program
+                );
+                registrationContext.register(
+                        ResourceLocation.parse("shadowedhearts:darkball/dark_ball_advected_volume"),
+                        DefaultVertexFormat.POSITION_TEX,
+                        program -> ModShaders.DARK_BALL_ADVECTED_VOLUME = program
+                );
+                registrationContext.register(
+                        ResourceLocation.parse("shadowedhearts:darkball/dark_ball_edge_tongues"),
+                        DefaultVertexFormat.POSITION_TEX,
+                        program -> ModShaders.DARK_BALL_EDGE_TONGUES = program
+                );
+
                 // Snag trail orange smoke density pipeline (FBM noise + warm orange composite)
                 registrationContext.register(
                         ResourceLocation.parse("shadowedhearts:snag/snag_trail_density"),

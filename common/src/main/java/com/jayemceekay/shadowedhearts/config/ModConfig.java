@@ -173,6 +173,12 @@ public final class ModConfig implements IShadowConfig {
     }
 
     @Override
+    public int auraReaderPulseCooldownTicks() {
+        if (!isLoaded()) return IShadowConfig.super.auraReaderPulseCooldownTicks();
+        return DATA.auraScanner.auraReaderPulseCooldownTicks.get();
+    }
+
+    @Override
     public int trailMinNodeDistance() {
         if (!isLoaded()) return IShadowConfig.super.trailMinNodeDistance();
         return DATA.auraScanner.trailMinNodeDistance.get();
@@ -586,6 +592,7 @@ public final class ModConfig implements IShadowConfig {
     public static final class AuraScannerConfig {
         public ModConfigSpec.IntValue auraScannerShadowRange;
         public ModConfigSpec.IntValue auraScannerMeteoroidRange;
+        public ModConfigSpec.IntValue auraReaderPulseCooldownTicks;
         public ModConfigSpec.IntValue trailMinNodeDistance;
         public ModConfigSpec.IntValue trailMaxNodeDistance;
         public ModConfigSpec.BooleanValue auraReaderRequiredForAura;
@@ -602,6 +609,10 @@ public final class ModConfig implements IShadowConfig {
             auraScannerMeteoroidRange = builder
                     .comment("The range (in blocks) at which the Aura Scanner can detect Shadowfall meteoroids.")
                     .defineInRange("auraScannerMeteoroidRange", 256, 1, 512);
+
+            auraReaderPulseCooldownTicks = builder
+                    .comment("Cooldown in ticks after an accepted Aura Reader pulse scan.")
+                    .defineInRange("auraReaderPulseCooldownTicks", 40, 0, 20 * 60);
 
             trailMinNodeDistance = builder
                     .comment("The minimum distance (in blocks) between evidence nodes in a trail.")

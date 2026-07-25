@@ -4,6 +4,8 @@ import org.joml.Matrix4f;
 
 public interface IrisHandler {
     boolean isShaderPackInUse();
+
+    boolean isShadowRenderActive();
     
     IrisRenderingSnapshot getIrisRenderingSnapshot();
 

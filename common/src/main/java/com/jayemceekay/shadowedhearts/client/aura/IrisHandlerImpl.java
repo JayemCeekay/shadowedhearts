@@ -5,6 +5,7 @@ import net.irisshaders.iris.Iris;
 import net.irisshaders.iris.api.v0.IrisApi;
 import net.irisshaders.iris.pipeline.IrisRenderingPipeline;
 import net.irisshaders.iris.pipeline.WorldRenderingPipeline;
+import net.irisshaders.iris.shadows.ShadowRenderer;
 import net.irisshaders.iris.targets.RenderTargets;
 import net.irisshaders.iris.uniforms.CapturedRenderingState;
 import org.joml.Matrix4f;
@@ -13,6 +14,11 @@ public class IrisHandlerImpl implements IrisHandler {
     @Override
     public boolean isShaderPackInUse() {
         return IrisApi.getInstance().isShaderPackInUse();
+    }
+
+    @Override
+    public boolean isShadowRenderActive() {
+        return ShadowRenderer.ACTIVE;
     }
 
     @Override

@@ -2,6 +2,15 @@ package com.jayemceekay.shadowedhearts.client;
 
 import net.minecraft.client.renderer.ShaderInstance;
 
+/**
+ * Client-side registry holder for shader instances loaded by platform-specific
+ * client bootstrap code.
+ *
+ * <p>RenderTypes and VFX systems read these fields dynamically because shader
+ * instances can be recreated during resource reloads. A {@code null} value means
+ * the shader has not been registered yet or failed to load; callers should keep
+ * their existing fallback behavior rather than caching these references.
+ */
 public final class ModShaders {
 
     // Active shaders used by RenderTypes (dynamic supplier reads these each draw)
@@ -45,6 +54,15 @@ public final class ModShaders {
     public static ShaderInstance SNAG_BEAM_DENSITY;
     public static ShaderInstance SNAG_BEAM_COMPOSITE;
 
+    // Dark Ball cohesive volumetric siphon pipeline
+    public static ShaderInstance DARK_BALL_MASK;
+    public static ShaderInstance DARK_BALL_PROXY_DEPTH;
+    public static ShaderInstance DARK_BALL_VOLUME_COMPOSITE;
+    public static ShaderInstance DARK_BALL_DENSITY_ADVECT;
+    public static ShaderInstance DARK_BALL_SIPHON_ADVECT;
+    public static ShaderInstance DARK_BALL_ADVECTED_VOLUME;
+    public static ShaderInstance DARK_BALL_EDGE_TONGUES;
+
     // Snag trail orange smoke density pipeline (FBM noise + warm orange composite)
     public static ShaderInstance SNAG_TRAIL_DENSITY;
     public static ShaderInstance SNAG_TRAIL_COMPOSITE;
@@ -70,6 +88,7 @@ public final class ModShaders {
     public static ShaderInstance SHADOW_POKEMON_AURA_MASK;
     public static ShaderInstance SHADOW_POKEMON_AURA_DENSITY;
     public static ShaderInstance SHADOW_POKEMON_AURA_COMPOSITE;
+    public static ShaderInstance SHADOW_POKEMON_AURA_DIRECT;
 
     // Screen-space electromagnetic static overlay for Aura Scanner
     public static ShaderInstance AURA_STATIC_INTERFERENCE;
@@ -81,7 +100,10 @@ public final class ModShaders {
 
     private ModShaders() {}
 
-    /** Called from each platform's client init to trigger shader registration. */
+    /**
+     * Platform hook used to force this common class to load before the platform
+     * shader-registration event wires actual {@link ShaderInstance} values.
+     */
     public static void initClient() {}
 
 }

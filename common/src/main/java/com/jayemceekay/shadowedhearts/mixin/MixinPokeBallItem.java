@@ -23,8 +23,9 @@ import java.util.Set;
 public class MixinPokeBallItem {
 
     @Inject(method = "<init>(Lcom/cobblemon/mod/common/pokeball/PokeBall;)V", at = @At("TAIL"))
-    private void shadowedhearts$addTabToDarkBall(PokeBall pokeBall, CallbackInfo ci) {
-        if (pokeBall.getName().getPath().equals("penumbra_ball")) {
+    private void shadowedhearts$addTabToCustomBalls(PokeBall pokeBall, CallbackInfo ci) {
+        String ballName = pokeBall.getName().getPath();
+        if (ballName.equals("penumbra_ball") || ballName.equals("dark_ball")) {
             CreativeTabRegistry.append(ModCreativeTabs.SHADOWED_HEARTS_TAB, (PokeBallItem) (Object) this);
         }
     }
@@ -35,16 +36,16 @@ public class MixinPokeBallItem {
         // Also auto-disarm on throw regardless of energy consumption result.
         if (player != null && SnagCaps.hasMachineAvailable(player)) {
             var cap = SnagCaps.get(player);
-            //if (cap.isArmed()) {
-            cap.consumeEnergy(ShadowedHeartsConfigs.getInstance().getSnagConfig().energyPerAttempt());
-            cap.setArmed(false);
-            ShadowedHeartsNetwork.sendToPlayer(player, new SnagArmedPacket(false));
+           // if (cap.isArmed()) {
+                cap.consumeEnergy(ShadowedHeartsConfigs.getInstance().getSnagConfig().energyPerAttempt());
+                cap.setArmed(false);
+                ShadowedHeartsNetwork.sendToPlayer(player, new SnagArmedPacket(false));
 
-            // Mark the ball entity as a snag ball via Aspects (auto-synced to client)
-            Set<String> aspects = new HashSet<>(pokeBallEntity.getAspects());
-            aspects.add("snag_ball");
-            pokeBallEntity.setAspects(aspects);
+                // Mark the ball entity as a snag ball via Aspects (auto-synced to client)
+                Set<String> aspects = new HashSet<>(pokeBallEntity.getAspects());
+                aspects.add("snag_ball");
+                pokeBallEntity.setAspects(aspects);
+           // }
         }
-        // }
     }
 }

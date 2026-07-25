@@ -2,6 +2,7 @@ package com.jayemceekay.shadowedhearts.config;
 
 public interface IClientConfig extends IModConfig {
     default boolean enableShadowAura() { return true; }
+    default boolean debugShadowAuraEmitters() { return false; }
     default boolean auraScannerEnabled() { return true; }
     default float auraReaderYOffset() { return -0.15f; }
     ISoundConfig soundConfig();
@@ -32,4 +33,7 @@ public interface IClientConfig extends IModConfig {
 
     /** Reduced motion mode: disables fast-moving particles, flashes, and screen-shake. */
     default boolean snagReducedMotion() { return false; }
+
+    /** Low, medium, or high budget for the analytical Dark Ball volume and shell. */
+    default String darkBallVfxQuality() { return "medium"; }
 }
