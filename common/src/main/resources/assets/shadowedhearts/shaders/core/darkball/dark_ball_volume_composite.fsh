@@ -2,9 +2,16 @@
 
 uniform sampler2D Sampler0;
 uniform sampler2D MaskSampler;
+uniform sampler2D DistanceSampler;
 uniform float DeformationBlend;
+uniform float DepthHighlightBlend;
+uniform float BodyGrayTransitionFraction;
+uniform float BodyContourSheenStrength;
+uniform float BodyDepthSpecularStrength;
 uniform float GameTime;
 uniform int DeformationDebugMode;
+uniform int DistanceFieldAvailable;
+uniform vec2 ScreenSize;
 uniform float ProjectedBodyRadiusPixels;
 uniform mat4 InvProjMat;
 uniform int SurfaceDepthAvailable;
@@ -13,12 +20,14 @@ uniform float SurfaceDepthScale;
 in vec2 texCoord0;
 out vec4 fragColor;
 
-const float PURPLE_RIM_INNER_REACH_PIXELS = 1.15;
-const float GRAY_TRANSITION_FRACTION = 0.40;
-const float MIN_GRAY_TRANSITION_PIXELS = 1.15;
-const float MAX_GRAY_TRANSITION_PIXELS = 96.0;
-const float GRAY_SMOKE_MIN_OPACITY = 0.52;
-const float SIPHON_FALLBACK_INNER_REACH_PIXELS = 2.20;
+const float PURPLE_RIM_REACH_OUTPUT_PIXELS = 4.0;
+const float PURPLE_RIM_OUTSIDE_OUTPUT_PIXELS = 1.5;
+const float SIPHON_GRAY_TRANSITION_FRACTION = 0.40;
+const float MIN_GRAY_TRANSITION_OUTPUT_PIXELS = 1.15;
+const float MAX_GRAY_TRANSITION_OUTPUT_PIXELS = 96.0;
+const float THIN_FEATURE_MAX_GRAY_TRANSITION_OUTPUT_PIXELS = 5.0;
+const float THIN_FEATURE_MIN_INSIDE_RIM_OUTPUT_PIXELS = 0.85;
+const float SIPHON_FALLBACK_GRAY_TRANSITION_OUTPUT_PIXELS = 1.05;
 
 float displayedBodyCoverage(vec4 material) {
     // The edge resolve has already produced the exact texture-clipped core and
@@ -92,6 +101,113 @@ vec4 connectedSurfacePosition(ivec2 texelCoord, ivec2 textureExtent,
     return vec4(viewPosition * validity, validity);
 }
 
+vec4 connectedBodySurfacePosition(ivec2 texelCoord, ivec2 textureExtent,
+        ivec2 maximumCoord, float centerDepth, float continuityLimit) {
+    ivec2 boundedCoord = clamp(texelCoord, ivec2(0), maximumCoord);
+    vec4 rawMaterial = texelFetch(Sampler0, boundedCoord, 0);
+    float bodyAuthority = smoothstep(0.055, 0.20, rawMaterial.r)
+            * (1.0 - smoothstep(0.02, 0.12, rawMaterial.g));
+    float validity = connectedSurfaceDepthValidity(rawMaterial,
+            centerDepth, continuityLimit) * bodyAuthority;
+    if (validity <= 0.0001) {
+        return vec4(0.0);
+    }
+    vec3 viewPosition = projectionEyeView()
+            + viewRayAt(texelCenterUv(boundedCoord,
+                    textureExtent)) * max(rawMaterial.a, 0.0);
+    return vec4(viewPosition * validity, validity);
+}
+
+float silhouetteBoundaryDistanceOutputPixels(vec2 uv,
+        out float seedFound, out vec2 nearestSeedUv) {
+    ivec2 fieldExtent = textureSize(DistanceSampler, 0);
+    vec2 fieldTexel = 1.0 / max(vec2(fieldExtent), vec2(1.0));
+    float bestDistance = 1.0e30;
+    seedFound = 0.0;
+    nearestSeedUv = vec2(-1.0);
+
+    // The jump-flood result is half resolution. Inspect the local Voronoi
+    // neighborhood so full-resolution pixels choose the closest propagated
+    // seed rather than inheriting one nearest-neighbor cell wholesale.
+    for (int y = -1; y <= 1; y++) {
+        for (int x = -1; x <= 1; x++) {
+            vec2 sampleUv = clamp(uv
+                    + vec2(float(x), float(y)) * fieldTexel,
+                    vec2(0.0), vec2(1.0));
+            vec2 seedUv = texture(DistanceSampler, sampleUv).rg;
+            float validSeed = step(0.0, min(seedUv.x, seedUv.y));
+            if (validSeed > 0.5) {
+                float candidateDistance = length(
+                        (seedUv - uv) * ScreenSize);
+                if (candidateDistance < bestDistance) {
+                    bestDistance = candidateDistance;
+                    seedFound = 1.0;
+                    nearestSeedUv = seedUv;
+                }
+            }
+        }
+    }
+    return seedFound > 0.5 ? bestDistance : 1.0e30;
+}
+
+float boundaryDistanceAlongDirection(vec2 originUv, vec2 direction,
+        vec2 texel, float searchReachPixels, float centerCoverage,
+        out float boundaryFound) {
+    // The visible exact mask is a projected union, so coverage along a ray is
+    // not guaranteed to be monotonic. A horn can exit into empty space and
+    // then enter an overlapping face before the old far probe. Bracket the
+    // first exit explicitly; later re-entry must not erase the real contour.
+    if (centerCoverage < 0.5) {
+        boundaryFound = 1.0;
+        return 0.0;
+    }
+
+    float insideDistancePixels = 0.0;
+    float outsideDistancePixels = searchReachPixels;
+    float insideCoverage = centerCoverage;
+    float outsideCoverage = centerCoverage;
+    float previousDistancePixels = 0.0;
+    float previousCoverage = centerCoverage;
+    boundaryFound = 0.0;
+    for (int probeIndex = 1; probeIndex <= 8; probeIndex++) {
+        float probeDistancePixels = searchReachPixels
+                * (float(probeIndex) / 8.0);
+        float probeCoverage = coverageAt(originUv
+                + direction * texel * probeDistancePixels);
+        if (boundaryFound < 0.5
+                && previousCoverage >= 0.5
+                && probeCoverage < 0.5) {
+            insideDistancePixels = previousDistancePixels;
+            outsideDistancePixels = probeDistancePixels;
+            insideCoverage = previousCoverage;
+            outsideCoverage = probeCoverage;
+            boundaryFound = 1.0;
+        }
+        previousDistancePixels = probeDistancePixels;
+        previousCoverage = probeCoverage;
+    }
+    if (boundaryFound < 0.5) {
+        return searchReachPixels;
+    }
+
+    for (int searchIndex = 0; searchIndex < 4; searchIndex++) {
+        float midpointDistancePixels = (insideDistancePixels
+                + outsideDistancePixels) * 0.5;
+        float midpointCoverage = coverageAt(originUv
+                + direction * texel * midpointDistancePixels);
+        if (midpointCoverage >= 0.5) {
+            insideDistancePixels = midpointDistancePixels;
+            insideCoverage = midpointCoverage;
+        } else {
+            outsideDistancePixels = midpointDistancePixels;
+            outsideCoverage = midpointCoverage;
+        }
+    }
+    float crossingBlend = clamp((insideCoverage - 0.5)
+            / max(insideCoverage - outsideCoverage, 0.0001), 0.0, 1.0);
+    return mix(insideDistancePixels, outsideDistancePixels, crossingBlend);
+}
+
 float hash12(vec2 p) {
     vec3 p3 = fract(vec3(p.xyx) * 0.1031);
     p3 += dot(p3, p3.yzx + 33.33);
@@ -128,6 +244,19 @@ vec3 scalarDebugRamp(float value) {
             : mix(middle, high, (value - 0.5) * 2.0);
 }
 
+vec3 spikeIndentAmplitudeDebugColor(float encodedAmplitude) {
+    float amplitude = clamp(
+            encodedAmplitude * 2.0 - 1.0,
+            -1.0,
+            1.0);
+    float magnitude = smoothstep(0.015, 1.0, abs(amplitude));
+    vec3 neutral = vec3(0.018, 0.020, 0.026);
+    vec3 indentation = vec3(0.02, 0.68, 1.00);
+    vec3 spike = vec3(1.00, 0.10, 0.015);
+    vec3 polarity = amplitude < 0.0 ? indentation : spike;
+    return mix(neutral, polarity, magnitude);
+}
+
 vec3 fieldOwnershipDebugColor(float encodedOwner) {
     if (encodedOwner < 0.25) {
         // Fully warped detailed Pokemon SDF.
@@ -147,11 +276,13 @@ vec3 fieldOwnershipDebugColor(float encodedOwner) {
 
 void main() {
     vec4 material = texture(Sampler0, texCoord0);
+    vec2 texel = 1.0 / vec2(textureSize(Sampler0, 0));
     if (DeformationDebugMode > 0) {
         // Mode 12 excludes B: that channel is the undeformed formation-handoff
         // projection and would be mistaken for one of the current SDF owners.
         float storedBodyCoverage = bodyStorageCoverage(material.b);
-        float bodyDebugCoverage = DeformationDebugMode == 12
+        float bodyDebugCoverage = (DeformationDebugMode == 12
+                || DeformationDebugMode == 13)
                 ? material.r : max(material.r, storedBodyCoverage);
         float debugOpacity = max(bodyDebugCoverage, material.g);
         if (debugOpacity < 0.002) {
@@ -165,6 +296,8 @@ void main() {
             debugColor = vec3(material.r);
         } else if (DeformationDebugMode == 12) {
             debugColor = fieldOwnershipDebugColor(material.a);
+        } else if (DeformationDebugMode == 13) {
+            debugColor = spikeIndentAmplitudeDebugColor(material.a);
         } else if (DeformationDebugMode == 4
                 || DeformationDebugMode == 5
                 || DeformationDebugMode == 10
@@ -179,7 +312,6 @@ void main() {
         fragColor = vec4(debugColor, clamp(debugOpacity, 0.0, 0.98));
         return;
     }
-    vec2 texel = 1.0 / vec2(textureSize(Sampler0, 0));
 
     // A is a linear camera-ray distance written by a resolved crossing of the
     // final deformed/depleted body SDF or the siphon surface. Fetch it without
@@ -195,7 +327,12 @@ void main() {
     float surfaceDepth = centerDepthMaterial.a;
     float centerDepthValid = rawSurfaceDepthValidity(centerDepthMaterial);
     float depthHighlight = 0.0;
-    if (centerDepthValid > 0.001) {
+    // Body depth remains authoritative for ordering, but its reconstructed
+    // screen-space normal used to turn broad Pokemon surfaces into moving
+    // specular/Fresnel facets. Evaluate the expensive view-dependent lighting
+    // only for the narrow siphon, whose restrained glint remains readable.
+    if (centerDepthValid > 0.001
+            && centerDepthMaterial.g > centerDepthMaterial.r + 0.02) {
     bool siphonDominant = centerDepthMaterial.g
             > centerDepthMaterial.r + 0.02;
     // A siphon can double back over itself within the body's broad depth
@@ -327,16 +464,44 @@ void main() {
     float nearMinimum = center;
     float innerMinimum = center;
     float nearSupport = 0.0;
-    vec2 innerEscapeVector = vec2(0.0);
-    // Keep the purple contour narrow, then spend roughly 40% of the projected
-    // body radius on the noisy gray transition before reaching the black core.
-    // The clamp protects small details and extreme closeups. Siphon-only pixels
-    // retain the legacy narrow transition so the thin tube keeps a black core.
+    float innerSupport = 0.0;
+    float escapeWeights[12];
+    float strongestEscapeWeight = 0.0;
+    vec2 strongestEscapeDirection = vec2(1.0, 0.0);
+    // Define all fixed contour widths in final display pixels. The density
+    // target may run below the main framebuffer resolution on LOW (or a future
+    // adaptive profile), so convert them into source-pixel units before using
+    // texture-size-relative UV steps. This keeps the shared body+siphon rim at
+    // four visible pixels instead of accidentally doubling it after upsampling.
+    float outputPixelsToSourcePixels =
+            float(textureSize(Sampler0, 0).y) / max(ScreenSize.y, 1.0);
+    float rimReachPixels = PURPLE_RIM_REACH_OUTPUT_PIXELS
+            * outputPixelsToSourcePixels;
+    float outsideRimReachPixels = PURPLE_RIM_OUTSIDE_OUTPUT_PIXELS
+            * outputPixelsToSourcePixels;
+    float insideRimReachPixels = max(
+            rimReachPixels - outsideRimReachPixels, 0.0);
+    float minimumGrayTransitionPixels =
+            MIN_GRAY_TRANSITION_OUTPUT_PIXELS * outputPixelsToSourcePixels;
+    float maximumGrayTransitionPixels =
+            MAX_GRAY_TRANSITION_OUTPUT_PIXELS * outputPixelsToSourcePixels;
+    float thinFeatureMaximumGrayTransitionPixels =
+            THIN_FEATURE_MAX_GRAY_TRANSITION_OUTPUT_PIXELS
+                    * outputPixelsToSourcePixels;
+    float siphonFallbackGrayTransitionPixels =
+            SIPHON_FALLBACK_GRAY_TRANSITION_OUTPUT_PIXELS
+                    * outputPixelsToSourcePixels;
+
+    // The body uses an explicit presentation fraction instead of borrowing the
+    // collapse envelope. This preserves the failure path's thick black core
+    // from the first exact-mask frame through the surfel handoff. The clamp
+    // protects small details and extreme closeups. Siphon-only pixels retain
+    // the established proportional treatment.
     float bodyGrayTransitionPixels = clamp(
-            ProjectedBodyRadiusPixels * GRAY_TRANSITION_FRACTION,
-            MIN_GRAY_TRANSITION_PIXELS,
-            MAX_GRAY_TRANSITION_PIXELS);
-    float bodyInnerReachPixels = PURPLE_RIM_INNER_REACH_PIXELS
+            ProjectedBodyRadiusPixels * BodyGrayTransitionFraction,
+            minimumGrayTransitionPixels,
+            maximumGrayTransitionPixels);
+    float bodyInnerReachPixels = insideRimReachPixels
             + bodyGrayTransitionPixels;
     float encodedSiphonRadius = centerDepthMaterial.b;
     float siphonWorldRadius = encodedSiphonRadius > 1.5
@@ -352,14 +517,17 @@ void main() {
     float siphonRadiusAvailable = step(0.0001, siphonWorldRadius)
             * centerDepthValid;
     float siphonGrayTransitionPixels = clamp(
-            projectedSiphonRadiusPixels * GRAY_TRANSITION_FRACTION,
-            MIN_GRAY_TRANSITION_PIXELS,
-            MAX_GRAY_TRANSITION_PIXELS);
+            projectedSiphonRadiusPixels * SIPHON_GRAY_TRANSITION_FRACTION,
+            minimumGrayTransitionPixels,
+            maximumGrayTransitionPixels);
     float proportionalSiphonInnerReachPixels =
-            PURPLE_RIM_INNER_REACH_PIXELS
+            insideRimReachPixels
             + siphonGrayTransitionPixels;
+    float siphonFallbackInnerReachPixels =
+            insideRimReachPixels
+            + siphonFallbackGrayTransitionPixels;
     float siphonInnerReachPixels = mix(
-            SIPHON_FALLBACK_INNER_REACH_PIXELS,
+            siphonFallbackInnerReachPixels,
             proportionalSiphonInnerReachPixels,
             siphonRadiusAvailable);
     float siphonDominance = smoothstep(
@@ -368,13 +536,26 @@ void main() {
             material.g);
     float innerReachPixels = mix(bodyInnerReachPixels,
             siphonInnerReachPixels, siphonDominance);
-    vec2 nearStep = texel * PURPLE_RIM_INNER_REACH_PIXELS;
+    vec2 nearStep = texel * outsideRimReachPixels;
     vec2 innerStep = texel * innerReachPixels;
     vec2 directions[8] = vec2[8](
         vec2( 1.0,  0.0), vec2(-1.0,  0.0),
         vec2( 0.0,  1.0), vec2( 0.0, -1.0),
         vec2( 0.7071,  0.7071), vec2(-0.7071,  0.7071),
         vec2( 0.7071, -0.7071), vec2(-0.7071, -0.7071)
+    );
+    // Long-range boundary selection needs locally finer angular resolution
+    // than the eight-tap morphology ring. At projected ModelPart corners an
+    // overlapping quad can block both coarse candidate rays even though a
+    // narrow route to the real exterior remains between them. Four entries are
+    // initialized after the coarse pass around its two best directions.
+    vec2 escapeDirections[12] = vec2[12](
+        vec2( 1.0,  0.0), vec2(-1.0,  0.0),
+        vec2( 0.0,  1.0), vec2( 0.0, -1.0),
+        vec2( 0.7071,  0.7071), vec2(-0.7071,  0.7071),
+        vec2( 0.7071, -0.7071), vec2(-0.7071, -0.7071),
+        vec2( 1.0,  0.0), vec2( 1.0,  0.0),
+        vec2(-1.0,  0.0), vec2(-1.0,  0.0)
     );
     for (int i = 0; i < 8; i++) {
         float nearSample = coverageAt(texCoord0 + directions[i] * nearStep);
@@ -383,15 +564,75 @@ void main() {
         nearMinimum = min(nearMinimum, nearSample);
         innerMinimum = min(innerMinimum, innerSample);
         nearSupport += nearSample * (i < 4 ? 1.0 : 0.7071);
+        innerSupport += innerSample * (i < 4 ? 1.0 : 0.7071);
         float escapeWeight = (1.0 - innerSample)
                 * (i < 4 ? 1.0 : 0.7071);
-        innerEscapeVector += directions[i] * escapeWeight;
+        escapeWeights[i] = escapeWeight;
+        if (escapeWeight > strongestEscapeWeight) {
+            strongestEscapeWeight = escapeWeight;
+            strongestEscapeDirection = escapeDirections[i];
+        }
+    }
+    float coarseAlternateWeight = 0.0;
+    vec2 coarseAlternateDirection = strongestEscapeDirection;
+    for (int i = 0; i < 8; i++) {
+        float sufficientlyDifferent = 1.0 - step(0.72,
+                dot(strongestEscapeDirection, escapeDirections[i]));
+        float candidateWeight = escapeWeights[i] * sufficientlyDifferent;
+        if (candidateWeight > coarseAlternateWeight) {
+            coarseAlternateWeight = candidateWeight;
+            coarseAlternateDirection = escapeDirections[i];
+        }
+    }
+    const float HALF_ANGLE_COS = 0.9239;
+    const float HALF_ANGLE_SIN = 0.3827;
+    escapeDirections[8] = vec2(
+            strongestEscapeDirection.x * HALF_ANGLE_COS
+                    - strongestEscapeDirection.y * HALF_ANGLE_SIN,
+            strongestEscapeDirection.x * HALF_ANGLE_SIN
+                    + strongestEscapeDirection.y * HALF_ANGLE_COS);
+    escapeDirections[9] = vec2(
+            strongestEscapeDirection.x * HALF_ANGLE_COS
+                    + strongestEscapeDirection.y * HALF_ANGLE_SIN,
+            -strongestEscapeDirection.x * HALF_ANGLE_SIN
+                    + strongestEscapeDirection.y * HALF_ANGLE_COS);
+    escapeDirections[10] = vec2(
+            coarseAlternateDirection.x * HALF_ANGLE_COS
+                    - coarseAlternateDirection.y * HALF_ANGLE_SIN,
+            coarseAlternateDirection.x * HALF_ANGLE_SIN
+                    + coarseAlternateDirection.y * HALF_ANGLE_COS);
+    escapeDirections[11] = vec2(
+            coarseAlternateDirection.x * HALF_ANGLE_COS
+                    + coarseAlternateDirection.y * HALF_ANGLE_SIN,
+            -coarseAlternateDirection.x * HALF_ANGLE_SIN
+                    + coarseAlternateDirection.y * HALF_ANGLE_COS);
+    for (int i = 8; i < 12; i++) {
+        float innerSample = coverageAt(texCoord0
+                + escapeDirections[i] * innerStep);
+        // Half-angle probes receive the same near-unit preference as cardinal
+        // probes. Their purpose is candidate selection, not morphology.
+        float escapeWeight = (1.0 - innerSample) * 0.9239;
+        escapeWeights[i] = escapeWeight;
+        if (escapeWeight > strongestEscapeWeight) {
+            strongestEscapeWeight = escapeWeight;
+            strongestEscapeDirection = escapeDirections[i];
+        }
     }
 
     float fill = smoothstep(0.10, 0.48, center);
     float dilated = smoothstep(0.08, 0.42, nearMaximum);
     float erodedNear = smoothstep(0.11, 0.42, nearMinimum);
     float erodedInner = smoothstep(0.12, 0.44, innerMinimum);
+
+    float distanceSeedFound = 0.0;
+    vec2 nearestBoundarySeedUv = vec2(-1.0);
+    float distanceOutputPixels = 1.0e30;
+    if (DistanceFieldAvailable != 0) {
+        distanceOutputPixels = silhouetteBoundaryDistanceOutputPixels(
+                texCoord0, distanceSeedFound, nearestBoundarySeedUv);
+    }
+    float distanceFieldUsable = (DistanceFieldAvailable != 0 ? 1.0 : 0.0)
+            * distanceSeedFound;
 
     // Outside-in ordering: hard purple contour, adaptive noisy gray transition,
     // then the nearly opaque black material core.
@@ -400,48 +641,162 @@ void main() {
     // longer turn into an opaque eight-neighbor purple comb.
     float coherentSupport = smoothstep(0.16, 0.38,
             nearSupport / 6.8284);
-    float outsideRim = clamp(dilated - fill, 0.0, 1.0)
+    float morphologyOutsideRim = clamp(dilated - fill, 0.0, 1.0)
             * coherentSupport;
-    float surfaceRim = clamp(fill - erodedNear, 0.0, 1.0) * 0.34;
-    float purpleRim = max(outsideRim, surfaceRim);
-    // The far erosion ring already reveals which direction reaches the nearest
-    // exterior. Search for that boundary along the inferred direction, then
-    // turn its continuous pixel distance into one broad smoothstep. Averaging a
-    // few fixed probes quantizes hard coverage into visible concentric bands.
-    float escapeLengthSquared = dot(innerEscapeVector, innerEscapeVector);
-    vec2 grayGradientDirection = escapeLengthSquared > 0.000001
-            ? innerEscapeVector * inversesqrt(escapeLengthSquared)
-            : vec2(1.0, 0.0);
-    float grayReachPixels = max(innerReachPixels
-            - PURPLE_RIM_INNER_REACH_PIXELS, 0.0);
-    float insideDistancePixels = 0.0;
-    float outsideDistancePixels = innerReachPixels;
-    float insideCoverage = center;
-    float farCoverage = coverageAt(texCoord0
-            + grayGradientDirection * innerStep);
-    float outsideCoverage = farCoverage;
-    for (int searchIndex = 0; searchIndex < 7; searchIndex++) {
-        float midpointDistancePixels = (insideDistancePixels
-                + outsideDistancePixels) * 0.5;
-        float midpointCoverage = coverageAt(texCoord0
-                + grayGradientDirection * texel
-                * midpointDistancePixels);
-        if (midpointCoverage >= 0.5) {
-            insideDistancePixels = midpointDistancePixels;
-            insideCoverage = midpointCoverage;
-        } else {
-            outsideDistancePixels = midpointDistancePixels;
-            outsideCoverage = midpointCoverage;
+    float distanceOutsideRim = (1.0 - fill)
+            * (1.0 - smoothstep(
+                    PURPLE_RIM_OUTSIDE_OUTPUT_PIXELS * 0.12,
+                    PURPLE_RIM_OUTSIDE_OUTPUT_PIXELS,
+                    distanceOutputPixels));
+    float outsideRim = mix(morphologyOutsideRim,
+            distanceOutsideRim, distanceFieldUsable);
+    // Do not average all outward probes into one escape vector. At concave
+    // corners or overlapping projected model parts, equally plausible exits
+    // can cancel and leave an arbitrary screen-right fallback. Keep the
+    // strongest exit, then retain the strongest direction separated from it
+    // by at least roughly 33 degrees. Searching both lets one ray escape when
+    // the other runs into a neighboring projected part.
+    float alternateEscapeWeight = 0.0;
+    vec2 alternateEscapeDirection = strongestEscapeDirection;
+    for (int i = 0; i < 12; i++) {
+        float sufficientlyDifferent = 1.0 - step(0.84,
+                dot(strongestEscapeDirection, escapeDirections[i]));
+        float candidateWeight = escapeWeights[i] * sufficientlyDifferent;
+        if (candidateWeight > alternateEscapeWeight) {
+            alternateEscapeWeight = candidateWeight;
+            alternateEscapeDirection = escapeDirections[i];
         }
     }
-    float crossingBlend = clamp((insideCoverage - 0.5)
-            / max(insideCoverage - outsideCoverage, 0.0001), 0.0, 1.0);
-    float boundaryDistancePixels = mix(insideDistancePixels,
-            outsideDistancePixels, crossingBlend);
+    // A projected-radius width remains authoritative on broad body regions.
+    // The directional support is retained only for the compatibility path.
+    // When the distance field is available, measure both along and across the
+    // nearest contour normal. Requiring support in both axes distinguishes a
+    // broad torso from a long-but-thin horn, ribbon, tail, or acute tip.
+    float normalizedInnerSupport = clamp(innerSupport / 6.8284, 0.0, 1.0);
+    float coarseBroadBodyRegion = smoothstep(0.18, 0.52,
+            normalizedInnerSupport);
+    float measuredLocalWidthSupport = coarseBroadBodyRegion;
+    if (distanceFieldUsable > 0.5 && fill > 0.001) {
+        vec2 boundaryToInteriorPixels = (texCoord0
+                - nearestBoundarySeedUv) * ScreenSize;
+        float boundaryToInteriorLength = length(boundaryToInteriorPixels);
+        vec2 fallbackInwardDirection = -strongestEscapeDirection;
+        vec2 inwardDirection = boundaryToInteriorLength > 0.35
+                ? boundaryToInteriorPixels / boundaryToInteriorLength
+                : fallbackInwardDirection;
+        vec2 inwardUvPerOutputPixel = inwardDirection
+                / max(ScreenSize, vec2(1.0));
+        vec2 tangentUvPerOutputPixel = vec2(-inwardDirection.y,
+                inwardDirection.x) / max(ScreenSize, vec2(1.0));
+        vec2 probeOriginUv = texCoord0
+                + inwardUvPerOutputPixel * 1.5;
+        float nearProbePixels = 4.0;
+        float farProbePixels = 8.0;
+        float inwardNearSupport = coverageAt(probeOriginUv
+                + inwardUvPerOutputPixel * nearProbePixels);
+        float inwardFarSupport = coverageAt(probeOriginUv
+                + inwardUvPerOutputPixel * farProbePixels);
+        float tangentPositiveSupport = coverageAt(probeOriginUv
+                + tangentUvPerOutputPixel * nearProbePixels);
+        float tangentNegativeSupport = coverageAt(probeOriginUv
+                - tangentUvPerOutputPixel * nearProbePixels);
+        float axialSupport = mix(inwardNearSupport,
+                inwardFarSupport, 0.35);
+        float transverseSupport = (tangentPositiveSupport
+                + tangentNegativeSupport) * 0.5;
+        measuredLocalWidthSupport = smoothstep(0.24, 0.82,
+                min(axialSupport, transverseSupport));
+    }
+    float broadBodyRegion = mix(coarseBroadBodyRegion,
+            measuredLocalWidthSupport, distanceFieldUsable);
+    float localThinGrayLimitPixels = mix(
+            minimumGrayTransitionPixels,
+            thinFeatureMaximumGrayTransitionPixels,
+            smoothstep(0.04, 0.72, measuredLocalWidthSupport));
+    float localizedBodyGrayTransitionPixels = mix(
+            min(bodyGrayTransitionPixels,
+                    localThinGrayLimitPixels),
+            bodyGrayTransitionPixels,
+            smoothstep(0.55, 0.94, broadBodyRegion));
+    float minimumThinInsideRimPixels =
+            THIN_FEATURE_MIN_INSIDE_RIM_OUTPUT_PIXELS
+                    * outputPixelsToSourcePixels;
+    float localizedBodyInsideRimPixels = mix(
+            min(insideRimReachPixels, minimumThinInsideRimPixels),
+            insideRimReachPixels,
+            smoothstep(0.12, 0.78, measuredLocalWidthSupport));
+    float resolvedSiphonGrayTransitionPixels = mix(
+            siphonFallbackGrayTransitionPixels,
+            siphonGrayTransitionPixels,
+            siphonRadiusAvailable);
+    float grayReachPixels = mix(localizedBodyGrayTransitionPixels,
+            resolvedSiphonGrayTransitionPixels, siphonDominance);
+    float resolvedInsideRimReachPixels = mix(
+            localizedBodyInsideRimPixels,
+            insideRimReachPixels, siphonDominance);
+    // Search only as far as this pixel's locally permitted presentation band.
+    // Thin sheets and appendages deliberately clamp grayReachPixels; probing
+    // with the broad body's full radius would jump across their first exterior
+    // and land in another projected ModelPart.
+    float boundarySearchReachPixels = resolvedInsideRimReachPixels
+            + grayReachPixels;
+    float boundaryDistancePixels = boundarySearchReachPixels;
+    float boundaryFound = 0.0;
+    if (DistanceFieldAvailable != 0) {
+        // Style the projected body+siphon union by true Euclidean screen-space
+        // distance. ModelPart normals, face orientation, depth discontinuities,
+        // and overlapping quads cannot redirect or cancel this transition.
+        boundaryDistancePixels = min(boundarySearchReachPixels,
+                distanceOutputPixels * outputPixelsToSourcePixels);
+        boundaryFound = distanceSeedFound;
+    } else {
+        // Compatibility path for a driver or shader pack that cannot create
+        // the compact coordinate field. Preserve the former first-exit search
+        // rather than dropping the gray transition entirely.
+        float strongestBoundaryFound;
+        float strongestBoundaryDistance = boundaryDistanceAlongDirection(
+                texCoord0, strongestEscapeDirection, texel,
+                boundarySearchReachPixels,
+                center, strongestBoundaryFound);
+        float alternateBoundaryFound;
+        float alternateBoundaryDistance = boundaryDistanceAlongDirection(
+                texCoord0, alternateEscapeDirection, texel,
+                boundarySearchReachPixels,
+                center, alternateBoundaryFound);
+        alternateBoundaryFound *= step(0.0001, alternateEscapeWeight);
+        float strongestUsableDistance = mix(boundarySearchReachPixels,
+                strongestBoundaryDistance,
+                step(0.001, strongestBoundaryFound));
+        float alternateUsableDistance = mix(boundarySearchReachPixels,
+                alternateBoundaryDistance,
+                step(0.001, alternateBoundaryFound));
+        boundaryDistancePixels = min(strongestUsableDistance,
+                alternateUsableDistance);
+        boundaryFound = max(strongestBoundaryFound,
+                alternateBoundaryFound);
+
+        // Filtering can leave both far probes barely above the formal crossing
+        // threshold. This restrained support exists only in the fallback; the
+        // distance field never guesses from face-aligned probes.
+        float conservativeBoundarySupport = smoothstep(0.08, 0.52,
+                max(strongestEscapeWeight, alternateEscapeWeight))
+                * (1.0 - smoothstep(0.82, 0.98,
+                        normalizedInnerSupport));
+        boundaryFound = max(boundaryFound,
+                conservativeBoundarySupport * 0.55);
+    }
+    // Only 1.5 pixels of the four-pixel purple treatment dilate the exact
+    // silhouette. The remaining 2.5 pixels are drawn inward using the measured
+    // boundary distance, keeping the requested visual thickness without
+    // enlarging the carrier by four pixels on every side.
+    float surfaceRim = fill * (1.0 - smoothstep(
+            resolvedInsideRimReachPixels * 0.72,
+            max(resolvedInsideRimReachPixels, 0.0001),
+            boundaryDistancePixels)) * 0.96;
+    float purpleRim = max(outsideRim, surfaceRim);
     float grayInwardProgress = clamp((boundaryDistancePixels
-            - PURPLE_RIM_INNER_REACH_PIXELS)
+            - resolvedInsideRimReachPixels)
             / max(grayReachPixels, 0.0001), 0.0, 1.0);
-    float boundaryFound = 1.0 - smoothstep(0.44, 0.60, farCoverage);
     float grayOuterSupport = smoothstep(0.04, 0.96, fill);
     float grayToBlackFade = 1.0
             - smoothstep(0.0, 1.0, grayInwardProgress);
@@ -458,7 +813,10 @@ void main() {
     float edgeActivity = clamp(purpleRim + grayBand, 0.0, 1.0);
     float grain = mix(stableGrain, animatedGrain(grainSeed),
             edgeActivity * 0.62);
-    float grayVariation = mix(0.90, 1.08, grain);
+    // Keep the noisy transition matte. Large silhouettes made the former
+    // +/-9% screen-space modulation look like a refracting layer sliding over
+    // the body as the camera moved.
+    float grayVariation = mix(0.985, 1.015, grain);
 
     vec3 coreColor = vec3(0.0035, 0.0010, 0.0070);
     float grayGradient = smoothstep(0.08, 0.92, grayBand);
@@ -472,31 +830,169 @@ void main() {
     vec3 color = mix(coreColor, grayColor, grayBand * 0.90);
     color = mix(color, rimColor, purpleRim * 0.97);
 
-    // Body and siphon share the same reconstructed surface light. Separate
-    // coverage gates preserve the established body intensity while giving the
-    // narrower siphon a restrained highlight instead of a solid white stripe.
-    // B-only handoff storage and depthless conservative fill remain excluded.
-    float displayedBody = displayedBodyCoverage(material);
-    float bodyGate = smoothstep(0.12, 0.52, displayedBody)
-            * smoothstep(0.02, 0.28, centerDepthMaterial.r);
+    // Do not reconstruct a reflective body normal from proxy/surfel depth.
+    // Overlapping splats can exchange front-depth authority as the camera or
+    // turbulence moves, which made the former Phong/Fresnel response resemble
+    // a sliding prism. Instead, derive one restrained, screen-stable sheen from
+    // the same Euclidean silhouette field that owns the purple/gray bands. It
+    // lives just inside the black core, never alters coverage, and fails closed
+    // when the distance field is unavailable.
+    vec2 contourToBoundaryPixels = (nearestBoundarySeedUv - texCoord0)
+            * ScreenSize;
+    float contourDirectionLength = length(contourToBoundaryPixels);
+    vec2 contourOutwardDirection = contourDirectionLength > 0.35
+            ? contourToBoundaryPixels / contourDirectionLength
+            : strongestEscapeDirection;
+    const vec2 BODY_SHEEN_KEY_DIRECTION = vec2(-0.5793, 0.8151);
+    float contourKeyDot = dot(contourOutwardDirection,
+            BODY_SHEEN_KEY_DIRECTION);
+    float contourBroadLobe = smoothstep(-0.50, 0.65, contourKeyDot);
+    float contourPeakLobe = pow(smoothstep(0.20, 0.96,
+            contourKeyDot), 2.0);
+    float contourKeyLobe = mix(contourBroadLobe,
+            contourPeakLobe, 0.65);
+    float blackInnerEdgeProfile = smoothstep(0.62, 0.84,
+            grayInwardProgress)
+            * (1.0 - smoothstep(0.90, 1.0, grayInwardProgress));
+    float bodyDominance = smoothstep(0.08, 0.42,
+            displayedBodyCoverage(material))
+            * (1.0 - smoothstep(0.08, 0.36, material.g));
+    float graySuppression = 1.0 - smoothstep(0.12, 0.68, grayBand);
+    float bodyContourSheenMask = min(contourKeyLobe
+            * blackInnerEdgeProfile
+            * smoothstep(0.72, 0.96, core)
+            * graySuppression
+            * (1.0 - purpleRim)
+            * bodyDominance
+            * distanceFieldUsable
+            * clamp(BodyContourSheenStrength, 0.0, 0.06), 0.06);
+    // Restore a real body-depth edge response without restoring the old
+    // whole-surface Fresnel layer. Only a narrow black-side shoulder performs
+    // the four extra fetches. Every neighbor must belong to the body, remain
+    // depth-continuous, and support a locally planar central difference; a
+    // surfel winner switch therefore fails closed instead of becoming a bright
+    // sliding prism facet.
+    float bodyDepthSpecularMask = 0.0;
+    float bodyDepthShoulder = smoothstep(0.48, 0.78,
+            grayInwardProgress)
+            * (1.0 - smoothstep(0.95, 1.0, grayInwardProgress))
+            * smoothstep(0.72, 0.96, core)
+            * graySuppression
+            * (1.0 - purpleRim)
+            * bodyDominance
+            * distanceFieldUsable;
+    float bodyDepthPhase = clamp(DepthHighlightBlend, 0.0, 1.0);
+    if (BodyDepthSpecularStrength > 0.0001
+            && bodyDepthShoulder * bodyDepthPhase > 0.001
+            && centerDepthValid > 0.001
+            && centerDepthMaterial.r > centerDepthMaterial.g + 0.02) {
+        float bodyDepthContinuityLimit = max(
+                SurfaceDepthScale * 0.035, 0.025);
+        vec4 bodyLeftSurface = connectedBodySurfacePosition(
+                centerDepthCoord + ivec2(-1, 0), depthExtent,
+                maximumDepthCoord, surfaceDepth,
+                bodyDepthContinuityLimit);
+        vec4 bodyRightSurface = connectedBodySurfacePosition(
+                centerDepthCoord + ivec2(1, 0), depthExtent,
+                maximumDepthCoord, surfaceDepth,
+                bodyDepthContinuityLimit);
+        vec4 bodyDownSurface = connectedBodySurfacePosition(
+                centerDepthCoord + ivec2(0, -1), depthExtent,
+                maximumDepthCoord, surfaceDepth,
+                bodyDepthContinuityLimit);
+        vec4 bodyUpSurface = connectedBodySurfacePosition(
+                centerDepthCoord + ivec2(0, 1), depthExtent,
+                maximumDepthCoord, surfaceDepth,
+                bodyDepthContinuityLimit);
+        float bodyFourSideSupport = min(min(bodyLeftSurface.w,
+                bodyRightSurface.w), min(bodyDownSurface.w,
+                bodyUpSurface.w));
+        float bodyBilateralConfidence = smoothstep(0.72, 0.98,
+                bodyFourSideSupport);
+
+        vec3 bodyEyeView = projectionEyeView();
+        vec3 bodyCenterViewPosition = bodyEyeView
+                + viewRayAt(texelCenterUv(centerDepthCoord,
+                        depthExtent)) * max(surfaceDepth, 0.0);
+        vec3 bodyLeftViewPosition = bodyLeftSurface.xyz
+                / max(bodyLeftSurface.w, 0.001);
+        vec3 bodyRightViewPosition = bodyRightSurface.xyz
+                / max(bodyRightSurface.w, 0.001);
+        vec3 bodyDownViewPosition = bodyDownSurface.xyz
+                / max(bodyDownSurface.w, 0.001);
+        vec3 bodyUpViewPosition = bodyUpSurface.xyz
+                / max(bodyUpSurface.w, 0.001);
+        vec3 bodyTangentX = bodyRightViewPosition
+                - bodyLeftViewPosition;
+        vec3 bodyTangentY = bodyUpViewPosition
+                - bodyDownViewPosition;
+        vec3 bodyRawNormal = cross(bodyTangentX, bodyTangentY);
+        float bodyNormalAreaConfidence = step(0.00000000000001,
+                dot(bodyRawNormal, bodyRawNormal));
+
+        float bodyDepthScale = max(SurfaceDepthScale, 0.05);
+        float bodyLeftDepth = length(bodyLeftViewPosition - bodyEyeView);
+        float bodyRightDepth = length(bodyRightViewPosition - bodyEyeView);
+        float bodyDownDepth = length(bodyDownViewPosition - bodyEyeView);
+        float bodyUpDepth = length(bodyUpViewPosition - bodyEyeView);
+        float bodyDepthCurvature = max(abs(bodyLeftDepth
+                + bodyRightDepth - 2.0 * surfaceDepth),
+                abs(bodyDownDepth + bodyUpDepth
+                - 2.0 * surfaceDepth)) / bodyDepthScale;
+        float bodyPlanarityConfidence = 1.0 - smoothstep(0.010,
+                0.035, bodyDepthCurvature);
+        float bodyTangentAspect = min(length(bodyTangentX),
+                length(bodyTangentY))
+                / max(max(length(bodyTangentX), length(bodyTangentY)),
+                0.00001);
+        float bodyShapeConfidence = smoothstep(0.08, 0.25,
+                bodyTangentAspect);
+
+        vec3 bodyViewDirection = safeNormalize3(bodyEyeView
+                - bodyCenterViewPosition, vec3(0.0, 0.0, 1.0));
+        vec3 bodySurfaceNormal = safeNormalize3(bodyRawNormal,
+                bodyViewDirection);
+        bodySurfaceNormal *= dot(bodySurfaceNormal, bodyViewDirection) < 0.0
+                ? -1.0 : 1.0;
+        vec3 bodyLightDirection = safeNormalize3(
+                vec3(-0.52, 0.68, 0.56), vec3(0.0, 0.0, 1.0));
+        vec3 bodyHalfDirection = safeNormalize3(bodyLightDirection
+                + bodyViewDirection, bodyViewDirection);
+        float bodyKeyedSide = smoothstep(-0.05, 0.48,
+                dot(bodySurfaceNormal, bodyLightDirection));
+        float bodyRoughSpecular = pow(clamp(dot(bodySurfaceNormal,
+                bodyHalfDirection), 0.0, 1.0), 10.0) * bodyKeyedSide;
+        float bodyNormalConfidence = centerDepthValid
+                * bodyBilateralConfidence
+                * bodyNormalAreaConfidence
+                * bodyPlanarityConfidence
+                * bodyShapeConfidence;
+        float largeBodyAttenuation = mix(1.0, 0.62,
+                smoothstep(280.0, 720.0, ProjectedBodyRadiusPixels));
+        float bodySpecularCap = 0.085 * largeBodyAttenuation;
+        bodyDepthSpecularMask = min(bodyRoughSpecular
+                * bodyNormalConfidence
+                * bodyDepthShoulder
+                * bodyDepthPhase
+                * clamp(BodyDepthSpecularStrength, 0.0, 0.12)
+                * largeBodyAttenuation, bodySpecularCap);
+    }
+    float combinedBodyHighlightMask = min(bodyContourSheenMask
+            + bodyDepthSpecularMask, 0.10);
+    vec3 bodySheenColor = vec3(0.54, 0.58, 0.76);
+    color = mix(color, bodySheenColor, combinedBodyHighlightMask);
+
+    // The narrow siphon retains its independent depth-normal highlight. B-only
+    // handoff storage and depthless conservative fill remain excluded.
     float siphonGate = smoothstep(0.08, 0.42, material.g)
             * smoothstep(0.02, 0.24, centerDepthMaterial.g);
-    float deformationGate = smoothstep(0.14, 0.62, DeformationBlend);
-    float highlightSignal = clamp(depthHighlight * deformationGate,
+    float highlightSignal = clamp(depthHighlight
+            * clamp(DepthHighlightBlend, 0.0, 1.0),
             0.0, 1.0);
     float broadHighlight = pow(smoothstep(0.26, 0.78,
             highlightSignal), 1.35);
     float peakHighlight = pow(smoothstep(0.60, 0.95,
             highlightSignal), 0.85);
-    float interiorHighlight = broadHighlight
-            * smoothstep(0.28, 0.82, core)
-            * (1.0 - grayBand * 0.35)
-            * (1.0 - purpleRim * 0.90) * 0.11;
-    float innerEdgeHighlight = peakHighlight * grayBand
-            * (1.0 - purpleRim * 0.65) * 0.22;
-    float outerGlint = peakHighlight * purpleRim * 0.035;
-    float bodyHighlightMask = min((interiorHighlight + innerEdgeHighlight
-            + outerGlint) * bodyGate, 0.16);
     float siphonInteriorHighlight = broadHighlight
             * smoothstep(0.24, 0.78, core)
             * (1.0 - grayBand * 0.40)
@@ -507,20 +1003,15 @@ void main() {
     float siphonHighlightMask = min((siphonInteriorHighlight
             + siphonInnerEdgeHighlight + siphonOuterGlint) * siphonGate,
             0.115);
-    float highlightMask = max(bodyHighlightMask, siphonHighlightMask);
+    float highlightMask = siphonHighlightMask;
     vec3 coolWhite = mix(vec3(0.48, 0.63, 0.82),
             vec3(0.94, 0.98, 1.00), peakHighlight);
     color = mix(color, coolWhite, highlightMask);
 
+    // Gray is a color transition inside the same dense silhouette, not a
+    // translucent smoke layer. Preserve only ordinary projected-coverage
+    // antialiasing at the outer contour.
     float opacity = max(fill * 0.985, purpleRim * 0.98);
-    // The movie reference reads as a translucent smoky shell around a dense
-    // black mass. Reduce alpha only where gray owns the material, then let the
-    // same inward gradient restore opacity continuously toward the core.
-    float graySmokeAmount = smoothstep(0.04, 0.92, grayBand)
-            * (1.0 - purpleRim * 0.85);
-    float grayOpacityMultiplier = mix(1.0, GRAY_SMOKE_MIN_OPACITY,
-            graySmokeAmount);
-    opacity *= grayOpacityMultiplier;
     opacity = max(opacity, purpleRim * 0.98);
     opacity = max(opacity, core * 0.99);
     // Once the full transition reach fits inside the silhouette, the material
@@ -528,16 +1019,13 @@ void main() {
     opacity = mix(opacity, 1.0,
             smoothstep(0.55, 0.85, erodedInner));
 
-    // RGB in the exact mask target is the hit-frame Pokemon albedo, frozen in
-    // the same pose as its authoritative texture-alpha coverage in A. Blend it
-    // with the completed SDF material here, after ownership, rim, and depth
-    // lighting have all resolved. Complementary normalized weights keep the
-    // shared core opaque during the handoff while aura-only pixels grow in.
+    // The exact mask target retains the frozen hit-frame RGB for diagnostics,
+    // but the final composite consumes only its authoritative texture-alpha
+    // coverage. This keeps the original Pokemon material out of the presented
+    // effect while preserving an opaque exact silhouette during the SDF
+    // handoff and allowing aura-only pixels to grow in.
     vec4 frozenSnapshot = texture(MaskSampler, texCoord0);
     float frozenCoverage = smoothstep(0.015, 0.12, frozenSnapshot.a);
-    vec3 frozenColor = frozenSnapshot.rgb
-            / max(frozenSnapshot.a, 0.0001);
-    frozenColor = clamp(frozenColor, vec3(0.0), vec3(1.0));
 
     float handoff = clamp(DeformationBlend, 0.0, 1.0);
     float frozenWeight = frozenCoverage * (1.0 - handoff);
@@ -546,8 +1034,5 @@ void main() {
     if (combinedWeight < 0.001) {
         discard;
     }
-    vec3 crossfadedColor = (frozenColor * frozenWeight
-            + color * silhouetteWeight) / combinedWeight;
-    fragColor = vec4(crossfadedColor,
-            clamp(combinedWeight, 0.0, 1.0));
+    fragColor = vec4(color, clamp(combinedWeight, 0.0, 1.0));
 }

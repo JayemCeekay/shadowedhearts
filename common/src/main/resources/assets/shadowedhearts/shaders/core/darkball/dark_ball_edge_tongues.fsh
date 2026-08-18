@@ -4,9 +4,11 @@ uniform sampler2D Sampler0;
 uniform sampler2D SceneDepthSampler;
 uniform sampler2D MaskSampler;
 uniform sampler2D ProxyFrontSampler;
+uniform sampler2D SurfelFrontDepthSampler;
 uniform mat4 InvProjMat;
 uniform float TurbulenceBlend;
 uniform float SignedBodyAuthority;
+uniform float PreCollapseInteriorGuard;
 uniform float SiphonProgress;
 uniform float DeformationTime;
 uniform vec2 ProjectedUp;
@@ -15,6 +17,7 @@ uniform vec2 BallUv;
 uniform float SurfaceDepthScale;
 uniform int SceneDepthAvailable;
 uniform int ProxyFrontAvailable;
+uniform int SurfelFrontDepthAvailable;
 uniform int BodyVolumeAvailable;
 uniform int DeformationDebugMode;
 uniform int EdgeTonguesEnabled;
@@ -26,12 +29,13 @@ const float PI = 3.14159265359;
 const float TAU = 6.28318530718;
 const float AURA_DEPTH_TAG_BIAS = 2.0;
 // The exact captured mask owns the undeformed formation handoff. Once the
-// signed body deformation is established, the raymarched R surface owns the
+// signed body deformation is established, the fused surfel R surface owns the
 // contour so the captured mask/B projection cannot fill inward cuts back in.
 // B may repair only an isolated unresolved body texel surrounded by resolved
 // first hits. It must never act as a second, full-size visible silhouette.
 const float FALLBACK_BODY_THRESHOLD = 0.055;
 const float FALLBACK_REQUIRED_SUPPORT = 2.5;
+const float INTERIOR_RING_REQUIRED_SUPPORT = 7.5;
 // The shared deformation clock is intentionally accelerated for the volume
 // simulation. Edge tongues need real capture seconds or their lifecycle and
 // curl become several times faster than the body motion.
@@ -199,6 +203,43 @@ float decodedDeformedDepth(vec4 rawMaterial) {
             : -1.0;
 }
 
+float resolvedDeformedDepth(vec2 uv, ivec2 extent, vec4 rawMaterial,
+        float exactCoverage) {
+    float harmonicDepth = decodedDeformedDepth(rawMaterial);
+    float surfelDepth = harmonicDepth;
+    if (SurfelFrontDepthAvailable != 0 && uvInBounds(uv)) {
+        ivec2 coord = boundedTexelCoord(uv, extent);
+        float frontDepth =
+                texelFetch(SurfelFrontDepthSampler, coord, 0).r;
+        if (frontDepth > 0.0001) {
+            surfelDepth = frontDepth;
+        }
+    }
+
+    // Near the captured surface, retain the clean rasterized model ordering.
+    // As the deformed surfel surface separates from that source, transition
+    // continuously to its own frontmost depth rather than abruptly switching
+    // from proxy depth to a center-weighted harmonic estimate.
+    if (ProxyFrontAvailable != 0
+            && exactCoverage > 0.002
+            && surfelDepth > 0.0
+            && uvInBounds(uv)) {
+        ivec2 coord = boundedTexelCoord(uv, extent);
+        vec4 proxyFront = texelFetch(ProxyFrontSampler, coord, 0);
+        if (proxyFront.a > 0.01 && proxyFront.r < 0.999999) {
+            float proxyDepth = deviceDepthToRayDistance(
+                    texelCenterUv(coord, extent), proxyFront.r);
+            float depthSeparation = abs(surfelDepth - proxyDepth);
+            float depthBlend = smoothstep(
+                    max(SurfaceDepthScale * 0.012, 0.0015),
+                    max(SurfaceDepthScale * 0.075, 0.0080),
+                    depthSeparation);
+            return mix(proxyDepth, surfelDepth, depthBlend);
+        }
+    }
+    return surfelDepth;
+}
+
 float deformedAuthority() {
     if (BodyVolumeAvailable == 0) {
         return 0.0;
@@ -206,7 +247,7 @@ float deformedAuthority() {
     // This is deliberately independent from TurbulenceBlend. Turbulence has
     // already begun while the frozen model is crossfading; allowing it to own
     // the contour here would replace the opaque exact mask with an incompletely
-    // formed raymarched body and create a whole-silhouette alpha valley.
+    // formed fused body and create a whole-silhouette alpha valley.
     return clamp(SignedBodyAuthority, 0.0, 1.0);
 }
 
@@ -256,7 +297,7 @@ float boundedUnresolvedCoreFallback(vec4 rawMaterial, vec2 uv,
         return 0.0;
     }
 
-    // Three-of-four cardinal support closes a single raymarch pinhole while
+    // Three-of-four cardinal support closes a single fused-field pinhole while
     // leaving a coherent inward contour (which lacks support on its exterior
     // side) under R's control.
     float supportedCoverage = (leftCoverage * leftResolved
@@ -266,11 +307,116 @@ float boundedUnresolvedCoreFallback(vec4 rawMaterial, vec2 uv,
     return min(exactCoverage, supportedCoverage);
 }
 
+float boundedInteriorPunctureRepair(vec4 rawMaterial, vec2 uv,
+        ivec2 extent, float exactCoverage) {
+    // A resolved splat field can contain a genuinely clear texel when an
+    // inward-moving footprint becomes narrower than its temporal motion.
+    // Repair only a fully enclosed, pre-collapse pinhole. Sampling raw input
+    // (never this resolved function) and requiring all eight surrounding
+    // texels to remain both texture-exact and depth-resolved means a coherent
+    // silhouette indentation always has an open exterior side and fails.
+    float guardAuthority =
+            clamp(PreCollapseInteriorGuard, 0.0, 1.0);
+    float storedBodyCoverage =
+            bodyStorageCoverage(rawMaterial.b);
+    bool intentionalCarve = storedBodyCoverage < -0.002;
+    if (guardAuthority <= 0.0001
+            || BodyVolumeAvailable == 0
+            || ProxyFrontAvailable == 0
+            || intentionalCarve
+            || exactCoverage <= 0.002
+            || rawMaterial.r >= FALLBACK_BODY_THRESHOLD
+            || abs(rawMaterial.a) > 0.0001
+            || deformedSurfaceTagged(rawMaterial)) {
+        return 0.0;
+    }
+
+    ivec2 centerCoord = boundedTexelCoord(uv, extent);
+    vec4 proxyFront = texelFetch(
+            ProxyFrontSampler, centerCoord, 0);
+    if (proxyFront.a <= 0.01
+            || proxyFront.r >= 0.999999) {
+        return 0.0;
+    }
+
+    vec2 texel = 1.0 / max(vec2(extent), vec2(1.0));
+    vec2 leftUv = uv - vec2(texel.x, 0.0);
+    vec2 rightUv = uv + vec2(texel.x, 0.0);
+    vec2 downUv = uv - vec2(0.0, texel.y);
+    vec2 upUv = uv + vec2(0.0, texel.y);
+    vec2 downLeftUv = uv - texel;
+    vec2 downRightUv = uv + vec2(texel.x, -texel.y);
+    vec2 upLeftUv = uv + vec2(-texel.x, texel.y);
+    vec2 upRightUv = uv + texel;
+
+    float leftCoverage;
+    float rightCoverage;
+    float downCoverage;
+    float upCoverage;
+    float downLeftCoverage;
+    float downRightCoverage;
+    float upLeftCoverage;
+    float upRightCoverage;
+    float leftResolved = resolvedBodyNeighbor(
+            leftUv, extent, leftCoverage);
+    float rightResolved = resolvedBodyNeighbor(
+            rightUv, extent, rightCoverage);
+    float downResolved = resolvedBodyNeighbor(
+            downUv, extent, downCoverage);
+    float upResolved = resolvedBodyNeighbor(
+            upUv, extent, upCoverage);
+    float downLeftResolved = resolvedBodyNeighbor(
+            downLeftUv, extent, downLeftCoverage);
+    float downRightResolved = resolvedBodyNeighbor(
+            downRightUv, extent, downRightCoverage);
+    float upLeftResolved = resolvedBodyNeighbor(
+            upLeftUv, extent, upLeftCoverage);
+    float upRightResolved = resolvedBodyNeighbor(
+            upRightUv, extent, upRightCoverage);
+    float resolvedRingSupport =
+            leftResolved + rightResolved
+            + downResolved + upResolved
+            + downLeftResolved + downRightResolved
+            + upLeftResolved + upRightResolved;
+
+    float exactRingSupport =
+            liveCoreSeed(textureMaskAt(leftUv))
+            + liveCoreSeed(textureMaskAt(rightUv))
+            + liveCoreSeed(textureMaskAt(downUv))
+            + liveCoreSeed(textureMaskAt(upUv))
+            + liveCoreSeed(textureMaskAt(downLeftUv))
+            + liveCoreSeed(textureMaskAt(downRightUv))
+            + liveCoreSeed(textureMaskAt(upLeftUv))
+            + liveCoreSeed(textureMaskAt(upRightUv));
+    if (resolvedRingSupport < INTERIOR_RING_REQUIRED_SUPPORT
+            || exactRingSupport
+                    < INTERIOR_RING_REQUIRED_SUPPORT) {
+        return 0.0;
+    }
+
+    float supportedCoverage =
+            (leftCoverage * leftResolved
+                    + rightCoverage * rightResolved
+                    + downCoverage * downResolved
+                    + upCoverage * upResolved
+                    + downLeftCoverage * downLeftResolved
+                    + downRightCoverage * downRightResolved
+                    + upLeftCoverage * upLeftResolved
+                    + upRightCoverage * upRightResolved)
+            / max(resolvedRingSupport, 1.0);
+    return guardAuthority
+            * min(exactCoverage, supportedCoverage);
+}
+
 vec4 resolvedMaterialAt(vec2 uv, ivec2 extent) {
     vec4 rawMaterial = rawMaterialAt(uv, extent);
     float exactCoverage = exactCoreCoverage(rawMaterial, uv);
     bool surfaceTagged = deformedSurfaceTagged(rawMaterial);
-    float surfaceDepth = decodedDeformedDepth(rawMaterial);
+    float surfaceDepth = -1.0;
+    if (surfaceTagged) {
+        surfaceDepth = resolvedDeformedDepth(
+                uv, extent, rawMaterial, exactCoverage);
+    }
 
     // Positive A is reserved for exact-core/depletion ownership. Keep that
     // branch clipped by the texture-aware reference; a negative tag explicitly
@@ -284,6 +430,9 @@ vec4 resolvedMaterialAt(vec2 uv, ivec2 extent) {
     float fallbackCoverage = boundedUnresolvedCoreFallback(rawMaterial, uv,
             extent, exactCoverage);
     activeBodyCoverage = max(activeBodyCoverage, fallbackCoverage);
+    float interiorRepair = boundedInteriorPunctureRepair(rawMaterial, uv,
+            extent, exactCoverage);
+    activeBodyCoverage = max(activeBodyCoverage, interiorRepair);
 
     // The dedicated authority remains zero for the complete frozen-model to
     // texture-exact silhouette crossfade. It then releases the contour over
@@ -299,7 +448,9 @@ vec4 resolvedMaterialAt(vec2 uv, ivec2 extent) {
             ? surfaceDepth
             : (resolvedCoverage > 0.002
                     ? resolvedBodyDepth(uv, extent, rawMaterial,
-                            max(exactCoverage, fallbackCoverage))
+                            max(exactCoverage,
+                                    max(fallbackCoverage,
+                                            interiorRepair)))
                     : rawMaterial.a);
     return vec4(resolvedCoverage, rawMaterial.g, rawMaterial.b, resolvedDepth);
 }

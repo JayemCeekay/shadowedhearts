@@ -3,6 +3,7 @@ package com.jayemceekay.shadowedhearts.network.aura
 import com.cobblemon.mod.common.api.net.NetworkPacket
 import com.jayemceekay.shadowedhearts.Shadowedhearts
 import com.jayemceekay.shadowedhearts.common.aura.AuraReading
+import com.jayemceekay.shadowedhearts.common.aura.AuraReadingSource
 import com.jayemceekay.shadowedhearts.common.aura.AuraReadingType
 import net.minecraft.network.RegistryFriendlyByteBuf
 import net.minecraft.resources.ResourceLocation
@@ -21,12 +22,23 @@ data class AuraReaderPulseResultS2CPacket(
         readings.forEach { reading ->
             buffer.writeUtf(reading.id)
             buffer.writeEnum(reading.type)
+            buffer.writeEnum(reading.source)
             buffer.writeUtf(reading.label)
             buffer.writeUtf(reading.status)
+            buffer.writeDouble(reading.directionX)
+            buffer.writeDouble(reading.directionY)
+            buffer.writeDouble(reading.directionZ)
+            buffer.writeFloat(reading.bearingUncertainty)
             buffer.writeUtf(reading.distanceBand)
             buffer.writeUtf(reading.verticalHint)
             buffer.writeFloat(reading.strength)
             buffer.writeFloat(reading.confidence)
+            buffer.writeFloat(reading.interference)
+            buffer.writeVarInt(reading.priority)
+            buffer.writeVarLong(reading.expiryTick)
+            buffer.writeBoolean(reading.selected)
+            buffer.writeBoolean(reading.locked)
+            buffer.writeBoolean(reading.outOfDimension)
         }
     }
 
@@ -59,12 +71,23 @@ data class AuraReaderPulseResultS2CPacket(
                     ReadingSummary(
                         buffer.readUtf(),
                         buffer.readEnum(AuraReadingType::class.java),
+                        buffer.readEnum(AuraReadingSource::class.java),
                         buffer.readUtf(),
                         buffer.readUtf(),
+                        buffer.readDouble(),
+                        buffer.readDouble(),
+                        buffer.readDouble(),
+                        buffer.readFloat(),
                         buffer.readUtf(),
                         buffer.readUtf(),
                         buffer.readFloat(),
-                        buffer.readFloat()
+                        buffer.readFloat(),
+                        buffer.readFloat(),
+                        buffer.readVarInt(),
+                        buffer.readVarLong(),
+                        buffer.readBoolean(),
+                        buffer.readBoolean(),
+                        buffer.readBoolean()
                     )
                 )
             }
@@ -75,12 +98,23 @@ data class AuraReaderPulseResultS2CPacket(
     data class ReadingSummary(
         val id: String,
         val type: AuraReadingType,
+        val source: AuraReadingSource,
         val label: String,
         val status: String,
+        val directionX: Double,
+        val directionY: Double,
+        val directionZ: Double,
+        val bearingUncertainty: Float,
         val distanceBand: String,
         val verticalHint: String,
         val strength: Float,
-        val confidence: Float
+        val confidence: Float,
+        val interference: Float,
+        val priority: Int,
+        val expiryTick: Long,
+        val selected: Boolean,
+        val locked: Boolean,
+        val outOfDimension: Boolean
     ) {
         companion object {
             @JvmStatic
@@ -88,12 +122,23 @@ data class AuraReaderPulseResultS2CPacket(
                 return ReadingSummary(
                     reading.id(),
                     reading.type(),
+                    reading.source(),
                     reading.label(),
                     reading.status(),
+                    reading.directionX(),
+                    reading.directionY(),
+                    reading.directionZ(),
+                    reading.bearingUncertainty(),
                     reading.distanceBand(),
                     reading.verticalHint(),
                     reading.strength(),
-                    reading.confidence()
+                    reading.confidence(),
+                    reading.interference(),
+                    reading.priority(),
+                    reading.expiryTick(),
+                    reading.selected(),
+                    reading.locked(),
+                    reading.outOfDimension()
                 )
             }
         }

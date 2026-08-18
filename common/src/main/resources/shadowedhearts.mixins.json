@@ -8,6 +8,7 @@
   "client": [
     "client.MixinPosableModelAuraMask",
     "client.MixinModelPartShadowAuraCapture",
+    "client.MixinEntityRenderDispatcher",
     "client.MixinPokemonRenderer",
     "MixinBattleGeneralActionSelection",
     "MixinBattleMoveSelectionMoveTile",
@@ -40,7 +41,8 @@
     "cobblemonbattleextras.CobblemonBattleExtrasMoveTileVisualDataAccessor",
     "cobblemonbattleextras.CobblemonBattleExtrasPartySideRendererMixin",
     "cobblemonbattleextras.CobblemonBattleExtrasTypeChartMixin",
-    "cobblemonpartyextras.MixinCobblemonPartyExtrasSummaryUIMixin"
+    "cobblemonpartyextras.MixinCobblemonPartyExtrasSummaryUIMixin",
+    "pokeball.MixinPokeBallPosableState"
   ],
   "mixins": [
     "AccessorCancelable",

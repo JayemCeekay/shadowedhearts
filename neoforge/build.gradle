@@ -17,6 +17,11 @@ loom {
     silentMojangMappingsLicense()
 
     runs {
+        client {
+            client()
+            vmArgs "-Dshadowedhearts.darkBallVfxDuration=10"
+        }
+
         client2 {
             client()
             name = "Minecraft Client 2"

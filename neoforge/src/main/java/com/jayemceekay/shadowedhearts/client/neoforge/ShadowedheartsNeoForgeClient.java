@@ -5,13 +5,12 @@ import com.cobblemon.mod.common.entity.pokeball.EmptyPokeBallEntity;
 import com.jayemceekay.shadowedhearts.Shadowedhearts;
 import com.jayemceekay.shadowedhearts.client.ModKeybinds;
 import com.jayemceekay.shadowedhearts.client.ShadowedHeartsClient;
-import com.jayemceekay.shadowedhearts.client.aura.AuraEmitters;
-import com.jayemceekay.shadowedhearts.client.aura.AuraPulseRenderer;
+import com.jayemceekay.shadowedhearts.client.aura.ShadowAuraEmitters;
+import com.jayemceekay.shadowedhearts.client.aura.AuraReaderPulseRenderer;
 import com.jayemceekay.shadowedhearts.client.aura.ShadowPokemonAuraSystem;
 import com.jayemceekay.shadowedhearts.client.ball.BallEmitters;
 import com.jayemceekay.shadowedhearts.client.particle.LuminousMoteEmitters;
 import com.jayemceekay.shadowedhearts.client.particle.LuminousMoteParticle;
-import com.jayemceekay.shadowedhearts.client.particle.PenumbraDensityFBO;
 import com.jayemceekay.shadowedhearts.client.particle.PenumbraTrailSystem;
 import com.jayemceekay.shadowedhearts.client.particle.PenumbraTrailParticle;
 import com.jayemceekay.shadowedhearts.client.particle.RelicStoneMoteParticle;
@@ -122,12 +121,12 @@ public final class ShadowedheartsNeoForgeClient {
     public static void onRenderLevel(RenderLevelStageEvent e) {
         if (e.getStage() == RenderLevelStageEvent.Stage.AFTER_TRANSLUCENT_BLOCKS) {
             var cam = e.getCamera();
-            AuraEmitters.onRender(cam, cam.getPartialTickTime());
+            ShadowAuraEmitters.onRender(cam, cam.getPartialTickTime());
             BallEmitters.onRender(cam, cam.getPartialTickTime());
 
-        } else if (e.getStage() == RenderLevelStageEvent.Stage.AFTER_LEVEL && (AuraPulseRenderer.IRIS_HANDLER == null || !AuraPulseRenderer.IRIS_HANDLER.isShaderPackInUse())) {
+        } else if (e.getStage() == RenderLevelStageEvent.Stage.AFTER_LEVEL && (AuraReaderPulseRenderer.IRIS_HANDLER == null || !AuraReaderPulseRenderer.IRIS_HANDLER.isShaderPackInUse())) {
             var cam = e.getCamera();
-            AuraPulseRenderer.onRenderWorld(cam, e.getProjectionMatrix(), e.getModelViewMatrix(), cam.getPartialTickTime());
+            AuraReaderPulseRenderer.onRenderWorld(cam, e.getProjectionMatrix(), e.getModelViewMatrix(), cam.getPartialTickTime());
         }
 
         if (e.getStage() == RenderLevelStageEvent.Stage.AFTER_PARTICLES) {
@@ -192,7 +191,7 @@ public final class ShadowedheartsNeoForgeClient {
     @SubscribeEvent
     public static void onEntityLeave(EntityLeaveLevelEvent e) {
         if (e.getLevel().isClientSide()) {
-            AuraEmitters.onPokemonDespawn(e.getEntity().getId());
+            ShadowAuraEmitters.onPokemonDespawn(e.getEntity().getId());
             if (e.getEntity() instanceof EmptyPokeBallEntity) {
                 BallEmitters.onEntityDespawn(e.getEntity().getId());
             }

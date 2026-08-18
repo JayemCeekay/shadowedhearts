@@ -8,6 +8,7 @@ import com.cobblemon.mod.common.api.events.pokemon.PokemonSentEvent;
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
 import com.cobblemon.mod.common.pokemon.Pokemon;
 import com.jayemceekay.shadowedhearts.common.shadow.ShadowAspectUtil;
+import com.jayemceekay.shadowedhearts.common.shadow.ShadowPokemonData;
 import dev.architectury.event.events.common.TickEvent;
 import kotlin.Unit;
 import net.minecraft.server.MinecraftServer;
@@ -56,6 +57,20 @@ public final class AuraServerSync {
      * Call once during common init on both platforms.
      */
     public static void init() {
+        // PokemonEntity's backing Pokemon is persisted, but our SynchedEntityData
+        // fields are recreated with defaults. Restore them after Cobblemon has
+        // decoded the Pokemon so saved shadow Pokemon remain detectable.
+        CobblemonEvents.POKEMON_ENTITY_LOAD.subscribe(Priority.NORMAL, event -> {
+            PokemonEntity pe = event.getPokemonEntity();
+            if (pe == null || pe.level().isClientSide()) return Unit.INSTANCE;
+
+            ShadowPokemonData.syncFromPokemon(pe);
+            if (ShadowAspectUtil.shouldHaveShadowAura(pe.getPokemon())) {
+                TRACKING.put(pe.getId(), new WeakReference<>(pe));
+            }
+            return Unit.INSTANCE;
+        });
+
         // Track lifecycle via Cobblemon events (platform-agnostic)
         CobblemonEvents.POKEMON_SENT_POST.subscribe(Priority.NORMAL, (PokemonSentEvent.Post e) -> {
             var pe = e.getPokemonEntity();

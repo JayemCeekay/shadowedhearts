@@ -5,6 +5,7 @@ import com.cobblemon.mod.common.client.render.models.blockbench.frame.ModelFrame
 import com.cobblemon.mod.common.client.render.models.blockbench.pose.Bone;
 import com.cobblemon.mod.common.client.render.models.blockbench.repository.RenderContext;
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
+import com.jayemceekay.shadowedhearts.client.aura.ShadowPokemonAuraGuiRenderer;
 import com.jayemceekay.shadowedhearts.client.aura.ShadowPokemonAuraSystem;
 import com.jayemceekay.shadowedhearts.client.ball.DarkBallCaptureVfx;
 import com.mojang.blaze3d.vertex.PoseStack;
@@ -35,6 +36,8 @@ public abstract class MixinPosableModelAuraMask {
             int color,
             CallbackInfo ci
     ) {
+        ShadowPokemonAuraGuiRenderer.beginRenderedModelCapture();
+
         Entity renderedEntity = context.getEntity();
         if (!(renderedEntity instanceof PokemonEntity pokemonEntity)) {
             return;
@@ -63,6 +66,8 @@ public abstract class MixinPosableModelAuraMask {
             int color,
             CallbackInfo ci
     ) {
+        ShadowPokemonAuraGuiRenderer.endRenderedModelCapture();
+
         Entity renderedEntity = context.getEntity();
         if (renderedEntity instanceof PokemonEntity pokemonEntity) {
             ShadowPokemonAuraSystem.endRenderedModelAnchorCapture(pokemonEntity);

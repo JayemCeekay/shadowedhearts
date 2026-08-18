@@ -13,7 +13,8 @@ import com.cobblemon.mod.common.util.cobblemonResource
 import com.cobblemon.mod.common.util.math.fromEulerXYZDegrees
 import com.jayemceekay.shadowedhearts.Shadowedhearts
 import com.jayemceekay.shadowedhearts.client.ModShaders
-import com.jayemceekay.shadowedhearts.client.aura.AuraEmitters
+import com.jayemceekay.shadowedhearts.client.aura.ShadowAuraEmitters
+import com.jayemceekay.shadowedhearts.client.aura.ShadowPokemonAuraGuiRenderer
 import com.jayemceekay.shadowedhearts.client.purification.PurificationClientMetrics
 import com.jayemceekay.shadowedhearts.client.storage.ClientPurificationStorage
 import com.jayemceekay.shadowedhearts.common.purification.PurificationMath
@@ -1095,6 +1096,10 @@ class PurificationStorageWidget(
                 val centerPokemon: Pokemon? =
                     storage.get(ClientPurificationStorage.PurificationPosition(0))
                 if (centerPokemon != null) {
+                    val centerRenderablePokemon = centerPokemon.asRenderablePokemon()
+                    val hasShadowAura = ShadowAspectUtil.hasShadowAspect(centerPokemon)
+                    val shadowAuraStrength =
+                        ShadowAspectUtil.getHeartGaugeValue(centerPokemon) / 100.0f
                     matrices.pushPose()
                     // Translate to the projected center of the platform; lift slightly so feet sit on the pad
                     matrices.translate(
@@ -1115,23 +1120,26 @@ class PurificationStorageWidget(
                         )
                     )
                     matrices.pushPose()
+                    if (hasShadowAura) {
+                        ShadowPokemonAuraGuiRenderer.beginCapture(centerRenderablePokemon)
+                    }
                     drawProfilePokemon(
-                        renderablePokemon = centerPokemon.asRenderablePokemon(),
+                        renderablePokemon = centerRenderablePokemon,
                         matrixStack = matrices,
                         rotation = rotation,
                         state = centerModelState,
                         partialTicks = partialTick
                     )
                     matrices.popPose()
-                    if (ShadowAspectUtil.hasShadowAspect(centerPokemon)) {
-                        AuraEmitters.renderInPurificationGUI(
+                    if (hasShadowAura) {
+                        ShadowAuraEmitters.renderInPurificationGUI(
                             guiGraphics,
                             matrices,
                             Minecraft.getInstance().renderBuffers()
                                 .bufferSource(),
-                            ShadowAspectUtil.getHeartGaugeValue(centerPokemon) / 100.0f,
+                            shadowAuraStrength,
                             partialTick,
-                            centerPokemon.asRenderablePokemon(),
+                            centerRenderablePokemon,
                             centerModelState,
                             x.toFloat(),
                             y.toFloat(),

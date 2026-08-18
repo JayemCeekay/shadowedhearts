@@ -3,6 +3,8 @@
 uniform sampler2D Sampler0;
 uniform vec4 ColorModulator;
 uniform float GameTime;
+uniform float AuraNoiseScale;
+uniform float AuraMaskFalloff;
 
 in vec4 vertexColor;
 in vec2 texCoord0;
@@ -51,7 +53,7 @@ void main() {
     if (texColor.a < 0.01) discard;
 
     float mask = texColor.a;
-    float falloff = exp(-4.20 * (1.0 - mask) * (1.0 - mask));
+    float falloff = exp(-AuraMaskFalloff * (1.0 - mask) * (1.0 - mask));
 
     vec4 vCol = vertexColor * ColorModulator;
     float densityStrength = vCol.a;
@@ -60,7 +62,8 @@ void main() {
     float wispWeight = clamp(vCol.b, 0.0, 1.0);
 
     float time = GameTime * 1200.0;
-    vec2 noiseUV = worldPos.xz * 0.75 + worldPos.yy * vec2(0.20, 0.48);
+    vec3 noisePosition = worldPos * AuraNoiseScale;
+    vec2 noiseUV = noisePosition.xz * 0.75 + noisePosition.yy * vec2(0.20, 0.48);
     vec3 p = vec3(noiseUV * 3.2, time * 0.052);
     float warp = fbm3(vec3(noiseUV * 2.4, time * 0.036));
     p.xy += (warp - 0.5) * 0.72;

@@ -1,5 +1,7 @@
 package com.jayemceekay.shadowedhearts.client;
 
+import com.mojang.blaze3d.vertex.VertexFormat;
+import com.mojang.blaze3d.vertex.VertexFormatElement;
 import net.minecraft.client.renderer.ShaderInstance;
 
 /**
@@ -12,6 +14,28 @@ import net.minecraft.client.renderer.ShaderInstance;
  * their existing fallback behavior rather than caching these references.
  */
 public final class ModShaders {
+
+    /**
+     * Private clone of Minecraft's 36-byte entity layout for manually packed
+     * Dark Ball geometry.
+     *
+     * <p>Iris identifies {@code DefaultVertexFormat.NEW_ENTITY} by object
+     * identity and replaces its VAO state with a 54-byte extended layout while
+     * a shader pack is active. Dark Ball writes these buffers directly at the
+     * vanilla 36-byte stride, so using the shared vanilla instance makes the
+     * GPU walk across record boundaries. A distinct but structurally identical
+     * format keeps the six shader attributes and prevents that substitution.</p>
+     */
+    public static final VertexFormat DARK_BALL_MANUAL_ENTITY_FORMAT =
+            VertexFormat.builder()
+                    .add("Position", VertexFormatElement.POSITION)
+                    .add("Color", VertexFormatElement.COLOR)
+                    .add("UV0", VertexFormatElement.UV0)
+                    .add("UV1", VertexFormatElement.UV1)
+                    .add("UV2", VertexFormatElement.UV2)
+                    .add("Normal", VertexFormatElement.NORMAL)
+                    .padding(1)
+                    .build();
 
     // Active shaders used by RenderTypes (dynamic supplier reads these each draw)
     //public static ShaderInstance SHADOW_AURA_FOG;
@@ -54,14 +78,18 @@ public final class ModShaders {
     public static ShaderInstance SNAG_BEAM_DENSITY;
     public static ShaderInstance SNAG_BEAM_COMPOSITE;
 
-    // Dark Ball cohesive volumetric siphon pipeline
+    // Dark Ball captured-mask, fused-surface-splat, and siphon pipeline
     public static ShaderInstance DARK_BALL_MASK;
     public static ShaderInstance DARK_BALL_PROXY_DEPTH;
     public static ShaderInstance DARK_BALL_VOLUME_COMPOSITE;
-    public static ShaderInstance DARK_BALL_DENSITY_ADVECT;
-    public static ShaderInstance DARK_BALL_SIPHON_ADVECT;
-    public static ShaderInstance DARK_BALL_ADVECTED_VOLUME;
+    public static ShaderInstance DARK_BALL_SILHOUETTE_DISTANCE_SEED;
+    public static ShaderInstance DARK_BALL_SILHOUETTE_DISTANCE_JUMP;
+    public static ShaderInstance DARK_BALL_REDUCED_UPSAMPLE;
+    public static ShaderInstance DARK_BALL_SURFACE_SPLAT;
+    public static ShaderInstance DARK_BALL_SURFACE_SPLAT_RESOLVE;
+    public static ShaderInstance DARK_BALL_SIPHON_SURFACE_MESH;
     public static ShaderInstance DARK_BALL_EDGE_TONGUES;
+    public static ShaderInstance DARK_BALL_FBO_PREVIEW;
 
     // Snag trail orange smoke density pipeline (FBM noise + warm orange composite)
     public static ShaderInstance SNAG_TRAIL_DENSITY;

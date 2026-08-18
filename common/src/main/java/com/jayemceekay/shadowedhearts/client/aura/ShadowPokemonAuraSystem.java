@@ -49,7 +49,7 @@ public final class ShadowPokemonAuraSystem {
 
     private static final ResourceLocation DENSITY_TEXTURE = ResourceLocation.fromNamespaceAndPath(
             "shadowedhearts",
-            "textures/particle/penumbra_trail.png"
+            "textures/particle/penumbra_trail_16.png"
     );
 
     private static final int FULLBRIGHT = 0x00F000F0;
@@ -189,7 +189,7 @@ public final class ShadowPokemonAuraSystem {
             return;
         }
 
-        float strength = AuraEmitters.getFboAuraMaskStrength(entity);
+        float strength = ShadowAuraEmitters.getFboAuraMaskStrength(entity);
         if (strength <= 0.001f) {
             return;
         }
@@ -369,7 +369,7 @@ public final class ShadowPokemonAuraSystem {
             return;
         }
 
-        float strength = AuraEmitters.getFboAuraMaskStrength(entity);
+        float strength = ShadowAuraEmitters.getFboAuraMaskStrength(entity);
         if (strength <= 0.001f) {
             return;
         }
@@ -419,11 +419,11 @@ public final class ShadowPokemonAuraSystem {
     }
 
     public static boolean isIrisShaderPackActive() {
-        return AuraPulseRenderer.IRIS_HANDLER != null && AuraPulseRenderer.IRIS_HANDLER.isShaderPackInUse();
+        return AuraReaderPulseRenderer.IRIS_HANDLER != null && AuraReaderPulseRenderer.IRIS_HANDLER.isShaderPackInUse();
     }
 
     private static boolean isIrisShadowRenderActive() {
-        return AuraPulseRenderer.IRIS_HANDLER != null && AuraPulseRenderer.IRIS_HANDLER.isShadowRenderActive();
+        return AuraReaderPulseRenderer.IRIS_HANDLER != null && AuraReaderPulseRenderer.IRIS_HANDLER.isShadowRenderActive();
     }
 
     public static void renderIris() {
@@ -2490,6 +2490,15 @@ public final class ShadowPokemonAuraSystem {
         com.mojang.blaze3d.shaders.Uniform uCameraPos = shader.getUniform("CameraPos");
         if (uCameraPos != null) {
             uCameraPos.set((float) camPos.x, (float) camPos.y, (float) camPos.z);
+        }
+        com.mojang.blaze3d.shaders.Uniform uNoiseScale = shader.getUniform("AuraNoiseScale");
+        if (uNoiseScale != null) {
+            uNoiseScale.set(1.0f);
+        }
+        com.mojang.blaze3d.shaders.Uniform uMaskFalloff =
+                shader.getUniform("AuraMaskFalloff");
+        if (uMaskFalloff != null) {
+            uMaskFalloff.set(4.2f);
         }
 
         BufferBuilder buf = Tesselator.getInstance().begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.PARTICLE);

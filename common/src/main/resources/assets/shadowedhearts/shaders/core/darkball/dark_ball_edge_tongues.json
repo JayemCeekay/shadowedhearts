@@ -11,12 +11,14 @@
     { "name": "Sampler0" },
     { "name": "SceneDepthSampler" },
     { "name": "MaskSampler" },
-    { "name": "ProxyFrontSampler" }
+    { "name": "ProxyFrontSampler" },
+    { "name": "SurfelFrontDepthSampler" }
   ],
   "uniforms": [
     { "name": "InvProjMat", "type": "matrix4x4", "count": 16, "values": [ 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0 ] },
     { "name": "TurbulenceBlend", "type": "float", "count": 1, "values": [ 0.0 ] },
     { "name": "SignedBodyAuthority", "type": "float", "count": 1, "values": [ 0.0 ] },
+    { "name": "PreCollapseInteriorGuard", "type": "float", "count": 1, "values": [ 0.0 ] },
     { "name": "SiphonProgress", "type": "float", "count": 1, "values": [ 0.0 ] },
     { "name": "DeformationTime", "type": "float", "count": 1, "values": [ 0.0 ] },
     { "name": "ProjectedUp", "type": "float", "count": 2, "values": [ 0.0, 1.0 ] },
@@ -25,6 +27,7 @@
     { "name": "SurfaceDepthScale", "type": "float", "count": 1, "values": [ 1.0 ] },
     { "name": "SceneDepthAvailable", "type": "int", "count": 1, "values": [ 0 ] },
     { "name": "ProxyFrontAvailable", "type": "int", "count": 1, "values": [ 0 ] },
+    { "name": "SurfelFrontDepthAvailable", "type": "int", "count": 1, "values": [ 0 ] },
     { "name": "BodyVolumeAvailable", "type": "int", "count": 1, "values": [ 0 ] },
     { "name": "EdgeTonguesEnabled", "type": "int", "count": 1, "values": [ 0 ] },
     { "name": "DeformationDebugMode", "type": "int", "count": 1, "values": [ 0 ] }

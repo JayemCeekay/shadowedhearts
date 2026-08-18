@@ -32,12 +32,25 @@ public class ShadowPokemonData implements ShadowFlag {
 
     /** Update both flags on a live PokemonEntity (values are clamped appropriately). */
     public static void set(PokemonEntity e, boolean shadow, float corruption) {
-        e.getEntityData().set(SHADOW, shadow);
-        // corruption is expected as 0..1 scalar for visuals
-        e.getEntityData().set(HEART_GAUGE, Mth.clamp(corruption, 0f, 1f));
+        setRuntimeState(e, shadow, corruption);
         ShadowAspectUtil.syncAspects(e.getPokemon());
         ShadowAspectUtil.syncBenchedMoves(e.getPokemon());
         ShadowAspectUtil.syncMoveSet(e.getPokemon());
+    }
+
+    /**
+     * Rebuild the transient entity flags from the persisted Cobblemon Pokemon.
+     * SynchedEntityData itself is not restored when a saved entity is loaded.
+     */
+    public static void syncFromPokemon(PokemonEntity e) {
+        var pokemon = e.getPokemon();
+        setRuntimeState(e, ShadowAspectUtil.hasShadowAspect(pokemon), ShadowAspectUtil.getHeartGauge(pokemon));
+    }
+
+    private static void setRuntimeState(PokemonEntity e, boolean shadow, float corruption) {
+        e.getEntityData().set(SHADOW, shadow);
+        // corruption is expected as 0..1 scalar for visuals
+        e.getEntityData().set(HEART_GAUGE, Mth.clamp(corruption, 0f, 1f));
     }
 
     public static boolean isShadow(PokemonEntity e) { return e.getEntityData().get(SHADOW); }

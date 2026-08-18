@@ -1,0 +1,20 @@
+{
+  "blend": {
+    "func": "add",
+    "srcrgb": "srcalpha",
+    "dstrgb": "1-srcalpha",
+    "alphafunc": "add",
+    "srcalpha": "one",
+    "dstalpha": "1-srcalpha"
+  },
+  "vertex": "shadowedhearts:darkball/dark_ball_volume_composite",
+  "fragment": "shadowedhearts:darkball/dark_ball_reduced_upsample",
+  "attributes": [ "Position", "UV0" ],
+  "samplers": [
+    { "name": "Sampler0" },
+    { "name": "SceneDepthSampler" }
+  ],
+  "uniforms": [
+    { "name": "InvProjMat", "type": "matrix4x4", "count": 16, "values": [ 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0 ] }
+  ]
+}

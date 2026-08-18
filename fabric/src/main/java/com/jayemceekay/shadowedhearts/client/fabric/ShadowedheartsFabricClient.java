@@ -4,15 +4,15 @@ import com.cobblemon.mod.common.entity.pokeball.EmptyPokeBallEntity;
 import com.jayemceekay.shadowedhearts.Shadowedhearts;
 import com.jayemceekay.shadowedhearts.client.ModKeybinds;
 import com.jayemceekay.shadowedhearts.client.ModShaders;
-import com.jayemceekay.shadowedhearts.client.aura.AuraEmitters;
+import com.jayemceekay.shadowedhearts.client.aura.ShadowAuraEmitters;
 import com.jayemceekay.shadowedhearts.client.aura.AuraReaderInputHandler;
 import com.jayemceekay.shadowedhearts.client.aura.AuraReaderHud;
-import com.jayemceekay.shadowedhearts.client.aura.AuraPulseRenderer;
+import com.jayemceekay.shadowedhearts.client.aura.AuraReaderPulseRenderer;
 import com.jayemceekay.shadowedhearts.client.aura.ShadowPokemonAuraSystem;
 import com.jayemceekay.shadowedhearts.client.ball.BallEmitters;
+import com.jayemceekay.shadowedhearts.client.ball.DarkBallFboDebugPreview;
 import com.jayemceekay.shadowedhearts.client.particle.LuminousMoteEmitters;
 import com.jayemceekay.shadowedhearts.client.particle.LuminousMoteParticle;
-import com.jayemceekay.shadowedhearts.client.particle.PenumbraDensityFBO;
 import com.jayemceekay.shadowedhearts.client.particle.PenumbraTrailSystem;
 import com.jayemceekay.shadowedhearts.client.particle.PenumbraTrailParticle;
 import com.jayemceekay.shadowedhearts.client.particle.RelicStoneMoteParticle;
@@ -62,8 +62,8 @@ public final class ShadowedheartsFabricClient implements ClientModInitializer {
         // Register client-side handlers for our Cobblemon-style packets
         ShadowedHeartsFabricNetworkManager.registerClientHandlers();
         // Client-side common init
-        AuraEmitters.init();
-        AuraPulseRenderer.init();
+        ShadowAuraEmitters.init();
+        AuraReaderPulseRenderer.init();
         DepthCapture.init();
         ModShaders.initClient();
         ModShadersPlatformImpl.registerShaders();
@@ -78,13 +78,15 @@ public final class ShadowedheartsFabricClient implements ClientModInitializer {
         ModKeybindsPlatformImpl.register(ModKeybinds.DEBUG_REINIT_HUD);
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
+            BallEmitters.onClientTick(client);
             AuraReaderInputHandler.tick(client);
-            AuraPulseRenderer.tick();
+            AuraReaderPulseRenderer.tick();
             RelicStoneSoundManager.tick();
         });
         HudRenderCallback.EVENT.register((graphics, tickCounter) -> {
             AuraReaderHud.render(graphics);
             ShadowPokemonAuraSystem.renderDebugHud(graphics);
+            DarkBallFboDebugPreview.renderHud(graphics);
         });
         // Screens
 
@@ -139,7 +141,7 @@ public final class ShadowedheartsFabricClient implements ClientModInitializer {
         LuminousMoteEmitters.init();
 
         WorldRenderEvents.AFTER_TRANSLUCENT.register(context -> {
-            AuraEmitters.onRender(context.camera(), context.camera().getPartialTickTime());
+            ShadowAuraEmitters.onRender(context.camera(), context.camera().getPartialTickTime());
             BallEmitters.onRender(context.camera(), context.camera().getPartialTickTime());
 
         });
@@ -160,8 +162,8 @@ public final class ShadowedheartsFabricClient implements ClientModInitializer {
                     worldRenderContext.camera(),
                     worldRenderContext.camera().getPartialTickTime()
             );
-            if ((AuraPulseRenderer.IRIS_HANDLER == null || !AuraPulseRenderer.IRIS_HANDLER.isShaderPackInUse())) {
-                AuraPulseRenderer.onRenderWorld(worldRenderContext.camera(), worldRenderContext.projectionMatrix(), worldRenderContext.positionMatrix(), worldRenderContext.camera().getPartialTickTime());
+            if ((AuraReaderPulseRenderer.IRIS_HANDLER == null || !AuraReaderPulseRenderer.IRIS_HANDLER.isShaderPackInUse())) {
+                AuraReaderPulseRenderer.onRenderWorld(worldRenderContext.camera(), worldRenderContext.projectionMatrix(), worldRenderContext.positionMatrix(), worldRenderContext.camera().getPartialTickTime());
             }
         });
 
@@ -213,7 +215,7 @@ public final class ShadowedheartsFabricClient implements ClientModInitializer {
         });
 
         ClientEntityEvents.ENTITY_UNLOAD.register((entity, clientLevel) -> {
-            AuraEmitters.onPokemonDespawn(entity.getId());
+            ShadowAuraEmitters.onPokemonDespawn(entity.getId());
             if (entity instanceof EmptyPokeBallEntity) {
                 BallEmitters.onEntityDespawn(entity.getId());
             }

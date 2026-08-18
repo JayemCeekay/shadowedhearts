@@ -1,5 +1,8 @@
 package com.jayemceekay.shadowedhearts.client.ball;
 
+import net.minecraft.client.Camera;
+import net.minecraft.util.Mth;
+import net.minecraft.world.phys.Vec3;
 import org.joml.Matrix4f;
 import org.joml.Quaternionf;
 import org.joml.Vector3d;
@@ -20,7 +23,9 @@ final class DarkBallProjectedEffectBounds {
     static final int PRESENTATION_PRISM_COUNT = 16;
     static final int DIRECT_PADDING_PIXELS = 1;
     static final int EDGE_PADDING_PIXELS = 2;
-    static final int COMPOSITE_PADDING_PIXELS = 4;
+    // Four final-screen-pixel morphology reach plus one source-pixel filtering
+    // guard. The density target is never larger than the output viewport.
+    static final int COMPOSITE_PADDING_PIXELS = 5;
 
     private static final float CLIP_W_EPSILON = 1.0e-5f;
     private static final float SEGMENT_EPSILON = 1.0e-6f;
@@ -31,10 +36,121 @@ final class DarkBallProjectedEffectBounds {
     private DarkBallProjectedEffectBounds() {
     }
 
+    static UvBounds forSurfelAndSiphon(
+            DarkBallAdvectedDensityField field,
+            DarkBallAnalyticalVolume shape,
+            DarkBallVolumeBuildResult volume,
+            Matrix4f projection,
+            Camera camera,
+            Vec3 cameraPosition,
+            float turbulenceBlend,
+            float voxelSize,
+            float siphonEndRadius,
+            boolean includeBody,
+            boolean includeSiphon,
+            float siphonInletRadiusScale) {
+        return forSurfelAndSiphon(
+                field,
+                shape,
+                volume,
+                projection,
+                camera,
+                cameraPosition,
+                turbulenceBlend,
+                voxelSize,
+                siphonEndRadius,
+                includeBody,
+                includeSiphon,
+                siphonInletRadiusScale,
+                0.0f);
+    }
+
+    static UvBounds forSurfelAndSiphon(
+            DarkBallAdvectedDensityField field,
+            DarkBallAnalyticalVolume shape,
+            DarkBallVolumeBuildResult volume,
+            Matrix4f projection,
+            Camera camera,
+            Vec3 cameraPosition,
+            float turbulenceBlend,
+            float voxelSize,
+            float siphonEndRadius,
+            boolean includeBody,
+            boolean includeSiphon,
+            float siphonInletRadiusScale,
+            float extraBodyMargin) {
+        if (field == null
+                || shape == null
+                || volume == null
+                || camera == null
+                || cameraPosition == null) {
+            return UvBounds.fullScreen();
+        }
+
+        Vector3d worldRoot = toVector3d(volume.root());
+        Vector3d worldAxis = toVector3d(volume.axis());
+        Vector3d worldSide = toVector3d(volume.side());
+        Vector3d worldUp = toVector3d(volume.up());
+        Projection bounds = begin(
+                projection,
+                camera.rotation(),
+                toVector3d(cameraPosition));
+
+        if (includeBody) {
+            float baseMargin = Math.max(
+                    Math.max(
+                            voxelSize * 2.0f,
+                            volume.bodyRadius() * 0.090f),
+                    Math.max(extraBodyMargin, 0.0f));
+            float auraMargin = volume.bodyRadius() * 0.36f
+                    * Mth.clamp(turbulenceBlend, 0.0f, 1.0f);
+            bounds.includeOrientedBox(
+                    worldRoot,
+                    worldAxis,
+                    worldSide,
+                    worldUp,
+                    -baseMargin - auraMargin,
+                    -volume.radius() - auraMargin,
+                    -volume.radius() - auraMargin,
+                    shape.occupiedBodyMaxX()
+                            + baseMargin + auraMargin,
+                    volume.radius() + auraMargin,
+                    volume.radius() + auraMargin);
+        }
+
+        if (includeSiphon) {
+            Vector3f[] nodes =
+                    new Vector3f[DarkBallSiphonBoltPath.NODE_COUNT];
+            for (int node = 0; node < nodes.length; node++) {
+                nodes[node] =
+                        new Vector3f(field.siphonBoltNode(node));
+            }
+            bounds.includeSiphonPrisms(
+                    worldRoot,
+                    worldAxis,
+                    worldSide,
+                    worldUp,
+                    nodes,
+                    volume.bodyRadius(),
+                    voxelSize,
+                    siphonEndRadius,
+                    siphonInletRadiusScale);
+        }
+
+        return bounds.finish(
+                DarkBallDensityFBO.getTargetWidth(),
+                DarkBallDensityFBO.getTargetHeight(),
+                0);
+    }
+
     static Projection begin(Matrix4f projection,
                             Quaternionf cameraRotation,
                             Vector3d cameraPosition) {
         return new Projection(projection, cameraRotation, cameraPosition);
+    }
+
+    private static Vector3d toVector3d(Vec3 vector) {
+        return new Vector3d(vector.x, vector.y, vector.z);
     }
 
     /**
@@ -230,7 +346,7 @@ final class DarkBallProjectedEffectBounds {
                     float relativeRootZ = (float) worldRoot.z
                             - (float) cameraPosition.z;
                     // The shader subtracts its absolute float uniforms first
-                    // and performs the rest of the raymarch in local space.
+                    // and evaluates the remaining direct geometry locally.
                     // Add local offsets only after that quantized subtraction;
                     // adding them to a 30M absolute coordinate would lose the
                     // sub-block extent a second time.
@@ -400,13 +516,28 @@ final class DarkBallProjectedEffectBounds {
                                  float bodyRadius,
                                  float voxelSize,
                                  float siphonEndRadius) {
+            includeSiphonPrisms(
+                    worldRoot, worldAxis, worldSide, worldUp,
+                    nodes, bodyRadius, voxelSize, siphonEndRadius, 1.0f);
+        }
+
+        void includeSiphonPrisms(Vector3d worldRoot,
+                                 Vector3d worldAxis,
+                                 Vector3d worldSide,
+                                 Vector3d worldUp,
+                                 Vector3f[] nodes,
+                                 float bodyRadius,
+                                 float voxelSize,
+                                 float siphonEndRadius,
+                                 float siphonInletRadiusScale) {
             if (forceFullScreen) {
                 return;
             }
             if (!validNodes(nodes)
                     || !Float.isFinite(bodyRadius)
                     || !Float.isFinite(voxelSize)
-                    || !Float.isFinite(siphonEndRadius)) {
+                    || !Float.isFinite(siphonEndRadius)
+                    || !Float.isFinite(siphonInletRadiusScale)) {
                 forceFullScreen = true;
                 return;
             }
@@ -417,7 +548,8 @@ final class DarkBallProjectedEffectBounds {
                     siphonPathNodeTangent(nodes, 0), pathFallback);
             float previousLength = 0.0f;
             float previousHalfWidth = siphonRadius(
-                    0.0f, bodyRadius, voxelSize, siphonEndRadius);
+                    0.0f, bodyRadius, voxelSize, siphonEndRadius,
+                    siphonInletRadiusScale);
             boolean hasPreviousPrism = false;
             Vector3f prismStart = siphonPathPoint(nodes, 0.0f);
 
@@ -432,9 +564,11 @@ final class DarkBallProjectedEffectBounds {
                 Vector3f prismAxis = normalizeOr(segment, previousAxis);
                 float prismHalfWidth = Math.max(
                         siphonRadius(startT, bodyRadius, voxelSize,
-                                siphonEndRadius),
+                                siphonEndRadius,
+                                siphonInletRadiusScale),
                         siphonRadius(endT, bodyRadius, voxelSize,
-                                siphonEndRadius));
+                                siphonEndRadius,
+                                siphonInletRadiusScale));
 
                 float startExtension = 0.0f;
                 if (hasPreviousPrism && prismLength > SEGMENT_EPSILON) {
@@ -563,10 +697,23 @@ final class DarkBallProjectedEffectBounds {
                               float bodyRadius,
                               float voxelSize,
                               float siphonEndRadius) {
+        return siphonRadius(
+                curveT, bodyRadius, voxelSize, siphonEndRadius, 1.0f);
+    }
+
+    static float siphonRadius(float curveT,
+                              float bodyRadius,
+                              float voxelSize,
+                              float siphonEndRadius,
+                              float siphonInletRadiusScale) {
         float u = clamp01(curveT);
-        float rootRadius = Math.max(bodyRadius * 0.055f,
+        float inletScale = clamp(
+                siphonInletRadiusScale, 0.0f, 1.0f);
+        float rootRadius = Math.max(
+                bodyRadius * 0.055f * inletScale,
                 voxelSize * 0.90f);
-        float shoulderRadius = Math.max(bodyRadius * 0.070f,
+        float shoulderRadius = Math.max(
+                bodyRadius * 0.070f * inletScale,
                 voxelSize * 1.10f);
         float endRadius = Math.max(siphonEndRadius * 0.72f,
                 voxelSize * 0.90f);

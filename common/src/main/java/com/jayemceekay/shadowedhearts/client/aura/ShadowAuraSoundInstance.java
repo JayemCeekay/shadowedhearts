@@ -7,9 +7,9 @@ import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.entity.Entity;
 
 public class ShadowAuraSoundInstance extends AbstractTickableSoundInstance {
-    private final AuraEmitters.AuraInstance aura;
+    private final ShadowAuraEmitters.AuraInstance aura;
 
-    public ShadowAuraSoundInstance(AuraEmitters.AuraInstance aura) {
+    public ShadowAuraSoundInstance(ShadowAuraEmitters.AuraInstance aura) {
         super(ModSounds.SHADOW_AURA_LOOP.get(), SoundSource.NEUTRAL, net.minecraft.util.RandomSource.create());
         this.aura = aura;
         this.looping = true;

@@ -77,21 +77,29 @@ public class ModShadersPlatformImpl {
             evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:snag/snag_beam_composite", DefaultVertexFormat.POSITION_TEX),
                     shader -> ModShaders.SNAG_BEAM_COMPOSITE = shader);
 
-            // Dark Ball cohesive volumetric siphon pipeline
+            // Dark Ball captured-mask, fused-surface-splat, and siphon pipeline
             evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:darkball/dark_ball_mask", DefaultVertexFormat.NEW_ENTITY),
                     shader -> ModShaders.DARK_BALL_MASK = shader);
             evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:darkball/dark_ball_proxy_depth", DefaultVertexFormat.NEW_ENTITY),
                     shader -> ModShaders.DARK_BALL_PROXY_DEPTH = shader);
             evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:darkball/dark_ball_volume_composite", DefaultVertexFormat.POSITION_TEX),
                     shader -> ModShaders.DARK_BALL_VOLUME_COMPOSITE = shader);
-            evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:darkball/dark_ball_density_advect", DefaultVertexFormat.POSITION_TEX),
-                    shader -> ModShaders.DARK_BALL_DENSITY_ADVECT = shader);
-            evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:darkball/dark_ball_siphon_advect", DefaultVertexFormat.POSITION_TEX),
-                    shader -> ModShaders.DARK_BALL_SIPHON_ADVECT = shader);
-            evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:darkball/dark_ball_advected_volume", DefaultVertexFormat.POSITION_TEX),
-                    shader -> ModShaders.DARK_BALL_ADVECTED_VOLUME = shader);
+            evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:darkball/dark_ball_silhouette_distance_seed", DefaultVertexFormat.POSITION_TEX),
+                    shader -> ModShaders.DARK_BALL_SILHOUETTE_DISTANCE_SEED = shader);
+            evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:darkball/dark_ball_silhouette_distance_jump", DefaultVertexFormat.POSITION_TEX),
+                    shader -> ModShaders.DARK_BALL_SILHOUETTE_DISTANCE_JUMP = shader);
+            evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:darkball/dark_ball_reduced_upsample", DefaultVertexFormat.POSITION_TEX),
+                    shader -> ModShaders.DARK_BALL_REDUCED_UPSAMPLE = shader);
+            evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:darkball/dark_ball_surface_splat", ModShaders.DARK_BALL_MANUAL_ENTITY_FORMAT),
+                    shader -> ModShaders.DARK_BALL_SURFACE_SPLAT = shader);
+            evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:darkball/dark_ball_surface_splat_resolve", DefaultVertexFormat.POSITION_TEX),
+                    shader -> ModShaders.DARK_BALL_SURFACE_SPLAT_RESOLVE = shader);
+            evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:darkball/dark_ball_siphon_surface_mesh", ModShaders.DARK_BALL_MANUAL_ENTITY_FORMAT),
+                    shader -> ModShaders.DARK_BALL_SIPHON_SURFACE_MESH = shader);
             evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:darkball/dark_ball_edge_tongues", DefaultVertexFormat.POSITION_TEX),
                     shader -> ModShaders.DARK_BALL_EDGE_TONGUES = shader);
+            evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:darkball/dark_ball_fbo_preview", DefaultVertexFormat.POSITION_TEX),
+                    shader -> ModShaders.DARK_BALL_FBO_PREVIEW = shader);
 
             // Snag trail orange smoke density pipeline (FBM noise + warm orange composite)
             evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:snag/snag_trail_density", DefaultVertexFormat.PARTICLE),

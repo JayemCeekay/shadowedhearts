@@ -1,0 +1,16 @@
+{
+  "blend": {
+    "func": "add",
+    "srcrgb": "one",
+    "dstrgb": "zero"
+  },
+  "vertex": "shadowedhearts:darkball/dark_ball_volume_composite",
+  "fragment": "shadowedhearts:darkball/dark_ball_silhouette_distance_seed",
+  "attributes": [ "Position", "UV0" ],
+  "samplers": [
+    { "name": "Sampler0" }
+  ],
+  "uniforms": [
+    { "name": "TargetSize", "type": "float", "count": 2, "values": [ 1.0, 1.0 ] }
+  ]
+}

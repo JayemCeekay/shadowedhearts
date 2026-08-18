@@ -2,14 +2,19 @@ package com.jayemceekay.shadowedhearts.client.ball;
 
 import com.cobblemon.mod.common.entity.pokeball.EmptyPokeBallEntity;
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
+import com.jayemceekay.shadowedhearts.Shadowedhearts;
 import com.jayemceekay.shadowedhearts.client.ModShaders;
+import com.jayemceekay.shadowedhearts.client.aura.AuraReaderPulseRenderer;
+import com.jayemceekay.shadowedhearts.client.aura.ShadowPokemonAuraSystem;
 import com.jayemceekay.shadowedhearts.client.particle.PenumbraTrailSystem;
 import com.jayemceekay.shadowedhearts.client.render.rendertypes.BallRenderTypes;
 import com.jayemceekay.shadowedhearts.config.IClientConfig;
 import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs;
 import com.jayemceekay.shadowedhearts.client.trail.BallTrailManager;
 import com.mojang.blaze3d.shaders.Uniform;
+import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.VertexSorting;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.MultiBufferSource;
@@ -19,12 +24,18 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Matrix4f;
+import org.lwjgl.BufferUtils;
+import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL20;
+import org.lwjgl.opengl.GL30;
 
 import com.jayemceekay.shadowedhearts.registry.util.ModParticleTypes;
 
 import net.minecraft.world.phys.Vec3;
 
 import java.lang.ref.WeakReference;
+import java.nio.IntBuffer;
+import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BooleanSupplier;
@@ -39,6 +50,9 @@ public final class BallEmitters {
 
     private static final Map<Integer, BallInstance> ACTIVE = new ConcurrentHashMap<>();
     private static WeakReference<Object> clientLevelRef = new WeakReference<>(null);
+    private static boolean clientLevelActive;
+    private static boolean invalidIrisTransformWarningLogged;
+    private static boolean irisTransactionDiagnosticLogged;
 
     /**
      * Called on client when a ball entity is created/loaded.
@@ -65,6 +79,14 @@ public final class BallEmitters {
             inst.beginImmediateFadeOut(now, 6);
             return inst;
         });
+    }
+
+    /**
+     * Maintains world-scoped Dark Ball GPU resources even while no world render
+     * callback is running, such as on the title screen after disconnecting.
+     */
+    public static void onClientTick(Minecraft minecraft) {
+        prepareClientLevel(minecraft);
     }
 
     /**
@@ -188,6 +210,10 @@ public final class BallEmitters {
     public static void onRenderFBO(net.minecraft.client.Camera camera, float partialTicks) {
         var mc = Minecraft.getInstance();
         if (!prepareClientLevel(mc)) return;
+        DarkBallCaptureVfx.FboPreviewCapture darkBallPreviewCapture = null;
+        DarkBallDensityFBO.PreviewFrame darkBallPreviewFrame = null;
+        boolean irisShaderPackActive =
+                ShadowPokemonAuraSystem.isIrisShaderPackActive();
 
         // Snag trail density pipeline (orange smoke and purple motes)
         SnagTrailDensitySystem.renderDensityPipeline(camera, partialTicks);
@@ -201,14 +227,19 @@ public final class BallEmitters {
             SnagDensityFBO.composite();
         }
 
-        if (!DarkBallCaptureVfx.getActiveInstances().isEmpty()) {
-            DarkBallCaptureVfx.beginDirectCompositeFrame();
-            if (DarkBallDensityFBO.beginDensityPass(true, true)) {
-                DarkBallCaptureVfx.renderAllDensityPass(camera, partialTicks);
-                DarkBallDensityFBO.endDensityPass();
-                DarkBallCaptureVfx.finishDirectCompositeFrame(
-                        DarkBallDensityFBO.composite());
-            }
+        if (!irisShaderPackActive) {
+            DarkBallPreviewResult previewResult = renderDarkBallComposites(
+                    camera, partialTicks);
+            darkBallPreviewCapture = previewResult.capture();
+            darkBallPreviewFrame = previewResult.frame();
+        }
+
+        // Snapshot the main framebuffer while it still represents the
+        // immediate Dark Ball result. Later Snag bloom is a separate effect
+        // and must not contaminate the diagnostic "final composite" tile.
+        if (!irisShaderPackActive) {
+            DarkBallFboDebugPreview.afterCompositeFrame(
+                    darkBallPreviewCapture, darkBallPreviewFrame);
         }
 
         // Bloom pass: re-render snag VFX into a half-res FBO, blur, composite
@@ -218,23 +249,311 @@ public final class BallEmitters {
             SnagBloomFBO.endBloomPass();
             SnagBloomFBO.blurAndComposite();
         }
+    }
 
+    /**
+     * Iris/Oculus entry point. The Iris pipeline calls this after binding its
+     * default world target, while its scene depth is still available. Loader
+     * late-render callbacks deliberately skip the Dark Ball branch while a
+     * shader pack is active so every capture is submitted exactly once.
+     */
+    public static void renderDarkBallIris() {
+        if (!ShadowPokemonAuraSystem.isIrisShaderPackActive()
+                || AuraReaderPulseRenderer.IRIS_HANDLER == null
+                || AuraReaderPulseRenderer.IRIS_HANDLER.isShadowRenderActive()) {
+            return;
+        }
+        Minecraft mc = Minecraft.getInstance();
+        if (!prepareClientLevel(mc)
+                || mc.gameRenderer == null
+                || mc.level == null) {
+            return;
+        }
+        if (DarkBallCaptureVfx.getActiveInstances().isEmpty()) {
+            irisTransactionDiagnosticLogged = false;
+            return;
+        }
+        var camera = mc.gameRenderer.getMainCamera();
+        var irisSnapshot = AuraReaderPulseRenderer.IRIS_HANDLER
+                .getIrisRenderingSnapshot();
+        if (irisSnapshot == null
+                || !DarkBallRenderContext.isUsableIrisFrame(
+                irisSnapshot.modelViewMatrix,
+                irisSnapshot.projectionMatrix,
+                irisSnapshot.renderWidth,
+                irisSnapshot.renderHeight)) {
+            if (!invalidIrisTransformWarningLogged) {
+                int width = irisSnapshot == null
+                        ? 0 : irisSnapshot.renderWidth;
+                int height = irisSnapshot == null
+                        ? 0 : irisSnapshot.renderHeight;
+                Shadowedhearts.LOGGER.warn(
+                        "[ShadowedHearts] Dark Ball skipped one Iris world "
+                                + "submission because its matched view/"
+                                + "projection snapshot was unavailable or "
+                                + "invalid (target={}x{}); capture-only model "
+                                + "suppression remains active",
+                        width, height);
+                invalidIrisTransformWarningLogged = true;
+            }
+            return;
+        }
+        invalidIrisTransformWarningLogged = false;
+        Matrix4f savedProjection = new Matrix4f(
+                RenderSystem.getProjectionMatrix());
+        Matrix4f savedModelView = new Matrix4f(
+                RenderSystem.getModelViewMatrix());
+        IntBuffer savedViewport = BufferUtils.createIntBuffer(4);
+        GL11.glGetIntegerv(GL11.GL_VIEWPORT, savedViewport);
+        logIrisTransactionDiagnosticOnce(irisSnapshot, savedViewport);
+        try (DarkBallRenderContext.Scope ignored =
+                     DarkBallRenderContext.install(
+                             irisSnapshot.modelViewMatrix,
+                             irisSnapshot.projectionMatrix)) {
+            RenderSystem.setProjectionMatrix(
+                    irisSnapshot.projectionMatrix,
+                    VertexSorting.DISTANCE_TO_ORIGIN);
+            RenderSystem.getModelViewMatrix().set(
+                    irisSnapshot.modelViewMatrix);
+            // bindDefault() binds Iris' world FBO but does not promise to
+            // reset a shader pack's custom viewport. Size the scratch/depth
+            // transaction from the same validated target as the matrix pair.
+            RenderSystem.viewport(
+                    0, 0,
+                    irisSnapshot.renderWidth,
+                    irisSnapshot.renderHeight);
+            DarkBallPreviewResult previewResult = renderDarkBallComposites(
+                    camera, camera.getPartialTickTime());
+            if (irisSnapshot.diffuseTexture > 0) {
+                DarkBallFboDebugPreview.afterCompositeFrame(
+                        previewResult.capture(),
+                        previewResult.frame(),
+                        irisSnapshot.diffuseTexture,
+                        irisSnapshot.renderWidth,
+                        irisSnapshot.renderHeight);
+            } else {
+                DarkBallFboDebugPreview.afterCompositeFrame(
+                        previewResult.capture(), previewResult.frame());
+            }
+        } finally {
+            RenderSystem.getModelViewMatrix().set(savedModelView);
+            RenderSystem.setProjectionMatrix(
+                    savedProjection, VertexSorting.DISTANCE_TO_ORIGIN);
+            RenderSystem.viewport(
+                    savedViewport.get(0), savedViewport.get(1),
+                    savedViewport.get(2), savedViewport.get(3));
+        }
+    }
+
+    /**
+     * Runs one complete clear -> draw -> resolve -> composite transaction per
+     * capture. Screen-sized scratch targets are reused serially, while every
+     * capture keeps independent exact-mask, proxy-depth, JFA, and surfel state.
+     */
+    private static DarkBallPreviewResult renderDarkBallComposites(
+            net.minecraft.client.Camera camera,
+            float partialTicks) {
+        var captures = DarkBallCaptureVfx.orderedActiveCaptures(camera);
+        if (captures.isEmpty()) {
+            return DarkBallPreviewResult.EMPTY;
+        }
+
+        DarkBallCaptureVfx.beginDirectCompositeFrame();
+        DarkBallCaptureVfx.FboPreviewCapture previewCapture = null;
+        DarkBallDensityFBO.PreviewFrame previewFrame = null;
+
+        for (int index = 0; index < captures.size(); index++) {
+            DarkBallCaptureVfx capture = captures.get(index);
+            boolean passAttempted = false;
+            boolean passReady = false;
+            boolean compositeRendered = false;
+            boolean stateRestoreFailed = false;
+            try {
+                if (DarkBallCaptureVfx.prepareDensityPass(
+                        capture, camera, partialTicks)) {
+                    passAttempted = true;
+                    passReady = DarkBallDensityFBO.beginDensityPass(
+                            capture, true, true);
+                    if (passReady) {
+                        DarkBallCaptureVfx.renderDensityPass(
+                                capture, camera, partialTicks);
+                    }
+                }
+            } catch (RuntimeException failure) {
+                Shadowedhearts.LOGGER.error(
+                        "[ShadowedHearts] Dark Ball capture transaction failed "
+                                + "before composite; isolating this capture",
+                        failure);
+                if (passReady) {
+                    try {
+                        passReady = DarkBallDensityFBO
+                                .resetDensityPassAfterFailedDirectDraw();
+                    } catch (RuntimeException resetFailure) {
+                        passReady = false;
+                        failure.addSuppressed(resetFailure);
+                    }
+                }
+            } finally {
+                if (passAttempted) {
+                    try {
+                        DarkBallDensityFBO.endDensityPass();
+                    } catch (RuntimeException failure) {
+                        passReady = false;
+                        stateRestoreFailed = true;
+                        Shadowedhearts.LOGGER.error(
+                                "[ShadowedHearts] Dark Ball capture state "
+                                        + "restore failed; isolating this "
+                                        + "capture",
+                                failure);
+                    }
+                }
+            }
+
+            if (stateRestoreFailed) {
+                // The caller target is no longer trustworthy. Do not start a
+                // later capture transaction or diagnostic draw on unknown GL
+                // state; fail the remaining frame closed.
+                return abortDarkBallCapture(capture);
+            }
+
+            if (passReady) {
+                try {
+                    compositeRendered = DarkBallDensityFBO.composite();
+                } catch (RuntimeException failure) {
+                    Shadowedhearts.LOGGER.error(
+                            "[ShadowedHearts] Dark Ball capture composite "
+                                    + "failed; aborting the remaining frame "
+                                    + "because restored GL state is unknown",
+                            failure);
+                    return abortDarkBallCapture(capture);
+                }
+            }
+            DarkBallCaptureVfx.finishDirectCompositeCapture(
+                    capture, compositeRendered);
+
+            // Diagnostics deliberately focus the nearest capture (the final
+            // back-to-front job). Earlier scratch attachments have already
+            // been reused and must never be reported as if they were current.
+            if (index == captures.size() - 1
+                    && compositeRendered
+                    && DarkBallFboDebugPreview.isEnabled()) {
+                previewCapture =
+                        DarkBallCaptureVfx.fboPreviewCapture(capture);
+                previewFrame = DarkBallDensityFBO.previewFrame();
+            }
+        }
+        return new DarkBallPreviewResult(previewCapture, previewFrame);
+    }
+
+    private static DarkBallPreviewResult abortDarkBallCapture(
+            DarkBallCaptureVfx capture) {
+        DarkBallCaptureVfx.finishDirectCompositeCapture(capture, false);
+        return DarkBallPreviewResult.EMPTY;
+    }
+
+    private record DarkBallPreviewResult(
+            DarkBallCaptureVfx.FboPreviewCapture capture,
+            DarkBallDensityFBO.PreviewFrame frame) {
+        private static final DarkBallPreviewResult EMPTY =
+                new DarkBallPreviewResult(null, null);
+    }
+
+    private static void logIrisTransactionDiagnosticOnce(
+            com.jayemceekay.shadowedhearts.client.aura.IrisHandler
+                    .IrisRenderingSnapshot snapshot,
+            IntBuffer viewport) {
+        if (irisTransactionDiagnosticLogged) {
+            return;
+        }
+        irisTransactionDiagnosticLogged = true;
+        Matrix4f renderSystemProjection = new Matrix4f(
+                RenderSystem.getProjectionMatrix());
+        Matrix4f renderSystemModelView = new Matrix4f(
+                RenderSystem.getModelViewMatrix());
+        Shadowedhearts.LOGGER.info(
+                "[ShadowedHearts] Dark Ball Iris transaction trace "
+                        + "captures={} currentTarget={}x{} "
+                        + "diffuseTarget={}x{} diffuseTex={} depthTex={} "
+                        + "preViewport=({},{} {}x{}) drawFbo={} readFbo={} "
+                        + "program={}",
+                DarkBallCaptureVfx.getActiveInstances().size(),
+                snapshot.renderWidth,
+                snapshot.renderHeight,
+                snapshot.diffuseWidth,
+                snapshot.diffuseHeight,
+                snapshot.diffuseTexture,
+                snapshot.depthTexture,
+                viewport.get(0), viewport.get(1),
+                viewport.get(2), viewport.get(3),
+                GL11.glGetInteger(GL30.GL_DRAW_FRAMEBUFFER_BINDING),
+                GL11.glGetInteger(GL30.GL_READ_FRAMEBUFFER_BINDING),
+                GL11.glGetInteger(GL20.GL_CURRENT_PROGRAM));
+        Shadowedhearts.LOGGER.info(
+                "[ShadowedHearts] Dark Ball Iris matrix trace "
+                        + "snapshotDet=({}, {}) renderSystemDelta=({}, {}) "
+                        + "snapshotViewTranslation=({}) "
+                        + "renderSystemViewTranslation=({}) "
+                        + "projectionAspect={} targetAspect={}",
+                snapshot.modelViewMatrix.determinant(),
+                snapshot.projectionMatrix.determinant(),
+                matrixMaximumDelta(
+                        snapshot.modelViewMatrix,
+                        renderSystemModelView),
+                matrixMaximumDelta(
+                        snapshot.projectionMatrix,
+                        renderSystemProjection),
+                formatTranslation(snapshot.modelViewMatrix),
+                formatTranslation(renderSystemModelView),
+                Math.abs(snapshot.projectionMatrix.m11()
+                        / snapshot.projectionMatrix.m00()),
+                (float) snapshot.renderWidth
+                        / Math.max(snapshot.renderHeight, 1));
+    }
+
+    private static float matrixMaximumDelta(Matrix4f first,
+                                            Matrix4f second) {
+        float[] firstValues = new float[16];
+        float[] secondValues = new float[16];
+        first.get(firstValues);
+        second.get(secondValues);
+        float maximum = 0.0f;
+        for (int index = 0; index < firstValues.length; index++) {
+            maximum = Math.max(
+                    maximum,
+                    Math.abs(firstValues[index] - secondValues[index]));
+        }
+        return maximum;
+    }
+
+    private static String formatTranslation(Matrix4f matrix) {
+        return String.format(
+                Locale.ROOT,
+                "%.6g,%.6g,%.6g",
+                matrix.m30(), matrix.m31(), matrix.m32());
     }
 
     private static boolean prepareClientLevel(Minecraft mc) {
         Object currentLevel = mc == null ? null : mc.level;
         if (currentLevel == null) {
-            DarkBallCaptureVfx.clearAll();
+            if (clientLevelActive) {
+                DarkBallCaptureVfx.clearAll();
+                DarkBallDensityFBO.destroy();
+            }
             clientLevelRef = new WeakReference<>(null);
+            clientLevelActive = false;
             return false;
         }
 
-        if (clientLevelRef.get() != currentLevel) {
+        if (!clientLevelActive || clientLevelRef.get() != currentLevel) {
             // A render callback is not guaranteed while the title screen is
             // active. Clear stale per-capture GPU resources on the first hook
             // for a replacement world as well as on an observed null world.
             DarkBallCaptureVfx.clearAll();
+            if (clientLevelActive) {
+                DarkBallDensityFBO.destroy();
+            }
             clientLevelRef = new WeakReference<>(currentLevel);
+            clientLevelActive = true;
         }
         return true;
     }

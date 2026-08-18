@@ -125,7 +125,27 @@ public final class AuraReaderService {
                 readings.addAll(provider.scan(context));
             }
         }
-        return readings;
+        return postProcess(context.player(), readings);
+    }
+
+    private static List<AuraReading> postProcess(ServerPlayer player, List<AuraReading> readings) {
+        String lockedTarget = AuraReaderPlayerState.getLockedTarget(player);
+        String selectedSignal = AuraReaderPlayerState.getSelectedSignal(player);
+
+        return readings.stream().map(r -> {
+            boolean locked = r.id().equals(lockedTarget);
+            boolean selected = r.id().equals(selectedSignal);
+            if (locked || selected) {
+                return new AuraReading(
+                        r.id(), r.type(), r.source(), r.label(), r.status(), r.dimension(),
+                        r.directionX(), r.directionY(), r.directionZ(), r.bearingUncertainty(),
+                        r.distanceBand(), r.verticalHint(), r.strength(), r.confidence(),
+                        r.interference(), r.priority(), r.expiryTick(), selected, locked,
+                        r.outOfDimension(), r.exactPositionAllowed()
+                );
+            }
+            return r;
+        }).toList();
     }
 
     public static List<AuraReading> targetedScan(ServerPlayer player, ItemStack auraReader) {

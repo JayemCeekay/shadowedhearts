@@ -12,12 +12,19 @@
   "attributes": [ "Position", "UV0" ],
   "samplers": [
     { "name": "Sampler0" },
-    { "name": "MaskSampler" }
+    { "name": "MaskSampler" },
+    { "name": "DistanceSampler" }
   ],
   "uniforms": [
     { "name": "DeformationBlend", "type": "float", "count": 1, "values": [ 0.0 ] },
+    { "name": "DepthHighlightBlend", "type": "float", "count": 1, "values": [ 0.0 ] },
+    { "name": "BodyGrayTransitionFraction", "type": "float", "count": 1, "values": [ 0.10 ] },
+    { "name": "BodyContourSheenStrength", "type": "float", "count": 1, "values": [ 0.045 ] },
+    { "name": "BodyDepthSpecularStrength", "type": "float", "count": 1, "values": [ 0.09 ] },
     { "name": "GameTime", "type": "float", "count": 1, "values": [ 0.0 ] },
     { "name": "DeformationDebugMode", "type": "int", "count": 1, "values": [ 0 ] },
+    { "name": "DistanceFieldAvailable", "type": "int", "count": 1, "values": [ 0 ] },
+    { "name": "ScreenSize", "type": "float", "count": 2, "values": [ 1.0, 1.0 ] },
     { "name": "ProjectedBodyRadiusPixels", "type": "float", "count": 1, "values": [ 0.0 ] },
     { "name": "InvProjMat", "type": "matrix4x4", "count": 16, "values": [ 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0 ] },
     { "name": "SurfaceDepthAvailable", "type": "int", "count": 1, "values": [ 0 ] },

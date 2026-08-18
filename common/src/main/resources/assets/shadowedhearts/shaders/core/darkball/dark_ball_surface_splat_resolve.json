@@ -1,0 +1,24 @@
+{
+  "blend": {
+    "func": "add",
+    "srcrgb": "one",
+    "dstrgb": "zero",
+    "alphafunc": "add",
+    "srcalpha": "one",
+    "dstalpha": "zero"
+  },
+  "vertex": "shadowedhearts:darkball/dark_ball_volume_composite",
+  "fragment": "shadowedhearts:darkball/dark_ball_surface_splat_resolve",
+  "attributes": [
+    "Position",
+    "UV0"
+  ],
+  "samplers": [
+    { "name": "Sampler0" }
+  ],
+  "uniforms": [
+    { "name": "Direction", "type": "float", "count": 2, "values": [ 0.0, 0.0 ] },
+    { "name": "ResolveMode", "type": "int", "count": 1, "values": [ 0 ] },
+    { "name": "AccumulationGain", "type": "float", "count": 1, "values": [ 1.60 ] }
+  ]
+}

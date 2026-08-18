@@ -1,0 +1,13 @@
+{
+  "vertex": "shadowedhearts:darkball/dark_ball_fbo_preview",
+  "fragment": "shadowedhearts:darkball/dark_ball_fbo_preview",
+  "attributes": [ "Position", "UV0" ],
+  "samplers": [
+    { "name": "Sampler0" }
+  ],
+  "uniforms": [
+    { "name": "PreviewMode", "type": "int", "count": 1, "values": [ 0 ] },
+    { "name": "PreviewUvMin", "type": "float", "count": 2, "values": [ 0.0, 0.0 ] },
+    { "name": "PreviewUvMax", "type": "float", "count": 2, "values": [ 1.0, 1.0 ] }
+  ]
+}

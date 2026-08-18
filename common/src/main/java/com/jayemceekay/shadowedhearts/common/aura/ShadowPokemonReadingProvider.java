@@ -9,6 +9,7 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
@@ -29,10 +30,23 @@ public final class ShadowPokemonReadingProvider implements AuraReadingProvider {
     @Override
     public List<AuraReading> scan(AuraScanContext context) {
         int range = Math.max(1, ShadowedHeartsConfigs.getInstance().getShadowConfig().auraScannerShadowRange());
-        return context.pulseScan() ? pulseScan(context, range) : targetedScan(context, range);
+        if (context.pulseScan()) {
+            return pulseScan(context, range);
+        }
+
+        List<AuraReading> readings = new ArrayList<>(passiveScan(context, range));
+        targetedScan(context, range).stream()
+                .findFirst()
+                .ifPresent(targeted -> {
+                    // Remove the passive version of the same entity if it exists
+                    readings.removeIf(r -> r.id().equals(targeted.id()));
+                    readings.add(targeted);
+                });
+
+        return readings;
     }
 
-    private static List<AuraReading> pulseScan(AuraScanContext context, int range) {
+    private static List<AuraReading> passiveScan(AuraScanContext context, int range) {
         AABB bounds = context.player().getBoundingBox().inflate(range);
         Vec3 origin = context.player().position();
 
@@ -41,7 +55,7 @@ public final class ShadowPokemonReadingProvider implements AuraReadingProvider {
                 .stream()
                 .sorted(Comparator.comparingDouble(entity -> entity.distanceToSqr(context.player())))
                 .limit(MAX_READINGS)
-                .map(entity -> toReading(context, entity, origin, range))
+                .map(entity -> toReading(context, entity, origin, range, false))
                 .toList();
     }
 
@@ -60,7 +74,20 @@ public final class ShadowPokemonReadingProvider implements AuraReadingProvider {
                         .comparingDouble((PokemonEntity entity) -> reticleMissDistance(entity, eye, look))
                         .thenComparingDouble(entity -> entity.distanceToSqr(context.player())))
                 .limit(1)
-                .map(entity -> toReading(context, entity, origin, range))
+                .map(entity -> toReading(context, entity, origin, range, true))
+                .toList();
+    }
+
+    private static List<AuraReading> pulseScan(AuraScanContext context, int range) {
+        AABB bounds = context.player().getBoundingBox().inflate(range);
+        Vec3 origin = context.player().position();
+
+        return context.level()
+                .getEntitiesOfClass(PokemonEntity.class, bounds, ShadowPokemonData::isShadow)
+                .stream()
+                .sorted(Comparator.comparingDouble(entity -> entity.distanceToSqr(context.player())))
+                .limit(MAX_READINGS)
+                .map(entity -> toReading(context, entity, origin, range, true)) // Pulses are always "high accuracy"
                 .toList();
     }
 
@@ -107,30 +134,67 @@ public final class ShadowPokemonReadingProvider implements AuraReadingProvider {
         return 100;
     }
 
-    private static AuraReading toReading(AuraScanContext context, PokemonEntity entity, Vec3 origin, int range) {
+    private static AuraReading toReading(AuraScanContext context, PokemonEntity entity, Vec3 origin, int range, boolean targeted) {
         Vec3 delta = entity.position().subtract(origin);
         double distance = delta.length();
         Vec3 direction = distance > 0.001 ? delta.normalize() : Vec3.ZERO;
         float strength = (float) Math.max(0.0, Math.min(1.0, 1.0 - (distance / Math.max(1, range))));
 
         var pokemon = entity.getPokemon();
-        String speciesName = pokemon.getSpecies().getName();
-        int heartPercent = Math.max(0, Math.min(100, ShadowAspectUtil.getHeartGaugePercent(pokemon)));
-        String auraState = auraState(pokemon.getAspects().contains(SHAspects.REVERSE_MODE), pokemon.getAspects().contains(SHAspects.HYPER_MODE), heartPercent);
+        boolean isOwned = context.player().getUUID().equals(pokemon.getOwnerUUID());
+        boolean isWild = pokemon.getOwnerUUID() == null;
+
+        String label;
+        String auraState;
+        float confidence;
+
+        if (targeted || context.pulseScan()) {
+            int heartPercent = Math.max(0, Math.min(100, ShadowAspectUtil.getHeartGaugePercent(pokemon)));
+            boolean hyper = pokemon.getAspects().contains(SHAspects.HYPER_MODE);
+            boolean reverse = pokemon.getAspects().contains(SHAspects.REVERSE_MODE);
+
+            if (isOwned || context.pulseScan()) {
+                label = pokemon.getSpecies().getName();
+                auraState = auraState(reverse, hyper, heartPercent);
+                confidence = 1.0f;
+            } else if (!isWild) { // Opponent owned
+                label = pokemon.getSpecies().getName();
+                auraState = heartPercent > 0 ? "Corrupted Aura" : "Purifiable Aura";
+                confidence = 0.75f;
+            } else { // Wild
+                label = "Wild " + pokemon.getSpecies().getName();
+                auraState = "Shadow Aura";
+                confidence = 0.6f;
+            }
+        } else {
+            label = "Shadow Signature";
+            auraState = "Scanning...";
+            confidence = 0.4f;
+        }
+
+        AuraReadingSource source = context.pulseScan() ? AuraReadingSource.PULSE : AuraReadingSource.PASSIVE;
 
         return new AuraReading(
                 entity.getUUID().toString(),
                 AuraReadingType.SHADOW_POKEMON,
-                speciesName,
+                source,
+                label,
                 auraState,
                 context.level().dimension().location(),
                 direction.x,
                 direction.y,
                 direction.z,
+                targeted ? 0.0f : 15.0f,
                 distanceBand(distance),
                 verticalHint(delta.y),
                 strength,
-                1.0f,
+                confidence,
+                0.0f,
+                0,
+                context.level().getGameTime() + (context.pulseScan() ? 160 : 0),
+                targeted,
+                false,
+                false,
                 false
         );
     }

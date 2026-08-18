@@ -3,8 +3,10 @@ package com.jayemceekay.shadowedhearts.client.neoforge;
 import com.jayemceekay.shadowedhearts.Shadowedhearts;
 import com.jayemceekay.shadowedhearts.client.aura.AuraReaderInputHandler;
 import com.jayemceekay.shadowedhearts.client.aura.AuraReaderHud;
-import com.jayemceekay.shadowedhearts.client.aura.AuraPulseRenderer;
+import com.jayemceekay.shadowedhearts.client.aura.AuraReaderPulseRenderer;
 import com.jayemceekay.shadowedhearts.client.aura.ShadowPokemonAuraSystem;
+import com.jayemceekay.shadowedhearts.client.ball.BallEmitters;
+import com.jayemceekay.shadowedhearts.client.ball.DarkBallFboDebugPreview;
 import com.jayemceekay.shadowedhearts.client.sound.RelicStoneSoundManager;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -21,8 +23,10 @@ public final class ClientHudOverlay {
 
     @SubscribeEvent
     public static void onClientTick(ClientTickEvent.Post event) {
-        AuraReaderInputHandler.tick(net.minecraft.client.Minecraft.getInstance());
-        AuraPulseRenderer.tick();
+        var minecraft = net.minecraft.client.Minecraft.getInstance();
+        BallEmitters.onClientTick(minecraft);
+        AuraReaderInputHandler.tick(minecraft);
+        AuraReaderPulseRenderer.tick();
         RelicStoneSoundManager.tick();
     }
 
@@ -30,5 +34,6 @@ public final class ClientHudOverlay {
     public static void onRenderGui(RenderGuiEvent.Post event) {
         AuraReaderHud.render(event.getGuiGraphics());
         ShadowPokemonAuraSystem.renderDebugHud(event.getGuiGraphics());
+        DarkBallFboDebugPreview.renderHud(event.getGuiGraphics());
     }
 }

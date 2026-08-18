@@ -11,20 +11,18 @@ import java.util.Locale;
  * the independent siphon renderer consumes it directly.
  */
 enum DarkBallVfxQuality {
-    LOW(2.0f, 20.0f, 10, 2),
-    MEDIUM(3.0f, 30.0f, 16, 3),
-    HIGH(4.5f, 45.0f, 24, 4);
+    LOW(2.0f, 20.0f, 2),
+    MEDIUM(3.0f, 30.0f, 3),
+    HIGH(4.5f, 45.0f, 4);
 
     private final float shellWidthVoxels;
     private final float shellHz;
-    private final int raymarchSamples;
     private final int vortexCellCount;
 
-    DarkBallVfxQuality(float shellWidthVoxels, float shellHz, int raymarchSamples,
+    DarkBallVfxQuality(float shellWidthVoxels, float shellHz,
                        int vortexCellCount) {
         this.shellWidthVoxels = shellWidthVoxels;
         this.shellHz = shellHz;
-        this.raymarchSamples = raymarchSamples;
         this.vortexCellCount = vortexCellCount;
     }
 
@@ -34,10 +32,6 @@ enum DarkBallVfxQuality {
 
     float shellStepSeconds() {
         return 1.0f / shellHz;
-    }
-
-    int raymarchSamples() {
-        return raymarchSamples;
     }
 
     int vortexCells() {

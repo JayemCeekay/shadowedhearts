@@ -10,6 +10,7 @@ import org.lwjgl.opengl.GL30;
 import java.nio.FloatBuffer;
 import java.util.Arrays;
 import java.util.PriorityQueue;
+import java.util.function.BooleanSupplier;
 
 /**
  * Immutable analytical body data plus a lightweight advected SDF surface band.
@@ -116,6 +117,25 @@ final class DarkBallAnalyticalVolume {
 
     Vector3f outletLocal() {
         return new Vector3f(outletLocal);
+    }
+
+    DarkBallSurfaceMesh buildSurfaceMesh(
+            BooleanSupplier cancellationRequested) {
+        return DarkBallSurfaceMeshExtractor.extract(
+                new DarkBallSurfaceMeshExtractor.GridInput(
+                        X_SIZE,
+                        Y_SIZE,
+                        Z_SIZE,
+                        volume.captureLength(),
+                        volume.radius(),
+                        signedDistance,
+                        normalX,
+                        normalY,
+                        normalZ,
+                        localThickness,
+                        releaseOrder,
+                        transportOrder),
+                cancellationRequested);
     }
 
     /**
@@ -700,7 +720,7 @@ final class DarkBallAnalyticalVolume {
                 continue;
             }
             // Use the occupied cell's outer face rather than its center so a
-            // bounded raymarch never clips the last body voxel.
+            // extracted surface never clips the last body voxel.
             float cellMaximum = (xOf(index) + 1.0f) * cellWidth;
             maximum = Math.max(maximum, cellMaximum);
         }
