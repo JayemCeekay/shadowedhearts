@@ -15,10 +15,12 @@ import com.jayemceekay.shadowedhearts.Shadowedhearts
 import com.jayemceekay.shadowedhearts.client.ModShaders
 import com.jayemceekay.shadowedhearts.client.aura.ShadowAuraEmitters
 import com.jayemceekay.shadowedhearts.client.aura.ShadowPokemonAuraGuiRenderer
+import com.jayemceekay.shadowedhearts.client.aura.ShadowPokemonAuraSystem
 import com.jayemceekay.shadowedhearts.client.purification.PurificationClientMetrics
 import com.jayemceekay.shadowedhearts.client.storage.ClientPurificationStorage
 import com.jayemceekay.shadowedhearts.common.purification.PurificationMath
 import com.jayemceekay.shadowedhearts.common.shadow.ShadowAspectUtil
+import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs
 import com.mojang.blaze3d.systems.RenderSystem
 import com.mojang.blaze3d.vertex.BufferUploader
 import com.mojang.blaze3d.vertex.DefaultVertexFormat
@@ -51,6 +53,9 @@ class PurificationStorageWidget(
     HEIGHT,
     Component.literal("PurificationStorageWidget")
 ) {
+
+    private val centerAuraPreview = ShadowPokemonAuraSystem.PreviewInstance()
+    private var centerAuraPokemonIdentity: String? = null
 
     companion object {
         const val WIDTH = 263
@@ -1095,9 +1100,15 @@ class PurificationStorageWidget(
                 // If a Pokémon is in purification slot 0, render it on top of the center platform.
                 val centerPokemon: Pokemon? =
                     storage.get(ClientPurificationStorage.PurificationPosition(0))
+                if (centerPokemon == null && centerAuraPokemonIdentity != null) {
+                    ShadowPokemonAuraGuiRenderer.deactivate(centerAuraPreview)
+                    centerAuraPokemonIdentity = null
+                }
                 if (centerPokemon != null) {
                     val centerRenderablePokemon = centerPokemon.asRenderablePokemon()
-                    val hasShadowAura = ShadowAspectUtil.hasShadowAspect(centerPokemon)
+                    val hasShadowAura =
+                        ShadowedHeartsConfigs.getInstance().clientConfig.enableShadowAura() &&
+                            ShadowAspectUtil.hasShadowAspect(centerPokemon)
                     val shadowAuraStrength =
                         ShadowAspectUtil.getHeartGaugeValue(centerPokemon) / 100.0f
                     matrices.pushPose()
@@ -1121,7 +1132,20 @@ class PurificationStorageWidget(
                     )
                     matrices.pushPose()
                     if (hasShadowAura) {
-                        ShadowPokemonAuraGuiRenderer.beginCapture(centerRenderablePokemon)
+                        val auraIdentity = centerPokemon.uuid.toString()
+                        if (centerAuraPokemonIdentity != auraIdentity) {
+                            ShadowPokemonAuraGuiRenderer.deactivate(centerAuraPreview)
+                            centerAuraPokemonIdentity = auraIdentity
+                        }
+                        ShadowPokemonAuraGuiRenderer.beginCapture(
+                            centerAuraPreview,
+                            centerRenderablePokemon,
+                            centerModelState,
+                            auraIdentity
+                        )
+                    } else if (centerAuraPokemonIdentity != null) {
+                        ShadowPokemonAuraGuiRenderer.deactivate(centerAuraPreview)
+                        centerAuraPokemonIdentity = null
                     }
                     drawProfilePokemon(
                         renderablePokemon = centerRenderablePokemon,
@@ -1144,7 +1168,8 @@ class PurificationStorageWidget(
                             x.toFloat(),
                             y.toFloat(),
                             SCREEN_WIDTH.toFloat(),
-                            SCREEN_HEIGHT.toFloat()
+                            SCREEN_HEIGHT.toFloat(),
+                            centerAuraPreview
                         )
                     }
 

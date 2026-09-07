@@ -138,6 +138,49 @@ class DensityFboPipelineFramebufferStateContractTest {
     }
 
     @Test
+    void blurDepthTextureUsesDeclaredSamplerInsteadOfUniformLookup()
+            throws IOException {
+        String source = pipelineSource();
+        String blur = sourceBetween(
+                source,
+                "public int blur(ShaderInstance blurShader,"
+                        + " Consumer<ShaderInstance> uniformSetup)",
+                "public boolean processDensityToTemp(ShaderInstance shader,");
+        String material = Files.readString(
+                Path.of("src/main/resources/assets/shadowedhearts/shaders/"
+                        + "core/aura/penumbra_blur.json"),
+                StandardCharsets.UTF_8);
+        String samplerBlock = sourceBetween(
+                material,
+                "\"samplers\"",
+                "\"uniforms\"");
+
+        assertTrue(samplerBlock.contains("\"name\": \"Sampler1\""),
+                "the shader material must register the depth sampler");
+        assertTrue(blur.contains(
+                "RenderSystem.setShaderTexture(1, densityDepthTexture);"));
+        assertTrue(blur.contains(
+                "blurShader.setSampler(\"Sampler1\", densityDepthTexture);"));
+        assertFalse(blur.contains("getUniform(\"Sampler1\")"),
+                "samplers are tracked separately from ordinary uniforms");
+        assertTrue(blur.contains(
+                "RenderTransactionState savedState = RenderTransactionState.capture();"),
+                "blur must preserve the complete caller GL transaction");
+        assertTrue(blur.contains(
+                "VertexSorting savedVertexSorting = RenderSystem.getVertexSorting();"));
+        assertTrue(blur.contains(
+                "savedProj, savedVertexSorting"),
+                "GUI and world callers must regain their original vertex sorting");
+        assertTrue(blur.contains("finally {"));
+        assertTrue(blur.contains("savedState.restore();"),
+                "blur must restore caller state even when a draw fails");
+        assertFalse(blur.contains("clearTargetUnscissored(densityTarget)"),
+                "vertical passes must not erase the copied scene depth");
+        assertTrue(blur.contains("clearColorAttachmentUnscissored();"),
+                "vertical passes should clear only density color");
+    }
+
+    @Test
     void failedBeginAndDestroyRestoreCapturedCallerState()
             throws IOException {
         String source = pipelineSource();

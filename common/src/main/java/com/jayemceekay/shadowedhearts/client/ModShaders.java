@@ -115,8 +115,37 @@ public final class ModShaders {
     // Shadow Pokemon aura density pipeline
     public static ShaderInstance SHADOW_POKEMON_AURA_MASK;
     public static ShaderInstance SHADOW_POKEMON_AURA_DENSITY;
+    public static ShaderInstance SHADOW_POKEMON_AURA_GUI_DENSITY;
     public static ShaderInstance SHADOW_POKEMON_AURA_COMPOSITE;
+    public static ShaderInstance SHADOW_POKEMON_AURA_GUI_COMPOSITE;
+    public static ShaderInstance SHADOW_POKEMON_AURA_PIXEL_COMPOSITE;
+    public static ShaderInstance SHADOW_POKEMON_AURA_GUI_PIXEL_COMPOSITE;
+    public static ShaderInstance SHADOW_POKEMON_AURA_PRESENT;
+    public static ShaderInstance SHADOW_POKEMON_AURA_GUI_PRESENT;
     public static ShaderInstance SHADOW_POKEMON_AURA_DIRECT;
+
+    // Colosseum-style Shadow Pokemon aura programs. These are deliberately
+    // separate ShaderInstances even while their material wrappers share the
+    // Signature implementation, so style-specific uniforms cannot leak
+    // between world and GUI draws during later tuning.
+    public static ShaderInstance SHADOW_POKEMON_AURA_COLOSSEUM_DENSITY;
+    public static ShaderInstance SHADOW_POKEMON_AURA_COLOSSEUM_GUI_DENSITY;
+    public static ShaderInstance SHADOW_POKEMON_AURA_COLOSSEUM_COMPOSITE;
+    public static ShaderInstance SHADOW_POKEMON_AURA_COLOSSEUM_GUI_COMPOSITE;
+    public static ShaderInstance SHADOW_POKEMON_AURA_COLOSSEUM_PIXEL_COMPOSITE;
+    public static ShaderInstance SHADOW_POKEMON_AURA_COLOSSEUM_GUI_PIXEL_COMPOSITE;
+
+    // XD-faithful Shadow Pokemon aura programs. Filaments have their own
+    // density material so their narrow heat core can remain distinct from the
+    // broad/wisp puff material and be submitted independently when required.
+    public static ShaderInstance SHADOW_POKEMON_AURA_XD_FAITHFUL_DENSITY;
+    public static ShaderInstance SHADOW_POKEMON_AURA_XD_FAITHFUL_GUI_DENSITY;
+    public static ShaderInstance SHADOW_POKEMON_AURA_XD_FAITHFUL_FILAMENT_DENSITY;
+    public static ShaderInstance SHADOW_POKEMON_AURA_XD_FAITHFUL_GUI_FILAMENT_DENSITY;
+    public static ShaderInstance SHADOW_POKEMON_AURA_XD_FAITHFUL_COMPOSITE;
+    public static ShaderInstance SHADOW_POKEMON_AURA_XD_FAITHFUL_GUI_COMPOSITE;
+    public static ShaderInstance SHADOW_POKEMON_AURA_XD_FAITHFUL_PIXEL_COMPOSITE;
+    public static ShaderInstance SHADOW_POKEMON_AURA_XD_FAITHFUL_GUI_PIXEL_COMPOSITE;
 
     // Screen-space electromagnetic static overlay for Aura Scanner
     public static ShaderInstance AURA_STATIC_INTERFERENCE;

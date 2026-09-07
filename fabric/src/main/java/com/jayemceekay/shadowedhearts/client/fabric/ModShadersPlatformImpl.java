@@ -241,6 +241,12 @@ public final class ModShadersPlatformImpl {
                 );
 
                 registrationContext.register(
+                        ResourceLocation.parse("shadowedhearts:aura/shadow_pokemon_aura_gui_density"),
+                        DefaultVertexFormat.PARTICLE,
+                        program -> ModShaders.SHADOW_POKEMON_AURA_GUI_DENSITY = program
+                );
+
+                registrationContext.register(
                         ResourceLocation.parse("shadowedhearts:aura/shadow_pokemon_aura_mask"),
                         DefaultVertexFormat.NEW_ENTITY,
                         program -> ModShaders.SHADOW_POKEMON_AURA_MASK = program
@@ -250,6 +256,120 @@ public final class ModShadersPlatformImpl {
                         ResourceLocation.parse("shadowedhearts:aura/shadow_pokemon_aura_composite"),
                         DefaultVertexFormat.POSITION_TEX,
                         program -> ModShaders.SHADOW_POKEMON_AURA_COMPOSITE = program
+                );
+
+                registrationContext.register(
+                        ResourceLocation.parse("shadowedhearts:aura/shadow_pokemon_aura_gui_composite"),
+                        DefaultVertexFormat.POSITION_TEX,
+                        program -> ModShaders.SHADOW_POKEMON_AURA_GUI_COMPOSITE = program
+                );
+
+                registrationContext.register(
+                        ResourceLocation.parse("shadowedhearts:aura/shadow_pokemon_aura_pixel_composite"),
+                        DefaultVertexFormat.POSITION_TEX,
+                        program -> ModShaders.SHADOW_POKEMON_AURA_PIXEL_COMPOSITE = program
+                );
+
+                registrationContext.register(
+                        ResourceLocation.parse("shadowedhearts:aura/shadow_pokemon_aura_gui_pixel_composite"),
+                        DefaultVertexFormat.POSITION_TEX,
+                        program -> ModShaders.SHADOW_POKEMON_AURA_GUI_PIXEL_COMPOSITE = program
+                );
+
+                registrationContext.register(
+                        ResourceLocation.parse("shadowedhearts:aura/shadow_pokemon_aura_colosseum_density"),
+                        DefaultVertexFormat.PARTICLE,
+                        program -> ModShaders.SHADOW_POKEMON_AURA_COLOSSEUM_DENSITY = program
+                );
+
+                registrationContext.register(
+                        ResourceLocation.parse("shadowedhearts:aura/shadow_pokemon_aura_colosseum_gui_density"),
+                        DefaultVertexFormat.PARTICLE,
+                        program -> ModShaders.SHADOW_POKEMON_AURA_COLOSSEUM_GUI_DENSITY = program
+                );
+
+                registrationContext.register(
+                        ResourceLocation.parse("shadowedhearts:aura/shadow_pokemon_aura_colosseum_composite"),
+                        DefaultVertexFormat.POSITION_TEX,
+                        program -> ModShaders.SHADOW_POKEMON_AURA_COLOSSEUM_COMPOSITE = program
+                );
+
+                registrationContext.register(
+                        ResourceLocation.parse("shadowedhearts:aura/shadow_pokemon_aura_colosseum_gui_composite"),
+                        DefaultVertexFormat.POSITION_TEX,
+                        program -> ModShaders.SHADOW_POKEMON_AURA_COLOSSEUM_GUI_COMPOSITE = program
+                );
+
+                registrationContext.register(
+                        ResourceLocation.parse("shadowedhearts:aura/shadow_pokemon_aura_colosseum_pixel_composite"),
+                        DefaultVertexFormat.POSITION_TEX,
+                        program -> ModShaders.SHADOW_POKEMON_AURA_COLOSSEUM_PIXEL_COMPOSITE = program
+                );
+
+                registrationContext.register(
+                        ResourceLocation.parse("shadowedhearts:aura/shadow_pokemon_aura_colosseum_gui_pixel_composite"),
+                        DefaultVertexFormat.POSITION_TEX,
+                        program -> ModShaders.SHADOW_POKEMON_AURA_COLOSSEUM_GUI_PIXEL_COMPOSITE = program
+                );
+
+                registrationContext.register(
+                        ResourceLocation.parse("shadowedhearts:aura/shadow_pokemon_aura_xd_faithful_density"),
+                        DefaultVertexFormat.PARTICLE,
+                        program -> ModShaders.SHADOW_POKEMON_AURA_XD_FAITHFUL_DENSITY = program
+                );
+
+                registrationContext.register(
+                        ResourceLocation.parse("shadowedhearts:aura/shadow_pokemon_aura_xd_faithful_gui_density"),
+                        DefaultVertexFormat.PARTICLE,
+                        program -> ModShaders.SHADOW_POKEMON_AURA_XD_FAITHFUL_GUI_DENSITY = program
+                );
+
+                registrationContext.register(
+                        ResourceLocation.parse("shadowedhearts:aura/shadow_pokemon_aura_xd_faithful_filament_density"),
+                        DefaultVertexFormat.PARTICLE,
+                        program -> ModShaders.SHADOW_POKEMON_AURA_XD_FAITHFUL_FILAMENT_DENSITY = program
+                );
+
+                registrationContext.register(
+                        ResourceLocation.parse("shadowedhearts:aura/shadow_pokemon_aura_xd_faithful_gui_filament_density"),
+                        DefaultVertexFormat.PARTICLE,
+                        program -> ModShaders.SHADOW_POKEMON_AURA_XD_FAITHFUL_GUI_FILAMENT_DENSITY = program
+                );
+
+                registrationContext.register(
+                        ResourceLocation.parse("shadowedhearts:aura/shadow_pokemon_aura_xd_faithful_composite"),
+                        DefaultVertexFormat.POSITION_TEX,
+                        program -> ModShaders.SHADOW_POKEMON_AURA_XD_FAITHFUL_COMPOSITE = program
+                );
+
+                registrationContext.register(
+                        ResourceLocation.parse("shadowedhearts:aura/shadow_pokemon_aura_xd_faithful_gui_composite"),
+                        DefaultVertexFormat.POSITION_TEX,
+                        program -> ModShaders.SHADOW_POKEMON_AURA_XD_FAITHFUL_GUI_COMPOSITE = program
+                );
+
+                registrationContext.register(
+                        ResourceLocation.parse("shadowedhearts:aura/shadow_pokemon_aura_xd_faithful_pixel_composite"),
+                        DefaultVertexFormat.POSITION_TEX,
+                        program -> ModShaders.SHADOW_POKEMON_AURA_XD_FAITHFUL_PIXEL_COMPOSITE = program
+                );
+
+                registrationContext.register(
+                        ResourceLocation.parse("shadowedhearts:aura/shadow_pokemon_aura_xd_faithful_gui_pixel_composite"),
+                        DefaultVertexFormat.POSITION_TEX,
+                        program -> ModShaders.SHADOW_POKEMON_AURA_XD_FAITHFUL_GUI_PIXEL_COMPOSITE = program
+                );
+
+                registrationContext.register(
+                        ResourceLocation.parse("shadowedhearts:aura/shadow_pokemon_aura_present"),
+                        DefaultVertexFormat.POSITION_TEX,
+                        program -> ModShaders.SHADOW_POKEMON_AURA_PRESENT = program
+                );
+
+                registrationContext.register(
+                        ResourceLocation.parse("shadowedhearts:aura/shadow_pokemon_aura_gui_present"),
+                        DefaultVertexFormat.POSITION_TEX,
+                        program -> ModShaders.SHADOW_POKEMON_AURA_GUI_PRESENT = program
                 );
 
                 // Screen-space electromagnetic static overlay

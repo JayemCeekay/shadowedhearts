@@ -1,11 +1,15 @@
 package com.jayemceekay.shadowedhearts.client.aura;
 
 import com.cobblemon.mod.common.pokemon.RenderablePokemon;
+import com.cobblemon.mod.common.client.render.models.blockbench.pose.Bone;
+import com.cobblemon.mod.common.client.render.models.blockbench.repository.RenderContext;
+import com.cobblemon.mod.common.client.render.models.blockbench.PosableState;
 import com.jayemceekay.shadowedhearts.client.ModShaders;
 import com.mojang.blaze3d.shaders.Uniform;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.BufferBuilder;
 import com.mojang.blaze3d.vertex.BufferUploader;
+import com.mojang.blaze3d.vertex.ByteBufferBuilder;
 import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import com.mojang.blaze3d.vertex.MeshData;
 import com.mojang.blaze3d.vertex.PoseStack;
@@ -29,22 +33,21 @@ import java.util.Arrays;
 import java.util.List;
 
 /**
- * Immediate, GUI-local counterpart to {@link ShadowPokemonAuraSystem}.
+ * Preview-local counterpart to {@link ShadowPokemonAuraSystem}.
  *
  * <p>Preview Pokémon do not have a {@code PokemonEntity}, so they cannot enter the
- * network-driven world aura lifecycle. Instead, this renderer captures a small set
- * of anchors while Cobblemon renders the already-posed GUI model, emits the same
- * broad/core/wisp density material used by the world aura, and composites it before
- * returning to ordinary GUI rendering.</p>
+ * network-driven world aura lifecycle. Instead, each preview owns an isolated,
+ * fixed-step particle simulation fed by anchors captured from Cobblemon's already
+ * posed GUI model. It shares the world's emission and puff behavior, then renders
+ * through GUI-owned shader programs before returning to ordinary GUI rendering.</p>
  */
 public final class ShadowPokemonAuraGuiRenderer {
 
     private static final ResourceLocation DENSITY_TEXTURE = ResourceLocation.fromNamespaceAndPath(
             "shadowedhearts",
-            "textures/particle/penumbra_trail_16.png"
+            "textures/particle/shadow_pokemon_aura.png"
     );
     private static final int FULLBRIGHT = 0x00F000F0;
-    private static final int MAX_CAPTURED_ANCHORS = 4096;
     private static final int MIN_RENDERED_PUFFS = 72;
     private static final int MAX_RENDERED_PUFFS = 192;
     private static final float PUFF_SIZE_AXIS_SCALE = 0.09f;
@@ -65,90 +68,96 @@ public final class ShadowPokemonAuraGuiRenderer {
     private static final float DEPTH_EPSILON = 0.000001f;
     private static final float TAU = (float) (Math.PI * 2.0);
 
-    private static GuiCapture pendingCapture;
-    private static GuiCapture activeCapture;
-    private static GuiCapture completedCapture;
+    private static CaptureTicket pendingCapture;
+    private static CaptureTicket activeCapture;
+    private static CaptureTicket completedCapture;
 
     private ShadowPokemonAuraGuiRenderer() {}
 
     /** Arms the next entity-less Cobblemon profile-model render for anchor capture. */
-    public static void beginCapture(RenderablePokemon pokemon) {
-        pendingCapture = pokemon == null
-                ? null
-                : new GuiCapture(pokemon.getSpecies().getResourceIdentifier());
+    public static void beginCapture(ShadowPokemonAuraSystem.PreviewInstance owner,
+                                    RenderablePokemon pokemon,
+                                    PosableState expectedState,
+                                    String logicalIdentity) {
+        cancelTicket(pendingCapture);
+        cancelTicket(activeCapture);
+        pendingCapture = null;
         activeCapture = null;
         completedCapture = null;
+        if (owner == null || pokemon == null) {
+            return;
+        }
+        int generation = owner.bind(pokemon, logicalIdentity);
+        pendingCapture = new CaptureTicket(owner, generation, pokemon, expectedState);
+    }
+
+    public static void deactivate(ShadowPokemonAuraSystem.PreviewInstance owner) {
+        if (owner == null) {
+            return;
+        }
+        cancelUnconsumedCapture(owner);
+        if (completedCapture != null && completedCapture.owner == owner) {
+            completedCapture = null;
+        }
+        owner.clear();
     }
 
     /** Called by the PosableModel mixin immediately before its root bone renders. */
-    public static void beginRenderedModelCapture() {
+    public static void beginRenderedModelCapture(RenderContext context,
+                                                 PoseStack stack,
+                                                 Bone rootPart) {
         if (pendingCapture == null || activeCapture != null) {
             return;
         }
-        activeCapture = pendingCapture;
+        CaptureTicket ticket = pendingCapture;
+        ResourceLocation renderedSpecies = context == null
+                ? null
+                : context.request(RenderContext.Companion.getSPECIES());
+        java.util.Set<String> renderedAspects = context == null
+                ? null
+                : context.request(RenderContext.Companion.getASPECTS());
+        PosableState renderedState = context == null
+                ? null
+                : context.request(RenderContext.Companion.getPOSABLE_STATE());
+        if (!ticket.pokemon.getSpecies().getResourceIdentifier().equals(renderedSpecies)
+                || renderedAspects == null
+                || !ticket.pokemon.getAspects().equals(renderedAspects)
+                || ticket.expectedState != renderedState) {
+            return;
+        }
         pendingCapture = null;
+        if (ticket.owner.beginPoseCapture(ticket.generation, ticket.pokemon, stack, rootPart)) {
+            activeCapture = ticket;
+        }
     }
 
     /** Called by the ModelPart mixin after the part transform has been applied. */
     public static void captureRenderedModelPart(ModelPart part, PoseStack stack) {
-        GuiCapture capture = activeCapture;
-        if (capture == null || part == null || stack == null) {
+        CaptureTicket capture = activeCapture;
+        if (capture == null) {
             return;
         }
+        capture.owner.capturePart(part, stack);
+    }
 
-        Matrix4f pose = stack.last().pose();
-        for (ModelPart.Cube cube : part.cubes) {
-            float minX = cube.minX / 16.0f;
-            float minY = cube.minY / 16.0f;
-            float minZ = cube.minZ / 16.0f;
-            float maxX = cube.maxX / 16.0f;
-            float maxY = cube.maxY / 16.0f;
-            float maxZ = cube.maxZ / 16.0f;
-            float sizeX = Math.abs(maxX - minX);
-            float sizeY = Math.abs(maxY - minY);
-            float sizeZ = Math.abs(maxZ - minZ);
-            if (Math.max(sizeX, Math.max(sizeY, sizeZ)) <= 0.001f) {
-                continue;
-            }
-
-            float centerX = (minX + maxX) * 0.5f;
-            float centerY = (minY + maxY) * 0.5f;
-            float centerZ = (minZ + maxZ) * 0.5f;
-            float weight = Math.max(sizeX, Math.max(sizeY, sizeZ));
-
-            addAnchor(capture, pose, centerX, minY, centerZ,
-                    centerX, centerY, centerZ);
-            addAnchor(capture, pose, centerX, maxY, centerZ,
-                    centerX, centerY, centerZ);
-            addAnchor(capture, pose, minX, centerY, centerZ,
-                    centerX, centerY, centerZ);
-            addAnchor(capture, pose, maxX, centerY, centerZ,
-                    centerX, centerY, centerZ);
-            addAnchor(capture, pose, centerX, centerY, minZ,
-                    centerX, centerY, centerZ);
-            addAnchor(capture, pose, centerX, centerY, maxZ,
-                    centerX, centerY, centerZ);
-
-            if (weight >= 0.30f) {
-                addAnchor(capture, pose, minX, minY, minZ,
-                        centerX, centerY, centerZ);
-                addAnchor(capture, pose, maxX, minY, maxZ,
-                        centerX, centerY, centerZ);
-                addAnchor(capture, pose, minX, maxY, maxZ,
-                        centerX, centerY, centerZ);
-                addAnchor(capture, pose, maxX, maxY, minZ,
-                        centerX, centerY, centerZ);
-            }
+    /** Called by the ModelPart mixin when the part render unwinds. */
+    public static void endRenderedModelPart(ModelPart part) {
+        CaptureTicket capture = activeCapture;
+        if (capture != null) {
+            capture.owner.endPart(part);
         }
     }
 
     /** Called by the PosableModel mixin after the captured root bone returns. */
     public static void endRenderedModelCapture() {
-        if (activeCapture == null) {
+        CaptureTicket capture = activeCapture;
+        activeCapture = null;
+        if (capture == null) {
             return;
         }
-        completedCapture = activeCapture;
-        activeCapture = null;
+        if (capture.owner.finishPoseCapture(capture.generation)) {
+            completedCapture = capture;
+        }
     }
 
     /**
@@ -164,7 +173,8 @@ public final class ShadowPokemonAuraGuiRenderer {
      * @param fallbackWidth fallback aura width
      * @param fallbackHeight fallback aura height
      */
-    public static void render(RenderablePokemon pokemon,
+    public static void render(ShadowPokemonAuraSystem.PreviewInstance owner,
+                              RenderablePokemon pokemon,
                               float corruption,
                               float partialTicks,
                               float clipX,
@@ -176,18 +186,35 @@ public final class ShadowPokemonAuraGuiRenderer {
                               float fallbackZ,
                               float fallbackWidth,
                               float fallbackHeight) {
-        GuiCapture capture = consumeCapture(pokemon);
+        boolean useProfileFallback = hasUnconsumedCapture(owner);
+        consumeCompletedCapture(owner);
+        cancelUnconsumedCapture(owner);
         float strength = Mth.clamp(corruption, 0.0f, 1.0f);
-        if (strength <= 0.001f
-                || ModShaders.SHADOW_POKEMON_AURA_DENSITY == null
-                || ModShaders.SHADOW_POKEMON_AURA_COMPOSITE == null) {
+        if (owner == null) {
+            return;
+        }
+        if (strength <= 0.001f) {
+            owner.advance(System.nanoTime(), 0.0f);
+            return;
+        }
+        ShadowAuraStyle style = owner.style();
+        if (ShadowPokemonAuraFBO.guiDensityShader(style) == null) {
             return;
         }
 
-        List<GuiAnchor> anchors = capture == null
-                ? List.of()
-                : capture.anchors;
-        if (anchors.isEmpty()) {
+        if (useProfileFallback) {
+            owner.useFallbackPose(
+                    fallbackCenterX,
+                    fallbackCenterY,
+                    fallbackZ,
+                    fallbackWidth,
+                    fallbackHeight
+            );
+        }
+        boolean persistentAura = owner.hasPose()
+                && owner.advance(System.nanoTime(), strength);
+        List<GuiAnchor> anchors = List.of();
+        if (!persistentAura) {
             anchors = fallbackAnchors(
                     fallbackCenterX,
                     fallbackCenterY,
@@ -196,7 +223,7 @@ public final class ShadowPokemonAuraGuiRenderer {
                     fallbackHeight
             );
         }
-        if (anchors.isEmpty()) {
+        if (!persistentAura && anchors.isEmpty()) {
             return;
         }
 
@@ -211,8 +238,13 @@ public final class ShadowPokemonAuraGuiRenderer {
             return;
         }
 
-        float animationTicks = (float) ((System.nanoTime() / 50_000_000.0 + partialTicks) % 1200.0);
-        boolean densityPassStarted = ShadowPokemonAuraFBO.beginDensityPass(true, true);
+        // nanoTime already supplies the fractional 20 Hz tick. Adding the
+        // caller's partial tick here would make GUI material noise run twice.
+        float animationTicks = (float) ((System.nanoTime() / 50_000_000.0) % 1200.0);
+        boolean densityPassStarted = ShadowPokemonAuraFBO.beginDensityPass(
+                style,
+                true,
+                true);
         if (!densityPassStarted) {
             return;
         }
@@ -222,10 +254,21 @@ public final class ShadowPokemonAuraGuiRenderer {
             // coordinates, while the density target is deliberately half-size.
             // The bounded composite below provides the correct GUI-space clip.
             GL11.glDisable(GL11.GL_SCISSOR_TEST);
-            renderDensitySplats(anchors, strength, animationTicks,
-                    capture == null ? 0 : capture.species.hashCode());
+            if (persistentAura) {
+                renderPersistentDensitySplats(owner, animationTicks, style);
+            } else {
+                int speciesSeed = pokemon == null
+                        ? 0
+                        : pokemon.getSpecies().getResourceIdentifier().hashCode();
+                renderDensitySplats(
+                        anchors,
+                        strength,
+                        animationTicks,
+                        speciesSeed,
+                        style);
+            }
         } finally {
-            ShadowPokemonAuraFBO.endDensityPass();
+            ShadowPokemonAuraFBO.endDensityPass(style);
         }
 
         float minimumU = left / guiWidth;
@@ -234,8 +277,9 @@ public final class ShadowPokemonAuraGuiRenderer {
         float maximumV = 1.0f - top / guiHeight;
         Matrix4f guiProjection = new Matrix4f(RenderSystem.getProjectionMatrix());
         try {
-            ShadowPokemonAuraFBO.blur();
+            ShadowPokemonAuraFBO.blur(style);
             ShadowPokemonAuraFBO.composite(
+                    style,
                     minimumU,
                     minimumV,
                     maximumU,
@@ -250,76 +294,36 @@ public final class ShadowPokemonAuraGuiRenderer {
         }
     }
 
-    private static GuiCapture consumeCapture(RenderablePokemon pokemon) {
-        ResourceLocation species = pokemon == null
-                ? null
-                : pokemon.getSpecies().getResourceIdentifier();
-        GuiCapture result = completedCapture;
-        if (result == null) {
-            result = activeCapture != null ? activeCapture : pendingCapture;
+    private static void cancelUnconsumedCapture(ShadowPokemonAuraSystem.PreviewInstance owner) {
+        if (pendingCapture != null && pendingCapture.owner == owner) {
+            pendingCapture.owner.cancelPoseCapture(pendingCapture.generation);
+            pendingCapture = null;
         }
-
-        pendingCapture = null;
-        activeCapture = null;
-        completedCapture = null;
-
-        if (result == null || species == null || !species.equals(result.species)) {
-            return null;
+        if (activeCapture != null && activeCapture.owner == owner) {
+            activeCapture.owner.cancelPoseCapture(activeCapture.generation);
+            activeCapture = null;
         }
-        return result;
     }
 
-    private static void addAnchor(GuiCapture capture,
-                                  Matrix4f pose,
-                                  float x,
-                                  float y,
-                                  float z,
-                                  float centerX,
-                                  float centerY,
-                                  float centerZ) {
-        Vector3f transformed = pose.transformPosition(x, y, z, new Vector3f());
-        Vector3f transformedCenter = pose.transformPosition(
-                centerX,
-                centerY,
-                centerZ,
-                new Vector3f()
-        );
-        if (!Float.isFinite(transformed.x)
-                || !Float.isFinite(transformed.y)
-                || !Float.isFinite(transformed.z)
-                || !Float.isFinite(transformedCenter.x)
-                || !Float.isFinite(transformedCenter.y)
-                || !Float.isFinite(transformedCenter.z)) {
-            return;
+    private static boolean consumeCompletedCapture(
+            ShadowPokemonAuraSystem.PreviewInstance owner) {
+        CaptureTicket completed = completedCapture;
+        if (completed == null || completed.owner != owner) {
+            return false;
         }
-        Vector3f outward = normalizedOutward(
-                transformed.x - transformedCenter.x,
-                transformed.y - transformedCenter.y,
-                transformed.z - transformedCenter.z
-        );
-        GuiAnchor anchor = new GuiAnchor(
-                transformed.x,
-                transformed.y,
-                transformed.z,
-                outward.x,
-                outward.y,
-                outward.z
-        );
+        completedCapture = null;
+        return completed.generation == owner.generation();
+    }
 
-        int seen = ++capture.seenAnchorCount;
-        if (capture.anchors.size() < MAX_CAPTURED_ANCHORS) {
-            capture.anchors.add(anchor);
-            return;
-        }
+    private static boolean hasUnconsumedCapture(
+            ShadowPokemonAuraSystem.PreviewInstance owner) {
+        return owner != null && ((pendingCapture != null && pendingCapture.owner == owner)
+                || (activeCapture != null && activeCapture.owner == owner));
+    }
 
-        // Deterministic reservoir sampling keeps the memory bound while still
-        // representing late-traversed bones on complex Cobblemon models.
-        int slot = Math.floorMod(
-                mixHash(capture.species.hashCode() ^ seen * 0x45d9f3b),
-                seen
-        );
-        if (slot < MAX_CAPTURED_ANCHORS) {
-            capture.anchors.set(slot, anchor);
+    private static void cancelTicket(CaptureTicket ticket) {
+        if (ticket != null) {
+            ticket.owner.cancelPoseCapture(ticket.generation);
         }
     }
 
@@ -353,10 +357,10 @@ public final class ShadowPokemonAuraGuiRenderer {
         return anchors;
     }
 
-    private static void renderDensitySplats(List<GuiAnchor> anchors,
-                                             float strength,
-                                             float animationTicks,
-                                             int speciesSeed) {
+    private static void renderPersistentDensitySplats(
+            ShadowPokemonAuraSystem.PreviewInstance owner,
+            float animationTicks,
+            ShadowAuraStyle style) {
         RenderSystem.enableDepthTest();
         RenderSystem.depthMask(false);
         RenderSystem.enableBlend();
@@ -369,7 +373,175 @@ public final class ShadowPokemonAuraGuiRenderer {
         RenderSystem.colorMask(true, true, true, true);
         RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f);
 
-        var shader = ModShaders.SHADOW_POKEMON_AURA_DENSITY;
+        ShadowAuraStyle safeStyle = style == null ? ShadowAuraStyle.DEFAULT : style;
+        ShadowAuraStyleProfile.RenderTuning renderTuning =
+                ShadowAuraStyleProfiles.forStyle(safeStyle).render();
+        var shader = ShadowPokemonAuraFBO.guiDensityShader(safeStyle);
+        var filamentShader = safeStyle == ShadowAuraStyle.XD_FAITHFUL
+                ? ShadowPokemonAuraFBO.filamentDensityShader(true)
+                : null;
+        RenderSystem.setShader(() -> shader);
+        RenderSystem.setShaderTexture(0, DENSITY_TEXTURE);
+
+        Matrix4f simulationToGui = owner.simulationToGui();
+        Vector3f origin = simulationToGui.transformPosition(0.0f, 0.0f, 0.0f, new Vector3f());
+        Vector3f axisX = simulationToGui.transformDirection(1.0f, 0.0f, 0.0f, new Vector3f());
+        Vector3f axisY = simulationToGui.transformDirection(0.0f, 1.0f, 0.0f, new Vector3f());
+        Vector3f axisZ = simulationToGui.transformDirection(0.0f, 0.0f, 1.0f, new Vector3f());
+        float pixelScale = previewPixelScale(axisX, axisY, axisZ);
+
+        Uniform auraTime = shader.getUniform("AuraTime");
+        if (auraTime != null) {
+            auraTime.set(animationTicks / 1200.0f);
+        }
+        Uniform cameraPos = shader.getUniform("CameraPos");
+        if (cameraPos != null) {
+            cameraPos.set(-origin.x, -origin.y, -origin.z);
+        }
+        Uniform noiseScale = shader.getUniform("AuraNoiseScale");
+        if (noiseScale != null) {
+            noiseScale.set(1.0f / Math.max(pixelScale, 0.001f));
+        }
+        Uniform maskFalloff = shader.getUniform("AuraMaskFalloff");
+        if (maskFalloff != null) {
+            maskFalloff.set(WORLD_MASK_FALLOFF);
+        }
+
+        BufferBuilder buffer = Tesselator.getInstance().begin(
+                VertexFormat.Mode.QUADS,
+                DefaultVertexFormat.PARTICLE
+        );
+        ByteBufferBuilder filamentAllocator = filamentShader == null
+                ? null
+                : new ByteBufferBuilder(262144);
+        BufferBuilder filamentBuffer = filamentShader == null
+                ? null
+                : new BufferBuilder(
+                        filamentAllocator,
+                        VertexFormat.Mode.QUADS,
+                        DefaultVertexFormat.PARTICLE);
+        float partial = owner.interpolation();
+        Vector3f centerScratch = new Vector3f();
+        Vector3f velocityScratch = new Vector3f();
+        try {
+            owner.forEachPuff(partial, (
+                x, y, z,
+                velocityX, velocityY, velocityZ,
+                size, alpha, rotation, majorScale, minorScale,
+                broadWeight, sparkWeight, wispWeight, filament
+        ) -> {
+            Vector3f center = simulationToGui.transformPosition(
+                    (float) x,
+                    (float) y,
+                    (float) z,
+                    centerScratch
+            );
+            Vector3f velocity = simulationToGui.transformDirection(
+                    (float) velocityX,
+                    (float) velocityY,
+                    (float) velocityZ,
+                    velocityScratch
+            );
+            double simulationSpeed = Math.sqrt(
+                    velocityX * velocityX
+                            + velocityY * velocityY
+                            + velocityZ * velocityZ
+            );
+            float angle = rotation;
+            if (majorScale > 1.0001f && simulationSpeed > 0.0005) {
+                float velocityAngle = (float) Math.atan2(velocity.y, velocity.x);
+                float speedBlend = (float) Math.min(simulationSpeed / 0.005, 1.0);
+                angle = rotation + speedBlend * wrapAngle(velocityAngle - rotation);
+            }
+            float guiSize = size * pixelScale;
+            BufferBuilder target = filament && filamentBuffer != null
+                    ? filamentBuffer
+                    : buffer;
+            float renderedBroad = broadWeight * renderTuning.broadChannelScale();
+            float renderedSpark = sparkWeight * renderTuning.heatChannelScale();
+            float renderedWisp = wispWeight * renderTuning.wispChannelScale();
+            if (target == filamentBuffer) {
+                renderedBroad = fract(rotation / TAU);
+                renderedSpark = fract((float) (x * 0.17 + y * 0.11 + z * 0.07));
+                renderedWisp = renderTuning.wispChannelScale();
+            }
+            drawPuffQuad(
+                    target,
+                    center.x,
+                    center.y,
+                    center.z,
+                    guiSize * majorScale,
+                    guiSize * minorScale,
+                    angle,
+                    renderedBroad,
+                    renderedSpark,
+                    renderedWisp,
+                    alpha * renderTuning.coverageScale()
+                            * renderTuning.opacityScale()
+            );
+            });
+
+            MeshData mesh = buffer.build();
+            if (mesh != null) {
+                BufferUploader.drawWithShader(mesh);
+            }
+            if (filamentBuffer != null) {
+                MeshData filamentMesh = filamentBuffer.build();
+                if (filamentMesh != null) {
+                    ShadowPokemonAuraSystem.setupFilamentDensityShader(
+                            filamentShader,
+                            animationTicks,
+                            true);
+                    BufferUploader.drawWithShader(filamentMesh);
+                }
+            }
+        } finally {
+            if (filamentAllocator != null) {
+                filamentAllocator.close();
+            }
+        }
+    }
+
+    static float previewPixelScale(Vector3f axisX,
+                                   Vector3f axisY,
+                                   Vector3f axisZ) {
+        // These transformed basis vectors are the columns of simulationToGui.
+        // Reconstruct the screen X/Y row lengths so profile rotation cannot
+        // shrink a screen-facing puff merely by moving scale into the Z
+        // component of an individual column.
+        float screenXScale = (float) Math.sqrt(
+                axisX.x * axisX.x
+                        + axisY.x * axisY.x
+                        + axisZ.x * axisZ.x);
+        float screenYScale = (float) Math.sqrt(
+                axisX.y * axisX.y
+                        + axisY.y * axisY.y
+                        + axisZ.y * axisZ.y);
+        float scale = (screenXScale + screenYScale) * 0.5f;
+        return Float.isFinite(scale) ? Math.max(0.001f, scale) : 1.0f;
+    }
+
+    private static void renderDensitySplats(List<GuiAnchor> anchors,
+                                             float strength,
+                                             float animationTicks,
+                                             int speciesSeed,
+                                             ShadowAuraStyle style) {
+        RenderSystem.enableDepthTest();
+        RenderSystem.depthMask(false);
+        RenderSystem.enableBlend();
+        RenderSystem.blendFunc(
+                com.mojang.blaze3d.platform.GlStateManager.SourceFactor.ONE,
+                com.mojang.blaze3d.platform.GlStateManager.DestFactor.ONE
+        );
+        GL14.glBlendEquation(GL14.GL_FUNC_ADD);
+        RenderSystem.disableCull();
+        RenderSystem.colorMask(true, true, true, true);
+        RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f);
+
+        ShadowAuraStyle safeStyle = style == null ? ShadowAuraStyle.DEFAULT : style;
+        ShadowAuraStyleProfile.RenderTuning renderTuning =
+                ShadowAuraStyleProfiles.forStyle(safeStyle).render();
+        var shader = ShadowPokemonAuraFBO.guiDensityShader(safeStyle);
         RenderSystem.setShader(() -> shader);
         RenderSystem.setShaderTexture(0, DENSITY_TEXTURE);
 
@@ -381,9 +553,9 @@ public final class ShadowPokemonAuraGuiRenderer {
                 projection
         );
 
-        Uniform gameTime = shader.getUniform("GameTime");
-        if (gameTime != null) {
-            gameTime.set(animationTicks / 1200.0f);
+        Uniform auraTime = shader.getUniform("AuraTime");
+        if (auraTime != null) {
+            auraTime.set(animationTicks / 1200.0f);
         }
         Uniform cameraPos = shader.getUniform("CameraPos");
         if (cameraPos != null) {
@@ -414,7 +586,8 @@ public final class ShadowPokemonAuraGuiRenderer {
                 projection,
                 coverageSize,
                 strength,
-                speciesSeed
+                speciesSeed,
+                renderTuning
         );
 
         for (int i = 0; i < puffCount; i++) {
@@ -489,10 +662,11 @@ public final class ShadowPokemonAuraGuiRenderer {
                     size * type.stretchX,
                     size * type.stretchY,
                     rotation,
-                    type.broadWeight,
-                    type.sparkWeight,
-                    type.wispWeight,
-                    alpha
+                    type.broadWeight * renderTuning.broadChannelScale(),
+                    type.sparkWeight * renderTuning.heatChannelScale(),
+                    type.wispWeight * renderTuning.wispChannelScale(),
+                    alpha * renderTuning.coverageScale()
+                            * renderTuning.opacityScale()
             );
         }
 
@@ -502,16 +676,7 @@ public final class ShadowPokemonAuraGuiRenderer {
             if (maskFalloff != null) {
                 maskFalloff.set(GUI_MASK_FALLOFF);
             }
-            try {
-                BufferUploader.drawWithShader(mesh);
-            } finally {
-                // ShaderInstance uniforms persist between draw calls. Restore
-                // the accepted world material value even though the world
-                // path also sets it explicitly before rendering its puffs.
-                if (maskFalloff != null) {
-                    maskFalloff.set(WORLD_MASK_FALLOFF);
-                }
-            }
+            BufferUploader.drawWithShader(mesh);
         }
     }
 
@@ -521,7 +686,8 @@ public final class ShadowPokemonAuraGuiRenderer {
                                             ProjectionContext projection,
                                             float coverageSize,
                                             float strength,
-                                            int speciesSeed) {
+                                            int speciesSeed,
+                                            ShadowAuraStyleProfile.RenderTuning renderTuning) {
         for (int i = 0; i < anchors.size(); i++) {
             ProjectedGuiAnchor projected = anchors.get(i);
             GuiAnchor anchor = projected.anchor;
@@ -555,10 +721,11 @@ public final class ShadowPokemonAuraGuiRenderer {
                     size,
                     size * (1.02f + randomA * 0.16f),
                     randomB * TAU,
-                    1.00f,
+                    renderTuning.broadChannelScale(),
                     0.00f,
-                    0.05f,
-                    alpha
+                    0.05f * renderTuning.wispChannelScale(),
+                    alpha * renderTuning.coverageScale()
+                            * renderTuning.opacityScale()
             );
         }
     }
@@ -659,6 +826,13 @@ public final class ShadowPokemonAuraGuiRenderer {
 
     private static float fract(float value) {
         return value - (float) Math.floor(value);
+    }
+
+    private static float wrapAngle(float angle) {
+        float wrapped = angle;
+        while (wrapped > Math.PI) wrapped -= TAU;
+        while (wrapped < -Math.PI) wrapped += TAU;
+        return wrapped;
     }
 
     static int renderedPuffCount(int anchorCount) {
@@ -839,15 +1013,10 @@ public final class ShadowPokemonAuraGuiRenderer {
         return Mth.clamp(windowDepth + signedDistance, minimum, maximum);
     }
 
-    private static final class GuiCapture {
-        private final ResourceLocation species;
-        private final List<GuiAnchor> anchors = new ArrayList<>();
-        private int seenAnchorCount;
-
-        private GuiCapture(ResourceLocation species) {
-            this.species = species;
-        }
-    }
+    private record CaptureTicket(ShadowPokemonAuraSystem.PreviewInstance owner,
+                                 int generation,
+                                 RenderablePokemon pokemon,
+                                 PosableState expectedState) {}
 
     private record GuiAnchor(float x,
                              float y,

@@ -36,14 +36,14 @@ public abstract class MixinPosableModelAuraMask {
             int color,
             CallbackInfo ci
     ) {
-        ShadowPokemonAuraGuiRenderer.beginRenderedModelCapture();
+        Bone rootPart = ((ModelFrame) (Object) this).getRootPart();
+        ShadowPokemonAuraGuiRenderer.beginRenderedModelCapture(context, stack, rootPart);
 
         Entity renderedEntity = context.getEntity();
         if (!(renderedEntity instanceof PokemonEntity pokemonEntity)) {
             return;
         }
 
-        Bone rootPart = ((ModelFrame) (Object) this).getRootPart();
         ShadowPokemonAuraSystem.beginRenderedModelAnchorCapture(pokemonEntity, stack, rootPart);
         DarkBallCaptureVfx.beginModelSnapshotCapture(pokemonEntity, stack, rootPart);
     }

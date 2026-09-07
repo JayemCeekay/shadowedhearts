@@ -1,7 +1,10 @@
 package com.jayemceekay.shadowedhearts.config;
 
+import com.jayemceekay.shadowedhearts.client.aura.ShadowAuraStyle;
+
 public interface IClientConfig extends IModConfig {
     default boolean enableShadowAura() { return true; }
+    default ShadowAuraStyle shadowAuraStyle() { return ShadowAuraStyle.DEFAULT; }
     default boolean debugShadowAuraEmitters() { return false; }
     default boolean auraScannerEnabled() { return true; }
     default float auraReaderYOffset() { return -0.15f; }

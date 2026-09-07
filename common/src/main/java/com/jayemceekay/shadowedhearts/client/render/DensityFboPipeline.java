@@ -51,6 +51,17 @@ public final class DensityFboPipeline {
     private RenderTarget silhouetteDistanceTargetA;
     private RenderTarget silhouetteDistanceTargetB;
     private RenderTarget silhouetteDistanceResultTarget;
+    private final PixelPresentationTarget worldPixelPresentation =
+            new PixelPresentationTarget();
+    private final PixelPresentationTarget[] worldFractionalMipPresentations = {
+            worldPixelPresentation,
+            new PixelPresentationTarget(),
+            new PixelPresentationTarget(),
+            new PixelPresentationTarget()
+    };
+    private final PixelPresentationTarget guiPixelPresentation =
+            new PixelPresentationTarget();
+    private boolean worldFractionalMipSupported = true;
     private int lastWidth = -1;
     private int lastHeight = -1;
     private int reducedCompositeWidth = -1;
@@ -448,88 +459,82 @@ public final class DensityFboPipeline {
     public int blur(ShaderInstance blurShader, Consumer<ShaderInstance> uniformSetup) {
         if (blurIterations <= 0 || blurShader == null || densityTarget == null || blurTempTarget == null) return 0;
 
-        int prevDrawFramebufferId =
-                GL11.glGetInteger(GL30.GL_DRAW_FRAMEBUFFER_BINDING);
-        int prevReadFramebufferId =
-                GL11.glGetInteger(GL30.GL_READ_FRAMEBUFFER_BINDING);
-        IntBuffer prevViewport = BufferUtils.createIntBuffer(4);
-        GL11.glGetIntegerv(GL11.GL_VIEWPORT, prevViewport);
-        int prevViewportX = prevViewport.get(0);
-        int prevViewportY = prevViewport.get(1);
-        int prevViewportW = prevViewport.get(2);
-        int prevViewportH = prevViewport.get(3);
-
+        RenderTransactionState savedState = RenderTransactionState.capture();
         Matrix4f savedMV = new Matrix4f(RenderSystem.getModelViewMatrix());
         Matrix4f savedProj = new Matrix4f(RenderSystem.getProjectionMatrix());
-        RenderSystem.getModelViewMatrix().identity();
-        RenderSystem.setProjectionMatrix(new Matrix4f(), VertexSorting.ORTHOGRAPHIC_Z);
+        VertexSorting savedVertexSorting = RenderSystem.getVertexSorting();
+        int iterationsRan = 0;
+        try {
+            RenderSystem.getModelViewMatrix().identity();
+            RenderSystem.setProjectionMatrix(new Matrix4f(), VertexSorting.ORTHOGRAPHIC_Z);
 
-        RenderSystem.depthMask(false);
-        RenderSystem.disableDepthTest();
-        RenderSystem.enableBlend();
-        RenderSystem.blendFunc(GlStateManager.SourceFactor.ONE, GlStateManager.DestFactor.ZERO);
+            RenderSystem.colorMask(true, true, true, true);
+            RenderSystem.depthMask(false);
+            RenderSystem.disableDepthTest();
+            RenderSystem.disableCull();
+            GL11.glDisable(GL11.GL_SCISSOR_TEST);
+            RenderSystem.enableBlend();
+            RenderSystem.blendFunc(
+                    GlStateManager.SourceFactor.ONE,
+                    GlStateManager.DestFactor.ZERO);
+            GL20.glBlendEquationSeparate(GL14.GL_FUNC_ADD, GL14.GL_FUNC_ADD);
 
-        float texelW = 1.0f / lastWidth;
-        float texelH = 1.0f / lastHeight;
+            float texelW = 1.0f / lastWidth;
+            float texelH = 1.0f / lastHeight;
 
-        Uniform uDir = blurShader.getUniform("Direction");
-        Uniform uRad = blurShader.getUniform("BlurRadius");
-        Uniform uScreenSize = blurShader.getUniform("ScreenSize");
+            Uniform uDir = blurShader.getUniform("Direction");
+            Uniform uRad = blurShader.getUniform("BlurRadius");
+            Uniform uScreenSize = blurShader.getUniform("ScreenSize");
 
-        if (blurShader.getUniform("Sampler1") != null) {
+            // Keep the original copied scene depth bound throughout every
+            // horizontal and vertical pass. Only the density color attachment
+            // is cleared below, so subsequent iterations remain bilateral.
             int densityDepthTexture = densityTarget.getDepthTextureId();
             RenderSystem.setShaderTexture(1, densityDepthTexture);
             blurShader.setSampler("Sampler1", densityDepthTexture);
+            if (uScreenSize != null) {
+                uScreenSize.set((float) lastWidth, (float) lastHeight);
+            }
+            if (uniformSetup != null) {
+                uniformSetup.accept(blurShader);
+            }
+
+            for (int i = 0; i < blurIterations; i++) {
+                clearTargetUnscissored(blurTempTarget);
+                blurTempTarget.bindWrite(false);
+                RenderSystem.viewport(0, 0, lastWidth, lastHeight);
+                RenderSystem.setShaderTexture(0, densityTarget.getColorTextureId());
+
+                if (uDir != null) uDir.set(texelW, 0.0f);
+                if (uRad != null) uRad.set(blurRadius);
+
+                RenderSystem.setShader(() -> blurShader);
+                drawFullScreenQuad();
+
+                densityTarget.bindWrite(false);
+                RenderSystem.viewport(0, 0, lastWidth, lastHeight);
+                clearColorAttachmentUnscissored();
+                RenderSystem.setShaderTexture(0, blurTempTarget.getColorTextureId());
+
+                if (uDir != null) uDir.set(0.0f, texelH);
+                if (uRad != null) uRad.set(blurRadius);
+
+                RenderSystem.setShader(() -> blurShader);
+                drawFullScreenQuad();
+
+                iterationsRan++;
+            }
+            return iterationsRan;
+        } finally {
+            try {
+                blurShader.clear();
+            } finally {
+                RenderSystem.getModelViewMatrix().set(savedMV);
+                RenderSystem.setProjectionMatrix(
+                        savedProj, savedVertexSorting);
+                savedState.restore();
+            }
         }
-        if (uScreenSize != null) {
-            uScreenSize.set((float) lastWidth, (float) lastHeight);
-        }
-        if (uniformSetup != null) {
-            uniformSetup.accept(blurShader);
-        }
-
-        int iterationsRan = 0;
-        for (int i = 0; i < blurIterations; i++) {
-            clearTargetUnscissored(blurTempTarget);
-            blurTempTarget.bindWrite(false);
-            RenderSystem.viewport(0, 0, lastWidth, lastHeight);
-            RenderSystem.setShaderTexture(0, densityTarget.getColorTextureId());
-
-            if (uDir != null) uDir.set(texelW, 0.0f);
-            if (uRad != null) uRad.set(blurRadius);
-
-            RenderSystem.setShader(() -> blurShader);
-            drawFullScreenQuad();
-
-            clearTargetUnscissored(densityTarget);
-            densityTarget.bindWrite(false);
-            RenderSystem.viewport(0, 0, lastWidth, lastHeight);
-            RenderSystem.setShaderTexture(0, blurTempTarget.getColorTextureId());
-
-            if (uDir != null) uDir.set(0.0f, texelH);
-            if (uRad != null) uRad.set(blurRadius);
-
-            RenderSystem.setShader(() -> blurShader);
-            drawFullScreenQuad();
-
-            iterationsRan++;
-        }
-
-        blurShader.clear();
-
-        GL30.glBindFramebuffer(
-                GL30.GL_DRAW_FRAMEBUFFER, prevDrawFramebufferId);
-        GL30.glBindFramebuffer(
-                GL30.GL_READ_FRAMEBUFFER, prevReadFramebufferId);
-        RenderSystem.viewport(prevViewportX, prevViewportY, prevViewportW, prevViewportH);
-
-        RenderSystem.getModelViewMatrix().set(savedMV);
-        RenderSystem.setProjectionMatrix(savedProj, VertexSorting.DISTANCE_TO_ORIGIN);
-
-        RenderSystem.enableDepthTest();
-        RenderSystem.depthMask(true);
-        RenderSystem.defaultBlendFunc();
-        return iterationsRan;
     }
 
     /**
@@ -978,6 +983,7 @@ public final class DensityFboPipeline {
                 RenderTransactionState.capture();
         Matrix4f savedMV = new Matrix4f(RenderSystem.getModelViewMatrix());
         Matrix4f savedProj = new Matrix4f(RenderSystem.getProjectionMatrix());
+        VertexSorting savedVertexSorting = RenderSystem.getVertexSorting();
         boolean drawSubmitted = false;
         try {
             int viewportWidth = Math.max(
@@ -988,12 +994,10 @@ public final class DensityFboPipeline {
             RenderSystem.setShaderTexture(
                     0, sourceTarget.getColorTextureId());
 
-            Uniform screenSize = shader.getUniform("ScreenSize");
-            if (screenSize != null) {
-                screenSize.set(
-                        (float) viewportWidth,
-                        (float) viewportHeight);
-            }
+            setCompositeSizeUniforms(
+                    shader,
+                    viewportWidth, viewportHeight,
+                    viewportWidth, viewportHeight);
             if (uniformSetup != null) {
                 uniformSetup.accept(shader);
             }
@@ -1022,12 +1026,435 @@ public final class DensityFboPipeline {
             } finally {
                 RenderSystem.getModelViewMatrix().set(savedMV);
                 RenderSystem.setProjectionMatrix(
-                        savedProj, VertexSorting.DISTANCE_TO_ORIGIN);
+                        savedProj, savedVertexSorting);
                 savedState.restore();
             }
         }
 
         return drawSubmitted;
+    }
+
+    /**
+     * Resolves the finished density material into an aura-only low-resolution
+     * RGBA8 target and immediately presents it back over the captured caller
+     * with an integer, framebuffer-anchored pixel grid.
+     *
+     * <p>The density texture itself remains linearly filtered and depth-aware;
+     * only the already-styled color/alpha result is sampled as discrete output
+     * pixels. World and GUI callers own separate persistent targets so changing
+     * GUI scale cannot force the world target to be reallocated every frame.</p>
+     *
+     * @return {@code true} only when both resolve and presentation draws were
+     *         submitted; callers should use their direct composite as fallback
+     */
+    public boolean compositePixelated(
+            ShaderInstance materialShader,
+            Consumer<ShaderInstance> materialUniformSetup,
+            ShaderInstance presentationShader,
+            int pixelSize,
+            boolean guiTarget,
+            float minimumU, float minimumV,
+            float maximumU, float maximumV) {
+        if (densityTarget == null
+                || materialShader == null
+                || presentationShader == null) {
+            return false;
+        }
+
+        int safePixelSize = Math.max(1, pixelSize);
+        PixelPresentationTarget slot = guiTarget
+                ? guiPixelPresentation
+                : worldPixelPresentation;
+        if (!slot.supported) {
+            return false;
+        }
+
+        RenderTransactionState savedState = RenderTransactionState.capture();
+        Matrix4f savedMV = new Matrix4f(RenderSystem.getModelViewMatrix());
+        Matrix4f savedProj = new Matrix4f(RenderSystem.getProjectionMatrix());
+        VertexSorting savedVertexSorting = RenderSystem.getVertexSorting();
+        try {
+            FullscreenPassState destination = savedState.baseState();
+            int outputWidth = Math.max(1, destination.viewportWidth());
+            int outputHeight = Math.max(1, destination.viewportHeight());
+            int targetWidth = pixelPresentationExtent(
+                    outputWidth, safePixelSize);
+            int targetHeight = pixelPresentationExtent(
+                    outputHeight, safePixelSize);
+            if (!ensurePixelPresentationTarget(slot, targetWidth, targetHeight)) {
+                return false;
+            }
+
+            // RenderTarget.clear() obeys the current color-write mask. Iris
+            // and other callers may leave individual channels disabled, so
+            // force a complete transparent clear before reusing this target.
+            RenderSystem.colorMask(true, true, true, true);
+            clearTargetUnscissored(slot.target);
+            slot.target.bindWrite(false);
+            RenderSystem.viewport(0, 0, targetWidth, targetHeight);
+            RenderSystem.setShaderTexture(0, densityTarget.getColorTextureId());
+            setCompositeSizeUniforms(
+                    materialShader,
+                    outputWidth, outputHeight,
+                    targetWidth, targetHeight);
+            setVec2Uniform(
+                    materialShader,
+                    "PixelSize",
+                    safePixelSize,
+                    safePixelSize);
+            if (materialUniformSetup != null) {
+                materialUniformSetup.accept(materialShader);
+            }
+
+            RenderSystem.getModelViewMatrix().identity();
+            RenderSystem.setProjectionMatrix(
+                    new Matrix4f(), VertexSorting.ORTHOGRAPHIC_Z);
+            RenderSystem.setShader(() -> materialShader);
+            RenderSystem.enableBlend();
+            RenderSystem.blendFunc(
+                    GlStateManager.SourceFactor.ONE,
+                    GlStateManager.DestFactor.ZERO);
+            GL20.glBlendEquationSeparate(GL14.GL_FUNC_ADD, GL14.GL_FUNC_ADD);
+            RenderSystem.colorMask(true, true, true, true);
+            RenderSystem.depthMask(false);
+            RenderSystem.disableDepthTest();
+            RenderSystem.disableCull();
+            GL11.glDisable(GL11.GL_SCISSOR_TEST);
+
+            // Resolve one extra low-resolution texel around bounded GUI quads.
+            // The final presentation remains clipped to the caller's exact
+            // rectangle, but edge cells cannot sample an unrendered clear texel.
+            float resolveMinimumU = minimumU - 1.0f / targetWidth;
+            float resolveMinimumV = minimumV - 1.0f / targetHeight;
+            float resolveMaximumU = maximumU + 1.0f / targetWidth;
+            float resolveMaximumV = maximumV + 1.0f / targetHeight;
+            drawScreenQuad(
+                    resolveMinimumU, resolveMinimumV,
+                    resolveMaximumU, resolveMaximumV);
+            GL30.glBindFramebuffer(
+                    GL30.GL_DRAW_FRAMEBUFFER, destination.drawFramebuffer());
+            GL30.glBindFramebuffer(
+                    GL30.GL_READ_FRAMEBUFFER, destination.readFramebuffer());
+            RenderSystem.viewport(
+                    destination.viewportX(), destination.viewportY(),
+                    destination.viewportWidth(), destination.viewportHeight());
+            RenderSystem.setShaderTexture(0, slot.target.getColorTextureId());
+            presentationShader.setSampler(
+                    "Sampler0", slot.target.getColorTextureId());
+
+            Uniform pixelSizeUniform =
+                    presentationShader.getUniform("PixelSize");
+            if (pixelSizeUniform != null) {
+                pixelSizeUniform.set(
+                        (float) safePixelSize,
+                        (float) safePixelSize);
+            }
+            Uniform gridOrigin =
+                    presentationShader.getUniform("GridOrigin");
+            if (gridOrigin != null) {
+                gridOrigin.set(
+                        (float) destination.viewportX(),
+                        (float) destination.viewportY());
+            }
+            Uniform fractionalMipEnabled =
+                    presentationShader.getUniform("FractionalMipEnabled");
+            if (fractionalMipEnabled != null) {
+                // The world presentation program also serves the legacy
+                // integer path. Explicitly select it because uniforms retain
+                // their values between draws.
+                fractionalMipEnabled.set(0.0f);
+            }
+
+            RenderSystem.setShader(() -> presentationShader);
+            RenderSystem.enableBlend();
+            RenderSystem.blendFunc(
+                    GlStateManager.SourceFactor.SRC_ALPHA,
+                    GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA);
+            GL20.glBlendEquationSeparate(GL14.GL_FUNC_ADD, GL14.GL_FUNC_ADD);
+            RenderSystem.colorMask(true, true, true, true);
+            RenderSystem.depthMask(false);
+            RenderSystem.disableDepthTest();
+            RenderSystem.disableCull();
+            GL11.glDisable(GL11.GL_SCISSOR_TEST);
+            drawScreenQuad(minimumU, minimumV, maximumU, maximumV);
+            return true;
+        } catch (RuntimeException presentationFailure) {
+            slot.supported = false;
+            return false;
+        } finally {
+            try {
+                presentationShader.clear();
+                materialShader.clear();
+            } finally {
+                RenderSystem.getModelViewMatrix().set(savedMV);
+                RenderSystem.setProjectionMatrix(
+                        savedProj, savedVertexSorting);
+                savedState.restore();
+            }
+        }
+    }
+
+    /**
+     * Resolves and presents the world aura at a continuous pixel LOD.
+     * LOD {@code 0} is one framebuffer pixel, {@code 1} is two pixels,
+     * {@code 2} is four pixels, and {@code 3} is eight pixels. Fractional
+     * values resolve the adjacent nested grids and blend those two exact
+     * nearest-neighbour samples; an integral LOD resolves only one level.
+     *
+     * <p>This is deliberately world-only. GUI previews retain their fixed
+     * logical-pixel grid through {@link #compositePixelated}.</p>
+     *
+     * @return {@code true} only when all required resolves and the final
+     *         presentation draw were submitted
+     */
+    public boolean compositeFractionalMip(
+            ShaderInstance materialShader,
+            Consumer<ShaderInstance> materialUniformSetup,
+            ShaderInstance presentationShader,
+            float pixelLod,
+            float minimumU, float minimumV,
+            float maximumU, float maximumV) {
+        if (densityTarget == null
+                || materialShader == null
+                || presentationShader == null
+                || !worldFractionalMipSupported) {
+            return false;
+        }
+
+        float safeLod = Float.isFinite(pixelLod)
+                ? Math.max(0.0f, Math.min(3.0f, pixelLod))
+                : 0.0f;
+        int lowerLevel = (int) Math.floor(safeLod);
+        int upperLevel = (int) Math.ceil(safeLod);
+        int lowerPixelSize = 1 << lowerLevel;
+        int upperPixelSize = 1 << upperLevel;
+        float lodBlend = safeLod - lowerLevel;
+        boolean requiresUpperLevel = upperLevel != lowerLevel;
+        PixelPresentationTarget lowerSlot =
+                worldFractionalMipPresentations[lowerLevel];
+        PixelPresentationTarget upperSlot =
+                worldFractionalMipPresentations[upperLevel];
+        if (!lowerSlot.supported
+                || (requiresUpperLevel && !upperSlot.supported)) {
+            return false;
+        }
+
+        RenderTransactionState savedState = RenderTransactionState.capture();
+        Matrix4f savedMV = new Matrix4f(RenderSystem.getModelViewMatrix());
+        Matrix4f savedProj = new Matrix4f(RenderSystem.getProjectionMatrix());
+        VertexSorting savedVertexSorting = RenderSystem.getVertexSorting();
+        try {
+            FullscreenPassState destination = savedState.baseState();
+            int outputWidth = Math.max(1, destination.viewportWidth());
+            int outputHeight = Math.max(1, destination.viewportHeight());
+            int lowerWidth = pixelPresentationExtent(
+                    outputWidth, lowerPixelSize);
+            int lowerHeight = pixelPresentationExtent(
+                    outputHeight, lowerPixelSize);
+            if (!ensurePixelPresentationTarget(
+                    lowerSlot, lowerWidth, lowerHeight)) {
+                return false;
+            }
+
+            int upperWidth = lowerWidth;
+            int upperHeight = lowerHeight;
+            if (requiresUpperLevel) {
+                upperWidth = pixelPresentationExtent(
+                        outputWidth, upperPixelSize);
+                upperHeight = pixelPresentationExtent(
+                        outputHeight, upperPixelSize);
+                if (!ensurePixelPresentationTarget(
+                        upperSlot, upperWidth, upperHeight)) {
+                    return false;
+                }
+            }
+
+            resolvePixelPresentationLevel(
+                    lowerSlot.target,
+                    lowerWidth, lowerHeight,
+                    outputWidth, outputHeight,
+                    lowerPixelSize,
+                    materialShader, materialUniformSetup,
+                    minimumU, minimumV, maximumU, maximumV);
+            if (requiresUpperLevel) {
+                resolvePixelPresentationLevel(
+                        upperSlot.target,
+                        upperWidth, upperHeight,
+                        outputWidth, outputHeight,
+                        upperPixelSize,
+                        materialShader, materialUniformSetup,
+                        minimumU, minimumV, maximumU, maximumV);
+            }
+
+            GL30.glBindFramebuffer(
+                    GL30.GL_DRAW_FRAMEBUFFER, destination.drawFramebuffer());
+            GL30.glBindFramebuffer(
+                    GL30.GL_READ_FRAMEBUFFER, destination.readFramebuffer());
+            RenderSystem.viewport(
+                    destination.viewportX(), destination.viewportY(),
+                    destination.viewportWidth(), destination.viewportHeight());
+            int lowerTexture = lowerSlot.target.getColorTextureId();
+            int upperTexture = upperSlot.target.getColorTextureId();
+            RenderSystem.setShaderTexture(
+                    0, lowerTexture);
+            RenderSystem.setShaderTexture(
+                    1, upperTexture);
+            presentationShader.setSampler("Sampler0", lowerTexture);
+            presentationShader.setSampler("Sampler1", upperTexture);
+
+            setVec2Uniform(
+                    presentationShader, "LowerPixelSize",
+                    lowerPixelSize, lowerPixelSize);
+            setVec2Uniform(
+                    presentationShader, "UpperPixelSize",
+                    upperPixelSize, upperPixelSize);
+            Uniform gridOrigin =
+                    presentationShader.getUniform("GridOrigin");
+            if (gridOrigin != null) {
+                gridOrigin.set(
+                        (float) destination.viewportX(),
+                        (float) destination.viewportY());
+            }
+            Uniform lodBlendUniform =
+                    presentationShader.getUniform("LodBlend");
+            if (lodBlendUniform != null) {
+                lodBlendUniform.set(lodBlend);
+            }
+            Uniform fractionalMipEnabled =
+                    presentationShader.getUniform("FractionalMipEnabled");
+            if (fractionalMipEnabled != null) {
+                fractionalMipEnabled.set(1.0f);
+            }
+
+            RenderSystem.setShader(() -> presentationShader);
+            RenderSystem.enableBlend();
+            RenderSystem.blendFunc(
+                    GlStateManager.SourceFactor.SRC_ALPHA,
+                    GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA);
+            GL20.glBlendEquationSeparate(GL14.GL_FUNC_ADD, GL14.GL_FUNC_ADD);
+            RenderSystem.colorMask(true, true, true, true);
+            RenderSystem.depthMask(false);
+            RenderSystem.disableDepthTest();
+            RenderSystem.disableCull();
+            GL11.glDisable(GL11.GL_SCISSOR_TEST);
+            drawScreenQuad(minimumU, minimumV, maximumU, maximumV);
+            return true;
+        } catch (RuntimeException presentationFailure) {
+            worldFractionalMipSupported = false;
+            return false;
+        } finally {
+            try {
+                presentationShader.clear();
+                materialShader.clear();
+            } finally {
+                RenderSystem.getModelViewMatrix().set(savedMV);
+                RenderSystem.setProjectionMatrix(
+                        savedProj, savedVertexSorting);
+                savedState.restore();
+            }
+        }
+    }
+
+    private void resolvePixelPresentationLevel(
+            TextureTarget target,
+            int targetWidth,
+            int targetHeight,
+            int outputWidth,
+            int outputHeight,
+            int pixelSize,
+            ShaderInstance materialShader,
+            Consumer<ShaderInstance> materialUniformSetup,
+            float minimumU, float minimumV,
+            float maximumU, float maximumV) {
+        // RenderTarget.clear() obeys the current color-write mask. Always
+        // clear all four channels before reusing either mip-level target.
+        RenderSystem.colorMask(true, true, true, true);
+        clearTargetUnscissored(target);
+        target.bindWrite(false);
+        RenderSystem.viewport(0, 0, targetWidth, targetHeight);
+        RenderSystem.setShaderTexture(0, densityTarget.getColorTextureId());
+        setCompositeSizeUniforms(
+                materialShader,
+                outputWidth, outputHeight,
+                targetWidth, targetHeight);
+        setVec2Uniform(
+                materialShader, "PixelSize", pixelSize, pixelSize);
+        if (materialUniformSetup != null) {
+            materialUniformSetup.accept(materialShader);
+        }
+
+        RenderSystem.getModelViewMatrix().identity();
+        RenderSystem.setProjectionMatrix(
+                new Matrix4f(), VertexSorting.ORTHOGRAPHIC_Z);
+        RenderSystem.setShader(() -> materialShader);
+        RenderSystem.enableBlend();
+        RenderSystem.blendFunc(
+                GlStateManager.SourceFactor.ONE,
+                GlStateManager.DestFactor.ZERO);
+        GL20.glBlendEquationSeparate(GL14.GL_FUNC_ADD, GL14.GL_FUNC_ADD);
+        RenderSystem.colorMask(true, true, true, true);
+        RenderSystem.depthMask(false);
+        RenderSystem.disableDepthTest();
+        RenderSystem.disableCull();
+        GL11.glDisable(GL11.GL_SCISSOR_TEST);
+
+        float resolveMinimumU = minimumU - 1.0f / targetWidth;
+        float resolveMinimumV = minimumV - 1.0f / targetHeight;
+        float resolveMaximumU = maximumU + 1.0f / targetWidth;
+        float resolveMaximumV = maximumV + 1.0f / targetHeight;
+        drawScreenQuad(
+                resolveMinimumU, resolveMinimumV,
+                resolveMaximumU, resolveMaximumV);
+    }
+
+    private static void setCompositeSizeUniforms(
+            ShaderInstance shader,
+            int outputWidth, int outputHeight,
+            int renderWidth, int renderHeight) {
+        setVec2Uniform(shader, "ScreenSize", outputWidth, outputHeight);
+        setVec2Uniform(shader, "AuraScreenSize", outputWidth, outputHeight);
+        setVec2Uniform(shader, "RenderSize", renderWidth, renderHeight);
+        setVec2Uniform(shader, "AuraRenderSize", renderWidth, renderHeight);
+    }
+
+    private static void setVec2Uniform(
+            ShaderInstance shader,
+            String name,
+            int x,
+            int y) {
+        Uniform uniform = shader.getUniform(name);
+        if (uniform != null) {
+            uniform.set((float) x, (float) y);
+        }
+    }
+
+    static int pixelPresentationExtent(int outputSize, int pixelSize) {
+        return Math.floorDiv(
+                Math.max(1, outputSize) - 1,
+                Math.max(1, pixelSize)) + 1;
+    }
+
+    private static boolean ensurePixelPresentationTarget(
+            PixelPresentationTarget slot,
+            int targetWidth,
+            int targetHeight) {
+        if (slot.target != null
+                && slot.width == targetWidth
+                && slot.height == targetHeight) {
+            return true;
+        }
+        if (slot.target != null) {
+            slot.target.destroyBuffers();
+            slot.target = null;
+        }
+        slot.target = createValidatedCompactColorTarget(
+                targetWidth, targetHeight, GL11.GL_NEAREST);
+        slot.width = slot.target == null ? -1 : targetWidth;
+        slot.height = slot.target == null ? -1 : targetHeight;
+        if (slot.target == null) {
+            slot.supported = false;
+        }
+        return slot.target != null;
     }
 
     /**
@@ -1073,6 +1500,13 @@ public final class DensityFboPipeline {
             silhouetteDistanceTargetB.destroyBuffers();
             silhouetteDistanceTargetB = null;
         }
+        worldPixelPresentation.destroy();
+        for (int level = 1;
+             level < worldFractionalMipPresentations.length;
+             level++) {
+            worldFractionalMipPresentations[level].destroy();
+        }
+        guiPixelPresentation.destroy();
         silhouetteDistanceResultTarget = null;
         lastWidth = -1;
         lastHeight = -1;
@@ -1083,6 +1517,7 @@ public final class DensityFboPipeline {
         reducedCompositeEnabled = false;
         reducedCompositeSupported = true;
         splatDiagnosticEnabled = false;
+        worldFractionalMipSupported = true;
         surfaceSplatFrontDepthEnabled = false;
         silhouetteDistanceEnabled = false;
         restoreDrawFramebufferId = -1;
@@ -1090,6 +1525,23 @@ public final class DensityFboPipeline {
         renderStateCaptured = false;
         restoreRenderState = null;
         targetGeneration++;
+    }
+
+    private static final class PixelPresentationTarget {
+        private TextureTarget target;
+        private int width = -1;
+        private int height = -1;
+        private boolean supported = true;
+
+        private void destroy() {
+            if (target != null) {
+                target.destroyBuffers();
+                target = null;
+            }
+            width = -1;
+            height = -1;
+            supported = true;
+        }
     }
 
     private boolean ensureTargets(int sourceWidth, int sourceHeight) {

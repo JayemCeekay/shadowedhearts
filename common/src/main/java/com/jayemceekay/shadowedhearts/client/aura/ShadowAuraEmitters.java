@@ -211,8 +211,9 @@ public final class ShadowAuraEmitters {
                                           float corruption,
                                           float partialTicks,
                                           RenderablePokemon pokemon,
-                                          ModelWidget widget) {
-        renderInModelWidgetGUI(context, corruption, partialTicks, pokemon, widget);
+                                          ModelWidget widget,
+                                          ShadowPokemonAuraSystem.PreviewInstance previewAura) {
+        renderInModelWidgetGUI(context, corruption, partialTicks, pokemon, widget, previewAura);
     }
 
     public static void renderInPcGUI(GuiGraphics context,
@@ -220,8 +221,9 @@ public final class ShadowAuraEmitters {
                                      float corruption,
                                      float partialTicks,
                                      RenderablePokemon pokemon,
-                                     ModelWidget widget) {
-        renderInModelWidgetGUI(context, corruption, partialTicks, pokemon, widget);
+                                     ModelWidget widget,
+                                     ShadowPokemonAuraSystem.PreviewInstance previewAura) {
+        renderInModelWidgetGUI(context, corruption, partialTicks, pokemon, widget, previewAura);
     }
 
     public static void renderInPurificationGUI(GuiGraphics context,
@@ -231,13 +233,15 @@ public final class ShadowAuraEmitters {
                                                float partialTicks,
                                                RenderablePokemon pokemon,
                                                com.cobblemon.mod.common.client.render.models.blockbench.PosableState state,
-                                               float x, float y, float width, float height) {
+                                               float x, float y, float width, float height,
+                                               ShadowPokemonAuraSystem.PreviewInstance previewAura) {
         Matrix4f pose = matrices.last().pose();
         Vector3f origin = pose.transformPosition(0.0f, 0.0f, 0.0f, new Vector3f());
         Vector3f unitX = pose.transformDirection(1.0f, 0.0f, 0.0f, new Vector3f());
         float guiScale = Math.max(0.5f, unitX.length());
 
         ShadowPokemonAuraGuiRenderer.render(
+                previewAura,
                 pokemon,
                 corruption,
                 partialTicks,
@@ -257,11 +261,13 @@ public final class ShadowAuraEmitters {
                                                float corruption,
                                                float partialTicks,
                                                RenderablePokemon pokemon,
-                                               ModelWidget widget) {
+                                               ModelWidget widget,
+                                               ShadowPokemonAuraSystem.PreviewInstance previewAura) {
         Vector3f origin = context.pose().last().pose()
                 .transformPosition(0.0f, 0.0f, 0.0f, new Vector3f());
 
         ShadowPokemonAuraGuiRenderer.render(
+                previewAura,
                 pokemon,
                 corruption,
                 partialTicks,

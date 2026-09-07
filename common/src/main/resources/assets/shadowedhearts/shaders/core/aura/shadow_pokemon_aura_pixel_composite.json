@@ -1,0 +1,23 @@
+{
+  "blend": {
+    "func": "add",
+    "srcrgb": "one",
+    "dstrgb": "zero",
+    "alphafunc": "add",
+    "srcalpha": "one",
+    "dstalpha": "zero"
+  },
+  "vertex": "shadowedhearts:aura/shadow_pokemon_aura_pixel_composite",
+  "fragment": "shadowedhearts:aura/shadow_pokemon_aura_pixel_composite",
+  "attributes": [ "Position", "UV0" ],
+  "samplers": [
+    { "name": "Sampler0" }
+  ],
+  "uniforms": [
+    { "name": "ModelViewMat", "type": "matrix4x4", "count": 16, "values": [ 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0 ] },
+    { "name": "ProjMat", "type": "matrix4x4", "count": 16, "values": [ 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0 ] },
+    { "name": "GameTime", "type": "float", "count": 1, "values": [ 0.0 ] },
+    { "name": "ScreenSize", "type": "float", "count": 2, "values": [ 1.0, 1.0 ] },
+    { "name": "PixelSize", "type": "float", "count": 2, "values": [ 2.0, 2.0 ] }
+  ]
+}

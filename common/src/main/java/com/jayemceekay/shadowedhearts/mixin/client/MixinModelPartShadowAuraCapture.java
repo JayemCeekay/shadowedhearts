@@ -47,6 +47,7 @@ public abstract class MixinModelPartShadowAuraCapture {
             int color,
             CallbackInfo ci
     ) {
+        ShadowPokemonAuraGuiRenderer.endRenderedModelPart((ModelPart) (Object) this);
         ShadowPokemonAuraSystem.endRenderedModelPart((ModelPart) (Object) this);
         DarkBallCaptureVfx.endRenderedModelPart((ModelPart) (Object) this);
     }

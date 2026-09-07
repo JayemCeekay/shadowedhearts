@@ -141,11 +141,71 @@ public class ModShadersPlatformImpl {
             evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:aura/shadow_pokemon_aura_density", DefaultVertexFormat.PARTICLE),
                     shader -> ModShaders.SHADOW_POKEMON_AURA_DENSITY = shader);
 
+            evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:aura/shadow_pokemon_aura_gui_density", DefaultVertexFormat.PARTICLE),
+                    shader -> ModShaders.SHADOW_POKEMON_AURA_GUI_DENSITY = shader);
+
             evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:aura/shadow_pokemon_aura_mask", DefaultVertexFormat.NEW_ENTITY),
                     shader -> ModShaders.SHADOW_POKEMON_AURA_MASK = shader);
 
             evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:aura/shadow_pokemon_aura_composite", DefaultVertexFormat.POSITION_TEX),
                     shader -> ModShaders.SHADOW_POKEMON_AURA_COMPOSITE = shader);
+
+            evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:aura/shadow_pokemon_aura_gui_composite", DefaultVertexFormat.POSITION_TEX),
+                    shader -> ModShaders.SHADOW_POKEMON_AURA_GUI_COMPOSITE = shader);
+
+            evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:aura/shadow_pokemon_aura_pixel_composite", DefaultVertexFormat.POSITION_TEX),
+                    shader -> ModShaders.SHADOW_POKEMON_AURA_PIXEL_COMPOSITE = shader);
+
+            evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:aura/shadow_pokemon_aura_gui_pixel_composite", DefaultVertexFormat.POSITION_TEX),
+                    shader -> ModShaders.SHADOW_POKEMON_AURA_GUI_PIXEL_COMPOSITE = shader);
+
+            evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:aura/shadow_pokemon_aura_colosseum_density", DefaultVertexFormat.PARTICLE),
+                    shader -> ModShaders.SHADOW_POKEMON_AURA_COLOSSEUM_DENSITY = shader);
+
+            evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:aura/shadow_pokemon_aura_colosseum_gui_density", DefaultVertexFormat.PARTICLE),
+                    shader -> ModShaders.SHADOW_POKEMON_AURA_COLOSSEUM_GUI_DENSITY = shader);
+
+            evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:aura/shadow_pokemon_aura_colosseum_composite", DefaultVertexFormat.POSITION_TEX),
+                    shader -> ModShaders.SHADOW_POKEMON_AURA_COLOSSEUM_COMPOSITE = shader);
+
+            evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:aura/shadow_pokemon_aura_colosseum_gui_composite", DefaultVertexFormat.POSITION_TEX),
+                    shader -> ModShaders.SHADOW_POKEMON_AURA_COLOSSEUM_GUI_COMPOSITE = shader);
+
+            evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:aura/shadow_pokemon_aura_colosseum_pixel_composite", DefaultVertexFormat.POSITION_TEX),
+                    shader -> ModShaders.SHADOW_POKEMON_AURA_COLOSSEUM_PIXEL_COMPOSITE = shader);
+
+            evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:aura/shadow_pokemon_aura_colosseum_gui_pixel_composite", DefaultVertexFormat.POSITION_TEX),
+                    shader -> ModShaders.SHADOW_POKEMON_AURA_COLOSSEUM_GUI_PIXEL_COMPOSITE = shader);
+
+            evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:aura/shadow_pokemon_aura_xd_faithful_density", DefaultVertexFormat.PARTICLE),
+                    shader -> ModShaders.SHADOW_POKEMON_AURA_XD_FAITHFUL_DENSITY = shader);
+
+            evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:aura/shadow_pokemon_aura_xd_faithful_gui_density", DefaultVertexFormat.PARTICLE),
+                    shader -> ModShaders.SHADOW_POKEMON_AURA_XD_FAITHFUL_GUI_DENSITY = shader);
+
+            evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:aura/shadow_pokemon_aura_xd_faithful_filament_density", DefaultVertexFormat.PARTICLE),
+                    shader -> ModShaders.SHADOW_POKEMON_AURA_XD_FAITHFUL_FILAMENT_DENSITY = shader);
+
+            evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:aura/shadow_pokemon_aura_xd_faithful_gui_filament_density", DefaultVertexFormat.PARTICLE),
+                    shader -> ModShaders.SHADOW_POKEMON_AURA_XD_FAITHFUL_GUI_FILAMENT_DENSITY = shader);
+
+            evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:aura/shadow_pokemon_aura_xd_faithful_composite", DefaultVertexFormat.POSITION_TEX),
+                    shader -> ModShaders.SHADOW_POKEMON_AURA_XD_FAITHFUL_COMPOSITE = shader);
+
+            evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:aura/shadow_pokemon_aura_xd_faithful_gui_composite", DefaultVertexFormat.POSITION_TEX),
+                    shader -> ModShaders.SHADOW_POKEMON_AURA_XD_FAITHFUL_GUI_COMPOSITE = shader);
+
+            evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:aura/shadow_pokemon_aura_xd_faithful_pixel_composite", DefaultVertexFormat.POSITION_TEX),
+                    shader -> ModShaders.SHADOW_POKEMON_AURA_XD_FAITHFUL_PIXEL_COMPOSITE = shader);
+
+            evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:aura/shadow_pokemon_aura_xd_faithful_gui_pixel_composite", DefaultVertexFormat.POSITION_TEX),
+                    shader -> ModShaders.SHADOW_POKEMON_AURA_XD_FAITHFUL_GUI_PIXEL_COMPOSITE = shader);
+
+            evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:aura/shadow_pokemon_aura_present", DefaultVertexFormat.POSITION_TEX),
+                    shader -> ModShaders.SHADOW_POKEMON_AURA_PRESENT = shader);
+
+            evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:aura/shadow_pokemon_aura_gui_present", DefaultVertexFormat.POSITION_TEX),
+                    shader -> ModShaders.SHADOW_POKEMON_AURA_GUI_PRESENT = shader);
 
             // Screen-space electromagnetic static overlay
             evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:interference/aura_static_interference", DefaultVertexFormat.POSITION_TEX),

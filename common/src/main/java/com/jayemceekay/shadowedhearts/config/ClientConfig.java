@@ -1,6 +1,7 @@
 package com.jayemceekay.shadowedhearts.config;
 
 import com.jayemceekay.shadowedhearts.Shadowedhearts;
+import com.jayemceekay.shadowedhearts.client.aura.ShadowAuraStyle;
 import net.neoforged.neoforge.common.ModConfigSpec;
 
 /**
@@ -19,6 +20,7 @@ public final class ClientConfig implements IClientConfig, ISoundConfig {
 
     private static final class Data {
         public ModConfigSpec.BooleanValue enableShadowAura;
+        public ModConfigSpec.ConfigValue<String> shadowAuraStyle;
         public ModConfigSpec.BooleanValue debugShadowAuraEmitters;
         public ModConfigSpec.BooleanValue auraScannerEnabled;
         public ModConfigSpec.BooleanValue useFahrenheitDisplay;
@@ -70,6 +72,15 @@ public final class ClientConfig implements IClientConfig, ISoundConfig {
             enableShadowAura = builder
                     .comment("Master toggle for client-side Shadow aura rendering.")
                     .define("enableShadowAura", true);
+
+            shadowAuraStyle = builder
+                    .comment(
+                            "Default Shadow aura presentation. A Pokemon with an explicit aura-style aspect overrides this value.",
+                            "Allowed values: signature, colosseum, xd_faithful.")
+                    .define(
+                            "shadowAuraStyle",
+                            ShadowAuraStyle.DEFAULT.serializedName(),
+                            ShadowAuraStyle::isValidSerializedName);
 
             debugShadowAuraEmitters = builder
                     .comment("Debug: render tiny red marker spheres at Shadow aura emitter anchor positions.")
@@ -266,6 +277,12 @@ public final class ClientConfig implements IClientConfig, ISoundConfig {
     public boolean enableShadowAura() {
         if (!isLoaded()) return IClientConfig.super.enableShadowAura();
         return DATA.enableShadowAura.get();
+    }
+
+    @Override
+    public ShadowAuraStyle shadowAuraStyle() {
+        if (!isLoaded()) return IClientConfig.super.shadowAuraStyle();
+        return ShadowAuraStyle.fromSerializedName(DATA.shadowAuraStyle.get());
     }
 
     @Override
