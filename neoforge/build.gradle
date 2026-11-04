@@ -122,11 +122,7 @@ dependencies {
 
     //modRuntimeOnly("maven.modrinth:AANobbMI:Pb3OXVqC")
 
-    //cobblemon battle extras
-    modImplementation("maven.modrinth:2iY8VFqL:dD1HHoh5")
 
-    //cobblemon party extras
-    modImplementation("maven.modrinth:x2wZP9kQ:rTJMRXuL")
 
     //cobblemon mega showdown
     modImplementation("maven.modrinth:SszvX85I:BAOrFYvg")

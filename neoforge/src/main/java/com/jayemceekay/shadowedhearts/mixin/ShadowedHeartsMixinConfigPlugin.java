@@ -1,8 +1,6 @@
 package com.jayemceekay.shadowedhearts.mixin;
 
 import net.neoforged.fml.loading.FMLLoader;
-import org.apache.maven.artifact.versioning.DefaultArtifactVersion;
-import org.apache.maven.artifact.versioning.VersionRange;
 import org.objectweb.asm.tree.ClassNode;
 import org.spongepowered.asm.mixin.extensibility.IMixinConfigPlugin;
 import org.spongepowered.asm.mixin.extensibility.IMixinInfo;
@@ -22,51 +20,6 @@ public class ShadowedHeartsMixinConfigPlugin implements IMixinConfigPlugin {
         }
 
         return switch (mixinClassName) {
-            case "com.jayemceekay.shadowedhearts.mixin.cobblemonbattleextras.CobblemonBattleExtras_1_7_24_MoveTileTooltipMixin" -> {
-                var mod = FMLLoader.getLoadingModList().getModFileById("cobblemon_battle_extras");
-                if (mod == null) yield false;
-                try {
-                    yield VersionRange.createFromVersionSpec("(,1.7.24]")
-                            .containsVersion(new DefaultArtifactVersion(mod.versionString()));
-                } catch (Exception e) {
-                    yield false;
-                }
-            }
-            case "com.jayemceekay.shadowedhearts.mixin.cobblemonbattleextras.CobblemonBattleExtras_1_7_25to40_NewMoveTileTooltipMixin" -> {
-                var mod = FMLLoader.getLoadingModList().getModFileById("cobblemon_battle_extras");
-                if (mod == null) yield false;
-                try {
-                    yield VersionRange.createFromVersionSpec("[1.7.25,1.7.40]")
-                            .containsVersion(new DefaultArtifactVersion(mod.versionString()));
-                } catch (Exception e) {
-                    yield false;
-                }
-            }
-
-            case "com.jayemceekay.shadowedhearts.mixin.cobblemonbattleextras.CobblemonBattleExtras_1_7_41_NewMoveTileTooltipMixin",
-                 "com.jayemceekay.shadowedhearts.mixin.cobblemonbattleextras.CobblemonBattleExtrasBattleInfoPanelRendererMixin",
-                 "com.jayemceekay.shadowedhearts.mixin.cobblemonbattleextras.CobblemonBattleExtrasCustomBattleControllerMixin",
-                 "com.jayemceekay.shadowedhearts.mixin.cobblemonbattleextras.CobblemonBattleExtrasCustomTooltipRendererMixin",
-                 "com.jayemceekay.shadowedhearts.mixin.cobblemonbattleextras.CobblemonBattleExtrasMoveDisplayInfoAccessor",
-                 "com.jayemceekay.shadowedhearts.mixin.cobblemonbattleextras.CobblemonBattleExtrasMoveTileVisualDataAccessor",
-                 "com.jayemceekay.shadowedhearts.mixin.cobblemonbattleextras.CobblemonBattleExtrasPartySideRendererMixin",
-                 "com.jayemceekay.shadowedhearts.mixin.cobblemonbattleextras.CobblemonBattleExtrasTypeChartMixin" -> {
-                var mod = FMLLoader.getLoadingModList().getModFileById("cobblemon_battle_extras");
-                if (mod == null) yield false;
-                try {
-                    yield VersionRange.createFromVersionSpec("[1.7.41,)")
-                            .containsVersion(new DefaultArtifactVersion(mod.versionString()));
-                } catch (Exception e) {
-                    yield false;
-                }
-            }
-
-            case "com.jayemceekay.shadowedhearts.mixin.cobblemonpartyextras.MixinCobblemonPartyExtrasCustomTooltipRenderer",
-                 "com.jayemceekay.shadowedhearts.mixin.cobblemonpartyextras.MixinCobblemonPartyExtrasNatureTooltipBuilder",
-                 "com.jayemceekay.shadowedhearts.mixin.cobblemonpartyextras.MixinCobblemonPartyExtrasMoveTooltipBuilder",
-                 "com.jayemceekay.shadowedhearts.mixin.cobblemonpartyextras.MixinCobblemonPartyExtrasMoveTooltipHelper",
-                 "com.jayemceekay.shadowedhearts.mixin.cobblemonpartyextras.MixinCobblemonPartyExtrasSummaryUIMixin" ->
-                    FMLLoader.getLoadingModList().getModFileById("cobblemon_party_extras") != null;
             case "com.jayemceekay.shadowedhearts.mixin.simpletms.MixinPokemonSelectingItemNonBattle" ->
                     FMLLoader.getLoadingModList().getModFileById("simpletms") != null;
             case "com.jayemceekay.shadowedhearts.mixin.rctmod.MixinRCTModMakeBattle" ->

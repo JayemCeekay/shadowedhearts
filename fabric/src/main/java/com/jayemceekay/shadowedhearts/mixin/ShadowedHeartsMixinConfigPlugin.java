@@ -1,9 +1,6 @@
 package com.jayemceekay.shadowedhearts.mixin;
 
 import dev.architectury.platform.Platform;
-import net.fabricmc.loader.api.Version;
-import net.fabricmc.loader.api.VersionParsingException;
-import net.fabricmc.loader.api.metadata.version.VersionPredicate;
 import org.objectweb.asm.tree.ClassNode;
 import org.spongepowered.asm.mixin.extensibility.IMixinConfigPlugin;
 import org.spongepowered.asm.mixin.extensibility.IMixinInfo;
@@ -21,52 +18,6 @@ public class ShadowedHeartsMixinConfigPlugin implements IMixinConfigPlugin {
         }
 
         return switch (mixinClassName) {
-            case "com.jayemceekay.shadowedhearts.mixin.cobblemonbattleextras.CobblemonBattleExtras_1_7_24_MoveTileTooltipMixin" -> {
-                if( !Platform.isModLoaded("cobblemon-battle-extras"))
-                    yield false;
-                var mod = Platform.getMod("cobblemon-battle-extras");
-                if (mod == null) yield false;
-                try {
-                    yield VersionPredicate.parse("<=1.7.24").test(Version.parse(mod.getVersion()));
-                } catch (VersionParsingException e) {
-                    yield false;
-                }
-            }
-            case "com.jayemceekay.shadowedhearts.mixin.cobblemonbattleextras.CobblemonBattleExtras_1_7_25to40_NewMoveTileTooltipMixin" -> {
-                if( !Platform.isModLoaded("cobblemon-battle-extras"))
-                    yield false;
-                var mod = Platform.getMod("cobblemon-battle-extras");
-                if (mod == null) yield false;
-                try {
-                    yield VersionPredicate.parse(">=1.7.25 <=1.7.40").test(Version.parse(mod.getVersion()));
-                } catch (VersionParsingException e) {
-                    yield false;
-                }
-            }
-            case "com.jayemceekay.shadowedhearts.mixin.cobblemonbattleextras.CobblemonBattleExtras_1_7_41_NewMoveTileTooltipMixin",
-                 "com.jayemceekay.shadowedhearts.mixin.cobblemonbattleextras.CobblemonBattleExtrasBattleInfoPanelRendererMixin",
-                 "com.jayemceekay.shadowedhearts.mixin.cobblemonbattleextras.CobblemonBattleExtrasCustomBattleControllerMixin",
-                 "com.jayemceekay.shadowedhearts.mixin.cobblemonbattleextras.CobblemonBattleExtrasCustomTooltipRendererMixin",
-                 "com.jayemceekay.shadowedhearts.mixin.cobblemonbattleextras.CobblemonBattleExtrasMoveDisplayInfoAccessor",
-                 "com.jayemceekay.shadowedhearts.mixin.cobblemonbattleextras.CobblemonBattleExtrasMoveTileVisualDataAccessor",
-                 "com.jayemceekay.shadowedhearts.mixin.cobblemonbattleextras.CobblemonBattleExtrasPartySideRendererMixin",
-                 "com.jayemceekay.shadowedhearts.mixin.cobblemonbattleextras.CobblemonBattleExtrasTypeChartMixin" -> {
-                if( !Platform.isModLoaded("cobblemon-battle-extras"))
-                    yield false;
-                var mod = Platform.getMod("cobblemon-battle-extras");
-                if (mod == null) yield false;
-                try {
-                    yield VersionPredicate.parse(">=1.7.41").test(Version.parse(mod.getVersion()));
-                } catch (VersionParsingException e) {
-                    yield false;
-                }
-            }
-            case "com.jayemceekay.shadowedhearts.mixin.cobblemonpartyextras.MixinCobblemonPartyExtrasCustomTooltipRenderer",
-                 "com.jayemceekay.shadowedhearts.mixin.cobblemonpartyextras.MixinCobblemonPartyExtrasNatureTooltipBuilder",
-                 "com.jayemceekay.shadowedhearts.mixin.cobblemonpartyextras.MixinCobblemonPartyExtrasMoveTooltipBuilder",
-                 "com.jayemceekay.shadowedhearts.mixin.cobblemonpartyextras.MixinCobblemonPartyExtrasMoveTooltipHelper",
-                 "com.jayemceekay.shadowedhearts.mixin.cobblemonpartyextras.MixinCobblemonPartyExtrasSummaryUIMixin" ->
-                    Platform.isModLoaded("cobblemon_party_extras");
             case "com.jayemceekay.shadowedhearts.mixin.simpletms.MixinPokemonSelectingItemNonBattle" ->
                     Platform.isModLoaded("simpletms");
             case "com.jayemceekay.shadowedhearts.mixin.rctmod.MixinRCTModMakeBattle" ->
