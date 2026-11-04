@@ -25,10 +25,10 @@
     { "pokemon": "machop", "weight": 4 },
     { "pokemon": "machoke", "weight": 3 },
     { "pokemon": "machamp", "weight": 2 },
-    { "pokemon": "nidoran_m", "weight": 3 },
+    { "pokemon": "nidoranm", "weight": 3 },
     { "pokemon": "nidorino", "weight": 2 },
     { "pokemon": "nidoking", "weight": 2 },
-    { "pokemon": "nidoran_f", "weight": 3 },
+    { "pokemon": "nidoranf", "weight": 3 },
     { "pokemon": "nidorina", "weight": 2 },
     { "pokemon": "nidoqueen", "weight": 2 },
 
@@ -113,7 +113,7 @@
 
     { "pokemon": "porygon", "weight": 2 },
     { "pokemon": "porygon2", "weight": 1 },
-    { "pokemon": "porygon_z", "weight": 1 },
+    { "pokemon": "porygonz", "weight": 1 },
     { "pokemon": "magnemite", "weight": 3 },
     { "pokemon": "magneton", "weight": 2 },
     { "pokemon": "magnezone", "weight": 1 },
