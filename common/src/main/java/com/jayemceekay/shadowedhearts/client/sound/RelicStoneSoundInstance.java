@@ -31,6 +31,11 @@ public class RelicStoneSoundInstance extends AbstractTickableSoundInstance {
     @Override
     public void tick() {
         tickCount++;
+        Minecraft minecraft = Minecraft.getInstance();
+        if (player == null || minecraft.level == null || minecraft.player != player || player.level() != minecraft.level) {
+            this.stop();
+            return;
+        }
         if (this.player != null && this.player.isAlive()) {
             if (Minecraft.getInstance().level != null && !Minecraft.getInstance().level.getBlockState(pos).is(ModBlocks.RELIC_STONE.get())) {
                 this.stop();

@@ -5,10 +5,14 @@ import com.jayemceekay.shadowedhearts.client.render.armor.AuraReaderModel;
 import com.jayemceekay.shadowedhearts.client.render.armor.SnagMachineAdvancedModel;
 import com.jayemceekay.shadowedhearts.client.render.armor.SnagMachinePrototypeModel;
 import dev.architectury.event.events.client.ClientPlayerEvent;
+import dev.architectury.event.events.client.ClientTickEvent;
 import dev.architectury.registry.client.level.entity.EntityModelLayerRegistry;
 
 public class ShadowedHeartsClient {
     public static void init() {
+        ClientTickEvent.CLIENT_POST.register(client -> {
+            com.jayemceekay.shadowedhearts.client.aura.ShadowAuraEmitters.onClientTick(client);
+        });
 
         EntityModelLayerRegistry.register(
             AuraReaderModel.LAYER_LOCATION,

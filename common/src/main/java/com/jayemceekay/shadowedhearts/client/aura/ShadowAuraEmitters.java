@@ -12,6 +12,7 @@ import com.jayemceekay.shadowedhearts.integration.accessories.SnagAccessoryBridg
 import com.jayemceekay.shadowedhearts.network.aura.AuraLifecyclePacket;
 import com.jayemceekay.shadowedhearts.network.aura.AuraStatePacket;
 import com.jayemceekay.shadowedhearts.registry.ModItems;
+import com.jayemceekay.shadowedhearts.client.sound.LoopingSoundHandle;
 import com.mojang.blaze3d.shaders.Uniform;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.ByteBufferBuilder;
@@ -19,6 +20,8 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.sounds.SoundSource;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.ShaderInstance;
@@ -37,12 +40,42 @@ import java.util.concurrent.ConcurrentHashMap;
  * Rendering is driven by this system, not by the Pokémon's own renderer.
  */
 public final class ShadowAuraEmitters {
-    public static MultiBufferSource.BufferSource buffersOverworld = MultiBufferSource.immediate(new ByteBufferBuilder(786432));
+    // Lifecycle packets and audio do not need native vertex storage. Allocate only if the legacy draw path is used.
+    private static final class LegacyBuffers {
+        private static final MultiBufferSource.BufferSource OVERWORLD = MultiBufferSource.immediate(new ByteBufferBuilder(786432));
+    }
 
     private ShadowAuraEmitters() {
     }
 
     private static final Map<Integer, AuraInstance> ACTIVE = new ConcurrentHashMap<>();
+    private static ClientLevel clientLevel;
+
+    /** World ownership is checked on ticks as well as packets so title screens release old loops. */
+    public static void onClientTick(Minecraft minecraft) {
+        syncWorld(minecraft);
+        if (clientLevel == null) return;
+        long now = clientLevel.getGameTime();
+        ACTIVE.entrySet().removeIf(entry -> {
+            if (!entry.getValue().isExpired(now)) return false;
+            entry.getValue().stopSound();
+            return true;
+        });
+        if (!ShadowedHeartsConfigs.getInstance().getClientConfig().enableShadowAura()) {
+            ACTIVE.values().forEach(AuraInstance::stopSound);
+        } else {
+            // Keep audio available when the accessibility override hides only aura visuals.
+            ACTIVE.values().forEach(AuraInstance::updateSound);
+        }
+    }
+
+    private static void syncWorld(Minecraft minecraft) {
+        if (minecraft.level != clientLevel) {
+            ACTIVE.values().forEach(AuraInstance::stopSound);
+            ACTIVE.clear();
+            clientLevel = minecraft.level;
+        }
+    }
 
 
     /**
@@ -52,6 +85,7 @@ public final class ShadowAuraEmitters {
         if (!ShadowedHeartsConfigs.getInstance().getClientConfig().enableShadowAura()) return;
         var mc = Minecraft.getInstance();
         if (mc == null || mc.level == null) return;
+        syncWorld(mc);
         AuraInstance inst = ACTIVE.getOrDefault(pkt.getEntityId(), null);
         if (inst == null) {
             return;
@@ -106,6 +140,7 @@ public final class ShadowAuraEmitters {
         if (!ShadowedHeartsConfigs.getInstance().getClientConfig().enableShadowAura()) return;
         var mc = Minecraft.getInstance();
         if (mc == null || mc.level == null) return;
+        syncWorld(mc);
         long now = mc.level.getGameTime();
         switch (pkt.getAction()) {
             case START -> {
@@ -116,11 +151,12 @@ public final class ShadowAuraEmitters {
                     for (Map.Entry<Integer, AuraInstance> e : ACTIVE.entrySet()) {
                         AuraInstance ai = e.getValue();
                         if (ai != null && newUuid.equals(ai.entityUuid) && e.getKey() != pkt.getEntityId()) {
-                            ACTIVE.remove(e.getKey());
+                            if (ACTIVE.remove(e.getKey(), ai)) ai.stopSound();
                         }
                     }
                 }
-                ACTIVE.put(pkt.getEntityId(), new AuraInstance(pkt.getEntityId(), ent, now, FADE_IN, (pkt.getSustainOverride() > 0) ? pkt.getSustainOverride() : SUSTAIN, FADE_OUT, pkt.getX(), pkt.getY(), pkt.getZ(), pkt.getDx(), pkt.getDy(), pkt.getDz(), pkt.getBbw(), pkt.getBbh() * pkt.getHeightMultiplier(), pkt.getBbs(), pkt.getCorruption()));
+                AuraInstance previous = ACTIVE.put(pkt.getEntityId(), new AuraInstance(pkt.getEntityId(), ent, now, FADE_IN, (pkt.getSustainOverride() > 0) ? pkt.getSustainOverride() : SUSTAIN, FADE_OUT, pkt.getX(), pkt.getY(), pkt.getZ(), pkt.getDx(), pkt.getDy(), pkt.getDz(), pkt.getBbw(), pkt.getBbh() * pkt.getHeightMultiplier(), pkt.getBbs(), pkt.getCorruption()));
+                if (previous != null) previous.stopSound();
             }
             case FADE_OUT -> {
                 ACTIVE.computeIfPresent(pkt.getEntityId(), (id, inst) -> {
@@ -342,8 +378,6 @@ public final class ShadowAuraEmitters {
             }
 
 
-            inst.updateSound();
-
             // Interpolate position from client-side entity when available; fallback to last server state
             double ix, iy, iz;
             Entity ent = (inst.entityRef != null) ? inst.entityRef.get() : null;
@@ -483,14 +517,14 @@ public final class ShadowAuraEmitters {
                             uu.uMaxThickness().set(radius * (useXd ? 0.65f : 0.65f));
                     }
                 }
-                VertexConsumer vcShell = buffersOverworld.getBuffer(useXd ? AuraRenderTypes.shadow_xd() : AuraRenderTypes.shadow_fog());
+                VertexConsumer vcShell = LegacyBuffers.OVERWORLD.getBuffer(useXd ? AuraRenderTypes.shadow_xd() : AuraRenderTypes.shadow_fog());
                 Matrix4f mat = new Matrix4f();
                 mat = mat.scale(radius, entityHeight, radius);
                 //CylinderBuffers.drawCylinderFlatCaps(vcShell, mat, 0, 0, 0, 0, lodShell);
                 CylinderBuffers.drawCylinderWithDomesLod(vcShell, mat, 1f, 0, 0, 0, 0, lodShell);
                 /*com.jayemceekay.shadowedhearts.client.render.geom.SphereBuffers.drawUnitSphereLod(vcShell, mat, 0, 0, 0, 0, lodShell);*/
                 // Flush the buffer for this render type to ensure per-instance uniforms apply to this aura only
-                buffersOverworld.endLastBatch();
+                LegacyBuffers.OVERWORLD.endLastBatch();
                 poseStack.popPose();
             }
         }
@@ -506,7 +540,7 @@ public final class ShadowAuraEmitters {
         private int entityId;
         private WeakReference<Entity> entityRef;
         private UUID entityUuid;
-        private ShadowAuraSoundInstance soundInstance;
+        private final LoopingSoundHandle<ShadowAuraSoundInstance> sound = new LoopingSoundHandle<>();
 
         // Cached transform/state updated from server (used as fallback/smoothing for size & corruption)
         public double x, y, z;
@@ -555,7 +589,7 @@ public final class ShadowAuraEmitters {
 
         public void updateSound() {
             var mc = Minecraft.getInstance();
-            if (mc == null || mc.level == null) return;
+            if (mc == null || mc.level == null || mc.isPaused()) return;
 
             boolean auraReaderRequired = ShadowedHeartsConfigs.getInstance().getShadowConfig().auraReaderRequiredForAura();
             boolean hasAuraReader = auraReaderRequired && SnagAccessoryBridgeHolder.INSTANCE.isAuraReaderEquipped(mc.player);
@@ -565,17 +599,21 @@ public final class ShadowAuraEmitters {
                 return;
             }
 
-            if (soundInstance == null || soundInstance.isStopped()) {
-                soundInstance = new ShadowAuraSoundInstance(this);
-                mc.getSoundManager().play(soundInstance);
-            }
+            boolean audible = mc.options.getSoundSourceVolume(SoundSource.MASTER) > 0
+                    && mc.options.getSoundSourceVolume(SoundSource.NEUTRAL) > 0
+                    && ShadowedHeartsConfigs.getInstance().getClientConfig().soundConfig().shadowAuraLoopVolume() > 0;
+            sound.update(mc.level.getGameTime(), audible, () -> new ShadowAuraSoundInstance(this),
+                    instance -> !instance.isStopped() && mc.getSoundManager().isActive(instance),
+                    mc.getSoundManager()::play, AuraInstance::disposeSound);
         }
 
         public void stopSound() {
-            if (soundInstance != null) {
-                soundInstance.stopSound();
-                soundInstance = null;
-            }
+            sound.stop(AuraInstance::disposeSound);
+        }
+
+        private static void disposeSound(ShadowAuraSoundInstance sound) {
+            sound.stopSound();
+            Minecraft.getInstance().getSoundManager().stop(sound);
         }
 
         void beginImmediateFadeOut(long now, int outTicks) {
