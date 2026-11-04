@@ -11,11 +11,15 @@
     if (this.field.isWeather("shadowyaura")) this.eachEvent("Weather");
   },
   onWeather(target) {
-    if (target.set.isShadow) return;
+    if (target.set.isShadow || target.volatiles.dig || target.volatiles.dive) return;
     this.damage(target.baseMaxhp / 16);
   },
   onEffectiveness(typeMod, target, type, move) {
-    if (!move || move.type !== "Shadow") return;
+    const config = this.dex.data.Scripts.shadowedhearts?.Config?.shadowMoves || {superEffectiveEnabled: true};
+    if (!config.superEffectiveEnabled || !target || move?.type !== "Shadow") return;
+    // Match Shadow Engine: the configured matchup applies once to the Pokemon,
+    // rather than once per defensive type, and weather must respect its switch.
+    if (type !== target.getTypes()[0]) return 0;
     const isShadowTarget = !!(target?.set?.isShadow);
     return isShadowTarget ? -1 : 1;
   },

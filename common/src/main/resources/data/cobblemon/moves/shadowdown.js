@@ -17,7 +17,7 @@
     boosts: {
         def: -2
     },
-    target: "foeSide",
+    target: "allAdjacentFoes",
     type: "Shadow",
     zMove: {effect: "clearnegativeboost"},
     contestType: "Tough",

@@ -1,6 +1,7 @@
 ({
     accuracy: 100,
     basePower: 80,
+    critRatio: 2,
     category: "Physical",
     desc: "A wicked blade of air is formed using a shadowy aura.",
     name: "Shadow Blast",

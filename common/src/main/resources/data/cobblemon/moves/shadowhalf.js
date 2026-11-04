@@ -22,16 +22,10 @@
         }
     },
     onHitField(target, source, move) {
-        const allMons = this.getAllActive();
-
-        for (const mon of allMons) {
-            if (!mon || !mon.hp) continue;
-            const damage = this.trunc(mon.hp / 2);
-
-            if (damage <= 0) continue;
-
-            this.damage(damage, mon, source, move);
-        }
+        /* Route each occupant through native hit checks: a field-only callback bypasses Protect. */
+        const hit = {...move, target: 'allAdjacent', category: 'Special', self: undefined, onHitField: undefined,
+            damageCallback(user, mon) { return Math.floor(mon.hp / 2); }};
+        this.actions.trySpreadMoveHit(this.getAllActive(), source, hit);
     },
     self: {
         volatileStatus: "mustrecharge",
