@@ -3,6 +3,9 @@ package com.jayemceekay.shadowedhearts.integration.ftbchunks;
 import com.jayemceekay.shadowedhearts.Shadowedhearts;
 import dev.architectury.platform.Platform;
 
+import java.util.function.Consumer;
+import java.util.function.Supplier;
+
 public final class FTBChunksClaimBridgeHolder {
     public static FTBChunksClaimBridge INSTANCE = new NoopFTBChunksClaimBridge();
 
@@ -10,13 +13,13 @@ public final class FTBChunksClaimBridgeHolder {
     }
 
     public static void init() {
-        if (Platform.isModLoaded("ftbchunks")) {
-            try {
-                INSTANCE = new FTBChunksClaimBridgeImpl();
-            } catch (Throwable t) {
-                INSTANCE = new NoopFTBChunksClaimBridge();
-                Shadowedhearts.LOGGER.error("Failed to initialize FTB Chunks claim bridge even though mod is loaded: " + t.getMessage());
-            }
-        }
+        INSTANCE = create(Platform.isModLoaded("ftbchunks"), () -> new FTBChunksClaimBridgeImpl(),
+                error -> Shadowedhearts.LOGGER.error(
+                        "FTB Chunks claim protection is unavailable; protected operations will wait until it recovers", error));
+    }
+
+    static FTBChunksClaimBridge create(boolean installed, Supplier<FTBChunksClaimBridge> initializer,
+                                       Consumer<Throwable> reportFailure) {
+        return installed ? new GuardedFTBChunksClaimBridge(initializer, reportFailure) : new NoopFTBChunksClaimBridge();
     }
 }
