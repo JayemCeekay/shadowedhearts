@@ -30,5 +30,14 @@
 /standalone/
 /blockbench/
 /color palettes/
-/fabric/src/lostLoreGametest/
-/fabric/src/gametest/
+/.kotlin/
+/logs/
+/common/logs/
+/datapacks/*
+/resourcepacks/*
+
+# Local tests, test resources, and test fixtures in every module
+**/src/test/
+**/src/testFixtures/
+**/src/*[Gg]ametest/
+/AGENTS.md
