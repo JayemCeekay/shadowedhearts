@@ -9,27 +9,24 @@ import com.jayemceekay.shadowedhearts.storage.purification.PurificationChamberSt
 object ChamberLogic {
 
     fun advanceSteps(store: PurificationChamberStore, steps: Int, stepAccumulator: Int): Int {
-        var currentAccumulator = stepAccumulator
-        if (steps <= 0) return currentAccumulator
+        if (steps <= 0) return stepAccumulator
         val stepRequirement = ShadowedHeartsConfigs.getInstance().shadowConfig.purificationChamberStepRequirement()
-        currentAccumulator += steps
-        val affectedPokemon = mutableSetOf<Pokemon>()
-        while (currentAccumulator >= stepRequirement) {
-            currentAccumulator -= stepRequirement
-            applyChamberTick(store, affectedPokemon)
-        }
-        affectedPokemon.forEach { ShadowService.syncAll(it) }
-        return currentAccumulator
+        val accumulated = stepAccumulator.toLong() + steps.toLong()
+        val intervals = accumulated / stepRequirement
+        if (intervals > 0) applyChamberTicks(store, intervals)
+        return (accumulated % stepRequirement).toInt()
     }
 
-    private fun applyChamberTick(store: PurificationChamberStore, affectedPokemon: MutableSet<Pokemon>? = null) {
-        var anyChanged = false
-        
-        // We need to iterate over sets. Since sets are private in Store, we might need a way to access them.
-        // For now, I'll assume we'll add a way to access sets in Store or move the logic into a more integrated way.
-        // Actually, let's look at how we can get the sets.
-        
+    private fun applyChamberTicks(store: PurificationChamberStore, intervals: Long) {
+        val affectedPokemon = mutableSetOf<Pokemon>()
         val setsCount = PurificationChamberStore.SETS
+        // Migrate old meter aspects before reading the gauge; otherwise the setter's
+        // compatibility repair could overwrite the newly applied batch reduction.
+        for (setIndex in 0 until setsCount) {
+            if (store.getSupports(setIndex).any { it != null }) {
+                store.getShadow(setIndex)?.let { ShadowAspectUtil.ensureRequiredShadowAspects(it, false) }
+            }
+        }
         val perfectCount = (0 until setsCount).count { setIndex ->
             val ring = store.getSupportRing(setIndex)
             PurificationMath.isPerfectSet(ring)
@@ -41,20 +38,16 @@ object ChamberLogic {
             val delta = PurificationMath.computePurificationDeltaForSet(shadow, supports, perfectCount)
             
             if (delta != 0 && shadow != null) {
-                val shadowMon = shadow as Pokemon
-                val cur = ShadowAspectUtil.getHeartGaugeMeter(shadowMon)
-                val next = cur + delta
-                if (affectedPokemon != null) {
-                    ShadowService.setHeartGauge(shadowMon, null, next, false)
-                    affectedPokemon.add(shadowMon)
-                } else {
-                    ShadowService.setHeartGauge(shadowMon, null, next)
-                }
-                anyChanged = true
+                val cur = ShadowAspectUtil.getHeartGaugeMeter(shadow)
+                // Supports and types are fixed during this call. Batch completed intervals
+                // so a large saved remainder or /sh debug steps input cannot monopolize the server.
+                val next = (cur.toLong() + delta.toLong() * intervals).coerceIn(0L, Int.MAX_VALUE.toLong()).toInt()
+                ShadowService.setHeartGauge(shadow, null, next, false)
+                affectedPokemon.add(shadow)
             }
         }
-        
-        if (anyChanged) {
+        affectedPokemon.forEach { ShadowService.syncAll(it) }
+        if (affectedPokemon.isNotEmpty()) {
             store.touch()
         }
     }

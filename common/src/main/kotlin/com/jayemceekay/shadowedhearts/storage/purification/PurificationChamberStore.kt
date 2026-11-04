@@ -12,6 +12,7 @@ import com.jayemceekay.shadowedhearts.common.shadow.ShadowAspectUtil
 import com.jayemceekay.shadowedhearts.network.purification.client.PurificationChamberSyncPacket
 import net.minecraft.core.RegistryAccess
 import net.minecraft.nbt.CompoundTag
+import net.minecraft.nbt.Tag
 import net.minecraft.server.level.ServerPlayer
 import java.util.*
 
@@ -26,6 +27,7 @@ class PurificationChamberStore(
 
     companion object {
         private const val SET_COUNT_KEY = "SetCount"
+        private const val STEP_ACCUMULATOR_KEY = "StepAccumulator"
         private const val SHADOW_KEY_PREFIX = "Set"
         private const val SHADOW_KEY_SUFFIX = "Shadow"
         private const val SUPPORT_KEY_SUFFIX = "Support"
@@ -213,11 +215,16 @@ class PurificationChamberStore(
      * Context: Minecraft Cobblemon mod; all shadow/purity/corruption terms are gameplay mechanics.
      */
     fun advanceSteps(steps: Int) {
-        stepAccumulator = ChamberLogic.advanceSteps(this, steps, stepAccumulator)
+        val previous = stepAccumulator
+        stepAccumulator = ChamberLogic.advanceSteps(this, steps, previous)
+        // The file-backed store only saves observable changes. Notify after publishing
+        // the remainder, including partial progress that did not alter any Pokemon.
+        if (stepAccumulator != previous) touch()
     }
 
     override fun saveToNBT(nbt: CompoundTag, registryAccess: RegistryAccess): CompoundTag {
         nbt.putShort(SET_COUNT_KEY, sets.size.toShort())
+        nbt.putInt(STEP_ACCUMULATOR_KEY, stepAccumulator)
         sets.forEachIndexed { i, set ->
             set.shadow?.let {
                 nbt.put("${SHADOW_KEY_PREFIX}${i}${SHADOW_KEY_SUFFIX}", it.saveToNBT(registryAccess))
@@ -232,6 +239,9 @@ class PurificationChamberStore(
     }
 
     override fun loadFromNBT(nbt: CompoundTag, registryAccess: RegistryAccess): PokemonStore<PurificationChamberPosition> {
+        stepAccumulator = if (nbt.contains(STEP_ACCUMULATOR_KEY, Tag.TAG_INT.toInt())) {
+            nbt.getInt(STEP_ACCUMULATOR_KEY).coerceAtLeast(0)
+        } else 0
         val count = if (nbt.contains(SET_COUNT_KEY)) nbt.getShort(SET_COUNT_KEY).toInt() else SETS
         sets.clear()
         repeat(count) { sets.add(ChamberSet()) }
@@ -252,6 +262,7 @@ class PurificationChamberStore(
 
     override fun saveToJSON(json: JsonObject, registryAccess: RegistryAccess): JsonObject {
         json.addProperty(SET_COUNT_KEY, sets.size)
+        json.addProperty(STEP_ACCUMULATOR_KEY, stepAccumulator)
         sets.forEachIndexed { i, set ->
             set.shadow?.let { json.add("${SHADOW_KEY_PREFIX}${i}${SHADOW_KEY_SUFFIX}", it.saveToJSON(registryAccess)) }
             for (j in 0 until SUPPORT_SLOTS) {
@@ -262,6 +273,7 @@ class PurificationChamberStore(
     }
 
     override fun loadFromJSON(json: JsonObject, registryAccess: RegistryAccess): PokemonStore<PurificationChamberPosition> {
+        stepAccumulator = readStepAccumulator(json)
         val count = if (json.has(SET_COUNT_KEY)) json.get(SET_COUNT_KEY).asInt else SETS
         sets.clear()
         repeat(count) { sets.add(ChamberSet()) }
@@ -278,6 +290,18 @@ class PurificationChamberStore(
             }
         }
         return this
+    }
+
+    private fun readStepAccumulator(json: JsonObject): Int {
+        val value = json.get(STEP_ACCUMULATOR_KEY) ?: return 0
+        if (!value.isJsonPrimitive || !value.asJsonPrimitive.isNumber) return 0
+        return try {
+            value.asBigDecimal.intValueExact().coerceAtLeast(0)
+        } catch (_: ArithmeticException) {
+            0
+        } catch (_: NumberFormatException) {
+            0
+        }
     }
 
     override fun savePositionToNBT(position: PurificationChamberPosition, nbt: CompoundTag) {
