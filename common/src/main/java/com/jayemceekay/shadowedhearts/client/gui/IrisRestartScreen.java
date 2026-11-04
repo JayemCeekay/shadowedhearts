@@ -11,19 +11,24 @@ public class IrisRestartScreen extends Screen {
     private MultiLineLabel message = MultiLineLabel.EMPTY;
 
     public IrisRestartScreen() {
-        super(Component.literal("Restart Required"));
+        super(Component.translatable("gui.shadowedhearts.iris_restart.title"));
+    }
+
+    @Override
+    public Component getNarrationMessage() {
+        return title.copy().append(". ").append(Component.translatable("gui.shadowedhearts.iris_restart.message"));
     }
 
     @Override
     protected void init() {
         super.init();
-        Component msgText = Component.literal("The iris configuration has been updated. Please restart your client for the changes to take effect.");
+        Component msgText = Component.translatable("gui.shadowedhearts.iris_restart.message");
         this.message = MultiLineLabel.create(this.font, msgText, this.width - 50);
 
         int buttonWidth = 200;
         int startY = Math.max(this.height / 2 + 20, this.message.getLineCount() * 9 + 60);
 
-        this.addRenderableWidget(Button.builder(Component.literal("Return to Title Screen"), button -> {
+        this.addRenderableWidget(Button.builder(Component.translatable("gui.shadowedhearts.iris_restart.return_to_title"), button -> {
             this.minecraft.setScreen(new TitleScreen());
         }).bounds(this.width / 2 - buttonWidth / 2, startY, buttonWidth, 20).build());
     }

@@ -2,7 +2,7 @@ package com.jayemceekay.shadowedhearts.client.gui;
 
 import com.jayemceekay.shadowedhearts.Shadowedhearts;
 import com.jayemceekay.shadowedhearts.client.util.IrisWarningState;
-import dev.architectury.platform.Platform;
+import com.jayemceekay.shadowedhearts.client.util.IrisWarningUtil;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
@@ -12,58 +12,65 @@ import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.network.chat.Component;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.List;
-import java.util.stream.Collectors;
 
 public class IrisWarningScreen extends Screen {
     private final Screen parent;
     private MultiLineLabel message = MultiLineLabel.EMPTY;
+    private Component errorMessage;
 
     public IrisWarningScreen(Screen parent) {
-        super(Component.literal("Cobblemon: Shadowed Hearts Iris Shader Warning"));
+        super(Component.translatable("gui.shadowedhearts.iris_warning.title"));
         this.parent = parent;
     }
 
     @Override
     protected void init() {
         super.init();
-        Component msgText = Component.literal("Iris Shaders is installed. Only by changing ").append(Component.literal("\"allowUnknownShaders=false\"").withStyle(ChatFormatting.BOLD)).append(" to ").append(Component.literal("true").withStyle(ChatFormatting.BOLD, ChatFormatting.GREEN)).append(" in iris.properties will allow shadow pokemon auras to be seen when Iris shaders are enabled.");
-        this.message = MultiLineLabel.create(this.font, msgText, this.width - 50);
+        this.message = MultiLineLabel.create(this.font, messageText(), this.width - 50);
 
         int buttonWidth = 200;
         int startY = Math.max(this.height / 2 + 20, this.message.getLineCount() * 9 + 60);
 
-        this.addRenderableWidget(Button.builder(Component.literal("Do this for me"), button -> {
-            doThisForMe();
-            this.minecraft.setScreen(new IrisRestartScreen());
+        this.addRenderableWidget(Button.builder(Component.translatable("gui.shadowedhearts.iris_warning.configure"), button -> {
+            try {
+                IrisWarningUtil.enableUnknownShaders();
+                this.minecraft.setScreen(new IrisRestartScreen());
+            } catch (IOException exception) {
+                showError("gui.shadowedhearts.iris_warning.update_failed", exception);
+            }
         }).bounds(this.width / 2 - buttonWidth / 2, startY, buttonWidth, 20).build());
 
-        this.addRenderableWidget(Button.builder(Component.literal("Okay"), button -> {
-            this.minecraft.setScreen(new TitleScreen());
+        this.addRenderableWidget(Button.builder(Component.translatable("gui.shadowedhearts.iris_warning.okay"), button -> {
+            onClose();
         }).bounds(this.width / 2 - buttonWidth / 2, startY + 24, buttonWidth, 20).build());
 
-        this.addRenderableWidget(Button.builder(Component.literal("Don't ask me again"), button -> {
-            IrisWarningState.setSkipWarning(true);
-            this.minecraft.setScreen(new TitleScreen());
+        this.addRenderableWidget(Button.builder(Component.translatable("gui.shadowedhearts.iris_warning.skip"), button -> {
+            try {
+                IrisWarningState.getInstance().setSkipWarning(true);
+                onClose();
+            } catch (IOException exception) {
+                showError("gui.shadowedhearts.iris_warning.save_failed", exception);
+            }
         }).bounds(this.width / 2 - buttonWidth / 2, startY + 48, buttonWidth, 20).build());
     }
 
-    private void doThisForMe() {
-        Path configDir = Platform.getConfigFolder();
-        Path irisConfig = configDir.resolve("iris.properties");
-        if (Files.exists(irisConfig)) {
-            try {
-                List<String> lines = Files.readAllLines(irisConfig);
-                List<String> updatedLines = lines.stream()
-                        .map(line -> line.replace("allowUnknownShaders=false", "allowUnknownShaders=true"))
-                        .collect(Collectors.toList());
-                Files.write(irisConfig, updatedLines);
-            } catch (IOException e) {
-                Shadowedhearts.LOGGER.error("Failed to update iris.properties", e);
-            }
-        }
+    private void showError(String translationKey, IOException exception) {
+        Shadowedhearts.LOGGER.error("Iris warning action failed ({})", translationKey, exception);
+        errorMessage = Component.translatable(translationKey).withStyle(ChatFormatting.RED);
+        rebuildWidgets();
+    }
+
+    private Component messageText() {
+        var text = Component.translatable("gui.shadowedhearts.iris_warning.message",
+                Component.literal("\"allowUnknownShaders=false\"").withStyle(ChatFormatting.BOLD),
+                Component.literal("true").withStyle(ChatFormatting.BOLD, ChatFormatting.GREEN));
+        if (errorMessage != null) text.append("\n\n").append(errorMessage);
+        return text;
+    }
+
+    @Override
+    public Component getNarrationMessage() {
+        return title.copy().append(". ").append(messageText());
     }
 
     @Override
@@ -75,11 +82,12 @@ public class IrisWarningScreen extends Screen {
 
     @Override
     public void onClose() {
-        this.minecraft.setScreen(new TitleScreen());
+        IrisWarningState.getInstance().dismissForSession();
+        this.minecraft.setScreen(parent != null ? parent : new TitleScreen());
     }
 
     @Override
     public boolean shouldCloseOnEsc() {
-        return false;
+        return true;
     }
 }

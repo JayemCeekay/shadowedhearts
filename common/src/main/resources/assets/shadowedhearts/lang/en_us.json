@@ -1,4 +1,14 @@
 {
+  "gui.shadowedhearts.iris_restart.message": "Iris settings have been updated. Restart Minecraft for the changes to take effect.",
+  "gui.shadowedhearts.iris_restart.return_to_title": "Return to Title Screen",
+  "gui.shadowedhearts.iris_restart.title": "Restart Required",
+  "gui.shadowedhearts.iris_warning.configure": "Update Iris Settings",
+  "gui.shadowedhearts.iris_warning.message": "Iris Shaders is installed. To allow Shadow Pokémon auras with shaders enabled, change the value in %1$s to %2$s in iris.properties.",
+  "gui.shadowedhearts.iris_warning.okay": "Okay",
+  "gui.shadowedhearts.iris_warning.save_failed": "Could not save this preference. Choose Okay to dismiss the warning for this session.",
+  "gui.shadowedhearts.iris_warning.skip": "Don't ask me again",
+  "gui.shadowedhearts.iris_warning.title": "Cobblemon: Shadowed Hearts Iris Shader Warning",
+  "gui.shadowedhearts.iris_warning.update_failed": "Could not update iris.properties. Check the config file and folder permissions, or choose Okay to continue.",
   "itemGroup.shadowedhearts.main": "Shadowed Hearts",
 
   "block.shadowedhearts.purification_pc": "Purification PC",

@@ -7,27 +7,41 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 public final class IrisWarningState {
-    private static final Path FILE =
-            Platform.getConfigFolder().resolve("shadowedhearts-iris-warning.txt");
+    private final Path file;
+    private boolean dismissedForSession;
 
-    private IrisWarningState() {}
+    IrisWarningState(Path file) {
+        this.file = file;
+    }
 
-    public static boolean skipWarning() {
+    private static final class Holder {
+        private static final IrisWarningState INSTANCE = new IrisWarningState(
+                Platform.getConfigFolder().resolve("shadowedhearts-iris-warning.txt"));
+    }
+
+    public static IrisWarningState getInstance() {
+        return Holder.INSTANCE;
+    }
+
+    public void dismissForSession() {
+        dismissedForSession = true;
+    }
+
+    public boolean skipWarning() {
+        if (dismissedForSession) return true;
         try {
-            if (!Files.exists(FILE)) {
+            if (!Files.exists(file)) {
                 return false;
             }
-            return Files.readString(FILE).trim().equalsIgnoreCase("skip=true");
+            return Files.readString(file).trim().equalsIgnoreCase("skip=true");
         } catch (IOException ignored) {
             return false;
         }
     }
 
-    public static void setSkipWarning(boolean skip) {
-        try {
-            Files.createDirectories(FILE.getParent());
-            Files.writeString(FILE, "skip=" + skip);
-        } catch (IOException ignored) {
-        }
+    public void setSkipWarning(boolean skip) throws IOException {
+        Files.createDirectories(file.getParent());
+        Files.writeString(file, "skip=" + skip);
+        dismissedForSession = skip;
     }
 }
