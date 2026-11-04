@@ -2,13 +2,9 @@ package com.jayemceekay.shadowedhearts.network.purification.server
 
 import com.cobblemon.mod.common.Cobblemon
 import com.cobblemon.mod.common.api.net.ServerNetworkPacketHandler
-import com.cobblemon.mod.common.api.storage.pc.PCPosition
 import com.jayemceekay.shadowedhearts.common.shadow.ShadowAspectUtil
-import com.jayemceekay.shadowedhearts.network.ShadowedHeartsNetwork
 import com.jayemceekay.shadowedhearts.network.purification.MovePCToPurificationPacket
-import com.jayemceekay.shadowedhearts.network.purification.client.PurificationChamberSyncPacket
-import com.jayemceekay.shadowedhearts.storage.purification.PurificationChamberPosition
-import com.jayemceekay.shadowedhearts.storage.purification.PurificationChamberStore
+import com.jayemceekay.shadowedhearts.storage.purification.link.PurificationLinkManager
 import net.minecraft.server.MinecraftServer
 import net.minecraft.server.level.ServerPlayer
 
@@ -18,65 +14,21 @@ import net.minecraft.server.level.ServerPlayer
  */
 object MovePCToPurificationHandler : ServerNetworkPacketHandler<MovePCToPurificationPacket> {
     override fun handle(packet: MovePCToPurificationPacket, server: MinecraftServer, player: ServerPlayer) {
+        val target = PurificationTransfers.position(
+            player.uuid, packet.purificationStoreID, packet.setIndex, packet.targetIndex
+        ) ?: return
+        val purification = PurificationLinkManager.getStore(player) ?: return
         // Use the player's PC store directly; do not rely on PCLinkManager link from a PC block
         val pc = Cobblemon.storage.getPC(player)
 
-        val registryAccess = player.registryAccess()
-        var purification = Cobblemon.storage.getCustomStore(PurificationChamberStore::class.java, packet.purificationStoreID, registryAccess)
-        if (purification == null) {
-            // Fallback: try resolving by the player's UUID (expected to match)
-            purification = Cobblemon.storage.getCustomStore(PurificationChamberStore::class.java, player.uuid, registryAccess)
-        }
-        if (purification == null) {
-            return
-        }
-
-        val pos: PCPosition = packet.pcPosition
-        val pokemon = pc[pos] ?: run {
-            return
-        }
-        if (pokemon.uuid != packet.pokemonID) {
-            return
-        }
-
-        // Determine target position inside PurificationChamberStore
-        val isShadow = packet.targetIndex == 0
-        val supportIdx = (packet.targetIndex - 1).coerceAtLeast(0)
-        val target = PurificationChamberPosition(setIndex = packet.setIndex, index = if (isShadow) 0 else supportIdx, isShadow = isShadow)
-
-        // Validate compatibility BEFORE removing from PC
-        val monIsShadow = ShadowAspectUtil.hasShadowAspect(pokemon)
-        if (isShadow && !monIsShadow) {
-            return
-        }
-        if (!isShadow && monIsShadow) {
-            return
-        }
-
-        // Slot must be empty and type must be compatible; set() checks type compatibility.
-        if (purification[target] != null) {
-            return
-        }
-
-        // Perform move: remove from PC first so storeCoordinates clear, then place into Purification
-        val removed = pc.remove(pos)
-        if (!removed) {
-            return
-        }
-        purification[target] = pokemon
-
-        // Optionally we could send a client sync for Purification; for MVP we rely on UI optimistic update.
-        // after purification[target] = pokemon
-
-        val entries = mutableListOf<PurificationChamberSyncPacket.Entry>()
-        for (setIdx in 0 until 9) { // or store.totalSets
-            for (slotIdx in 0..4) {
-                val pos = PurificationChamberPosition(setIdx, if (slotIdx == 0) 0 else slotIdx - 1, slotIdx == 0)
-                val mon = purification[pos] ?: continue
-                val nbt = mon.saveToNBT(server.registryAccess())
-                entries += PurificationChamberSyncPacket.Entry(setIdx, slotIdx, nbt)
-            }
-        }
-        ShadowedHeartsNetwork.sendToPlayer(player, PurificationChamberSyncPacket(purification.uuid, entries))
+        val moved = PurificationTransfers.transfer(
+            source = PurificationTransfers.slot(pc, packet.pcPosition),
+            destination = PurificationTransfers.slot(purification, target) {
+                target.isShadow == ShadowAspectUtil.hasShadowAspect(it)
+            },
+            allowSwap = false,
+            expectedSource = { it.uuid == packet.pokemonID }
+        )
+        if (moved) purification.sendTo(player)
     }
 }

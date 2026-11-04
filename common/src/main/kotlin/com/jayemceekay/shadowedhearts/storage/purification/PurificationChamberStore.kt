@@ -105,6 +105,7 @@ class PurificationChamberStore(
                 p?.storeCoordinates?.set(StoreCoordinates(this, PurificationChamberPosition(setIndex, idx, false)))
             }
         }
+        rebuildPokemonByUuid()
     }
 
     override fun setAtPosition(position: PurificationChamberPosition, pokemon: Pokemon?) {
@@ -162,6 +163,17 @@ class PurificationChamberStore(
         if (!position.isShadow && isShadow) {
             throw IllegalArgumentException("Shadow Pokémon cannot occupy support slot")
         }
+        super.set(position, pokemon)
+    }
+
+    /**
+     * Restore a captured original after a failed transfer. A just-purified Pokemon may still be
+     * in the center slot awaiting withdrawal, so restoring it must retain that original state.
+     * Ordinary incoming placements continue to use the shadow/support checks in set().
+     */
+    internal fun restoreAfterFailedTransfer(position: PurificationChamberPosition, pokemon: Pokemon) {
+        require(isValidPosition(position)) { "Invalid chamber restoration position" }
+        check(get(position) == null || get(position) === pokemon) { "Cannot overwrite a chamber slot during restoration" }
         super.set(position, pokemon)
     }
 

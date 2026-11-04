@@ -6,6 +6,7 @@ import com.jayemceekay.shadowedhearts.storage.purification.link.ProximityPurific
 import com.jayemceekay.shadowedhearts.storage.purification.link.PurificationLink;
 import com.jayemceekay.shadowedhearts.storage.purification.link.PurificationLinkManager;
 import net.minecraft.core.BlockPos;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
@@ -24,11 +25,11 @@ public class PurificationChamberBlockEntity extends BlockEntity  {
     /**
      * BlockEntity ticker mirroring Cobblemon's PCBlockEntity.TICKER behavior.
      * Server-side: toggles the chamber's ON state when at least one viewer is in range.
-     * Placeholder viewer detection uses proximity until a proper link is added.
+     * Only valid server-authorized chamber sessions count as viewers.
      */
     public static final BlockEntityTicker<PurificationChamberBlockEntity> TICKER = (world, pos, state, be) -> {
         if (world.isClientSide) return;
-        be.togglePCOn(be.getInRangeViewerCount(world, pos, 5.0) > 0);
+        be.togglePCOn(be.getInRangeViewerCount(world, pos, ProximityPurificationLink.MAX_DISTANCE) > 0);
     };
 
     public PurificationChamberBlockEntity(BlockPos pos, BlockState state) {
@@ -82,14 +83,15 @@ public class PurificationChamberBlockEntity extends BlockEntity  {
 
     // ------- PC parity helper predicates (server-authoritative via link manager) -------
     private boolean isPlayerViewing(Player player) {
-        if (player == null) return false;
+        if (!(player instanceof ServerPlayer serverPlayer)) return false;
         if (this.level == null || this.level.isClientSide) return false;
+        if (PurificationLinkManager.INSTANCE.getStore(serverPlayer) == null) return false;
 
         PurificationLink link = PurificationLinkManager.INSTANCE.getLink(player.getUUID());
         if (!(link instanceof ProximityPurificationLink prox)) return false;
 
         // Match this chamber by base position and dimension
-        return this.worldPosition.equals(prox.getPos()) && prox.getWorld().dimension().equals(player.level().dimension());
+        return this.worldPosition.equals(prox.getPos()) && prox.getWorld() == this.level;
     }
 
     private int getInRangeViewerCount(Level world, BlockPos pos, double range) {

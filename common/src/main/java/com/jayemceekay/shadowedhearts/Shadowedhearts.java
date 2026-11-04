@@ -104,6 +104,7 @@ public final class Shadowedhearts {
         ShadowProgressionManager.init();
         ShadowRestrictions.init();
         PurificationStepTracker.INSTANCE.init();
+        com.jayemceekay.shadowedhearts.storage.purification.link.PurificationLinkManager.INSTANCE.init();
         BattleSentOnceListener.INSTANCE.init();
         WildShadowSpawnListener.init();
         ShadowCatchRateListener.init();

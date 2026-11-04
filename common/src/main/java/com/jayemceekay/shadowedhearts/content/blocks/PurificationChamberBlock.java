@@ -37,6 +37,7 @@ import net.minecraft.world.level.block.state.properties.DirectionProperty;
 import net.minecraft.world.level.block.state.properties.EnumProperty;
 import net.minecraft.world.level.gameevent.GameEvent;
 import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -174,6 +175,12 @@ public class PurificationChamberBlock extends Block implements EntityBlock {
         }
 
         if (player instanceof ServerPlayer serverPlayer) {
+            if (level != serverPlayer.serverLevel() || !serverPlayer.isAlive() || serverPlayer.isRemoved()
+                    || serverPlayer.isSpectator()
+                    || serverPlayer.serverLevel().getServer().getPlayerList().getPlayer(serverPlayer.getUUID()) != serverPlayer
+                    || serverPlayer.distanceToSqr(Vec3.atCenterOf(pos)) > ProximityPurificationLink.MAX_DISTANCE * ProximityPurificationLink.MAX_DISTANCE) {
+                return InteractionResult.FAIL;
+            }
             if (PlayerExtensionsKt.isInBattle(serverPlayer)) {
                 serverPlayer.sendSystemMessage(Component.translatable("shadowedhearts.purification_chamber.in_battle").withStyle(ChatFormatting.RED));
                 return InteractionResult.SUCCESS;
@@ -181,22 +188,16 @@ public class PurificationChamberBlock extends Block implements EntityBlock {
 
             // Ensure the player's store exists/loads (persistence handled by Cobblemon)
             PurificationChamberStore store = Cobblemon.INSTANCE.getStorage().getCustomStore(PurificationChamberStore.class, player.getUUID(), player.registryAccess());
-            // Mark store dirty on first open so persistence creates/updates the file even when empty
-            if (store != null) {
-                store.touch();
-                // Register a proximity-based link so server can authorize edits and drive ON state, like PC
-                try {
-                    PurificationLinkManager.INSTANCE.addLink(new ProximityPurificationLink(store, player.getUUID(), pos, serverPlayer.serverLevel()));
-                } catch (Throwable ignored) {
-                    // Fallback if anything goes wrong; UI can still open
-                }
-            }
+            if (store == null) return InteractionResult.FAIL;
+            ProximityPurificationLink link = new ProximityPurificationLink(store, player.getUUID(), pos, serverPlayer.serverLevel());
+            if (!link.isPermitted(serverPlayer)) return InteractionResult.FAIL;
+            PurificationLinkManager.INSTANCE.addLink(link);
+            // Mark store dirty on first open so persistence creates/updates the file even when empty.
+            store.touch();
             OpenPurificationChamberPacket packet = new OpenPurificationChamberPacket(store);
             packet.sendToPlayer(serverPlayer);
             // Send a full snapshot of the store contents so the client UI populates with saved Pokémon
-            if (store != null) {
-                store.sendTo(serverPlayer);
-            }
+            store.sendTo(serverPlayer);
             level.gameEvent(serverPlayer, GameEvent.BLOCK_OPEN, pos);
             return InteractionResult.SUCCESS;
         }
