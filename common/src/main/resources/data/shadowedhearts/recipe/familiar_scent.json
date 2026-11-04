@@ -3,20 +3,21 @@
   "category": "misc",
   "ingredients": [
     {
-      "item": "minecraft:peony"
+      "item": "minecraft:poppy"
     },
     {
-      "item": "minecraft:string"
+      "item": "minecraft:wheat_seeds"
     },
     {
-      "item": "minecraft:sweet_berries"
+      "item": "minecraft:sugar"
     },
     {
       "item": "minecraft:glass_bottle"
     }
   ],
   "result": {
-    "id": "shadowedhearts:familiar_scent"
+    "id": "shadowedhearts:familiar_scent",
+    "count": 2
   },
   "seasoningTag": "cobblemon:empty",
   "seasoningProcessors": []

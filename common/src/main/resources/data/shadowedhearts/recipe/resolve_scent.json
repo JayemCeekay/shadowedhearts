@@ -3,20 +3,21 @@
   "category": "misc",
   "ingredients": [
     {
-      "item": "minecraft:mangrove_roots"
+      "item": "minecraft:azure_bluet"
     },
     {
-      "item": "minecraft:mud"
+      "item": "minecraft:honeycomb"
     },
     {
-      "item": "minecraft:wheat"
+      "item": "minecraft:amethyst_shard"
     },
     {
       "item": "minecraft:glass_bottle"
     }
   ],
   "result": {
-    "id": "shadowedhearts:resolve_scent"
+    "id": "shadowedhearts:resolve_scent",
+    "count": 2
   },
   "seasoningTag": "cobblemon:empty",
   "seasoningProcessors": []

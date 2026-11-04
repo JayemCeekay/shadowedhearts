@@ -3,20 +3,21 @@
   "category": "misc",
   "ingredients": [
     {
-      "item": "minecraft:fern"
+      "item": "minecraft:azure_bluet"
     },
     {
-      "item": "minecraft:moss_carpet"
+      "item": "minecraft:wheat_seeds"
     },
     {
-      "item": "minecraft:clay_ball"
+      "item": "minecraft:sugar"
     },
     {
       "item": "minecraft:glass_bottle"
     }
   ],
   "result": {
-    "id": "shadowedhearts:grounding_scent"
+    "id": "shadowedhearts:grounding_scent",
+    "count": 2
   },
   "seasoningTag": "cobblemon:empty",
   "seasoningProcessors": []

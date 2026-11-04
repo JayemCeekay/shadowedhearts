@@ -3,10 +3,10 @@
   "category": "misc",
   "ingredients": [
     {
-      "item": "minecraft:pink_petals"
+      "item": "minecraft:oxeye_daisy"
     },
     {
-      "item": "minecraft:sweet_berries"
+      "item": "minecraft:wheat_seeds"
     },
     {
       "item": "minecraft:sugar"
@@ -16,7 +16,8 @@
     }
   ],
   "result": {
-    "id": "shadowedhearts:joy_scent"
+    "id": "shadowedhearts:joy_scent",
+    "count": 2
   },
   "seasoningTag": "cobblemon:empty",
   "seasoningProcessors": []

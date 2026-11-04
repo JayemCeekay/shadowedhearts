@@ -3,10 +3,10 @@
   "category": "misc",
   "ingredients": [
     {
-      "item": "minecraft:blue_orchid"
+      "item": "minecraft:oxeye_daisy"
     },
     {
-      "item": "minecraft:wheat"
+      "item": "minecraft:honeycomb"
     },
     {
       "item": "minecraft:sugar"
@@ -16,7 +16,8 @@
     }
   ],
   "result": {
-    "id": "shadowedhearts:tranquil_scent"
+    "id": "shadowedhearts:tranquil_scent",
+    "count": 2
   },
   "seasoningTag": "cobblemon:empty",
   "seasoningProcessors": []

@@ -3,20 +3,21 @@
   "category": "misc",
   "ingredients": [
     {
-      "item": "minecraft:phantom_membrane"
+      "item": "minecraft:cornflower"
     },
     {
-      "item": "minecraft:glow_ink_sac"
+      "item": "minecraft:honeycomb"
     },
     {
-      "item": "minecraft:paper"
+      "item": "minecraft:amethyst_shard"
     },
     {
       "item": "minecraft:glass_bottle"
     }
   ],
   "result": {
-    "id": "shadowedhearts:vivid_scent"
+    "id": "shadowedhearts:vivid_scent",
+    "count": 2
   },
   "seasoningTag": "cobblemon:empty",
   "seasoningProcessors": []

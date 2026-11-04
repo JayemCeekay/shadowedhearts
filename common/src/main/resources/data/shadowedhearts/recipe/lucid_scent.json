@@ -6,7 +6,7 @@
       "item": "minecraft:cornflower"
     },
     {
-      "item": "minecraft:lapis_lazuli"
+      "item": "minecraft:honeycomb"
     },
     {
       "item": "minecraft:sugar"
@@ -16,7 +16,8 @@
     }
   ],
   "result": {
-    "id": "shadowedhearts:lucid_scent"
+    "id": "shadowedhearts:lucid_scent",
+    "count": 2
   },
   "seasoningTag": "cobblemon:empty",
   "seasoningProcessors": []

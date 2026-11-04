@@ -3,20 +3,21 @@
   "category": "misc",
   "ingredients": [
     {
-      "item": "minecraft:lily_of_the_valley"
+      "item": "minecraft:poppy"
     },
     {
       "item": "minecraft:honeycomb"
     },
     {
-      "item": "minecraft:coal"
+      "item": "minecraft:amethyst_shard"
     },
     {
       "item": "minecraft:glass_bottle"
     }
   ],
   "result": {
-    "id": "shadowedhearts:hearth_scent"
+    "id": "shadowedhearts:hearth_scent",
+    "count": 2
   },
   "seasoningTag": "cobblemon:empty",
   "seasoningProcessors": []

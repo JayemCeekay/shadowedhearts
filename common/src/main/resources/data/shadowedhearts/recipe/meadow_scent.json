@@ -6,17 +6,18 @@
       "item": "minecraft:oxeye_daisy"
     },
     {
-      "item": "minecraft:fern"
+      "item": "minecraft:honeycomb"
     },
     {
-      "item": "minecraft:wheat_seeds"
+      "item": "minecraft:amethyst_shard"
     },
     {
       "item": "minecraft:glass_bottle"
     }
   ],
   "result": {
-    "id": "shadowedhearts:meadow_scent"
+    "id": "shadowedhearts:meadow_scent",
+    "count": 2
   },
   "seasoningTag": "cobblemon:empty",
   "seasoningProcessors": []

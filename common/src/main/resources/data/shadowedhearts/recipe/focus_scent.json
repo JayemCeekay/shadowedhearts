@@ -3,20 +3,21 @@
   "category": "misc",
   "ingredients": [
     {
-      "item": "minecraft:torchflower"
+      "item": "minecraft:dandelion"
     },
     {
-      "item": "minecraft:paper"
+      "item": "minecraft:honeycomb"
     },
     {
-      "item": "minecraft:sugar"
+      "item": "minecraft:amethyst_shard"
     },
     {
       "item": "minecraft:glass_bottle"
     }
   ],
   "result": {
-    "id": "shadowedhearts:focus_scent"
+    "id": "shadowedhearts:focus_scent",
+    "count": 2
   },
   "seasoningTag": "cobblemon:empty",
   "seasoningProcessors": []

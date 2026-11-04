@@ -3,20 +3,21 @@
   "category": "misc",
   "ingredients": [
     {
-      "item": "minecraft:flint"
+      "item": "minecraft:azure_bluet"
     },
     {
-      "item": "minecraft:gravel"
+      "item": "minecraft:honeycomb"
     },
     {
-      "item": "minecraft:cobblestone"
+      "item": "minecraft:sugar"
     },
     {
       "item": "minecraft:glass_bottle"
     }
   ],
   "result": {
-    "id": "shadowedhearts:steady_scent"
+    "id": "shadowedhearts:steady_scent",
+    "count": 2
   },
   "seasoningTag": "cobblemon:empty",
   "seasoningProcessors": []
