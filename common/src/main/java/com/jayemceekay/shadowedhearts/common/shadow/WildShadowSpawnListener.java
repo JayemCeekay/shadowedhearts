@@ -53,7 +53,8 @@ public final class WildShadowSpawnListener {
 
             if (chance <= 0) return Unit.INSTANCE;
             if (chance < 100) {
-                int r = RANDOM.nextInt(100);
+                // Preserve fractional percentages, including the default 0.78125% (1 in 128).
+                double r = RANDOM.nextDouble() * 100.0;
                 if (r >= chance) return Unit.INSTANCE;
             }
 

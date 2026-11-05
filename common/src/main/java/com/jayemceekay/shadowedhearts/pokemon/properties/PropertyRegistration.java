@@ -14,6 +14,9 @@ public final class PropertyRegistration {
 
     public static void register() {
         try {
+            CustomPokemonProperty.Companion.register("sh_move_lifecycle", true, MoveLifecycleProperty::parse,
+                    () -> List.of("go_shadow:frustration", "go_purified:return"));
+
             // Directly register our type implementation
             CustomPokemonProperty.Companion.register(new ShadowChancePropertyType());
 
@@ -41,6 +44,11 @@ public final class PropertyRegistration {
                 if (val == null) return null;
                 return new XPBufferProperty(Integer.parseInt(val));
             }, () -> List.of("0", "1000", "5000"));
+
+            CustomPokemonProperty.Companion.register("sh_friendship_buf", true, (val) -> {
+                if (val == null) return null;
+                return new FriendshipBufferProperty(Integer.parseInt(val));
+            }, () -> List.of("0", "10", "70"));
 
             CustomPokemonProperty.Companion.register("sh_ev_buf", true, (val) -> {
                 if (val == null) return null;

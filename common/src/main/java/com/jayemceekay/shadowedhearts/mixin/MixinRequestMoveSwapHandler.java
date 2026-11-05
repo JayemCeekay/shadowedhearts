@@ -2,7 +2,7 @@ package com.jayemceekay.shadowedhearts.mixin;
 
 import com.cobblemon.mod.common.Cobblemon;
 import com.cobblemon.mod.common.net.serverhandling.storage.RequestMoveSwapHandler;
-import com.jayemceekay.shadowedhearts.common.shadow.ShadowAspectUtil;
+import com.jayemceekay.shadowedhearts.common.shadow.restrictions.ShadowRestrictionPolicy;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -20,7 +20,7 @@ public abstract class MixinRequestMoveSwapHandler {
     ) {
         var party = Cobblemon.INSTANCE.getStorage().getParty(player);
         var pokemon = party.get(packet.getSlot());
-        if (ShadowAspectUtil.hasShadowAspect(pokemon)) {
+        if (ShadowRestrictionPolicy.blocksMoveChanges(pokemon)) {
             ci.cancel();
         }
     }

@@ -5,11 +5,14 @@ import com.cobblemon.mod.common.battles.InBattleMove;
 import com.cobblemon.mod.common.client.gui.TypeIcon;
 import com.cobblemon.mod.common.client.gui.battle.subscreen.BattleMoveSelection;
 import com.jayemceekay.shadowedhearts.common.shadow.ShadowAspectUtil;
+import com.jayemceekay.shadowedhearts.client.ShadowBattleMoveDetails;
 import com.jayemceekay.shadowedhearts.util.ShadowMaskingUtil;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.ChatFormatting;
+import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.ResourceLocation;
 import org.spongepowered.asm.mixin.Mixin;
@@ -64,6 +67,9 @@ public abstract class MixinBattleMoveSelectionMoveTile {
         BattleMoveSelection.MoveTile self = (BattleMoveSelection.MoveTile) (Object) this;
         if (shadowedhearts$shouldMask(self)) {
             return ShadowMaskingUtil.MASKED_PP;
+        }
+        if (ShadowBattleMoveDetails.unlimited(self.getMoveTemplate(), self.getPokemon())) {
+            return Component.translatable("ui.shadowedhearts.battle_rules.unlimited_pp").withStyle(ChatFormatting.BOLD);
         }
         return original;
     }

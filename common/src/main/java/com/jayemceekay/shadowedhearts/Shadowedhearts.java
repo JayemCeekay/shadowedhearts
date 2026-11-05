@@ -13,7 +13,6 @@ import com.jayemceekay.shadowedhearts.common.event.battle.ShadowDropListener;
 import com.jayemceekay.shadowedhearts.common.event.player.PurificationStepTracker;
 import com.jayemceekay.shadowedhearts.common.event.pokemon.ShadowAspectValidator;
 import com.jayemceekay.shadowedhearts.common.shadow.NPCShadowInjector;
-import com.jayemceekay.shadowedhearts.common.shadow.ShadowProgressionManager;
 import com.jayemceekay.shadowedhearts.common.shadow.StarterShadowListener;
 import com.jayemceekay.shadowedhearts.common.shadow.WildShadowSpawnListener;
 import com.jayemceekay.shadowedhearts.common.shadow.restrictions.ShadowRestrictions;
@@ -30,6 +29,8 @@ import com.jayemceekay.shadowedhearts.integration.mega_showdown.MegaShowdownBrid
 import com.jayemceekay.shadowedhearts.integration.rctmod.RCTBridgeHolder;
 import com.jayemceekay.shadowedhearts.network.AuraBroadcastQueue;
 import com.jayemceekay.shadowedhearts.network.AuraServerSync;
+import com.jayemceekay.shadowedhearts.network.ShadowRestrictionSettingsSync;
+import com.jayemceekay.shadowedhearts.network.HeartGaugeSettingsSync;
 import com.jayemceekay.shadowedhearts.pokemon.properties.PropertyRegistration;
 import com.jayemceekay.shadowedhearts.registry.*;
 import com.jayemceekay.shadowedhearts.registry.util.ModItemComponents;
@@ -90,6 +91,11 @@ public final class Shadowedhearts {
         ModPoiTypes.init();
         ModCriteriaTriggers.init();
         AuraServerSync.init();
+        ShadowRestrictionSettingsSync.init();
+        HeartGaugeSettingsSync.init();
+        com.jayemceekay.shadowedhearts.network.MoveLifecycleSettingsSync.init();
+        com.jayemceekay.shadowedhearts.network.ShadowBattleSettingsSync.init();
+        com.jayemceekay.shadowedhearts.network.ItemRuleSettingsSync.init();
         AuraReaderService.init();
         AuraReaderEvents.init();
         ModSounds.init();
@@ -100,8 +106,8 @@ public final class Shadowedhearts {
         ModCommands.init();
         ModParticleTypes.register();
         LifecycleEvent.SETUP.register(PropertyRegistration::register);
-        ShadowProgressionManager.init();
         ShadowRestrictions.init();
+        com.jayemceekay.shadowedhearts.common.shadow.restrictions.ShadowHyperTraining.init();
         PurificationStepTracker.INSTANCE.init();
         com.jayemceekay.shadowedhearts.storage.purification.link.PurificationLinkManager.INSTANCE.init();
         BattleSentOnceListener.INSTANCE.init();
@@ -115,6 +121,8 @@ public final class Shadowedhearts {
         PlayerDataExtensionRegistry.INSTANCE.register(ShadowedHeartsPlayerData.NAME, ShadowedHeartsPlayerData.class, false);
         HeartGaugeConfig.ensureLoaded();
         ReloadListenerRegistry.register(PackType.SERVER_DATA, SpeciesTagManager.INSTANCE);
+        ReloadListenerRegistry.register(PackType.SERVER_DATA,
+                (net.minecraft.server.packs.resources.ResourceManagerReloadListener) resources -> HeartGaugeConfig.reload());
 
         RULE_SHADOW_STARTERS = GameRules.register("doShadowStarters", GameRules.Category.MISC, GameRules.BooleanValue.create(false));
 

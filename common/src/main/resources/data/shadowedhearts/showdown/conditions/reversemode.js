@@ -1,23 +1,22 @@
 ({
     name: "Reverse Mode",
     effectType: "VolatileStatus",
+    noCopy: true,
     onStart(pokemon) {
         const config = this.dex.data.Scripts.shadowedhearts?.Config?.reverseMode || {enabled: false};
-        if (pokemon?.set?.isShadow) {
-            this.add('-start', pokemon, 'Reverse Mode');
-            if (pokemon.volatiles['hypermode']) {
-                pokemon.removeVolatile('hypermode');
-            }
-            if (this.turn && this.turn >= 1) {
-                if (!config.enabled) {
-                    delete pokemon.volatiles['reversemode'];
-                    return;
-                }
-                this.add('reverse', 'start', pokemon.getSlot());
-            }
+        if (!config.enabled || !pokemon?.set?.isShadow) return false;
+        pokemon.set.isReverse = true;
+        pokemon.set.isHyper = false;
+        this.add('-start', pokemon, 'Reverse Mode');
+        if (pokemon.volatiles['hypermode']) {
+            pokemon.removeVolatile('hypermode');
+        }
+        if (this.turn && this.turn >= 1) {
+            this.add('reverse', 'start', pokemon.getSlot());
         }
     },
     onEnd(pokemon) {
+        pokemon.set.isReverse = false;
         this.add('-end', pokemon, 'Reverse Mode');
         this.add('reverse', 'end', pokemon.getSlot());
     },

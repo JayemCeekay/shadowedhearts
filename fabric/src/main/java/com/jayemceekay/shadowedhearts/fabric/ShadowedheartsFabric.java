@@ -2,6 +2,7 @@ package com.jayemceekay.shadowedhearts.fabric;
 
 import com.jayemceekay.shadowedhearts.Shadowedhearts;
 import com.jayemceekay.shadowedhearts.config.ModConfig;
+import com.jayemceekay.shadowedhearts.config.HeartGaugeConfig;
 import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs;
 import com.jayemceekay.shadowedhearts.config.SnagConfig;
 import fuzs.forgeconfigapiport.fabric.api.neoforge.v4.NeoForgeConfigRegistry;
@@ -30,6 +31,7 @@ public final class ShadowedheartsFabric implements ModInitializer {
 
         NeoForgeModConfigEvents.loading(Shadowedhearts.MOD_ID).register(config -> {
             if (config.getSpec() == ModConfig.SPEC) {
+                configureHeartGaugeFallback(config);
                 ShadowedHeartsConfigs.getInstance().getShadowConfig().load();
                 Shadowedhearts.injectShowdownConfig();
             } else if (config.getSpec() == SnagConfig.SPEC) {
@@ -39,10 +41,17 @@ public final class ShadowedheartsFabric implements ModInitializer {
 
         NeoForgeModConfigEvents.reloading(Shadowedhearts.MOD_ID).register(config -> {
             if (config.getSpec() == ModConfig.SPEC) {
+                configureHeartGaugeFallback(config);
                 ShadowedHeartsConfigs.getInstance().getShadowConfig().load();
                 Shadowedhearts.injectShowdownConfig();
             } else if (config.getSpec() == SnagConfig.SPEC) {
                 ShadowedHeartsConfigs.getInstance().getSnagConfig().load();
+            }
+        });
+
+        NeoForgeModConfigEvents.unloading(Shadowedhearts.MOD_ID).register(config -> {
+            if (config.getSpec() == ModConfig.SPEC) {
+                HeartGaugeConfig.reset();
             }
         });
 
@@ -53,5 +62,14 @@ public final class ShadowedheartsFabric implements ModInitializer {
         com.jayemceekay.shadowedhearts.fabric.net.ShadowedHeartsFabricNetworkManager.registerMessages();
         // Register C2S codecs and server handlers
         com.jayemceekay.shadowedhearts.fabric.net.ShadowedHeartsFabricNetworkManager.registerServerHandlers();
+    }
+    private static void configureHeartGaugeFallback(net.neoforged.fml.config.ModConfig config) {
+        try {
+            config.getFullPath();
+            HeartGaugeConfig.setLegacyFallbackAllowed(true);
+        } catch (IllegalStateException nonFileConfig) {
+            // Remote server config snapshots have no local backing file.
+            HeartGaugeConfig.setLegacyFallbackAllowed(false);
+        }
     }
 }

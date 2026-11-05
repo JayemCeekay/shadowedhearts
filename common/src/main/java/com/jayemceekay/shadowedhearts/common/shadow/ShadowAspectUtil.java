@@ -9,6 +9,9 @@ import com.cobblemon.mod.common.net.messages.client.pokemon.update.MoveSetUpdate
 import com.cobblemon.mod.common.pokemon.Pokemon;
 import com.cobblemon.mod.common.pokemon.RenderablePokemon;
 import com.jayemceekay.shadowedhearts.Shadowedhearts;
+import com.jayemceekay.shadowedhearts.common.heart.HeartGaugeBattleSync;
+import com.jayemceekay.shadowedhearts.common.shadow.restrictions.HeartGaugeUnlockRules;
+import com.jayemceekay.shadowedhearts.common.shadow.restrictions.ShadowRestrictionSettings;
 import com.jayemceekay.shadowedhearts.config.HeartGaugeConfig;
 import com.jayemceekay.shadowedhearts.config.IShadowConfig;
 import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs;
@@ -166,10 +169,7 @@ public final class ShadowAspectUtil {
         ensureShadowMaxIVs(pokemon);
 
         // Ensure defaults if missing both in properties and aspects
-        if (getHeartGaugeValueFromProperty(pokemon) == -1) {
-            setHeartGaugeProperty(pokemon, HeartGaugeConfig.getMax(pokemon), false);
-            changed = true;
-        }
+        changed |= initializeMissingHeartGauge(pokemon);
         if (getXPBufferFromProperty(pokemon) == -1) {
             setXPBufferProperty(pokemon, 0, false);
             changed = true;
@@ -190,6 +190,19 @@ public final class ShadowAspectUtil {
             }
         }
 
+    }
+
+    /** Restore saved progress verbatim; create a default only after authored species/max are final. */
+    static boolean initializeMissingHeartGauge(Pokemon pokemon) {
+        if (getHeartGaugeValueFromProperty(pokemon) != -1) return false;
+        if (pokemon.getPersistentData().contains(NBT_HEART_GAUGE, Tag.TAG_ANY_NUMERIC)
+                && pokemon.getPersistentData().getInt(NBT_HEART_GAUGE) >= 0) {
+            setHeartGaugeProperty(pokemon, pokemon.getPersistentData().getInt(NBT_HEART_GAUGE), false);
+        } else {
+            if (ShadowHeartGaugeInitialization.deferDefault(pokemon)) return false;
+            setHeartGaugeProperty(pokemon, HeartGaugeConfig.getMax(pokemon), false);
+        }
+        return true;
     }
 
     /**
@@ -296,6 +309,8 @@ public final class ShadowAspectUtil {
         pokemon.getCustomProperties().removeIf(p -> p instanceof HeartGaugeProperty);
         pokemon.getCustomProperties().add(new HeartGaugeProperty(value));
         pokemon.getPersistentData().putInt(NBT_HEART_GAUGE, value);
+        // Keep simulator state current even when Minecraft property notifications are batched.
+        HeartGaugeBattleSync.sync(pokemon, null);
         if (sync) syncProperties(pokemon);
     }
 
@@ -383,6 +398,7 @@ public final class ShadowAspectUtil {
         pokemon.getCustomProperties().removeIf(p -> p instanceof HeartGaugeMaxProperty);
         pokemon.getCustomProperties().add(new HeartGaugeMaxProperty(value));
         pokemon.getPersistentData().putInt(NBT_HEART_GAUGE_MAX, value);
+        HeartGaugeBattleSync.sync(pokemon, null);
         if (sync) syncProperties(pokemon);
     }
 
@@ -416,6 +432,7 @@ public final class ShadowAspectUtil {
                         ? pokemon.getPersistentData().getLong(NBT_SCENT_COOLDOWN) : -1L);
     }
 
+    /** Rounded presentation intensity, not a purification eligibility check. */
     public static float getHeartGauge(Pokemon pokemon) {
         int percent = getHeartGaugeValue(pokemon);
         if (percent >= 0) return percent / 100f;
@@ -492,6 +509,11 @@ public final class ShadowAspectUtil {
         return hasShadowAspect(pokemon) ? max : 0;
     }
 
+    /** A rounded zero percent is not enough: the absolute meter must be empty. */
+    public static boolean isReadyForPurification(Pokemon pokemon) {
+        return hasShadowAspect(pokemon) && getHeartGaugeMeter(pokemon) == 0;
+    }
+
     // ---------------- Heart Gauge visibility helpers ----------------
 
     /**
@@ -513,48 +535,54 @@ public final class ShadowAspectUtil {
         return (int) Math.ceil(p / 20.0);
     }
 
-    /**
-     * Nature is hidden while bars > 40% (i.e., 3+ bars remaining).
-     */
+    /** Nature visibility follows the server's reveal threshold (40% by default). */
     public static boolean isNatureHiddenByGauge(Pokemon pokemon) {
-        return getBarsRemaining(pokemon) > 2;
+        if (!hasShadowAspect(pokemon)) return false;
+        var settings = ShadowRestrictionSettings.forPokemon(pokemon);
+        return HeartGaugeUnlockRules.isHidden(getHeartGaugeMeter(pokemon), HeartGaugeConfig.getMax(pokemon),
+                settings.hideNature(), settings.natureRevealPercent(), settings.exactThresholds());
     }
 
     /**
-     * Level/EXP are hidden while bars > 40% (revealed at < 3 bars).
+     * Level/EXP visibility is independent of EXP buffering.
      */
     public static boolean isLevelExpHiddenByGauge(Pokemon pokemon) {
-        return getBarsRemaining(pokemon) > 2;
+        if (!hasShadowAspect(pokemon)) return false;
+        var settings = ShadowRestrictionSettings.forPokemon(pokemon);
+        return HeartGaugeUnlockRules.isHidden(getHeartGaugeMeter(pokemon), HeartGaugeConfig.getMax(pokemon),
+                settings.hideLevelAndExperience(), settings.levelExpRevealPercent(), settings.exactThresholds());
     }
 
     /**
-     * EVs are hidden until the gauge reaches 2 bars or fewer (revealed at 2 bars).
+     * EV visibility is independent of EV buffering.
      */
     public static boolean isEVHiddenByGauge(Pokemon pokemon) {
-        return getBarsRemaining(pokemon) > 2;
+        if (!hasShadowAspect(pokemon)) return false;
+        var settings = ShadowRestrictionSettings.forPokemon(pokemon);
+        return HeartGaugeUnlockRules.isHidden(getHeartGaugeMeter(pokemon), HeartGaugeConfig.getMax(pokemon),
+                settings.hideEVs(), settings.evRevealPercent(), settings.exactThresholds());
     }
 
     /**
-     * IVs are hidden until the gauge reaches 2 bars or fewer (revealed at 2 bars).
+     * IV visibility follows the server's reveal threshold.
      */
     public static boolean isIVHiddenByGauge(Pokemon pokemon) {
-        return getBarsRemaining(pokemon) > 2;
+        if (!hasShadowAspect(pokemon)) return false;
+        var settings = ShadowRestrictionSettings.forPokemon(pokemon);
+        return HeartGaugeUnlockRules.isHidden(getHeartGaugeMeter(pokemon), HeartGaugeConfig.getMax(pokemon),
+                settings.hideIVs(), settings.ivRevealPercent(), settings.exactThresholds());
     }
 
     /**
-     * Determines how many non-Shadow moves may be visibly revealed by the current gauge state.
-     * Thresholds (from design doc):
-     * - < 4 bars (<= 80%) => 1st non-Shadow move
-     * - < 2 bars (<= 40%) => 2nd non-Shadow move
-     * - < 1 bar  (<= 20%) => 3rd non-Shadow move
-     * - 0%               => all
+     * Shared visibility and battle-use gate. Defaults preserve the original 79/40/20 thresholds.
+     * Disabling the restriction allows all ordinary moves without removing assigned Shadow moves.
      */
     public static int getAllowedVisibleNonShadowMoves(Pokemon pokemon) {
-        int percent = Math.max(0, Math.min(100, getHeartGaugePercent(pokemon)));
-        if (percent <= 20) return 3;
-        if (percent <= 40) return 2;
-        if (percent < 80) return 1; // 41..79
-        return 0; // 80..100
+        if (!hasShadowAspect(pokemon)) return MoveSet.MOVE_COUNT;
+        var settings = ShadowRestrictionSettings.forPokemon(pokemon);
+        return HeartGaugeUnlockRules.allowedNonShadowMoves(getHeartGaugeMeter(pokemon), HeartGaugeConfig.getMax(pokemon),
+                settings.restrictNonShadowMoves(), settings.firstMoveUnlockPercent(),
+                settings.secondMoveUnlockPercent(), settings.thirdMoveUnlockPercent(), settings.exactThresholds());
     }
 
     // ---------------- Pending EXP buffer helpers ----------------
@@ -607,6 +635,19 @@ public final class ShadowAspectUtil {
      * Returns a 6-length array of pending EVs in order: HP, ATK, DEF, SPA, SPD, SPE.
      */
     public static int[] getBufferedEvs(Pokemon pokemon) {
+        return ShadowProgressionRules.normalizeEvs(existingEvs(pokemon), getStoredBufferedEvs(pokemon));
+    }
+
+    private static int[] existingEvs(Pokemon pokemon) {
+        int[] values = new int[6];
+        for (Stats stat : Stats.values()) {
+            int index = statToIndex(stat);
+            if (index >= 0) values[index] = pokemon.getEvs().getOrDefault(stat);
+        }
+        return values;
+    }
+
+    private static int[] getStoredBufferedEvs(Pokemon pokemon) {
         int[] propertyValues = getEVBufferFromProperty(pokemon);
         if (propertyValues != null) return propertyValues;
 
@@ -636,26 +677,23 @@ public final class ShadowAspectUtil {
      * Replace pending EVs with provided values. Array must be length 6.
      */
     public static void setBufferedEvs(Pokemon pokemon, int[] values) {
-        if (values == null || values.length != 6)
-            values = new int[]{0, 0, 0, 0, 0, 0};
-        // sanitize
-        for (int i = 0; i < 6; i++) {
-            if (values[i] < 0) values[i] = 0;
-        }
-        setEVBufferProperty(pokemon, values);
+        setEVBufferProperty(pokemon, ShadowProgressionRules.normalizeEvs(existingEvs(pokemon), values));
     }
 
     /**
      * Adds pending EV to a given stat.
      */
     public static void addBufferedEv(Pokemon pokemon, Stat stat, int delta) {
-        if (delta <= 0) return;
-        int[] buf = getBufferedEvs(pokemon);
-        int idx = statToIndex(stat);
-        if (idx < 0) return; // ignore non-permanent stats
-        long sum = (long) buf[idx] + (long) delta;
-        buf[idx] = (int) Math.min(sum, Integer.MAX_VALUE);
-        setBufferedEvs(pokemon, buf);
+        acceptBufferedEv(pokemon, stat, delta);
+    }
+
+    /** Returns the actual accepted gain for native item success/consumption and POST events. */
+    public static int acceptBufferedEv(Pokemon pokemon, Stat stat, int delta) {
+        if (delta <= 0) return 0;
+        var gain = ShadowProgressionRules.addEvs(existingEvs(pokemon), getStoredBufferedEvs(pokemon),
+                statToIndex(stat), delta);
+        if (gain.accepted() > 0) setEVBufferProperty(pokemon, gain.buffer());
+        return gain.accepted();
     }
 
     /**
@@ -707,7 +745,7 @@ public final class ShadowAspectUtil {
             perfectIVs = config.shadowFixedPerfectIVs();
         } else if (mode.equalsIgnoreCase("SCALED")) {
             int maxHeartGauge = HeartGaugeConfig.getMax(pokemon);
-            float normalized = Math.min(1.0f, (float) maxHeartGauge / (float) HeartGaugeConfig.getGlobalMax());
+            float normalized = Math.min(1.0f, (float) maxHeartGauge / (float) HeartGaugeConfig.getGlobalMax(pokemon));
             perfectIVs = Math.round((float) Mth.lerp(normalized, 1.0, config.shadowMaxPerfectIVs()));
         }
 

@@ -4,6 +4,11 @@ import com.cobblemon.mod.common.api.net.NetworkPacket
 import com.cobblemon.mod.common.net.PacketRegisterInfo
 import com.jayemceekay.shadowedhearts.client.network.*
 import com.jayemceekay.shadowedhearts.network.aura.*
+import com.jayemceekay.shadowedhearts.network.items.MoveLifecycleSettingsS2CPacket
+import com.jayemceekay.shadowedhearts.network.items.ItemRuleSettingsS2CPacket
+import com.jayemceekay.shadowedhearts.network.restrictions.ShadowRestrictionSettingsS2CPacket
+import com.jayemceekay.shadowedhearts.network.restrictions.HeartGaugeSettingsS2CPacket
+import com.jayemceekay.shadowedhearts.network.restrictions.ShadowBattleSettingsS2CPacket
 import com.jayemceekay.shadowedhearts.network.purification.*
 import com.jayemceekay.shadowedhearts.network.purification.client.*
 import com.jayemceekay.shadowedhearts.network.purification.server.MovePCToPurificationHandler
@@ -22,6 +27,11 @@ object ShadowedHeartsNetwork {
      */
     @JvmStatic
     val s2cPayloads: List<PacketRegisterInfo<*>> = buildList {
+        add(PacketRegisterInfo(ShadowRestrictionSettingsS2CPacket.ID, ShadowRestrictionSettingsS2CPacket::decode, ShadowRestrictionSettingsClientHandler))
+        add(PacketRegisterInfo(HeartGaugeSettingsS2CPacket.ID, HeartGaugeSettingsS2CPacket::decode, HeartGaugeSettingsClientHandler))
+        add(PacketRegisterInfo(MoveLifecycleSettingsS2CPacket.ID, MoveLifecycleSettingsS2CPacket::decode, MoveLifecycleSettingsClientHandler))
+        add(PacketRegisterInfo(ItemRuleSettingsS2CPacket.ID, ItemRuleSettingsS2CPacket::decode, ItemRuleSettingsClientHandler))
+        add(PacketRegisterInfo(ShadowBattleSettingsS2CPacket.ID, ShadowBattleSettingsS2CPacket::decode, ShadowBattleSettingsClientHandler))
         add(PacketRegisterInfo(OpenPurificationChamberPacket.ID, OpenPurificationChamberPacket::decode, OpenPurificationChamberHandler))
         add(PacketRegisterInfo(PurificationChamberSyncPacket.ID, PurificationChamberSyncPacket::decode, PurificationChamberSyncHandler))
         add(PacketRegisterInfo(PokemonPurifiedPacket.ID, PokemonPurifiedPacket::decode, PokemonPurifiedHandler))

@@ -7,6 +7,8 @@ import com.cobblemon.mod.common.net.messages.client.pokemon.update.MarkAddUpdate
 import com.cobblemon.mod.common.pokemon.Pokemon;
 import com.jayemceekay.shadowedhearts.Shadowedhearts;
 import com.jayemceekay.shadowedhearts.common.shadow.ShadowAspectUtil;
+import com.jayemceekay.shadowedhearts.common.items.ItemRuleSettings;
+import com.jayemceekay.shadowedhearts.common.items.ItemRuleFeedback;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
@@ -24,15 +26,25 @@ public class PurifiedGemItem extends Item {
     }
 
     @Override
+    public void appendHoverText(ItemStack stack, TooltipContext context, java.util.List<Component> tooltip, net.minecraft.world.item.TooltipFlag flag) {
+        super.appendHoverText(stack, context, tooltip, flag);
+        ItemRuleFeedback.appendDisabled(stack, tooltip);
+    }
+
+    @Override
     public InteractionResult interactLivingEntity(ItemStack stack, Player player, LivingEntity target, InteractionHand hand) {
         Level level = player.level();
-        if (level.isClientSide) return InteractionResult.SUCCESS;
+        if (level.isClientSide) return ItemRuleFeedback.permitsClient("purifiedGem") ? InteractionResult.SUCCESS : InteractionResult.FAIL;
+        if (!ItemRuleSettings.serverCurrent().effectEnabled("purifiedGem")) {
+            player.displayClientMessage(Component.translatable("message.shadowedhearts.item_rule.disabled").withStyle(ChatFormatting.RED), true);
+            return InteractionResult.FAIL;
+        }
         if (!(target instanceof PokemonEntity pe)) return InteractionResult.PASS;
         Pokemon pokemon = pe.getPokemon();
         if (pokemon == null) return InteractionResult.PASS;
 
-        // Check if owned
-        if (pokemon.getOwnerUUID() == null) {
+        // Only the owner may permanently immunize their Pokemon.
+        if (!player.getUUID().equals(pokemon.getOwnerUUID())) {
              player.displayClientMessage(Component.translatable("message.shadowedhearts.purified_gem.not_owned").withStyle(ChatFormatting.RED), true);
              return InteractionResult.FAIL;
         }

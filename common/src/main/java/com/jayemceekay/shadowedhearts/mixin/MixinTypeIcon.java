@@ -4,6 +4,7 @@ import com.cobblemon.mod.common.api.types.ElementalType;
 import com.cobblemon.mod.common.api.types.ElementalTypes;
 import com.cobblemon.mod.common.client.gui.TypeIcon;
 import com.jayemceekay.shadowedhearts.Shadowedhearts;
+import com.jayemceekay.shadowedhearts.common.shadow.ShadowMoveUtil;
 import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import net.minecraft.client.gui.GuiGraphics;
@@ -37,9 +38,10 @@ public class MixinTypeIcon {
     @WrapMethod(method = "render")
     public void shadowedhearts$renderShadowIcon(GuiGraphics context, Operation<Void> original) {
 
-        if(type == ElementalTypes.INSTANCE.get("shadow")) {
+        if(ShadowMoveUtil.isShadowType(type)) {
             int diameter = this.small ? 36 / 2 : 36;
-            int offsetX = this.centeredX ? diameter / 2 : 0;
+            // Center using the rendered width, not the unscaled texture width.
+            float offsetX = this.centeredX ? diameter * SCALE / 2.0f : 0.0f;
             // Use small icon asset when the TypeIcon is flagged as small
             var texture = ResourceLocation.fromNamespaceAndPath(
                     Shadowedhearts.MOD_ID,
@@ -47,12 +49,12 @@ public class MixinTypeIcon {
             );
             var textureWidth = diameter;
             float alpha = this.opacity;
-            int x = ((TypeIcon)(Object)this).getX().intValue();
-            int y = ((TypeIcon)(Object)this).getY().intValue();
+            float x = ((TypeIcon)(Object)this).getX().floatValue();
+            float y = ((TypeIcon)(Object)this).getY().floatValue();
             blitk(context.pose(), texture, (x - offsetX) / SCALE, y / SCALE, diameter, diameter, 0, 0,  textureWidth, textureWidth,0,1,1,1, alpha,true, SCALE);
         } else if (type == ElementalTypes.INSTANCE.get("shadow-locked")){
             int diameter = this.small ? 36 / 2 : 36;
-            int offsetX = this.centeredX ? diameter / 2 : 0;
+            float offsetX = this.centeredX ? diameter * SCALE / 2.0f : 0.0f;
             // Use the small disabled icon when TypeIcon is small
             var texture = ResourceLocation.fromNamespaceAndPath(
                     Shadowedhearts.MOD_ID,
@@ -60,8 +62,8 @@ public class MixinTypeIcon {
             );
             var textureWidth = diameter;
             float alpha = this.opacity;
-            int x = ((TypeIcon)(Object)this).getX().intValue();
-            int y = ((TypeIcon)(Object)this).getY().intValue();
+            float x = ((TypeIcon)(Object)this).getX().floatValue();
+            float y = ((TypeIcon)(Object)this).getY().floatValue();
             blitk(context.pose(), texture, (x - offsetX) / SCALE, y / SCALE, diameter, diameter, 0, 0,  textureWidth, textureWidth,0,1,1,1, alpha,true, SCALE);
         }else {
             original.call(context);

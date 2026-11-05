@@ -7,12 +7,16 @@ import com.cobblemon.mod.common.pokemon.Pokemon;
 import com.jayemceekay.shadowedhearts.common.heart.HeartGaugeDeltas;
 import com.jayemceekay.shadowedhearts.common.shadow.ShadowAspectUtil;
 import com.jayemceekay.shadowedhearts.common.shadow.ShadowService;
+import com.jayemceekay.shadowedhearts.common.shadow.ScentModeRecovery;
 import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs;
 import com.jayemceekay.shadowedhearts.config.GameplayTuningConfig;
+import com.jayemceekay.shadowedhearts.config.ProgressionEconomyConfig;
+import com.jayemceekay.shadowedhearts.config.PresetCompatibilityConfig;
 import com.jayemceekay.shadowedhearts.common.heart.HeartGaugeProgressionMath;
 import com.jayemceekay.shadowedhearts.registry.ModItems;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.LivingEntity;
@@ -189,6 +193,14 @@ public class ScentItem extends Item {
         if (pokemon == null) return InteractionResult.PASS;
         if (!ShadowAspectUtil.hasShadowAspect(pokemon)) return InteractionResult.PASS;
 
+        if (!PresetCompatibilityConfig.INSTANCE.expandedScentItemsEnabled()
+                && stack.getItem() != ModItems.JOY_SCENT.get() && stack.getItem() != ModItems.EXCITE_SCENT.get()
+                && stack.getItem() != ModItems.VIVID_SCENT.get()) {
+            player.displayClientMessage(Component.translatable("message.shadowedhearts.scent_disabled")
+                    .withStyle(ChatFormatting.RED), true);
+            return InteractionResult.FAIL;
+        }
+
         if (!pokemon.isPlayerOwned() || !player.getUUID().equals(pokemon.getOwnerUUID())) {
             player.displayClientMessage(Component.translatable("message.shadowedhearts.scent_not_owned")
                     .withStyle(ChatFormatting.RED), true);
@@ -196,7 +208,8 @@ public class ScentItem extends Item {
         }
 
         int current = ShadowAspectUtil.getHeartGaugeMeter(pokemon);
-        if (current <= 0 || GameplayTuningConfig.INSTANCE.scentMultiplier() <= 0.0) return noEffect(player);
+        boolean canCalm = ProgressionEconomyConfig.INSTANCE.scentsClearModes() && ScentModeRecovery.hasMode(pokemon);
+        if (!canCalm && (current <= 0 || GameplayTuningConfig.INSTANCE.scentMultiplier() <= 0.0)) return noEffect(player);
 
         // Check cooldown
         long now = level.getGameTime(); // using game time ticks
@@ -229,9 +242,10 @@ public class ScentItem extends Item {
             ShadowService.setHeartGauge(pokemon, pe, next);
         }
         boolean reduced = ShadowAspectUtil.getHeartGaugeMeter(pokemon) < current;
-        if (!reduced) return noEffect(player);
+        boolean calmed = canCalm && ScentModeRecovery.calm(pokemon, pe);
+        if (!reduced && !calmed) return noEffect(player);
 
-        // A real gauge reduction starts cooldown and consumes one dose.
+        // A real gauge reduction or mode recovery starts cooldown and consumes one dose.
         ShadowAspectUtil.setScentCooldown(pokemon, now);
 
         // Consume one scent

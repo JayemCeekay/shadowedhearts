@@ -3,7 +3,9 @@ package com.jayemceekay.shadowedhearts.mixin;
 import com.cobblemon.mod.common.api.moves.Move;
 import com.cobblemon.mod.common.api.types.ElementalType;
 import com.cobblemon.mod.common.client.gui.summary.widgets.screens.moves.MoveSlotWidget;
+import com.cobblemon.mod.common.client.gui.summary.widgets.screens.moves.SwapMoveButton;
 import com.jayemceekay.shadowedhearts.common.shadow.ShadowAspectUtil;
+import com.jayemceekay.shadowedhearts.common.shadow.restrictions.ShadowRestrictionPolicy;
 import com.jayemceekay.shadowedhearts.util.ShadowMaskingUtil;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
@@ -15,7 +17,10 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.ModifyArg;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /**
  * Obfuscate locked moves in the Summary -> Moves screen.
@@ -30,6 +35,33 @@ public abstract class MixinMoveSlotWidget {
     // Kotlin `private val pokemon: Pokemon` – shadow the backing field by name
     @Final
     @Shadow private com.cobblemon.mod.common.pokemon.Pokemon pokemon;
+
+    @Final
+    @Shadow private SwapMoveButton switchMoveButton;
+
+    @Unique
+    private void shadowedhearts$updateMoveEditButton() {
+        Move selected = getMove();
+        boolean allowed = !ShadowRestrictionPolicy.blocksMoveReplacement(
+                pokemon, selected == null ? null : selected.getTemplate());
+        switchMoveButton.active = allowed;
+        switchMoveButton.visible = allowed;
+    }
+
+    @Inject(method = "<init>", at = @At("TAIL"))
+    private void shadowedhearts$initializeMoveEditButton(CallbackInfo ci) {
+        shadowedhearts$updateMoveEditButton();
+    }
+
+    @Inject(method = "renderWidget", at = @At("HEAD"))
+    private void shadowedhearts$refreshMoveEditButton(CallbackInfo ci) {
+        shadowedhearts$updateMoveEditButton();
+    }
+
+    @Inject(method = "mouseClicked", at = @At("HEAD"))
+    private void shadowedhearts$refreshMoveEditButtonBeforeClick(CallbackInfoReturnable<Boolean> cir) {
+        shadowedhearts$updateMoveEditButton();
+    }
 
     @Unique
     private boolean shadowedhearts$shouldMask() {

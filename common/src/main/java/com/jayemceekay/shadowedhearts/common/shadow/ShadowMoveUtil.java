@@ -41,6 +41,7 @@ public class ShadowMoveUtil {
 
     public static void assignShadowMoves(Pokemon pokemon, Random rng) {
         if (pokemon == null) return;
+        if (MoveLifecycle.assignGoIfEnabled(pokemon)) return;
 
         Random r = (rng == null ? new Random() : rng);
         int count = ModConfig.resolveReplaceCount(r);

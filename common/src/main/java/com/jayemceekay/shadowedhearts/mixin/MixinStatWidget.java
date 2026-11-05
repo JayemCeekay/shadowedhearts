@@ -95,10 +95,12 @@ public abstract class MixinStatWidget {
         return list;
     }
 
-    @ModifyArg(method = "renderWidget", at = @At(value = "INVOKE", target = "Lcom/cobblemon/mod/common/client/gui/summary/widgets/screens/stats/StatWidget;renderPolygonLabels$default(Lcom/cobblemon/mod/common/client/gui/summary/widgets/screens/stats/StatWidget;Lnet/minecraft/client/gui/GuiGraphics;Ljava/util/List;Ljava/util/List;DZILjava/lang/Object;)V", ordinal = 2), index = 2)
+    @ModifyArg(method = "renderWidget", at = @At(value = "INVOKE", target = "Lcom/cobblemon/mod/common/client/gui/summary/widgets/screens/stats/StatWidget;renderPolygonLabels$default(Lcom/cobblemon/mod/common/client/gui/summary/widgets/screens/stats/StatWidget;Lnet/minecraft/client/gui/GuiGraphics;Ljava/util/List;Ljava/util/List;DLjava/util/List;ZILjava/lang/Object;)V", ordinal = 2), index = 2)
     public List<MutableComponent> shadowedhearts$maskLabels(List<MutableComponent> par3, @Local(name = "labelsHovered") boolean labelsHovered) {
-        if (labelsHovered && (statOptions.get(getStatTabIndex()).equalsIgnoreCase("ivs") || statOptions.get(getStatTabIndex()).equalsIgnoreCase("evs"))) {
-            if (ShadowAspectUtil.isEVHiddenByGauge(pokemon) || ShadowAspectUtil.isIVHiddenByGauge(pokemon))
+        String tab = statOptions.get(getStatTabIndex());
+        if (labelsHovered) {
+            if ((tab.equalsIgnoreCase("evs") && ShadowAspectUtil.isEVHiddenByGauge(pokemon))
+                    || (tab.equalsIgnoreCase("ivs") && ShadowAspectUtil.isIVHiddenByGauge(pokemon)))
                 return List.of(Component.literal("??/??"), Component.literal("??/??"), Component.literal("??/??"), Component.literal("??/??"), Component.literal("??/??"), Component.literal("??/??"));
         }
 
@@ -123,18 +125,18 @@ public abstract class MixinStatWidget {
 
     @WrapMethod(method = "renderModifiedStatIcon")
     private void shadowedhearts$maskStatIcons(PoseStack pPoseStack, Stat stat, boolean increasedStat, Operation<Void> original) {
-        if (ShadowAspectUtil.hasShadowAspect(pokemon)) {
+        if (ShadowAspectUtil.isNatureHiddenByGauge(pokemon)) {
             return;
         }
         original.call(pPoseStack, stat, increasedStat);
     }
 
     @WrapMethod(method = "renderPolygonLabels")
-    private void shadowedhearts$maskLabels(GuiGraphics context, List<? extends MutableComponent> labels, List<Pair<Double, Double>> verticesOffset, double offsetY, boolean enableColour, Operation<Void> original) {
-        if (enableColour && ShadowAspectUtil.hasShadowAspect(pokemon) && statOptions.get(getStatTabIndex()).equalsIgnoreCase("stats")) {
-            original.call(context, labels, verticesOffset, offsetY, false);
+    private void shadowedhearts$maskLabels(GuiGraphics context, List<? extends MutableComponent> labels, List<Pair<Double, Double>> verticesOffset, double offsetY, List<Integer> labelColours, boolean enableColour, Operation<Void> original) {
+        if (enableColour && ShadowAspectUtil.isNatureHiddenByGauge(pokemon) && statOptions.get(getStatTabIndex()).equalsIgnoreCase("stats")) {
+            original.call(context, labels, verticesOffset, offsetY, labelColours, false);
             return;
         }
-        original.call(context, labels, verticesOffset, offsetY, enableColour);
+        original.call(context, labels, verticesOffset, offsetY, labelColours, enableColour);
     }
 }

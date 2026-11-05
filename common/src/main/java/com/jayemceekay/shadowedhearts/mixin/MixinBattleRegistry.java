@@ -2,7 +2,7 @@ package com.jayemceekay.shadowedhearts.mixin;
 
 import com.cobblemon.mod.common.battles.BattleRegistry;
 import com.cobblemon.mod.common.battles.pokemon.BattlePokemon;
-import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
+import com.jayemceekay.shadowedhearts.common.heart.HeartGaugeBattleSync;
 import com.jayemceekay.shadowedhearts.common.shadow.SHAspects;
 import com.jayemceekay.shadowedhearts.common.shadow.ShadowAspectUtil;
 import com.llamalad7.mixinextras.sugar.Local;
@@ -16,9 +16,11 @@ public class MixinBattleRegistry {
     @ModifyArg(method = "packTeam", at = @At(value = "INVOKE", target = "Ljava/util/List;add(Ljava/lang/Object;)Z"))
     private static Object shadowedhearts$packTeam(Object original, @Local BattlePokemon pokemon) {
         boolean isShadow = false;
+        boolean playerControlled = false;
         boolean isHyper = false;
         boolean isReverse = false;
         int heartGaugeBars = 0;
+        double heartGaugeFraction = 0.0;
         try {
             var pk = pokemon.getEffectedPokemon();       // Kotlin: pokemon.effectedPokemon
             var aspects = pk.getAspects();               // Collection<String>
@@ -27,24 +29,28 @@ public class MixinBattleRegistry {
                 isHyper = aspects.contains(SHAspects.HYPER_MODE);
                 isReverse = aspects.contains(SHAspects.REVERSE_MODE);
             }
-            // Try to compute heart gauge bars from the live entity if present
-            PokemonEntity entity = pokemon.getEntity();
-            if (entity != null) {
-                heartGaugeBars = ShadowAspectUtil.getBarsRemaining(entity.getPokemon());
-            } else {
-                // Fallback sensible default: fully closed if shadow, 0 otherwise
-                heartGaugeBars = isShadow ? 5 : 0;
-            }
+            // Stored state is authoritative for the whole team, including benched members
+            // with no live entity. Mode probabilities and damage share the same gauge.
+            heartGaugeBars = ShadowAspectUtil.getBarsRemaining(pk);
+            heartGaugeFraction = HeartGaugeBattleSync.fraction(pk);
         } catch (Throwable ignored) {
             heartGaugeBars = isShadow ? 5 : 0;
+            heartGaugeFraction = isShadow ? 1.0 : 0.0;
+        }
+        try {
+            playerControlled = pokemon.getActor().getType() == com.cobblemon.mod.common.api.battles.model.actor.ActorType.PLAYER;
+        } catch (kotlin.UninitializedPropertyAccessException ignored) {
+            // Standalone team packing can precede actor assignment. Preserve all other metadata.
         }
         String line = (String) original;
         // The Kotlin code just wrote the TeraType and a comma.
-        // We append our optional 7th-10th misc tokens now: isShadow, heartGaugeBars, isHyper, isReverse
+        // Append the 7th-12th misc tokens, retaining the exact gauge separately from display bars.
         return line
                 + (isShadow ? "true," : "false,")
                 + heartGaugeBars + ","
                 + (isHyper ? "true," : "false,")
-                + (isReverse ? "true," : "false,");
+                + (isReverse ? "true," : "false,")
+                + heartGaugeFraction + ","
+                + (playerControlled ? "true," : "false,");
     }
 }

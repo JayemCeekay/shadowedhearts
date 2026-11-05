@@ -14,6 +14,7 @@ public interface IShadowConfig extends IModConfig {
 
     // GO Damage Modifier
     default boolean goDamageModifierEnabled() { return false; }
+    default boolean goDamageModifierScaleWithHeartGauge() { return false; }
 
     // Call Button
     default boolean callButtonReducesHeartGauge() { return true; }
@@ -65,6 +66,28 @@ public interface IShadowConfig extends IModConfig {
 
     // Heart Gauge
     default List<? extends String> heartGaugeMaxOverrides() { return List.of(); }
+    default boolean heartGaugeBufferExperience() { return true; }
+    default boolean heartGaugeBufferEVs() { return true; }
+    default boolean heartGaugeBlockFriendshipChanges() { return true; }
+    default boolean heartGaugeBlockEvolution() { return true; }
+    default boolean heartGaugeBlockNicknaming() { return true; }
+    default boolean heartGaugeBlockTrading() { return true; }
+    default boolean heartGaugeBlockMoveChanges() { return true; }
+    default boolean heartGaugeBlockMoveTeaching() { return true; }
+    default boolean heartGaugeHideNature() { return true; }
+    default int heartGaugeNatureRevealPercent() { return 40; }
+    default boolean heartGaugeHideLevelAndExperience() { return true; }
+    default int heartGaugeLevelExpRevealPercent() { return 40; }
+    default boolean heartGaugeHideEVs() { return true; }
+    default int heartGaugeEvRevealPercent() { return 40; }
+    default boolean heartGaugeHideIVs() { return true; }
+    default int heartGaugeIvRevealPercent() { return 40; }
+    default boolean heartGaugeRestrictNonShadowMoves() { return true; }
+    default int heartGaugeFirstMoveUnlockPercent() { return 79; }
+    default int heartGaugeSecondMoveUnlockPercent() { return 40; }
+    default int heartGaugeThirdMoveUnlockPercent() { return 20; }
+    default boolean heartGaugeExactThresholds() { return false; }
+    default boolean heartGaugeBlockHyperTraining() { return false; }
 
     // Shadow Gimmick Restrictions (requires Mega Showdown)
     default boolean shadowCanMegaEvolve() { return false; }

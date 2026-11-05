@@ -4,12 +4,15 @@ package com.jayemceekay.shadowedhearts.mixin;
 import com.cobblemon.mod.common.api.moves.BenchedMove;
 import com.cobblemon.mod.common.api.moves.Move;
 import com.cobblemon.mod.common.api.moves.MoveSet;
+import com.cobblemon.mod.common.api.moves.MovesetBuilder;
 import com.cobblemon.mod.common.api.pokemon.moves.LearnsetQuery;
-import com.cobblemon.mod.common.api.types.ElementalTypes;
 import com.cobblemon.mod.common.pokemon.FormData;
 import com.cobblemon.mod.common.pokemon.Pokemon;
 import com.jayemceekay.shadowedhearts.common.shadow.SHAspects;
 import com.jayemceekay.shadowedhearts.common.shadow.ShadowAspectUtil;
+import com.jayemceekay.shadowedhearts.common.shadow.ShadowMoveUtil;
+import com.jayemceekay.shadowedhearts.common.shadow.ShadowFriendshipProgression;
+import com.jayemceekay.shadowedhearts.common.shadow.restrictions.ShadowRestrictionPolicy;
 import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.sugar.Local;
@@ -30,6 +33,9 @@ public abstract class MixinPokemon {
     @Shadow
     public abstract boolean isPlayerOwned();
 
+    @Shadow
+    private boolean isClient;
+
     @WrapMethod(method = "isWild")
     private boolean shadowedhearts$isWild(Operation<Boolean> original) {
         if (((Pokemon) (Object) this).getAspects().contains(SHAspects.SHADOW)) {
@@ -44,7 +50,7 @@ public abstract class MixinPokemon {
 
     @Inject(method = "validateMoveset$lambda$0$0", at = @At(value = "INVOKE", target = "Lcom/cobblemon/mod/common/api/moves/MoveSet;setMove(ILcom/cobblemon/mod/common/api/moves/Move;)V"), cancellable = true)
     private static void shadowedhearts$preventShadowMoveRemoval(Pokemon this$0, LearnsetQuery $query, CallbackInfoReturnable<Unit> cir, @Local(name = "move") Move move) {
-        if (this$0.getAspects().contains(SHAspects.SHADOW) && move.getType().equals(ElementalTypes.get("shadow"))) {
+        if (this$0.getAspects().contains(SHAspects.SHADOW) && ShadowMoveUtil.isShadowMove(move)) {
             cir.cancel();
         }
     }
@@ -59,32 +65,29 @@ public abstract class MixinPokemon {
 
     @Inject(method = "setFriendship(IZ)Z", at = @At("HEAD"), cancellable = true)
     public void shadowedhearts$preventSetFriendship(int value, boolean coerceSafe, CallbackInfoReturnable<Boolean> cir) {
-        if (((Pokemon) (Object) this).getAspects().contains(SHAspects.SHADOW)) {
-            cir.setReturnValue(false);
-        }
+        Boolean result = ShadowFriendshipProgression.set((Pokemon) (Object) this, value, coerceSafe);
+        if (result != null) cir.setReturnValue(result);
     }
 
     @Inject(method = "incrementFriendship", at = @At("HEAD"), cancellable = true)
     public void shadowedhearts$preventIncrementFriendship(int amount, boolean coerceSafe, CallbackInfoReturnable<Boolean> cir) {
-        if (((Pokemon) (Object) this).getAspects().contains(SHAspects.SHADOW)) {
-            cir.setReturnValue(false);
-        }
+        Boolean result = ShadowFriendshipProgression.change((Pokemon) (Object) this, amount, true, coerceSafe);
+        if (result != null) cir.setReturnValue(result);
     }
 
     @Inject(method = "decrementFriendship", at = @At("HEAD"), cancellable = true)
     public void shadowedhearts$preventDecrementFriendship(int amount, boolean coerceSafe, CallbackInfoReturnable<Boolean> cir) {
-        if (((Pokemon) (Object) this).getAspects().contains(SHAspects.SHADOW)) {
-            cir.setReturnValue(false);
-        }
+        Boolean result = ShadowFriendshipProgression.change((Pokemon) (Object) this, amount, false, coerceSafe);
+        if (result != null) cir.setReturnValue(result);
     }
 
     @WrapMethod(method = "updateMovesOnFormChange")
-    private void shadowedhearts$wrapUpdateMovesOnFormChange(FormData newForm, Operation<Void> original) {
+    private void shadowedhearts$wrapUpdateMovesOnFormChange(FormData oldForm, Operation<Void> original) {
         Pokemon pokemon = (Pokemon) (Object) this;
         if (pokemon.getAspects().contains(SHAspects.SHADOW)) {
             return;
         }
-        original.call(newForm);
+        original.call(oldForm);
     }
 
     @WrapMethod(method = "copyFrom")
@@ -107,9 +110,9 @@ public abstract class MixinPokemon {
             Move selfMove = self.getMoveSet().get(i);
             Move otherMove = other.getMoveSet().get(i);
             // Prefer self's active shadow move (current battle state), fall back to other's
-            if (selfMove != null && selfMove.getType().equals(ElementalTypes.get("shadow"))) {
+            if (ShadowMoveUtil.isShadowMove(selfMove)) {
                 shadowSlots.add(selfMove.copy());
-            } else if (otherMove != null && otherMove.getType().equals(ElementalTypes.get("shadow"))) {
+            } else if (ShadowMoveUtil.isShadowMove(otherMove)) {
                 shadowSlots.add(otherMove.copy());
             } else {
                 shadowSlots.add(null);
@@ -119,12 +122,12 @@ public abstract class MixinPokemon {
         // Save shadow benched moves from both sources
         List<BenchedMove> shadowBenched = new ArrayList<>();
         for (BenchedMove bm : self.getBenchedMoves()) {
-            if (bm.getMoveTemplate().getElementalType().equals(ElementalTypes.get("shadow"))) {
+            if (ShadowMoveUtil.isShadowMove(bm.getMoveTemplate())) {
                 shadowBenched.add(bm);
             }
         }
         for (BenchedMove bm : other.getBenchedMoves()) {
-            if (bm.getMoveTemplate().getElementalType().equals(ElementalTypes.get("shadow"))) {
+            if (ShadowMoveUtil.isShadowMove(bm.getMoveTemplate())) {
                 boolean present = false;
                 for (BenchedMove e : shadowBenched) {
                     if (e.getMoveTemplate() == bm.getMoveTemplate()) {
@@ -176,6 +179,52 @@ public abstract class MixinPokemon {
         if (pokemon.getAspects().contains(SHAspects.SHADOW)) {
             ci.cancel();
         }
+    }
+
+    /** Cobblemon 1.8's default and authored builders bypass the legacy initializer. */
+    @WrapMethod(method = "initializeMovesetFrom")
+    private void shadowedhearts$preserveShadowMovesFromBuilder(MovesetBuilder builder, Operation<Void> original) {
+        Pokemon pokemon = (Pokemon) (Object) this;
+        if (isClient || !ShadowAspectUtil.hasShadowAspect(pokemon)) {
+            original.call(builder);
+            return;
+        }
+
+        MoveSet moveSet = pokemon.getMoveSet();
+        Move[] shadowSlots = new Move[MoveSet.MOVE_COUNT];
+        for (int slot = 0; slot < MoveSet.MOVE_COUNT; slot++) {
+            Move move = moveSet.get(slot);
+            if (ShadowMoveUtil.isShadowMove(move)) shadowSlots[slot] = move.copy();
+        }
+
+        original.call(builder);
+
+        // Keep the builder's ordinary moves available for later purification, and retain
+        // the assigned Shadow moves' slots and PP instead of rolling a new assignment.
+        moveSet.doWithoutEmitting(() -> {
+            for (int slot = 0; slot < MoveSet.MOVE_COUNT; slot++) {
+                Move shadowMove = shadowSlots[slot];
+                if (shadowMove == null) continue;
+                Move displaced = moveSet.get(slot);
+                // An authored builder may already include this move in a different slot.
+                // Swap the displaced move into that slot so the active set stays compact.
+                for (int otherSlot = 0; otherSlot < MoveSet.MOVE_COUNT; otherSlot++) {
+                    Move other = moveSet.get(otherSlot);
+                    if (otherSlot != slot && other != null
+                            && other.getTemplate().equals(shadowMove.getTemplate())) {
+                        moveSet.setMove(otherSlot, displaced);
+                        displaced = null;
+                    }
+                }
+                if (displaced != null && !ShadowMoveUtil.isShadowMove(displaced)) {
+                    pokemon.getBenchedMoves().add(new BenchedMove(
+                            displaced.getTemplate(), displaced.getRaisedPpStages()));
+                }
+                moveSet.setMove(slot, shadowMove);
+            }
+            return Unit.INSTANCE;
+        });
+        moveSet.update();
     }
 
 }

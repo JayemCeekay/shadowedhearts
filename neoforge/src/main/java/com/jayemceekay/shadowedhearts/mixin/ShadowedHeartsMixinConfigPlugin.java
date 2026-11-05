@@ -20,7 +20,8 @@ public class ShadowedHeartsMixinConfigPlugin implements IMixinConfigPlugin {
         }
 
         return switch (mixinClassName) {
-            case "com.jayemceekay.shadowedhearts.mixin.simpletms.MixinPokemonSelectingItemNonBattle" ->
+            case "com.jayemceekay.shadowedhearts.mixin.simpletms.MixinPokemonSelectingItemNonBattle",
+                 "com.jayemceekay.shadowedhearts.mixin.simpletms.MixinMoveLearnItem" ->
                     FMLLoader.getLoadingModList().getModFileById("simpletms") != null;
             case "com.jayemceekay.shadowedhearts.mixin.rctmod.MixinRCTModMakeBattle" ->
                     FMLLoader.getLoadingModList().getModFileById("rctmod") != null;

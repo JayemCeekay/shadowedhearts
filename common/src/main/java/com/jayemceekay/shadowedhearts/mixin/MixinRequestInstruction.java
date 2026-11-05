@@ -1,6 +1,5 @@
 package com.jayemceekay.shadowedhearts.mixin;
 
-import com.cobblemon.mod.common.api.battles.model.PokemonBattle;
 import com.cobblemon.mod.common.api.battles.model.actor.ActorType;
 import com.cobblemon.mod.common.api.battles.model.actor.BattleActor;
 import com.cobblemon.mod.common.battles.ShowdownActionRequest;
@@ -23,7 +22,7 @@ public abstract class MixinRequestInstruction {
     public abstract BattleActor getBattleActor();
     
     @Inject(method = "invoke$lambda$0", at = @At(value = "INVOKE", target = "Lcom/cobblemon/mod/common/api/battles/model/actor/BattleActor;sendUpdate(Lcom/cobblemon/mod/common/api/net/NetworkPacket;)V", shift = At.Shift.BEFORE))
-    private static void shadowedhearts$disableNonShadowMovesAtInvoke(RequestInstruction this$0, ShowdownActionRequest $request, PokemonBattle $battle, CallbackInfoReturnable<Unit> cir) {
+    private static void shadowedhearts$disableNonShadowMovesAtInvoke(RequestInstruction this$0, ShowdownActionRequest $request, CallbackInfoReturnable<Unit> cir) {
         var reqMovesets = $request.getActive();
         if (reqMovesets == null) return;
 

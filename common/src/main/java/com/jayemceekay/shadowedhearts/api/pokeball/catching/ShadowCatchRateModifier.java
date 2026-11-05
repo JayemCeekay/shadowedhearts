@@ -30,7 +30,7 @@ public class ShadowCatchRateModifier implements CatchRateModifier {
 
         // We use the current max heart gauge to determine the difficulty
         // normalized = heartGaugeMax / maxPossibleHeartGauge
-        float normalized = Math.min(1.0f, (float) maxHeartGauge / (float) HeartGaugeConfig.getGlobalMax());
+        float normalized = Math.min(1.0f, (float) maxHeartGauge / (float) HeartGaugeConfig.getGlobalMax(pokemon));
         
         double minMultiplier = config.shadowCatchRateMinMultiplier();
         double exponent = config.shadowCatchRateExponent();

@@ -27,10 +27,15 @@
     "MixinPCGUIMasking",
     "MixinStatWidget",
     "MixinStorageSlotAura",
+    "MixinTMMachineScreen",
+    "MixinTechnicalMachineFilters",
+    "MixinShadowTMMoveSelectGUI",
+    "MixinShadowMoveSelectDTO",
     "RenderTargetAccessor",
     "pokeball.MixinPokeBallPosableState"
   ],
   "mixins": [
+    "MixinShadowHyperTrainingItem",
     "AccessorCancelable",
     "AccessorMoveActionResponse",
     "IrisRenderingPipelineAccessor",
@@ -58,6 +63,14 @@
     "MixinPokeballHitReserved",
     "MixinPokeBallItem",
     "MixinPokemon",
+    "MixinMoveLifecycle",
+    "MixinFriendshipItemSources",
+    "MixinModeSelectingItem",
+    "MixinModeMoveSelectingItem",
+    "MixinModeNativeMedicine",
+    "MixinShadowExperience",
+    "MixinShadowEVs",
+    "MixinPokemonProperties",
     "MixinPokemonEntity",
     "MixinRandomSpreadStructurePlacement",
     "MixinRequestInstruction",
@@ -68,9 +81,12 @@
     "MixinShowdownMoveset",
     "MixinShowdownMovesetAdapter",
     "MixinTypeIcon",
+    "MixinTechnicalMachineItem",
+    "MixinTMMachineTeachMoveHandler",
     "pokeball.MixinPokeBalls",
     "rctmod.MixinRCTModMakeBattle",
-    "simpletms.MixinPokemonSelectingItemNonBattle"
+    "simpletms.MixinPokemonSelectingItemNonBattle",
+    "simpletms.MixinMoveLearnItem"
   ],
   "injectors": {
     "defaultRequire": 1

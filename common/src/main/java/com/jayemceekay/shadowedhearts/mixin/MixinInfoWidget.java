@@ -42,7 +42,8 @@ public class MixinInfoWidget {
         }
     }
 
-    @WrapOperation(method = "renderWidget", at = @At(value = "INVOKE", target = "Lcom/cobblemon/mod/common/api/gui/GuiUtilsKt;blitk$default(Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/resources/ResourceLocation;Ljava/lang/Number;Ljava/lang/Number;Ljava/lang/Number;Ljava/lang/Number;Ljava/lang/Number;Ljava/lang/Number;Ljava/lang/Number;Ljava/lang/Number;Ljava/lang/Number;Ljava/lang/Number;Ljava/lang/Number;Ljava/lang/Number;Ljava/lang/Number;ZFILjava/lang/Object;)V", ordinal = 1))
+    // Cobblemon 1.8 draws the size icon between the background and the EXP bar.
+    @WrapOperation(method = "renderWidget", at = @At(value = "INVOKE", target = "Lcom/cobblemon/mod/common/api/gui/GuiUtilsKt;blitk$default(Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/resources/ResourceLocation;Ljava/lang/Number;Ljava/lang/Number;Ljava/lang/Number;Ljava/lang/Number;Ljava/lang/Number;Ljava/lang/Number;Ljava/lang/Number;Ljava/lang/Number;Ljava/lang/Number;Ljava/lang/Number;Ljava/lang/Number;Ljava/lang/Number;Ljava/lang/Number;ZFILjava/lang/Object;)V", ordinal = 2))
     public void shadowedhearts$maskExperienceBar(PoseStack poseStack, ResourceLocation resourceLocation, Number x, Number y, Number height, Number width, Number uOffset, Number vOffset, Number textureWidth, Number textureHeight, Number blitOffset, Number red, Number green, Number blue, Number alpha, boolean b, float v, int i, Object o, Operation<Void> original) {
         if(ShadowAspectUtil.isLevelExpHiddenByGauge(pokemon)) {
             return;

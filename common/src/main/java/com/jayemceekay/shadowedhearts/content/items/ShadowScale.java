@@ -1,174 +1,193 @@
 package com.jayemceekay.shadowedhearts.content.items;
 
+import com.cobblemon.mod.common.Cobblemon;
 import com.cobblemon.mod.common.api.callback.MoveSelectCallbacks;
 import com.cobblemon.mod.common.api.callback.MoveSelectDTO;
 import com.cobblemon.mod.common.api.moves.BenchedMove;
 import com.cobblemon.mod.common.api.moves.Move;
 import com.cobblemon.mod.common.api.moves.MoveSet;
+import com.cobblemon.mod.common.api.moves.MoveTemplate;
 import com.cobblemon.mod.common.api.moves.Moves;
+import com.cobblemon.mod.common.battles.BattleRegistry;
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
 import com.cobblemon.mod.common.pokemon.Pokemon;
+import com.cobblemon.mod.common.trade.TradeManager;
 import com.jayemceekay.shadowedhearts.common.shadow.ShadowAspectUtil;
 import com.jayemceekay.shadowedhearts.common.shadow.ShadowMoveUtil;
+import com.jayemceekay.shadowedhearts.common.items.ItemRuleSettings;
+import com.jayemceekay.shadowedhearts.common.items.ItemRuleFeedback;
 import kotlin.Unit;
+import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
-import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.level.Level;
 
-import java.util.*;
-import java.util.stream.Collectors;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Locale;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class ShadowScale extends Item {
+    private static final String MESSAGE = "message.shadowedhearts.shadow_scale.";
+    private static final long SELECTION_LIFETIME_TICKS = 20 * 60;
 
     public ShadowScale(Properties properties) {
         super(properties);
     }
 
+    @Override
+    public void appendHoverText(ItemStack stack, TooltipContext context, List<Component> tooltip, TooltipFlag flag) {
+        super.appendHoverText(stack, context, tooltip, flag);
+        if (ItemRuleFeedback.appendDisabled(stack, tooltip)) return;
+        tooltip.add(Component.translatable("tooltip.shadowedhearts.shadow_scale.use").withStyle(ChatFormatting.GRAY));
+        tooltip.add(Component.translatable("tooltip.shadowedhearts.shadow_scale.moves").withStyle(ChatFormatting.GRAY));
+    }
 
     @Override
-    public InteractionResult interactLivingEntity(ItemStack itemStack, Player player, LivingEntity livingEntity, InteractionHand interactionHand) {
-        Level level = player.level();
-        if (level.isClientSide) return InteractionResult.SUCCESS;
-        if (!(livingEntity instanceof PokemonEntity pokemonEntity))
-            return InteractionResult.PASS;
-        Pokemon pokemon = pokemonEntity.getPokemon();
-        if (pokemon == null) return InteractionResult.PASS;
+    public InteractionResult interactLivingEntity(ItemStack interactionStack, Player user, LivingEntity target, InteractionHand hand) {
+        if (!(target instanceof PokemonEntity entity)) return InteractionResult.PASS;
+        if (user.level().isClientSide) return ItemRuleFeedback.permitsClient("shadowScale") ? InteractionResult.SUCCESS : InteractionResult.FAIL;
+        if (!(user instanceof ServerPlayer player)) return InteractionResult.FAIL;
+        // Vanilla supplies a temporary stack copy for creative entity interactions.
+        // Bind the delayed selection to the real held stack, including in creative.
+        ItemStack stack = player.getItemInHand(hand);
+        if (interactionStack != stack && (!player.getAbilities().instabuild
+                || !ItemStack.isSameItemSameComponents(interactionStack, stack))) return refuse(player, "changed");
+        Pokemon pokemon = entity.getPokemon();
+        String reason = refusal(player, stack, hand, entity, pokemon);
+        if (reason != null) return refuse(player, reason);
 
-        if (pokemon.getOwnerUUID() == null) {
-            player.displayClientMessage(Component.translatable("message.shadowedhearts.shadow_scale.not_owned").withStyle(net.minecraft.ChatFormatting.RED), true);
-            return InteractionResult.FAIL;
+        List<Selection> choices = new ArrayList<>();
+        List<MoveSelectDTO> shown = new ArrayList<>();
+        // Display indices are compact; retain the actual slot for sparse movesets.
+        for (int slot = 0; slot < MoveSet.MOVE_COUNT; slot++) {
+            Move move = pokemon.getMoveSet().get(slot);
+            if (move == null) continue;
+            choices.add(new Selection(slot, move));
+            if (ShadowAspectUtil.shouldMaskMove(pokemon, move)) {
+                shown.add(new MoveSelectDTO(Moves.getByNameOrDummy("shadow-locked"), false, 0, 0));
+            } else {
+                shown.add(new MoveSelectDTO(move, !replacements(pokemon, move).isEmpty()));
+            }
         }
+        if (shown.stream().noneMatch(MoveSelectDTO::getEnabled)) return refuse(player, "no_moves");
 
-        if (!ShadowAspectUtil.hasShadowAspect(pokemon)) {
-            player.displayClientMessage(Component.translatable("message.shadowedhearts.shadow_scale.not_shadow").withStyle(net.minecraft.ChatFormatting.RED), true);
-            return InteractionResult.FAIL;
-        }
-
-        if (player instanceof ServerPlayer serverPlayer) {
-
-            if (!serverPlayer.getUUID().equals(pokemon.getOwnerUUID())) {
-                player.displayClientMessage(Component.translatable("message.shadowedhearts.shadow_scale.not_owned").withStyle(net.minecraft.ChatFormatting.RED), true);
-                return InteractionResult.FAIL;
-            }
-
-            if (pokemon.isBattleClone()) {
-                player.displayClientMessage(Component.translatable("message.shadowedhearts.shadow_scale.battle_clone").withStyle(net.minecraft.ChatFormatting.RED), true);
-                return InteractionResult.FAIL;
-            }
-
-            MoveSet moveSet = pokemon.getMoveSet();
-            List<Move> activeMoves = moveSet.getMoves();
-
-            // Build the selectable move list: masked moves get a "shadow-locked" dummy template
-            List<MoveSelectDTO> possibleMoves = new ArrayList<>();
-            for (Move move : activeMoves) {
-                boolean masked = ShadowAspectUtil.shouldMaskMove(pokemon, move);
-                if (masked) {
-                    var lockedTemplate = Moves.INSTANCE.getByNameOrDummy("shadow-locked");
-                    possibleMoves.add(new MoveSelectDTO(lockedTemplate, false, 0, 0));
-                } else {
-                    possibleMoves.add(new MoveSelectDTO(move, true));
-                }
-            }
-
-            MoveSelectCallbacks.INSTANCE.create(
-                    serverPlayer,
-                    Component.translatable("gui.shadowedhearts.shadow_scale.title"),
-                    possibleMoves,
-                    sp -> Unit.INSTANCE,
-                    (sp, index, dto) -> {
-                        Move selectedMove = activeMoves.get(index);
-
-                        if (ShadowMoveUtil.isShadowMove(selectedMove)) {
-                            rerollShadowMove(pokemon, index, selectedMove);
-                        } else {
-                            swapWithBenchedMove(pokemon, index, selectedMove);
-                        }
-                        if (!sp.isCreative()) {
-                            itemStack.shrink(1);
-                        }
-
-                        sp.server.execute(() -> {
-                            ShadowAspectUtil.syncMoveSet(pokemon);
-                            ShadowAspectUtil.syncBenchedMoves(pokemon);
-                        });
-
+        Level originalLevel = player.level();
+        long expiresAt = originalLevel.getGameTime() + SELECTION_LIFETIME_TICKS;
+        AtomicBoolean finished = new AtomicBoolean();
+        MoveSelectCallbacks.INSTANCE.create(player, Component.translatable("gui.shadowedhearts.shadow_scale.title"), shown,
+                ignored -> {
+                    finished.set(true);
+                    return Unit.INSTANCE;
+                },
+                (respondingPlayer, index, dto) -> {
+                    if (!finished.compareAndSet(false, true)) return Unit.INSTANCE;
+                    if (respondingPlayer != player || index < 0 || index >= choices.size()
+                            || !shown.get(index).getEnabled()) return Unit.INSTANCE;
+                    String changed = refusal(player, stack, hand, entity, pokemon);
+                    if (changed != null) {
+                        refuse(player, changed);
                         return Unit.INSTANCE;
                     }
-            );
+                    Selection selected = choices.get(index);
+                    if (player.level() != originalLevel || originalLevel.getGameTime() > expiresAt
+                            || pokemon.getMoveSet().get(selected.slot()) != selected.move()
+                            || ShadowAspectUtil.shouldMaskMove(pokemon, selected.move())) {
+                        refuse(player, "changed");
+                        return Unit.INSTANCE;
+                    }
 
-        }
+                    // Rebuild the pool at confirmation: the bench or other active slots may have changed.
+                    List<Replacement> available = replacements(pokemon, selected.move());
+                    if (available.isEmpty()) {
+                        refuse(player, "no_replacement");
+                        return Unit.INSTANCE;
+                    }
+                    Replacement replacement = available.get(player.getRandom().nextInt(available.size()));
+                    applyReplacement(pokemon, selected, replacement);
+                    if (!player.getAbilities().instabuild) stack.shrink(1);
+                    ShadowAspectUtil.syncMoveSet(pokemon);
+                    ShadowAspectUtil.syncBenchedMoves(pokemon);
+                    player.getInventory().setChanged();
+                    player.containerMenu.broadcastChanges();
+                    player.displayClientMessage(Component.translatable(MESSAGE + "replaced",
+                            pokemon.getDisplayName(false), replacement.template().getDisplayName())
+                            .withStyle(ChatFormatting.GREEN), true);
+                    return Unit.INSTANCE;
+                });
         return InteractionResult.SUCCESS;
     }
 
-    private void rerollShadowMove(Pokemon pokemon, int slotIndex, Move currentMove) {
-        MoveSet moveSet = pokemon.getMoveSet();
-
-        // Collect shadow move IDs already in the moveset to avoid duplicates
-        Set<String> existingShadowIds = new HashSet<>();
-        for (Move mv : moveSet.getMoves()) {
-            if (ShadowMoveUtil.isShadowMove(mv)) {
-                existingShadowIds.add(mv.getTemplate().getName().toLowerCase(Locale.ROOT));
-            }
-        }
-
-        // Build pool excluding all currently active shadow moves
-        List<String> pool = Arrays.stream(ShadowMoveUtil.SHADOW_IDS)
-                .filter(id -> !existingShadowIds.contains(id.toLowerCase(Locale.ROOT)))
-                .collect(Collectors.toCollection(ArrayList::new));
-
-        if (pool.isEmpty()) return;
-
-        Random rng = new Random();
-        String newMoveId = ShadowMoveUtil.pickShadow(pool, currentMove.getTemplate().getName(), rng);
-        if (newMoveId == null) return;
-
-        var tmpl = Moves.INSTANCE.getByNameOrDummy(newMoveId);
-        moveSet.doWithoutEmitting(() -> {
-            moveSet.setMove(slotIndex, tmpl.create(tmpl.getPp(), 0));
-            return null;
-        });
+    private String refusal(ServerPlayer player, ItemStack stack, InteractionHand hand,
+                           PokemonEntity entity, Pokemon pokemon) {
+        if (!ItemRuleSettings.serverCurrent().effectEnabled("shadowScale")) return "disabled";
+        if (!player.isAlive() || player.isRemoved() || stack.isEmpty() || stack.getItem() != this
+                || player.getItemInHand(hand) != stack || entity.isRemoved() || !entity.isAlive()
+                || entity.level() != player.level() || entity.getPokemon() != pokemon) return "changed";
+        if (!player.getUUID().equals(pokemon.getOwnerUUID())
+                || Cobblemon.INSTANCE.getStorage().getParty(player).get(pokemon.getUuid()) != pokemon) return "not_owned";
+        if (!ShadowAspectUtil.hasShadowAspect(pokemon)) return "not_shadow";
+        if (pokemon.isBattleClone() || entity.isBattling()
+                || BattleRegistry.getBattleByParticipatingPlayerId(player.getUUID()) != null) return "battle_clone";
+        if (TradeManager.INSTANCE.getActiveTrade(player.getUUID()) != null) return "in_trade";
+        return null;
     }
 
-    private void swapWithBenchedMove(Pokemon pokemon, int slotIndex, Move currentMove) {
-        var benchedMoves = pokemon.getBenchedMoves();
-
-        List<BenchedMove> nonShadowBenched = new ArrayList<>();
-        for (var bm : benchedMoves) {
-            if (!ShadowMoveUtil.isShadowMove(bm.getMoveTemplate())) {
-                nonShadowBenched.add(bm);
+    /** Every candidate changes the move and avoids duplicates in the active moveset. */
+    private static List<Replacement> replacements(Pokemon pokemon, Move current) {
+        Set<String> activeIds = new HashSet<>();
+        for (Move move : pokemon.getMoveSet()) activeIds.add(move.getName().toLowerCase(Locale.ROOT));
+        List<Replacement> result = new ArrayList<>();
+        if (ShadowMoveUtil.isShadowMove(current)) {
+            for (String id : ShadowMoveUtil.SHADOW_IDS) {
+                MoveTemplate template = Moves.getByName(id);
+                if (ShadowMoveUtil.isShadowMove(template) && !activeIds.contains(id.toLowerCase(Locale.ROOT))) {
+                    result.add(new Replacement(template, 0));
+                }
+            }
+        } else {
+            for (BenchedMove benched : pokemon.getBenchedMoves()) {
+                MoveTemplate template = benched.getMoveTemplate();
+                if (!ShadowMoveUtil.isShadowMove(template) && !(template instanceof MoveTemplate.Dummy)
+                        && !activeIds.contains(template.getName().toLowerCase(Locale.ROOT))) {
+                    result.add(new Replacement(template, benched.getPpRaisedStages()));
+                }
             }
         }
+        return result;
+    }
 
-        if (nonShadowBenched.isEmpty()) return;
-
-        Random rng = new Random();
-        BenchedMove chosen = nonShadowBenched.get(rng.nextInt(nonShadowBenched.size()));
-
-        // Batch all modifications without emitting intermediate packets
-        benchedMoves.doWithoutEmitting(() -> {
-            benchedMoves.remove(chosen.getMoveTemplate());
-            benchedMoves.add(new BenchedMove(currentMove.getTemplate(), currentMove.getRaisedPpStages()));
-            return null;
-        });
-
-        // Set the move (will trigger its own update, but moveset is separate from benchedMoves)
-        var tmpl = chosen.getMoveTemplate();
+    private static void applyReplacement(Pokemon pokemon, Selection selected, Replacement replacement) {
+        if (!ShadowMoveUtil.isShadowMove(selected.move())) {
+            pokemon.getBenchedMoves().doWithoutEmitting(() -> {
+                pokemon.getBenchedMoves().remove(replacement.template());
+                // Replace any stale bench copy so the outgoing move keeps its current PP Ups.
+                pokemon.getBenchedMoves().remove(selected.move().getTemplate());
+                pokemon.getBenchedMoves().add(new BenchedMove(selected.move().getTemplate(), selected.move().getRaisedPpStages()));
+                return Unit.INSTANCE;
+            });
+        }
         pokemon.getMoveSet().doWithoutEmitting(() -> {
-            pokemon.getMoveSet().setMove(slotIndex, tmpl.create(tmpl.getPp(), chosen.getPpRaisedStages()));
-            return null;
+            pokemon.getMoveSet().setMove(selected.slot(), replacement.template().create(
+                    replacement.template().getPp(), replacement.raisedPpStages()));
+            return Unit.INSTANCE;
         });
     }
 
-    @Override
-    public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand interactionHand) {
-        return super.use(level, player, interactionHand);
+    private static InteractionResult refuse(Player player, String reason) {
+        player.displayClientMessage(Component.translatable(MESSAGE + reason).withStyle(ChatFormatting.RED), true);
+        return InteractionResult.FAIL;
     }
+
+    private record Selection(int slot, Move move) { }
+    private record Replacement(MoveTemplate template, int raisedPpStages) { }
 }

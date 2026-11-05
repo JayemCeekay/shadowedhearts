@@ -10,8 +10,7 @@ import com.jayemceekay.shadowedhearts.mixin.AccessorCancelable;
 
 /**
  * Server-side rules to restrict interactions with Shadow Pokémon until purified.
- * Implements: no leveling (battle, candies), no stone evolution, no move changes (handled elsewhere),
- * no nicknaming, no TMs (adapter provided elsewhere), and prepares for trade blocking.
+ * Applies the configured evolution, nickname and trade restrictions.
  */
 public final class ShadowRestrictions {
 
@@ -22,7 +21,7 @@ public final class ShadowRestrictions {
         CobblemonEvents.EVOLUTION_ACCEPTED.subscribe(Priority.NORMAL, event -> {
             Pokemon pokemon = event.getPokemon();
             if (pokemon == null) return kotlin.Unit.INSTANCE;
-            if (ShadowAspectUtil.hasShadowAspect(pokemon)) {
+            if (ShadowRestrictionPolicy.blocksEvolution(pokemon)) {
                 event.cancel();
             }
             return kotlin.Unit.INSTANCE;
@@ -32,10 +31,8 @@ public final class ShadowRestrictions {
         CobblemonEvents.POKEMON_NICKNAMED.subscribe(Priority.NORMAL, (PokemonNicknamedEvent e) -> {
             Pokemon pokemon = e.getPokemon();
             if (pokemon == null) return kotlin.Unit.INSTANCE;
-            if (ShadowAspectUtil.hasShadowAspect(pokemon)) {
+            if (ShadowRestrictionPolicy.blocksNicknaming(pokemon)) {
                 e.cancel();
-                // Optionally give feedback to player
-               // e.getPlayer().sendSystemMessage(Component.translatable("shadowedhearts.shadow.nickname_blocked"));
             }
             return kotlin.Unit.INSTANCE;
         });
@@ -44,7 +41,7 @@ public final class ShadowRestrictions {
         CobblemonEvents.TRADE_EVENT_PRE.subscribe(Priority.NORMAL, pre -> {
             var p1 = pre.getTradeParticipant1Pokemon();
             var p2 = pre.getTradeParticipant2Pokemon();
-            if ((p1 != null && ShadowAspectUtil.hasShadowAspect(p1)) || (p2 != null && ShadowAspectUtil.hasShadowAspect(p2))) {
+            if (ShadowRestrictionPolicy.blocksTrading(p1) || ShadowRestrictionPolicy.blocksTrading(p2)) {
                 pre.cancel();
             }
             return kotlin.Unit.INSTANCE;

@@ -305,9 +305,7 @@ class PurificationChamberGUI(
             visibleSupplier = {
                 val centerPokemon =
                     purificationStorage.get(PurificationPosition(0))
-                centerPokemon != null && ShadowAspectUtil.hasShadowAspect(
-                    centerPokemon
-                ) && ShadowAspectUtil.getHeartGauge(centerPokemon) == 0F
+                centerPokemon != null && ShadowAspectUtil.isReadyForPurification(centerPokemon)
             }
         ) {
             PurifyPokemonPacket(
@@ -859,7 +857,7 @@ class PurificationChamberGUI(
                 // Render heart gauge at bottom middle of the GUI if available
                 heartGaugeRenderer = HeartGaugeFeatureRenderer(centerPokemon)
 
-                if (ShadowAspectUtil.getHeartGauge(centerPokemon) != 0F) {
+                if (ShadowAspectUtil.getHeartGaugeMeter(centerPokemon) > 0) {
                     heartGaugeRenderer?.let { renderer ->
                         val bottomY =
                             y + BASE_HEIGHT - 25 // leave a small margin above bottom
@@ -956,7 +954,7 @@ class PurificationChamberGUI(
                                 value >= 60 -> Component.translatable("gui.shadowedhearts.purification_chamber.heart.opening")
                                 value >= 40 -> Component.translatable("gui.shadowedhearts.purification_chamber.heart.wider")
                                 value >= 20 -> Component.translatable("gui.shadowedhearts.purification_chamber.heart.nearly")
-                                value >= 1 -> Component.translatable("gui.shadowedhearts.purification_chamber.heart.almost")
+                                !ShadowAspectUtil.isReadyForPurification(centerPokemon) -> Component.translatable("gui.shadowedhearts.purification_chamber.heart.almost")
                                 else -> Component.translatable("gui.shadowedhearts.purification_chamber.heart.ready")
                             }
                         } else {

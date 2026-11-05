@@ -6,7 +6,7 @@ import com.cobblemon.mod.common.api.types.ElementalTypes;
 import com.cobblemon.mod.common.client.gui.summary.Summary;
 import com.cobblemon.mod.common.client.gui.summary.widgets.screens.moves.MoveSwapScreen;
 import com.cobblemon.mod.common.client.gui.summary.widgets.screens.moves.MovesWidget;
-import com.jayemceekay.shadowedhearts.common.shadow.ShadowAspectUtil;
+import com.jayemceekay.shadowedhearts.common.shadow.restrictions.ShadowRestrictionPolicy;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.mojang.blaze3d.vertex.PoseStack;
@@ -18,8 +18,11 @@ import net.minecraft.resources.ResourceLocation;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.ModifyArg;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /**
  * Masks non-shadow moves in the Summary.MOVE_SWAP side screen entries
@@ -42,7 +45,7 @@ public abstract class MixinMoveSwapScreenMoveSlot {
         Summary summary = mw.getSummary();
         var pokemon = summary.getSelectedPokemon$common();
         if (pokemon == null) return false;
-        return ShadowAspectUtil.hasShadowAspect(pokemon);
+        return shadowedhearts$blocksReplacement(pane);
     }
 
     private static boolean shadowedhearts$shouldMaskFromScreen() {
@@ -50,7 +53,23 @@ public abstract class MixinMoveSwapScreenMoveSlot {
         if (!(screen instanceof Summary summary)) return false;
         var pokemon = summary.getSelectedPokemon$common();
         if (pokemon == null) return false;
-        return ShadowAspectUtil.hasShadowAspect(pokemon);
+        return summary.getSideScreen() instanceof MoveSwapScreen pane
+                && shadowedhearts$blocksReplacement(pane);
+    }
+
+    @Unique
+    private static boolean shadowedhearts$blocksReplacement(MoveSwapScreen pane) {
+        var pokemon = pane.getMovesWidget().getSummary().getSelectedPokemon$common();
+        var replacedMove = pane.getReplacedMove();
+        return ShadowRestrictionPolicy.blocksMoveReplacement(
+                pokemon, replacedMove == null ? null : replacedMove.getTemplate());
+    }
+
+    @Inject(method = "mouseClicked", at = @At("HEAD"), cancellable = true)
+    private void shadowedhearts$preventLockedReplacement(CallbackInfoReturnable<Boolean> cir) {
+        if (shadowedhearts$blocksReplacement(getPane())) {
+            cir.setReturnValue(false);
+        }
     }
 
     // Mask move name (ordinal 0)
@@ -134,7 +153,7 @@ public abstract class MixinMoveSwapScreenMoveSlot {
     )
     private MutableComponent shadowedhearts$maskPP(MutableComponent original) {
         if (shadowedhearts$shouldMask()) {
-            return Component.literal("PP ??");
+            return Component.translatable("gui.shadowedhearts.masked_pp");
         }
         return original;
     }

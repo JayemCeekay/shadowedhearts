@@ -6,6 +6,16 @@
     },
     onFieldStart(field, source, effect) {
     },
+    heartGaugeBars(pokemon) {
+        // Live gauge updates carry the exact fraction. Derive the same rounded-percent
+        // bars used by the UI, retaining the initial bar field for older team formats.
+        const fraction = pokemon?.set?.heartGaugeFraction;
+        if (Number.isFinite(fraction)) {
+            return Math.ceil(Math.round(Math.max(0, Math.min(1, fraction)) * 100) / 20);
+        }
+        const bars = Number(pokemon?.set?.heartGaugeBars);
+        return Number.isFinite(bars) ? Math.max(0, Math.min(5, Math.round(bars))) : 5;
+    },
     onSwitchIn(pokemon) {
         const config = this.dex.data.Scripts.shadowedhearts?.Config || {
             hyperMode: {enabled: false},
@@ -74,58 +84,85 @@
         timid: [0, 0, 0, 2, 5, 5],
         quiet: [0, 0, 0, 2, 5, 5]
     },
+    xdReverseChance(pokemon, rules) {
+        // Original species groups, independently configurable for the expanded Pokedex.
+        const groups = [
+            ['weepinbell chansey spinarak togepi mareep swinub gulpin baltoy spheal', [0,2,5,10,15,15]],
+            ['butterfree vulpix venomoth dugtrio farfetchd seel lickitung lapras natu magcargo houndour seedot shroomish mawile roselia numel snorunt', [0,5,10,15,20,20]],
+            ['raticate paras meowth growlithe rapidash magneton grimer shellder marowak hitmonchan rhydon tangela kangaskhan mrmime dragonite pineco swellow makuhita nosepass delcatty manectric carvanha altaria duskull', [0,10,15,20,30,30]],
+            ['pidgeotto spearow golduck poliwrath hypno voltorb hitmonlee starmie electabuzz magmar pinsir ledyba teddiursa poochyena ralts sableye lunatone solrock banette', [0,10,15,25,40,40]],
+            ['beedrill arbok primeape dodrio exeggutor scyther tauros snorlax articuno zapdos moltres lugia zangoose salamence', [0,10,20,35,50,50]]
+        ];
+        const normalize = value => (value || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        // Base species avoids copying Transform's entry rates; exact form overrides remain possible.
+        const species = normalize(pokemon.baseSpecies.id);
+        const base = normalize(pokemon.baseSpecies.baseSpecies);
+        const overrides = rules.reverseSpeciesOverrides || {};
+        const row = overrides[species] || overrides[base] ||
+            groups.find(group => group[0].split(' ').includes(base))?.[1] || rules.reverseFallback || [0,10,15,20,30,30];
+        const fraction = pokemon.set.heartGaugeFraction;
+        const bands = rules.reverseGaugeBands || [99.9,80,60,40,20];
+        // Thresholds are explicit configuration, not a claim that six modern UI bands were present in XD.
+        const index = Number.isFinite(fraction) ? bands.filter(boundary => fraction * 100 < boundary).length : 5 - this.heartGaugeBars(pokemon);
+        return row[Math.max(0, Math.min(5, index))];
+    },
     onBeforeMove(source, target, move) {
         const config = this.dex.data.Scripts.shadowedhearts?.Config?.hyperMode || {enabled: false};
         if (!config.enabled) return;
         if (!move || move.type !== 'Shadow') return;
         if (!source?.set?.isShadow) return;
+        if (this.dex.data.Scripts.shadowedhearts?.Config?.modeRules?.hyperBehavior === 'COLOSSEUM' &&
+            (!source.set.playerControlled || move.id !== 'shadowrush' || source.shadowedheartsCalmedTurn === this.turn)) return;
         if (source.volatiles['hypermode'] || source.volatiles['reversemode']) return;
         const nat = (source.set.nature || '').toLowerCase();
-        let bars = Number(source.set.heartGaugeBars);
-        if (!Number.isFinite(bars)) bars = 5;
-        if (bars < 0) bars = 0;
-        if (bars > 5) bars = 5;
-        const table = this.field.getPseudoWeather('shadowengine').natureTableHyperMode;
+        const engine = this.field.getPseudoWeather('shadowengine');
+        const bars = engine.heartGaugeBars(source);
+        const table = engine.natureTableHyperMode;
         const row = table[nat];
         const idx = 5 - bars;
         const pct = row ? row[idx] : [30, 25, 20, 15, 10, 5][idx];
         if (pct && this.random(100) < pct) {
             source.addVolatile('hypermode');
-            return false;
+            // A Calming Sachet can clear the new episode during its Start event.
+            if (source.volatiles['hypermode']) return false;
         }
     },
-    onAfterMove(source, target, move) {
+    onAfterMove(pokemon, target, move) {
         const config = this.dex.data.Scripts.shadowedhearts?.Config?.reverseMode || {enabled: false};
         if (!config.enabled) return;
-        if (!move || move.type !== 'Shadow') return;
+        // XD checks the acting Shadow after its own move, regardless of move type.
+        // AfterMove runs after attempted moves (including misses), but not when
+        // sleep, flinching or another BeforeMove effect prevents the move entirely.
+        if (!move || !pokemon?.set?.isShadow || pokemon.fainted || pokemon.hp <= 0) return;
+        if (pokemon.volatiles['hypermode'] || pokemon.volatiles['reversemode']) return;
 
-        for (const pokemon of this.getAllActive()) {
-            if (!pokemon || pokemon.fainted || !pokemon.set?.isShadow) continue;
-            if (pokemon.volatiles['hypermode'] || pokemon.volatiles['reversemode']) continue;
+        const nat = (pokemon.set.nature || '').toLowerCase();
+        const engine = this.field.getPseudoWeather('shadowengine');
+        const bars = engine.heartGaugeBars(pokemon);
+        const table = engine.natureTableReverseMode;
+        const row = table[nat];
+        const idx = 5 - bars;
+        const rules = this.dex.data.Scripts.shadowedhearts?.Config?.modeRules;
+        const pct = rules?.reverseEntry === 'XD_SPECIES' ? engine.xdReverseChance(pokemon, rules) : row ? row[idx] : 0;
 
-            const nat = (pokemon.set.nature || '').toLowerCase();
-            let bars = Number(pokemon.set.heartGaugeBars);
-            if (!Number.isFinite(bars)) bars = 5;
-            if (bars < 0) bars = 0;
-            if (bars > 5) bars = 5;
-
-            const table = this.field.getPseudoWeather('shadowengine').natureTableReverseMode;
-            const row = table[nat];
-            const idx = 5 - bars;
-            const pct = row ? row[idx] : 0;
-
-            if (pct && this.random(100) < pct) {
-                pokemon.addVolatile('reversemode');
-            }
+        if (pct && this.random(100) < pct) {
+            pokemon.addVolatile('reversemode');
         }
     },
     onModifyDamage(damage, source, target, move) {
         const config = this.dex.data.Scripts.shadowedhearts?.Config?.GOdamageModifier || {enabled: false};
         if (!config.enabled) return;
 
-        let mod = 1;
-        if (source?.set?.isShadow) mod *= 1.2;
-        if (target?.set?.isShadow) mod *= 1.2;
+        const modifierFor = pokemon => {
+            if (!pokemon?.set?.isShadow) return 1;
+            if (!config.scaleWithHeartGauge) return 1.2;
+            // Exact remaining fraction, independent of the rounded five-bar mode thresholds.
+            // Older teams without this field retain their full Shadow modifier.
+            const fraction = pokemon.set.heartGaugeFraction;
+            const remaining = Number.isFinite(fraction) ? Math.max(0, Math.min(1, fraction)) : 1;
+            return 1 + 0.2 * remaining;
+        };
+        const mod = modifierFor(source) * modifierFor(target);
         if (mod !== 1) return this.chainModify(mod);
     },
     onEffectiveness(typeMod, target, type, move) {

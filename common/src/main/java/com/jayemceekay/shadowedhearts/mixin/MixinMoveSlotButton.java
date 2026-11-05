@@ -9,7 +9,6 @@ import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.ResourceLocation;
-import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
@@ -24,7 +23,6 @@ import org.spongepowered.asm.mixin.injection.ModifyArg;
 @Mixin(value = MoveSlotButton.class, remap = false)
 public abstract class MixinMoveSlotButton {
 
-    @Final
     @Shadow
     private MoveTemplate move;
 

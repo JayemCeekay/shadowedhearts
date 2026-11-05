@@ -1,5 +1,15 @@
 module.exports = `
 {
+    "usesUnlimitedShadowPP": function(pokemon, move) {
+        return !!pokemon?.set?.isShadow &&
+            !!pokemon.battle.dex.data.Scripts.shadowedhearts?.Config?.shadowBattleRules?.unlimitedShadowPP &&
+            pokemon.battle.dex.moves.get(move).type === 'Shadow';
+    },
+    "usesColosseumCritical": function(pokemon, move) {
+        const config = pokemon?.battle.dex.data.Scripts.shadowedhearts?.Config;
+        return !!config?.shadowBattleRules?.hyperShadowRushCrit && !!config?.hyperMode?.enabled &&
+            !!pokemon?.set?.isShadow && !!pokemon.volatiles.hypermode && move.id === 'shadowrush';
+    },
     "actions": {
         "Z_MOVES": {
             "Shadow": "Shadow Supernova"

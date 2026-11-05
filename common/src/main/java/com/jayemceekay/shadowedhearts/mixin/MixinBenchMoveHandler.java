@@ -1,7 +1,7 @@
 package com.jayemceekay.shadowedhearts.mixin;
 
 import com.cobblemon.mod.common.Cobblemon;
-import com.jayemceekay.shadowedhearts.common.shadow.ShadowAspectUtil;
+import com.jayemceekay.shadowedhearts.common.shadow.restrictions.ShadowRestrictionPolicy;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -20,7 +20,7 @@ public abstract class MixinBenchMoveHandler {
         var store = packet.isParty() ? com.cobblemon.mod.common.util.PlayerExtensionsKt.party(player)
                 : Cobblemon.INSTANCE.getStorage().getPC(player);
         var pokemon = store.get(packet.getUuid());
-        if (pokemon != null && ShadowAspectUtil.hasShadowAspect(pokemon)) {
+        if (ShadowRestrictionPolicy.blocksMoveReplacement(pokemon, packet.getOldMove())) {
             ci.cancel();
         }
     }

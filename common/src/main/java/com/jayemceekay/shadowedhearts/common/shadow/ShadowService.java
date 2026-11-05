@@ -5,10 +5,9 @@ import com.cobblemon.mod.common.api.pokemon.experience.SidemodExperienceSource;
 import com.cobblemon.mod.common.api.pokemon.stats.Stats;
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
 import com.cobblemon.mod.common.pokemon.Pokemon;
+import com.jayemceekay.shadowedhearts.common.shadow.restrictions.HeartGaugeUnlockRules;
+import com.jayemceekay.shadowedhearts.common.shadow.restrictions.ShadowRestrictionSettings;
 import com.jayemceekay.shadowedhearts.config.HeartGaugeConfig;
-import com.jayemceekay.shadowedhearts.config.IShadowConfig;
-import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs;
-import com.jayemceekay.shadowedhearts.integration.rctmod.RCTBridgeHolder;
 import com.jayemceekay.shadowedhearts.pokemon.properties.EVBufferProperty;
 import com.jayemceekay.shadowedhearts.pokemon.properties.HeartGaugeProperty;
 import com.jayemceekay.shadowedhearts.pokemon.properties.XPBufferProperty;
@@ -87,8 +86,14 @@ public final class ShadowService {
 
     private static void applyMoveUnlocks(Pokemon pokemon) {
         if (!ShadowAspectUtil.hasShadowAspect(pokemon)) return;
+        if (com.jayemceekay.shadowedhearts.config.MoveLifecycleConfig.INSTANCE.retainShadowMovesUntilPurification()) return;
 
-        int allowed = ShadowAspectUtil.getAllowedVisibleNonShadowMoves(pokemon);
+        var settings = ShadowRestrictionSettings.serverCurrent();
+        // Turning off battle/visibility locks must not itself replace assigned Shadow moves.
+        // Automatic slot restoration still follows the configured gauge progression.
+        int allowed = HeartGaugeUnlockRules.allowedNonShadowMoves(ShadowAspectUtil.getHeartGaugeMeter(pokemon), HeartGaugeConfig.getMax(pokemon),
+                true, settings.firstMoveUnlockPercent(), settings.secondMoveUnlockPercent(), settings.thirdMoveUnlockPercent(),
+                settings.exactThresholds());
         if (allowed < 1) return;
 
         // Identify shadow moves in the active moveset
@@ -152,6 +157,17 @@ public final class ShadowService {
      * Convenience: fully purified (0) and not shadow.
      */
     public static void fullyPurify(Pokemon pokemon, @Nullable PokemonEntity live) {
+        fullyPurify(pokemon, live, null);
+    }
+
+    /**
+     * Purify with an owner already authorized by the calling interaction. Custom stores
+     * such as the Purification Chamber cannot resolve their owner through Cobblemon.
+     * Existing callers may omit this context and use the Pokemon's native owner instead.
+     */
+    public static void fullyPurify(Pokemon pokemon, @Nullable PokemonEntity live,
+                                   @Nullable ServerPlayer authorizedOwner) {
+        boolean wasShadow = ShadowAspectUtil.hasShadowAspect(pokemon);
         com.jayemceekay.shadowedhearts.common.event.player.PokemonPurificationWalking.clear(pokemon);
         // 1. Restore all moves (replace all shadow moves)
         restoreAllMoves(pokemon);
@@ -164,26 +180,14 @@ public final class ShadowService {
         pokemon.setForcedAspects(aspects);
         pokemon.updateAspects();
 
+        MoveLifecycle.onPurified(pokemon, wasShadow);
+        ShadowProgressionManager.releaseFriendship(pokemon, wasShadow);
+
         // 3. Apply buffered EXP/EVs and clear gauge/buffers
         int bufferedExp = ShadowAspectUtil.getBufferedExp(pokemon);
         if (bufferedExp > 0) {
-            IShadowConfig config = ShadowedHeartsConfigs.getInstance().getShadowConfig();
-            if (config.rctIntegrationEnabled() && config.limitExpToRCTCap()) {
-                ServerPlayer player = pokemon.getOwnerPlayer();
-                if (player != null) {
-                    int levelCap = RCTBridgeHolder.INSTANCE.getLevelCap(player);
-                    if (pokemon.getLevel() >= levelCap) {
-                        bufferedExp = 0;
-                    } else {
-                        int xpToCap = pokemon.getExperienceToLevel(levelCap + 1) - 1;
-                        if (xpToCap > 0) {
-                            bufferedExp = Math.min(bufferedExp, xpToCap);
-                        } else {
-                            bufferedExp = 0;
-                        }
-                    }
-                }
-            }
+            bufferedExp = Math.min(bufferedExp,
+                    ShadowProgressionManager.experienceCapacity(pokemon, authorizedOwner));
 
             if (bufferedExp > 0) {
                 pokemon.addExperience(new SidemodExperienceSource("shadowedhearts"), bufferedExp);

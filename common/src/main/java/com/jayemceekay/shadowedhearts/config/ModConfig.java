@@ -21,9 +21,17 @@ public final class ModConfig implements IShadowConfig {
         DATA.build(builder);
         GameplayTuningConfig.INSTANCE.build(builder);
         OrreProgressionConfig.INSTANCE.build(builder);
+        ShadowBattleRulesConfig.INSTANCE.build(builder);
+        ProgressionEconomyConfig.INSTANCE.build(builder);
+        PresetCompatibilityConfig.INSTANCE.build(builder);
+        MoveLifecycleConfig.INSTANCE.build(builder);
         SPEC = builder.build();
         GameplayTuningConfig.INSTANCE.bind(SPEC);
         OrreProgressionConfig.INSTANCE.bind(SPEC);
+        ShadowBattleRulesConfig.INSTANCE.bind(SPEC);
+        ProgressionEconomyConfig.INSTANCE.bind(SPEC);
+        PresetCompatibilityConfig.INSTANCE.bind(SPEC);
+        MoveLifecycleConfig.INSTANCE.bind(SPEC);
     }
 
     @Override
@@ -54,6 +62,12 @@ public final class ModConfig implements IShadowConfig {
     public boolean goDamageModifierEnabled() {
         if (!isLoaded()) return IShadowConfig.super.goDamageModifierEnabled();
         return DATA.goDamageModifier.enabled.get();
+    }
+
+    @Override
+    public boolean goDamageModifierScaleWithHeartGauge() {
+        if (!isLoaded()) return IShadowConfig.super.goDamageModifierScaleWithHeartGauge();
+        return DATA.goDamageModifier.scaleWithHeartGauge.get();
     }
 
     @Override
@@ -228,6 +242,138 @@ public final class ModConfig implements IShadowConfig {
     public List<? extends String> heartGaugeMaxOverrides() {
         if (!isLoaded()) return IShadowConfig.super.heartGaugeMaxOverrides();
         return DATA.heartGauge.maxOverrides.get();
+    }
+
+    @Override
+    public boolean heartGaugeBufferExperience() {
+        if (!isLoaded()) return IShadowConfig.super.heartGaugeBufferExperience();
+        return DATA.heartGauge.restrictions.bufferExperience.get();
+    }
+
+    @Override
+    public boolean heartGaugeBufferEVs() {
+        if (!isLoaded()) return IShadowConfig.super.heartGaugeBufferEVs();
+        return DATA.heartGauge.restrictions.bufferEVs.get();
+    }
+
+    @Override
+    public boolean heartGaugeBlockFriendshipChanges() {
+        if (!isLoaded()) return IShadowConfig.super.heartGaugeBlockFriendshipChanges();
+        return DATA.heartGauge.restrictions.blockFriendshipChanges.get();
+    }
+
+    @Override
+    public boolean heartGaugeBlockEvolution() {
+        if (!isLoaded()) return IShadowConfig.super.heartGaugeBlockEvolution();
+        return DATA.heartGauge.restrictions.blockEvolution.get();
+    }
+
+    @Override
+    public boolean heartGaugeBlockNicknaming() {
+        if (!isLoaded()) return IShadowConfig.super.heartGaugeBlockNicknaming();
+        return DATA.heartGauge.restrictions.blockNicknaming.get();
+    }
+
+    @Override
+    public boolean heartGaugeBlockTrading() {
+        if (!isLoaded()) return IShadowConfig.super.heartGaugeBlockTrading();
+        return DATA.heartGauge.restrictions.blockTrading.get();
+    }
+
+    @Override
+    public boolean heartGaugeBlockMoveChanges() {
+        if (!isLoaded()) return IShadowConfig.super.heartGaugeBlockMoveChanges();
+        return DATA.heartGauge.restrictions.blockMoveChanges.get();
+    }
+
+    @Override
+    public boolean heartGaugeBlockMoveTeaching() {
+        if (!isLoaded()) return IShadowConfig.super.heartGaugeBlockMoveTeaching();
+        return DATA.heartGauge.restrictions.blockMoveTeaching.get();
+    }
+
+    @Override
+    public boolean heartGaugeBlockHyperTraining() {
+        if (!isLoaded()) return IShadowConfig.super.heartGaugeBlockHyperTraining();
+        return DATA.heartGauge.restrictions.blockHyperTraining.get();
+    }
+
+    @Override
+    public boolean heartGaugeExactThresholds() {
+        if (!isLoaded()) return IShadowConfig.super.heartGaugeExactThresholds();
+        return DATA.heartGauge.restrictions.exactThresholds.get();
+    }
+
+    @Override
+    public boolean heartGaugeHideNature() {
+        if (!isLoaded()) return IShadowConfig.super.heartGaugeHideNature();
+        return DATA.heartGauge.restrictions.hideNature.get();
+    }
+
+    @Override
+    public int heartGaugeNatureRevealPercent() {
+        if (!isLoaded()) return IShadowConfig.super.heartGaugeNatureRevealPercent();
+        return DATA.heartGauge.restrictions.natureRevealPercent.get();
+    }
+
+    @Override
+    public boolean heartGaugeHideLevelAndExperience() {
+        if (!isLoaded()) return IShadowConfig.super.heartGaugeHideLevelAndExperience();
+        return DATA.heartGauge.restrictions.hideLevelAndExperience.get();
+    }
+
+    @Override
+    public int heartGaugeLevelExpRevealPercent() {
+        if (!isLoaded()) return IShadowConfig.super.heartGaugeLevelExpRevealPercent();
+        return DATA.heartGauge.restrictions.levelExpRevealPercent.get();
+    }
+
+    @Override
+    public boolean heartGaugeHideEVs() {
+        if (!isLoaded()) return IShadowConfig.super.heartGaugeHideEVs();
+        return DATA.heartGauge.restrictions.hideEVs.get();
+    }
+
+    @Override
+    public int heartGaugeEvRevealPercent() {
+        if (!isLoaded()) return IShadowConfig.super.heartGaugeEvRevealPercent();
+        return DATA.heartGauge.restrictions.evRevealPercent.get();
+    }
+
+    @Override
+    public boolean heartGaugeHideIVs() {
+        if (!isLoaded()) return IShadowConfig.super.heartGaugeHideIVs();
+        return DATA.heartGauge.restrictions.hideIVs.get();
+    }
+
+    @Override
+    public int heartGaugeIvRevealPercent() {
+        if (!isLoaded()) return IShadowConfig.super.heartGaugeIvRevealPercent();
+        return DATA.heartGauge.restrictions.ivRevealPercent.get();
+    }
+
+    @Override
+    public boolean heartGaugeRestrictNonShadowMoves() {
+        if (!isLoaded()) return IShadowConfig.super.heartGaugeRestrictNonShadowMoves();
+        return DATA.heartGauge.restrictions.restrictNonShadowMoves.get();
+    }
+
+    @Override
+    public int heartGaugeFirstMoveUnlockPercent() {
+        if (!isLoaded()) return IShadowConfig.super.heartGaugeFirstMoveUnlockPercent();
+        return DATA.heartGauge.restrictions.firstMoveUnlockPercent.get();
+    }
+
+    @Override
+    public int heartGaugeSecondMoveUnlockPercent() {
+        if (!isLoaded()) return IShadowConfig.super.heartGaugeSecondMoveUnlockPercent();
+        return DATA.heartGauge.restrictions.secondMoveUnlockPercent.get();
+    }
+
+    @Override
+    public int heartGaugeThirdMoveUnlockPercent() {
+        if (!isLoaded()) return IShadowConfig.super.heartGaugeThirdMoveUnlockPercent();
+        return DATA.heartGauge.restrictions.thirdMoveUnlockPercent.get();
     }
 
     @Override
@@ -494,11 +640,17 @@ public final class ModConfig implements IShadowConfig {
 
     public static final class GODamageModifierConfig {
         public ModConfigSpec.BooleanValue enabled;
+        public ModConfigSpec.BooleanValue scaleWithHeartGauge;
 
         private void build(ModConfigSpec.Builder builder) {
             enabled = builder
-                    .comment("Whether Shadow Pokemon do 20% more and take 20% more damage like in Pokemon GO.")
+                    .comment("Whether Shadow Pokemon do and take up to 20% more damage like in Pokemon GO. Uses a flat 20% unless Heart Gauge scaling is enabled.")
+                    .translation("shadowedhearts.configuration.goDamageModifier.enabled")
                     .define("enabled", false);
+            scaleWithHeartGauge = builder
+                    .comment("Scale both the damage bonus and extra damage taken with the current Heart Gauge fraction: 0% at empty, 10% at half full, and at most 20% at full. Requires goDamageModifier.enabled.")
+                    .translation("shadowedhearts.configuration.goDamageModifier.scaleWithHeartGauge")
+                    .define("scaleWithHeartGauge", false);
         }
     }
 
@@ -652,11 +804,132 @@ public final class ModConfig implements IShadowConfig {
 
     public static final class HeartGaugeConfig {
         public ModConfigSpec.ConfigValue<List<? extends String>> maxOverrides;
+        public final HeartGaugeRestrictionsConfig restrictions = new HeartGaugeRestrictionsConfig();
 
         private void build(ModConfigSpec.Builder builder) {
             maxOverrides = builder
                     .comment("List of species-specific maximum Heart Gauge values. Format: species=max")
-                    .defineList("maxOverrides", List.of(), o -> o instanceof String && ((String) o).contains("="));
+                    .translation("shadowedhearts.configuration.heartGauge.maxOverrides")
+                    .defineListAllowEmpty("maxOverrides", List.of(), () -> "bulbasaur=3000", ModConfig::isHeartGaugeOverride);
+            builder.translation("shadowedhearts.configuration.heartGauge.restrictions").push("restrictions");
+            restrictions.build(builder);
+            builder.pop();
+        }
+    }
+
+    public static final class HeartGaugeRestrictionsConfig {
+        public ModConfigSpec.BooleanValue bufferExperience;
+        public ModConfigSpec.BooleanValue bufferEVs;
+        public ModConfigSpec.BooleanValue blockFriendshipChanges;
+        public ModConfigSpec.BooleanValue blockEvolution;
+        public ModConfigSpec.BooleanValue blockNicknaming;
+        public ModConfigSpec.BooleanValue blockTrading;
+        public ModConfigSpec.BooleanValue blockMoveChanges;
+        public ModConfigSpec.BooleanValue blockMoveTeaching;
+        public ModConfigSpec.BooleanValue blockHyperTraining;
+        public ModConfigSpec.BooleanValue exactThresholds;
+        public ModConfigSpec.BooleanValue hideNature;
+        public ModConfigSpec.IntValue natureRevealPercent;
+        public ModConfigSpec.BooleanValue hideLevelAndExperience;
+        public ModConfigSpec.IntValue levelExpRevealPercent;
+        public ModConfigSpec.BooleanValue hideEVs;
+        public ModConfigSpec.IntValue evRevealPercent;
+        public ModConfigSpec.BooleanValue hideIVs;
+        public ModConfigSpec.IntValue ivRevealPercent;
+        public ModConfigSpec.BooleanValue restrictNonShadowMoves;
+        public ModConfigSpec.IntValue firstMoveUnlockPercent;
+        public ModConfigSpec.IntValue secondMoveUnlockPercent;
+        public ModConfigSpec.IntValue thirdMoveUnlockPercent;
+
+        private void build(ModConfigSpec.Builder builder) {
+            bufferExperience = builder
+                    .comment("Save newly earned EXP until purification instead of allowing normal leveling. Existing buffered EXP is retained when disabled.")
+                    .translation("shadowedhearts.configuration.heartGauge.restrictions.bufferExperience")
+                    .define("bufferExperience", true);
+            bufferEVs = builder
+                    .comment("Save newly earned EVs until purification. Existing buffered EVs are retained when disabled.")
+                    .translation("shadowedhearts.configuration.heartGauge.restrictions.bufferEVs")
+                    .define("bufferEVs", true);
+            blockFriendshipChanges = builder
+                    .comment("Prevent friendship from increasing or decreasing while a Pokemon is Shadow.")
+                    .translation("shadowedhearts.configuration.heartGauge.restrictions.blockFriendshipChanges")
+                    .define("blockFriendshipChanges", true);
+            blockEvolution = builder
+                    .comment("Prevent a Shadow Pokemon from accepting an evolution, including evolution stones.")
+                    .translation("shadowedhearts.configuration.heartGauge.restrictions.blockEvolution")
+                    .define("blockEvolution", true);
+            blockNicknaming = builder
+                    .comment("Prevent nickname changes while a Pokemon is Shadow.")
+                    .translation("shadowedhearts.configuration.heartGauge.restrictions.blockNicknaming")
+                    .define("blockNicknaming", true);
+            blockTrading = builder
+                    .comment("Prevent trades involving a Shadow Pokemon.")
+                    .translation("shadowedhearts.configuration.heartGauge.restrictions.blockTrading")
+                    .define("blockTrading", true);
+            blockMoveChanges = builder
+                    .comment("Prevent reordering, swapping and benching moves while a Pokemon is Shadow. Assigned Shadow moves remain protected.")
+                    .translation("shadowedhearts.configuration.heartGauge.restrictions.blockMoveChanges")
+                    .define("blockMoveChanges", true);
+            blockMoveTeaching = builder
+                    .comment("Prevent native TM and supported SimpleTMs teaching while a Pokemon is Shadow.")
+                    .translation("shadowedhearts.configuration.heartGauge.restrictions.blockMoveTeaching")
+                    .define("blockMoveTeaching", true);
+            hideNature = builder
+                    .comment("Hide a Shadow Pokemon's nature above the configured reveal percentage.")
+                    .translation("shadowedhearts.configuration.heartGauge.restrictions.hideNature")
+                    .define("hideNature", true);
+            blockHyperTraining = builder
+                    .comment("Prevent Hyper Training, including native IV candies, while a Pokemon is Shadow. Already trained IVs are retained.")
+                    .translation("shadowedhearts.configuration.heartGauge.restrictions.blockHyperTraining")
+                    .define("blockHyperTraining", false);
+            exactThresholds = builder
+                    .comment("Use the exact remaining gauge and unlock strictly below positive reveal/move thresholds. A threshold of zero requires an empty gauge. Disabled preserves rounded, inclusive comparisons.")
+                    .translation("shadowedhearts.configuration.heartGauge.restrictions.exactThresholds")
+                    .define("exactThresholds", false);
+            natureRevealPercent = builder
+                    .comment("Nature reveal threshold in remaining Heart Gauge percent. Rounded/inclusive by default; strictly below when exactThresholds is enabled. Zero requires an empty gauge in exact mode.")
+                    .translation("shadowedhearts.configuration.heartGauge.restrictions.natureRevealPercent")
+                    .defineInRange("natureRevealPercent", 40, 0, 100);
+            hideLevelAndExperience = builder
+                    .comment("Hide a Shadow Pokemon's level and EXP above the configured reveal percentage.")
+                    .translation("shadowedhearts.configuration.heartGauge.restrictions.hideLevelAndExperience")
+                    .define("hideLevelAndExperience", true);
+            levelExpRevealPercent = builder
+                    .comment("Level/EXP reveal threshold in remaining Heart Gauge percent; comparison follows exactThresholds.")
+                    .translation("shadowedhearts.configuration.heartGauge.restrictions.levelExpRevealPercent")
+                    .defineInRange("levelExpRevealPercent", 40, 0, 100);
+            hideEVs = builder
+                    .comment("Hide a Shadow Pokemon's EVs above the configured reveal percentage.")
+                    .translation("shadowedhearts.configuration.heartGauge.restrictions.hideEVs")
+                    .define("hideEVs", true);
+            evRevealPercent = builder
+                    .comment("EV reveal threshold in remaining Heart Gauge percent; comparison follows exactThresholds.")
+                    .translation("shadowedhearts.configuration.heartGauge.restrictions.evRevealPercent")
+                    .defineInRange("evRevealPercent", 40, 0, 100);
+            hideIVs = builder
+                    .comment("Hide a Shadow Pokemon's IVs above the configured reveal percentage.")
+                    .translation("shadowedhearts.configuration.heartGauge.restrictions.hideIVs")
+                    .define("hideIVs", true);
+            ivRevealPercent = builder
+                    .comment("IV reveal threshold in remaining Heart Gauge percent; comparison follows exactThresholds.")
+                    .translation("shadowedhearts.configuration.heartGauge.restrictions.ivRevealPercent")
+                    .defineInRange("ivRevealPercent", 40, 0, 100);
+            restrictNonShadowMoves = builder
+                    .comment("Restrict ordinary move visibility and battle use until their unlock percentages. Disable to allow all ordinary moves.")
+                    .translation("shadowedhearts.configuration.heartGauge.restrictions.restrictNonShadowMoves")
+                    .define("restrictNonShadowMoves", true);
+            firstMoveUnlockPercent = builder
+                    .comment("First ordinary move threshold in remaining Heart Gauge percent; comparison follows exactThresholds. Use 80 with exact mode for the original Orre below-80% milestone.")
+                    .translation("shadowedhearts.configuration.heartGauge.restrictions.firstMoveUnlockPercent")
+                    .defineInRange("firstMoveUnlockPercent", 79, 0, 100);
+            secondMoveUnlockPercent = builder
+                    .comment("Second ordinary move threshold after the first has unlocked; comparison follows exactThresholds.")
+                    .translation("shadowedhearts.configuration.heartGauge.restrictions.secondMoveUnlockPercent")
+                    .defineInRange("secondMoveUnlockPercent", 40, 0, 100);
+            thirdMoveUnlockPercent = builder
+                    .comment("Third ordinary move threshold after the second has unlocked; comparison follows exactThresholds.")
+                    .translation("shadowedhearts.configuration.heartGauge.restrictions.thirdMoveUnlockPercent")
+                    .defineInRange("thirdMoveUnlockPercent", 20, 0, 100);
         }
     }
 
@@ -804,12 +1077,25 @@ public final class ModConfig implements IShadowConfig {
     @Override
     public void load() {
         loaded = true;
+        com.jayemceekay.shadowedhearts.config.HeartGaugeConfig.reload();
         Shadowedhearts.LOGGER.info("ModConfig loaded via Forge Config API Port.");
     }
 
     @Override
     public boolean isLoaded() {
-        return loaded;
+        return loaded && SPEC.isLoaded();
+    }
+
+    private static boolean isHeartGaugeOverride(Object value) {
+        if (!(value instanceof String text)) return false;
+        String[] parts = text.split("=", 2);
+        if (parts.length != 2 || !com.jayemceekay.shadowedhearts.config.HeartGaugeConfig.isValidSpeciesKey(
+                parts[0].toLowerCase(java.util.Locale.ROOT).trim())) return false;
+        try {
+            return Integer.parseInt(parts[1].trim()) > 0;
+        } catch (NumberFormatException exception) {
+            return false;
+        }
     }
 
     public static int resolveReplaceCount(Random rng) {
