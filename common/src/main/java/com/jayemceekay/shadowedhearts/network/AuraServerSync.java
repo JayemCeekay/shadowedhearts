@@ -19,8 +19,11 @@ import com.jayemceekay.shadowedhearts.network.aura.AuraLifecyclePacket;
 import org.jetbrains.annotations.Nullable;
 
 import java.lang.ref.WeakReference;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Set;
+import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -33,6 +36,73 @@ public final class AuraServerSync {
 
     private static final Map<Integer, WeakReference<PokemonEntity>> TRACKING = new ConcurrentHashMap<>();
     private static final Map<Integer, LastSentState> LAST_SENT = new ConcurrentHashMap<>();
+    private static final Map<Integer, WeakReference<PokemonEntity>> PENDING_SPAWNS = new ConcurrentHashMap<>();
+    private static final Map<Integer, PendingShadowChange> PENDING_CONVERSIONS = new ConcurrentHashMap<>();
+    // Accessed on the server thread; an entity's reveal must not retain it after removal.
+    private static final Set<PokemonEntity> REVEAL_REQUESTED = Collections.newSetFromMap(new WeakHashMap<>());
+    private static final Set<PokemonEntity> DEFERRED_SEND_OUTS = Collections.newSetFromMap(new WeakHashMap<>());
+    private static final Map<Pokemon, WeakReference<PokemonEntity>> LIVE_ENTITIES = new WeakHashMap<>();
+
+    private static final class PendingShadowChange {
+        final WeakReference<PokemonEntity> entity;
+        final boolean wasShadow;
+        boolean revealRequested;
+
+        PendingShadowChange(PokemonEntity entity, boolean wasShadow) {
+            this.entity = new WeakReference<>(entity);
+            this.wasShadow = wasShadow;
+        }
+    }
+
+    /** Successful fresh additions include native commands, natural spawns and other mods. */
+    public static void onEntityAdded(PokemonEntity entity) {
+        if (entity.level() instanceof ServerLevel) {
+            LIVE_ENTITIES.put(entity.getPokemon(), new WeakReference<>(entity));
+            PENDING_SPAWNS.put(entity.getId(), new WeakReference<>(entity));
+        }
+    }
+
+    /** Native aspect updates also cover wild Pokemon and direct forced-aspect conversions. */
+    public static void onShadowStateChanged(Pokemon pokemon, boolean wasShadow) {
+        PokemonEntity entity = pokemon.getEntity();
+        if (!isLivePokemon(entity, pokemon)) {
+            WeakReference<PokemonEntity> reference = LIVE_ENTITIES.get(pokemon);
+            entity = reference == null ? null : reference.get();
+        }
+        if (!isLivePokemon(entity, pokemon) || PENDING_SPAWNS.containsKey(entity.getId())) return;
+
+        PendingShadowChange pending = PENDING_CONVERSIONS.get(entity.getId());
+        if (pending == null || pending.entity.get() != entity) {
+            // Compare the first state this tick with the final one. Temporary form/aspect
+            // rebuilds must not replay a reveal when they restore an existing Shadow.
+            PENDING_CONVERSIONS.put(entity.getId(), new PendingShadowChange(entity, wasShadow));
+        }
+    }
+
+    private static boolean isLivePokemon(@Nullable PokemonEntity entity, Pokemon pokemon) {
+        return entity != null && entity.getPokemon() == pokemon && entity.isAlive()
+                && entity.level() instanceof ServerLevel level && level.getEntity(entity.getId()) == entity;
+    }
+
+    /** Animated and shoulder send-outs start their aura when the delayed POST event arrives. */
+    public static void deferToSendOutEvent(PokemonEntity entity) {
+        if (entity.level() instanceof ServerLevel) {
+            DEFERRED_SEND_OUTS.add(entity);
+            REVEAL_REQUESTED.add(entity);
+        }
+    }
+
+    /** Preserve explicit wild/send-out/raid reveals instead of also scheduling the fallback. */
+    public static void onAuraStartRequested(Entity entity) {
+        if (entity instanceof PokemonEntity pokemon && entity.level() instanceof ServerLevel) {
+            REVEAL_REQUESTED.add(pokemon);
+            PendingShadowChange pending = PENDING_CONVERSIONS.get(entity.getId());
+            if (pending != null && pending.entity.get() == entity) pending.revealRequested = true;
+            if (ShadowAspectUtil.shouldHaveShadowAura(pokemon.getPokemon())) {
+                TRACKING.put(entity.getId(), new WeakReference<>(pokemon));
+            }
+        }
+    }
 
     /** New viewers receive continuous cosmetic state, never another transient spawn/send-out reveal. */
     public static void onStartTracking(Entity entity, ServerPlayer player) {
@@ -83,6 +153,7 @@ public final class AuraServerSync {
             PokemonEntity pe = event.getPokemonEntity();
             if (pe == null || pe.level().isClientSide()) return Unit.INSTANCE;
 
+            LIVE_ENTITIES.put(pe.getPokemon(), new WeakReference<>(pe));
             ShadowPokemonData.syncFromPokemon(pe);
             if (ShadowAspectUtil.shouldHaveShadowAura(pe.getPokemon())) {
                 TRACKING.put(pe.getId(), new WeakReference<>(pe));
@@ -94,6 +165,8 @@ public final class AuraServerSync {
         CobblemonEvents.POKEMON_SENT_POST.subscribe(Priority.NORMAL, (PokemonSentEvent.Post e) -> {
             var pe = e.getPokemonEntity();
             if (pe == null || pe.level().isClientSide()) return Unit.INSTANCE;
+            // Clear this even for ordinary Pokemon, which can be converted after send-out.
+            DEFERRED_SEND_OUTS.remove(pe);
             Pokemon p;
             try {
                 p = pe.getPokemon();
@@ -142,9 +215,8 @@ public final class AuraServerSync {
             if (pe == null || pe.level().isClientSide()) return Unit.INSTANCE;
             if (ShadowAspectUtil.shouldHaveShadowAura(pe.getPokemon())) {
                 TRACKING.put(pe.getId(), new WeakReference<>(pe));
-                // We don't broadcast START here because listeners (like WildShadowSpawnListener)
-                // might want to broadcast a specialized one. The tick loop will pick it up
-                // for regular updates if it's missing.
+                // The fresh-add fallback starts the aura unless a spawn listener
+                // has already requested a specialized reveal.
             }
             return Unit.INSTANCE;
         });
@@ -164,6 +236,39 @@ public final class AuraServerSync {
     }
 
     private static void onServerTick(MinecraftServer server) {
+        // Wait until callers finish their post-add conversion and choose any specialized reveal.
+        Iterator<WeakReference<PokemonEntity>> spawns = PENDING_SPAWNS.values().iterator();
+        while (spawns.hasNext()) {
+            PokemonEntity entity = spawns.next().get();
+            spawns.remove();
+            if (entity == null || !entity.isAlive() || !(entity.level() instanceof ServerLevel level)
+                    || level.getEntity(entity.getId()) != entity) continue;
+            ShadowPokemonData.syncFromPokemon(entity);
+            if (!ShadowAspectUtil.shouldHaveShadowAura(entity.getPokemon())) continue;
+            TRACKING.put(entity.getId(), new WeakReference<>(entity));
+            if (!REVEAL_REQUESTED.contains(entity)) {
+                int sustain = ShadowAspectUtil.isHoldingShadowShard(entity.getPokemon()) ? Integer.MAX_VALUE / 2 : 600;
+                AuraBroadcastQueue.queueBroadcast(entity, 2.5f, sustain);
+            }
+        }
+
+        Iterator<PendingShadowChange> conversions = PENDING_CONVERSIONS.values().iterator();
+        while (conversions.hasNext()) {
+            PendingShadowChange pending = conversions.next();
+            conversions.remove();
+            PokemonEntity entity = pending.entity.get();
+            if (entity == null || !isLivePokemon(entity, entity.getPokemon())) continue;
+            Pokemon pokemon = entity.getPokemon();
+            ShadowPokemonData.syncFromPokemon(entity);
+            if (!ShadowAspectUtil.shouldHaveShadowAura(pokemon)) continue;
+            TRACKING.put(entity.getId(), new WeakReference<>(entity));
+            if (!pending.wasShadow && ShadowAspectUtil.hasShadowAspect(pokemon)
+                    && !pending.revealRequested && !DEFERRED_SEND_OUTS.contains(entity)) {
+                int sustain = ShadowAspectUtil.isHoldingShadowShard(pokemon) ? Integer.MAX_VALUE / 2 : 600;
+                AuraBroadcastQueue.queueBroadcast(entity, 2.5f, sustain);
+            }
+        }
+
         Iterator<Map.Entry<Integer, WeakReference<PokemonEntity>>> it = TRACKING.entrySet().iterator();
         while (it.hasNext()) {
             var en = it.next();

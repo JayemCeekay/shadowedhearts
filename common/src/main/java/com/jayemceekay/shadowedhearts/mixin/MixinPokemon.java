@@ -14,6 +14,7 @@ import com.jayemceekay.shadowedhearts.common.shadow.ShadowAspectUtil;
 import com.jayemceekay.shadowedhearts.common.shadow.ShadowMoveUtil;
 import com.jayemceekay.shadowedhearts.common.shadow.ShadowFriendshipProgression;
 import com.jayemceekay.shadowedhearts.common.shadow.restrictions.ShadowRestrictionPolicy;
+import com.jayemceekay.shadowedhearts.network.AuraServerSync;
 import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.sugar.Local;
@@ -51,10 +52,14 @@ public abstract class MixinPokemon implements AuraStyleProperties.ForcedAspectAc
     @WrapMethod(method = "updateAspects")
     private void shadowedhearts$normalizeAuraStyle(Operation<Void> original) {
         Pokemon pokemon = (Pokemon) (Object) this;
+        boolean wasShadow = ShadowAspectUtil.hasShadowAspect(pokemon);
         boolean changed = !isClient && AuraStyleProperties.normalize(pokemon);
         original.call();
         if (changed) {
             ShadowAspectUtil.syncProperties(pokemon);
+        }
+        if (!isClient && wasShadow != ShadowAspectUtil.hasShadowAspect(pokemon)) {
+            AuraServerSync.onShadowStateChanged(pokemon, wasShadow);
         }
     }
 

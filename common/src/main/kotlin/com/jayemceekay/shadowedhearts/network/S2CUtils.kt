@@ -48,6 +48,7 @@ object S2CUtils {
     @JvmOverloads
     fun broadcastAuraStartToTracking(entity: Entity, heightMultiplier: Float = 1.0f, sustainOverride: Int = -1) {
         if (entity is PokemonEntity) {
+            AuraServerSync.onAuraStartRequested(entity)
             broadcastToTracking(entity, auraStartPacket(entity, heightMultiplier, sustainOverride))
         }
     }

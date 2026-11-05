@@ -34,6 +34,7 @@ public class AuraBroadcastQueue {
     }
 
     public static void queueBroadcast(Entity entity, float heightMultiplier, int sustainOverride, int delay) {
+        AuraServerSync.onAuraStartRequested(entity);
         synchronized (QUEUE) {
             QUEUE.add(new BroadcastTask(entity, heightMultiplier, sustainOverride, delay));
         }
