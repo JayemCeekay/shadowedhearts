@@ -50,6 +50,7 @@
     "MixinGraalShowdownUnbundler",
     "MixinIrisRenderingPipeline",
     "MixinLivingEntity",
+    "MixinMoveActionResponse",
     "MixinMoveSet",
     "MixinMoveToOwnerTask",
     "MixinMoveToOwnerTaskConfig",

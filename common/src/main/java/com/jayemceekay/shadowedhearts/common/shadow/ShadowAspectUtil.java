@@ -739,13 +739,13 @@ public final class ShadowAspectUtil {
     public static boolean shouldMaskMove(Pokemon pokemon, Move move) {
         if (move == null || pokemon == null) return false;
         if (!hasShadowAspect(pokemon)) return false;
-        if (move.getType() == Shadowedhearts.SH_SHADOW_TYPE) return false;
+        if (ShadowMoveUtil.isShadowMove(move)) return false;
 
         int nonShadowIndex = 0;
         int allowed = getAllowedVisibleNonShadowMoves(pokemon);
         for (var mv : pokemon.getMoveSet().getMovesWithNulls()) {
             if (mv == null) continue;
-            if (mv.getType() == Shadowedhearts.SH_SHADOW_TYPE) continue;
+            if (ShadowMoveUtil.isShadowMove(mv)) continue;
             if (mv == move) return nonShadowIndex >= allowed;
             nonShadowIndex++;
         }
@@ -764,7 +764,7 @@ public final class ShadowAspectUtil {
         if (pokemon == null || moveId == null) return false;
         if (!hasShadowAspect(pokemon)) return false;
         var template = Moves.INSTANCE.getByNameOrDummy(moveId);
-        if (template.getElementalType() == Shadowedhearts.SH_SHADOW_TYPE) return false;
+        if (ShadowMoveUtil.isShadowMove(template)) return false;
 
         int nonShadowIndex = 0;
         int allowed = getAllowedVisibleNonShadowMoves(pokemon);
@@ -772,7 +772,7 @@ public final class ShadowAspectUtil {
             if (mv == null) {
                 continue;
             }
-            if (mv.getType() == Shadowedhearts.SH_SHADOW_TYPE) continue;
+            if (ShadowMoveUtil.isShadowMove(mv)) continue;
             if (mv.getName().equalsIgnoreCase(moveId)) return nonShadowIndex >= allowed;
             nonShadowIndex++;
         }

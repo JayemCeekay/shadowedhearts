@@ -37,6 +37,7 @@ import com.jayemceekay.shadowedhearts.client.storage.ClientPurificationStorage
 import com.jayemceekay.shadowedhearts.client.storage.ClientPurificationStorage.PurificationPosition
 import com.jayemceekay.shadowedhearts.common.purification.PurificationMath
 import com.jayemceekay.shadowedhearts.common.shadow.ShadowAspectUtil
+import com.jayemceekay.shadowedhearts.common.shadow.ShadowMoveUtil
 import com.jayemceekay.shadowedhearts.network.purification.MovePCToPurificationPacket
 import com.jayemceekay.shadowedhearts.network.purification.MovePurificationToPCPacket
 import com.jayemceekay.shadowedhearts.network.purification.PurifyPokemonPacket
@@ -752,7 +753,7 @@ class PurificationChamberGUI(
                         )
                     var nonShadowIndex = 0
                     val moveList = moves.map { mv ->
-                        if (mv.type == Shadowedhearts.SH_SHADOW_TYPE) {
+                        if (ShadowMoveUtil.isShadowMove(mv)) {
                             mv.displayName
                         } else {
                             val masked = nonShadowIndex >= allowed

@@ -4,8 +4,8 @@ import com.cobblemon.mod.common.api.moves.BenchedMove;
 import com.cobblemon.mod.common.api.moves.Move;
 import com.cobblemon.mod.common.api.moves.MoveTemplate;
 import com.cobblemon.mod.common.api.moves.Moves;
+import com.cobblemon.mod.common.api.types.ElementalType;
 import com.cobblemon.mod.common.pokemon.Pokemon;
-import com.jayemceekay.shadowedhearts.Shadowedhearts;
 import com.jayemceekay.shadowedhearts.config.ModConfig;
 import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs;
 
@@ -58,7 +58,7 @@ public class ShadowMoveUtil {
         for (int i = 0; i < 4; i++) {
             var move = moveSet.get(i);
             if (move != null) {
-                if (move.getType() == Shadowedhearts.SH_SHADOW_TYPE) {
+                if (isShadowMove(move)) {
                     shadowMoveSlots.add(i);
                 } else {
                     nonShadowMoveSlots.add(i);
@@ -77,7 +77,7 @@ public class ShadowMoveUtil {
         var benchedMoves = pokemon.getBenchedMoves();
         List<BenchedMove> benchedShadowMoves = new ArrayList<>();
         for (var bm : benchedMoves) {
-            if (bm.getMoveTemplate().getElementalType() == Shadowedhearts.SH_SHADOW_TYPE) {
+            if (isShadowMove(bm.getMoveTemplate())) {
                 benchedShadowMoves.add(bm);
             }
         }
@@ -114,7 +114,7 @@ public class ShadowMoveUtil {
                     var tmpl = Moves.INSTANCE.getByNameOrDummy(moveId);
                     int slotToOverwrite = nonShadowMoveSlots.remove(0);
                     var oldMove = moveSet.get(slotToOverwrite);
-                    if (oldMove != null && oldMove.getType() != Shadowedhearts.SH_SHADOW_TYPE) {
+                    if (oldMove != null && !isShadowMove(oldMove)) {
                         pokemon.getBenchedMoves().add(new BenchedMove(oldMove.getTemplate(), oldMove.getRaisedPpStages()));
                     }
                     moveSet.setMove(slotToOverwrite, tmpl.create(tmpl.getPp(), 0));
@@ -146,17 +146,17 @@ public class ShadowMoveUtil {
         return ids.get(0);
     }
 
+    /** Addons such as Lost Lore can register distinct instances of the same Shadow type. */
+    public static boolean isShadowType(ElementalType type) {
+        return type != null && "shadow".equalsIgnoreCase(type.getShowdownId());
+    }
+
     public static boolean isShadowMove(Move move) {
-        return move != null && move.getType() == Shadowedhearts.SH_SHADOW_TYPE;
+        return move != null && isShadowType(move.getType());
     }
 
     public static boolean isShadowMove(MoveTemplate template) {
-        return template != null && template.getElementalType() == Shadowedhearts.SH_SHADOW_TYPE;
+        return template != null && isShadowType(template.getElementalType());
     }
 
-    public static boolean isShadowMoveId(String moveId) {
-        if (moveId == null) return false;
-        var tmpl = Moves.INSTANCE.getByNameOrDummy(moveId);
-        return tmpl.getElementalType() == Shadowedhearts.SH_SHADOW_TYPE;
-    }
 }
