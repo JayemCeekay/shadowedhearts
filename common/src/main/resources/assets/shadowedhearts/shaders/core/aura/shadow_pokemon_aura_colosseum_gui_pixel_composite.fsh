@@ -1,6 +1,5 @@
 #version 150
 
-#moj_import <shadowedhearts:shadow_pokemon_aura_composite.glsl>
 #moj_import <shadowedhearts:shadow_pokemon_aura_style_composite.glsl>
 
 uniform sampler2D Sampler0;
@@ -21,15 +20,6 @@ void main() {
     vec2 sampleUv = sourcePixelCenter / safeScreenSize;
 
     vec4 densityData = texture(Sampler0, sampleUv);
-    vec4 compositeColor;
-    if (!shadowPokemonAuraComposite(
-            densityData,
-            sampleUv,
-            AuraTime,
-            AuraScreenSize,
-            safeScreenSize / safePixelSize,
-            compositeColor
-    )) discard;
-
-    fragColor = shadowPokemonAuraColosseumStyle(densityData, compositeColor);
+    fragColor = shadowPokemonAuraColosseumStyle(densityData);
+    if (fragColor.a < 0.001) discard;
 }

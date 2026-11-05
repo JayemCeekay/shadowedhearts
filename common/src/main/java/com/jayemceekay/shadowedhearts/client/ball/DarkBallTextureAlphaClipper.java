@@ -2,6 +2,9 @@ package com.jayemceekay.shadowedhearts.client.ball;
 
 import com.jayemceekay.shadowedhearts.client.render.DarkBallFieldMaskBufferSource.CapturedTriangle;
 
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.function.Consumer;
 
 /**
@@ -20,6 +23,30 @@ final class DarkBallTextureAlphaClipper {
     static void forEachVisibleTriangle(CapturedTriangle source,
                                        AlphaField texture,
                                        Consumer<ParamTriangle> consumer) {
+        // Guidance coverage takes closest distances per intersecting triangle;
+        // retain its original decomposition even when the visible union agrees.
+        forEachVisibleTriangle(source, texture, consumer, false);
+    }
+
+    /** Direct-surface input: preserve coverage while removing internal texel edges. */
+    static void forEachVisibleTriangleCoalesced(CapturedTriangle source,
+                                                AlphaField texture,
+                                                Consumer<ParamTriangle> consumer) {
+        forEachVisibleTriangle(source, texture, consumer, true);
+    }
+
+    /** Reference decomposition retained for exact coverage comparisons. */
+    static void forEachVisibleTrianglePerTexel(CapturedTriangle source,
+                                               AlphaField texture,
+                                               Consumer<ParamTriangle> consumer) {
+        forEachVisibleTriangle(source, texture, consumer, false);
+    }
+
+    private static void forEachVisibleTriangle(CapturedTriangle source,
+                                               AlphaField texture,
+                                               Consumer<ParamTriangle> consumer,
+                                               boolean coalesceRegions) {
+        DarkBallPreparationCancellation.check();
         ParamVertex a = vertex(1.0f, 0.0f, 0.0f,
                 source.au(), source.av(), source.alphaA() / 255.0f, texture);
         ParamVertex b = vertex(0.0f, 1.0f, 0.0f,
@@ -39,17 +66,20 @@ final class DarkBallTextureAlphaClipper {
             consumer.accept(new ParamTriangle(a, b, c));
             return;
         }
-        clipTexelCells(a, b, c, texture, consumer);
+        clipTexelCells(a, b, c, texture, consumer, coalesceRegions);
     }
 
     /**
      * Exact nearest-filtered texture clipping. Each texel is a constant-alpha
-     * UV cell, so clipping the source triangle against the cell rectangle and
-     * then against interpolated vertex alpha reproduces the render cutoff.
+     * UV cell. Equal-alpha cells may be joined into non-overlapping rectangles
+     * before clipping; the texture multiplier and interpolated vertex alpha
+     * stay identical throughout each rectangle. Narrow islands and gradients
+     * therefore retain the same coverage as the per-texel decomposition.
      */
     private static void clipTexelCells(ParamVertex a, ParamVertex b,
                                        ParamVertex c, AlphaField texture,
-                                       Consumer<ParamTriangle> consumer) {
+                                       Consumer<ParamTriangle> consumer,
+                                       boolean coalesceRegions) {
         float minimumU = Math.min(a.u(), Math.min(b.u(), c.u()));
         float maximumU = Math.max(a.u(), Math.max(b.u(), c.u()));
         float minimumV = Math.min(a.v(), Math.min(b.v(), c.v()));
@@ -62,67 +92,161 @@ final class DarkBallTextureAlphaClipper {
         ParamVertex[] scratch = new ParamVertex[16];
         float maximumVertexAlpha = Math.max(a.vertexAlpha(),
                 Math.max(b.vertexAlpha(), c.vertexAlpha()));
+        Map<TexelRun, TexelRegion> previous = new LinkedHashMap<>();
         for (int y = minimumY; y <= maximumY; y++) {
-            float lowerV = y == 0 && minimumV < 0.0f
-                    ? minimumV : y / (float) texture.height();
-            float upperV = y == texture.height() - 1 && maximumV > 1.0f
-                    ? maximumV : (y + 1.0f) / texture.height();
+            DarkBallPreparationCancellation.check();
+            Map<TexelRun, TexelRegion> current = new LinkedHashMap<>();
             for (int x = minimumX; x <= maximumX; x++) {
+                DarkBallPreparationCancellation.checkEvery(x);
                 float texelAlpha = texture.texel(x, y);
                 if (texelAlpha * maximumVertexAlpha < ALPHA_CUTOFF) {
                     continue;
                 }
-                float lowerU = x == 0 && minimumU < 0.0f
-                        ? minimumU : x / (float) texture.width();
-                float upperU = x == texture.width() - 1 && maximumU > 1.0f
-                        ? maximumU : (x + 1.0f) / texture.width();
-
-                polygon[0] = a;
-                polygon[1] = b;
-                polygon[2] = c;
-                int count = 3;
-                count = clipCoordinate(polygon, scratch, count,
-                        lowerU, true, true);
-                ParamVertex[] swap = polygon;
-                polygon = scratch;
-                scratch = swap;
-                count = clipCoordinate(polygon, scratch, count,
-                        upperU, true, false);
-                swap = polygon;
-                polygon = scratch;
-                scratch = swap;
-                count = clipCoordinate(polygon, scratch, count,
-                        lowerV, false, true);
-                swap = polygon;
-                polygon = scratch;
-                scratch = swap;
-                count = clipCoordinate(polygon, scratch, count,
-                        upperV, false, false);
-                swap = polygon;
-                polygon = scratch;
-                scratch = swap;
-                if (count < 3) {
-                    continue;
+                int firstX = x;
+                int alphaBits = Float.floatToIntBits(texelAlpha);
+                if (coalesceRegions) {
+                    while (x < maximumX
+                            && Float.floatToIntBits(texture.texel(x + 1, y)) == alphaBits) {
+                        DarkBallPreparationCancellation.checkEvery(x);
+                        x++;
+                    }
                 }
-
-                for (int i = 0; i < count; i++) {
-                    ParamVertex vertex = polygon[i];
-                    polygon[i] = new ParamVertex(
-                            vertex.weightA(), vertex.weightB(), vertex.weightC(),
-                            vertex.u(), vertex.v(), vertex.vertexAlpha(),
-                            texelAlpha * vertex.vertexAlpha()
-                    );
+                TexelRun run = new TexelRun(firstX, x, alphaBits);
+                TexelRegion region = coalesceRegions ? previous.remove(run) : null;
+                if (region == null) {
+                    region = new TexelRegion(run, y, y, texelAlpha);
+                } else {
+                    region.lastY = y;
                 }
-                count = clipCombinedAlpha(polygon, scratch, count);
-                if (count < 3) {
-                    continue;
-                }
-                ParamVertex origin = scratch[0];
-                for (int i = 1; i + 1 < count; i++) {
-                    consumer.accept(new ParamTriangle(
-                            origin, scratch[i], scratch[i + 1]));
+                if (coalesceRegions) {
+                    current.put(run, region);
+                } else {
+                    clipRegion(a, b, c, texture, region, minimumU, maximumU,
+                            minimumV, maximumV, polygon, scratch, consumer);
                 }
             }
+            for (TexelRegion region : previous.values()) {
+                clipRegion(a, b, c, texture, region, minimumU, maximumU,
+                        minimumV, maximumV, polygon, scratch, consumer);
+            }
+            previous = current;
+        }
+        for (TexelRegion region : previous.values()) {
+            clipRegion(a, b, c, texture, region, minimumU, maximumU,
+                    minimumV, maximumV, polygon, scratch, consumer);
+        }
+    }
+
+    private static void clipRegion(ParamVertex a, ParamVertex b, ParamVertex c,
+                                   AlphaField texture, TexelRegion region,
+                                   float minimumU, float maximumU,
+                                   float minimumV, float maximumV,
+                                   ParamVertex[] polygon, ParamVertex[] scratch,
+                                   Consumer<ParamTriangle> consumer) {
+        DarkBallPreparationCancellation.check();
+        float lowerU = region.run.firstX() == 0 && minimumU < 0.0f
+                ? minimumU : region.run.firstX() / (float) texture.width();
+        float upperU = region.run.lastX() == texture.width() - 1 && maximumU > 1.0f
+                ? maximumU : (region.run.lastX() + 1.0f) / texture.width();
+        float lowerV = region.firstY == 0 && minimumV < 0.0f
+                ? minimumV : region.firstY / (float) texture.height();
+        float upperV = region.lastY == texture.height() - 1 && maximumV > 1.0f
+                ? maximumV : (region.lastY + 1.0f) / texture.height();
+        polygon[0] = a;
+        polygon[1] = b;
+        polygon[2] = c;
+        int count = clipCoordinate(polygon, scratch, 3, lowerU, true, true);
+        count = clipCoordinate(scratch, polygon, count, upperU, true, false);
+        count = clipCoordinate(polygon, scratch, count, lowerV, false, true);
+        count = clipCoordinate(scratch, polygon, count, upperV, false, false);
+        if (count < 3) {
+            return;
+        }
+        for (int i = 0; i < count; i++) {
+            ParamVertex vertex = polygon[i];
+            polygon[i] = new ParamVertex(
+                    vertex.weightA(), vertex.weightB(), vertex.weightC(),
+                    vertex.u(), vertex.v(), vertex.vertexAlpha(),
+                    region.alpha * vertex.vertexAlpha());
+        }
+        count = clipCombinedAlpha(polygon, scratch, count);
+        if (count < 3) {
+            return;
+        }
+        if (region.run.firstX() != region.run.lastX() || region.firstY != region.lastY) {
+            triangulateRegionBoundary(scratch, count, texture, consumer);
+            return;
+        }
+        ParamVertex origin = scratch[0];
+        for (int i = 1; i + 1 < count; i++) {
+            consumer.accept(new ParamTriangle(origin, scratch[i], scratch[i + 1]));
+        }
+    }
+
+    /**
+     * Keep texel breakpoints on the perimeter so touching regions retain shared
+     * vertices even at T-junctions. Only interior texel edges are discarded;
+     * this also preserves positional component grouping in the surfel planner.
+     */
+    private static void triangulateRegionBoundary(ParamVertex[] polygon, int count,
+                                                   AlphaField texture,
+                                                   Consumer<ParamTriangle> consumer) {
+        float a = 0, b = 0, c = 0, u = 0, v = 0, vertexAlpha = 0, combinedAlpha = 0;
+        for (int i = 0; i < count; i++) {
+            ParamVertex point = polygon[i];
+            a += point.weightA(); b += point.weightB(); c += point.weightC();
+            u += point.u(); v += point.v();
+            vertexAlpha += point.vertexAlpha(); combinedAlpha += point.combinedAlpha();
+        }
+        ParamVertex center = new ParamVertex(a / count, b / count, c / count,
+                u / count, v / count, vertexAlpha / count, combinedAlpha / count);
+        ArrayList<Float> cuts = new ArrayList<>();
+        for (int i = 0; i < count; i++) {
+            DarkBallPreparationCancellation.check();
+            ParamVertex from = polygon[i];
+            ParamVertex to = polygon[(i + 1) % count];
+            cuts.clear();
+            addGridCuts(cuts, from.u(), to.u(), texture.width());
+            addGridCuts(cuts, from.v(), to.v(), texture.height());
+            cuts.sort(Float::compare);
+            ParamVertex previous = from;
+            float previousAmount = 0;
+            for (float amount : cuts) {
+                if (amount <= previousAmount || amount >= 1.0f) continue;
+                ParamVertex next = interpolate(from, to, amount);
+                consumer.accept(new ParamTriangle(center, previous, next));
+                previous = next;
+                previousAmount = amount;
+            }
+            consumer.accept(new ParamTriangle(center, previous, to));
+        }
+    }
+
+    private static void addGridCuts(ArrayList<Float> cuts, float from, float to, int cells) {
+        float span = to - from;
+        if (Math.abs(span) <= 1e-8f) return;
+        int first = Math.max(0, (int) Math.floor(Math.min(from, to) * cells) + 1);
+        int last = Math.min(cells, (int) Math.ceil(Math.max(from, to) * cells) - 1);
+        for (int boundary = first; boundary <= last; boundary++) {
+            DarkBallPreparationCancellation.checkEvery(boundary);
+            cuts.add((boundary / (float) cells - from) / span);
+        }
+    }
+
+    private record TexelRun(int firstX, int lastX, int alphaBits) {
+    }
+
+    private static final class TexelRegion {
+        final TexelRun run;
+        final int firstY;
+        int lastY;
+        final float alpha;
+
+        TexelRegion(TexelRun run, int firstY, int lastY, float alpha) {
+            this.run = run;
+            this.firstY = firstY;
+            this.lastY = lastY;
+            this.alpha = alpha;
         }
     }
 
@@ -348,6 +472,7 @@ final class DarkBallTextureAlphaClipper {
             float minimum = Float.POSITIVE_INFINITY;
             float maximum = Float.NEGATIVE_INFINITY;
             for (int y = y0; y <= y1; y++) {
+                DarkBallPreparationCancellation.checkEvery(y);
                 for (int x = x0; x <= x1; x++) {
                     float value = texel(x, y);
                     minimum = Math.min(minimum, value);
@@ -386,6 +511,6 @@ final class DarkBallTextureAlphaClipper {
     record ParamTriangle(ParamVertex a, ParamVertex b, ParamVertex c) {
     }
 
-    private record AlphaRange(float minimum, float maximum) {
+    record AlphaRange(float minimum, float maximum) {
     }
 }

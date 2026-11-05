@@ -1,0 +1,65 @@
+{
+  "blend": {
+    "func": "add",
+    "srcrgb": "one",
+    "dstrgb": "zero"
+  },
+  "vertex": "shadowedhearts:darkball/dark_ball_volume_composite",
+  "fragment": "shadowedhearts:darkball/dark_ball_material_resolve",
+  "attributes": [
+    "Position",
+    "UV0"
+  ],
+  "samplers": [
+    {
+      "name": "Sampler0"
+    },
+    {
+      "name": "MaskSampler"
+    },
+    {
+      "name": "ProxyFrontSampler"
+    }
+  ],
+  "uniforms": [
+    {
+      "name": "InvProjMat",
+      "type": "matrix4x4",
+      "count": 16,
+      "values": [
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "ProxyFrontAvailable",
+      "type": "int",
+      "count": 1,
+      "values": [
+        0
+      ]
+    },
+    {
+      "name": "BodyMaterialAvailable",
+      "type": "int",
+      "count": 1,
+      "values": [
+        0
+      ]
+    }
+  ]
+}

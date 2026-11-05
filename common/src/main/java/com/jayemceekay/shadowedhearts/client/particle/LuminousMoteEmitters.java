@@ -1,24 +1,31 @@
 package com.jayemceekay.shadowedhearts.client.particle;
 
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
+import com.jayemceekay.shadowedhearts.client.aura.ShadowAuraStyle;
+import com.jayemceekay.shadowedhearts.client.aura.ShadowAuraStyleResolver;
+import com.jayemceekay.shadowedhearts.client.aura.ColosseumAuraVolume;
 import com.jayemceekay.shadowedhearts.common.shadow.ShadowAspectUtil;
 import com.jayemceekay.shadowedhearts.network.aura.LuminousMotePacket;
 import com.jayemceekay.shadowedhearts.registry.util.ModParticleTypes;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.Camera;
 import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.phys.AABB;
 
 import java.lang.ref.WeakReference;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
- * Spawns short-lived “luminous motes” around Shadow Pokémon when they are sent out.
- * Client-side only. Particles are attached to the entity for 5 seconds and emit
- * small lavender sparkles that shoot outward/upward like the reference GIF.
+ * Client-only luminous accents: send-out bursts for Signature and observed,
+ * continuously refreshed emission for Colosseum.
  */
 public final class LuminousMoteEmitters {
     private LuminousMoteEmitters() {
@@ -26,16 +33,13 @@ public final class LuminousMoteEmitters {
 
     private static final Map<Integer, EmitterGroup> ACTIVE = new ConcurrentHashMap<>();
 
-    /**
-     * Lifetime of an emitter after send-out, in ticks (5s @ 20 TPS).
-     */
-    private static final long EMIT_TICKS = 60L;
+    private static final LuminousMoteEmissionBudget COLOSSEUM_BUDGET = new LuminousMoteEmissionBudget();
 
     /**
      * Call from client init to subscribe to Cobblemon sent-out events.
      */
     public static void init() {
-        // Server is authoritative for luminous mote lifecycle now.
+        // Signature starts from server packets; Colosseum follows world observation.
     }
 
     public static void receivePacket(LuminousMotePacket pkt) {
@@ -48,12 +52,79 @@ public final class LuminousMoteEmitters {
     }
 
     public static void register(PokemonEntity pe) {
-        if (!ShadowAspectUtil.shouldHaveShadowAura(pe.getPokemon())) return;
+        if (!com.jayemceekay.shadowedhearts.client.ClientEffects.auraVisible()
+                || com.jayemceekay.shadowedhearts.client.ClientEffects.ambientDensity() == 0) return;
+        if (!ShadowAspectUtil.shouldHaveShadowAura(pe.getPokemon()) || !usesLuminousMotes(pe)) return;
         var mc = Minecraft.getInstance();
         if (mc == null || mc.level == null) return;
         long now = mc.level.getGameTime();
-        long ticks = ShadowAspectUtil.isHoldingShadowShard(pe.getPokemon()) ? Integer.MAX_VALUE / 2 : EMIT_TICKS;
-        ACTIVE.put(pe.getId(), EmitterGroup.create(pe, now + ticks));
+        ShadowAuraStyle style = resolvedStyle(pe);
+        if (style == ShadowAuraStyle.COLOSSEUM) {
+            observe(pe);
+        } else {
+            ACTIVE.put(pe.getId(), EmitterGroup.create(pe, now, style));
+        }
+    }
+
+    /** Refreshes Colosseum motes from the same visible source that emits its aura. */
+    public static void observe(PokemonEntity pokemon) {
+        observe(pokemon, null);
+    }
+
+    /** Posed bounds are world-space; ordinary observations never replace a fresh posed volume. */
+    public static void observe(PokemonEntity pokemon, AABB worldModelBounds) {
+        if (!com.jayemceekay.shadowedhearts.client.ClientEffects.auraVisible()
+                || com.jayemceekay.shadowedhearts.client.ClientEffects.ambientDensity() == 0) return;
+        var mc = Minecraft.getInstance();
+        if (mc == null || mc.level == null || pokemon.level() != mc.level
+                || !pokemon.isAlive() || !ShadowAspectUtil.shouldHaveShadowAura(pokemon.getPokemon())) return;
+        ShadowAuraStyle style = resolvedStyle(pokemon);
+        if (style != ShadowAuraStyle.COLOSSEUM) return;
+        long now = mc.level.getGameTime();
+        ACTIVE.compute(pokemon.getId(), (id, existing) -> {
+            if (existing == null || existing.entityRef.get() != pokemon
+                    || existing.lifecycle.expired(now, style)) {
+                existing = EmitterGroup.create(pokemon, now, style);
+            }
+            existing.lifecycle.observe(now);
+            if (worldModelBounds != null) existing.observeVolume(pokemon, worldModelBounds, now);
+            return existing;
+        });
+    }
+
+    private static ShadowAuraStyle resolvedStyle(PokemonEntity pokemon) {
+        return ShadowAuraStyleResolver.resolve(pokemon);
+    }
+
+    private static boolean usesLuminousMotes(PokemonEntity pokemon) {
+        return resolvedStyle(pokemon) != ShadowAuraStyle.XD_FAITHFUL;
+    }
+
+    static double colosseumRate(double sourceSize) {
+        double size = Double.isFinite(sourceSize) ? Math.max(0.0, sourceSize) : 1.0;
+        return Math.max(20.0, Math.min(48.0, 24.0 * Math.sqrt(size)));
+    }
+
+    static double colosseumBudgetScale(int activeGroups) {
+        return Math.min(1.0, LuminousMoteEmissionBudget.RATE_PER_SECOND / (Math.max(1, activeGroups) * 48.0));
+    }
+
+    public static boolean hasColosseumParticles() {
+        if (!com.jayemceekay.shadowedhearts.client.ClientEffects.auraVisible()
+                || com.jayemceekay.shadowedhearts.client.ClientEffects.ambientDensity() == 0) {
+            clearColosseumParticles();
+            return false;
+        }
+        return ColosseumMoteRenderer.hasParticles();
+    }
+
+    public static void clearColosseumParticles() {
+        ColosseumMoteRenderer.clear();
+    }
+
+    public static void renderColosseumLate(Camera camera, float partialTicks,
+                                            int sceneDepthTexture, int width, int height) {
+        ColosseumMoteRenderer.render(camera, partialTicks, sceneDepthTexture, width, height);
     }
 
     /**
@@ -62,13 +133,22 @@ public final class LuminousMoteEmitters {
     public static void onRender(float partialTicks) {
         var mc = Minecraft.getInstance();
         ClientLevel level = mc != null ? mc.level : null;
-        if (level == null) return;
+        if (level == null || !com.jayemceekay.shadowedhearts.client.ClientEffects.auraVisible()
+                || com.jayemceekay.shadowedhearts.client.ClientEffects.ambientDensity() == 0) {
+            ACTIVE.clear();
+            COLOSSEUM_BUDGET.advance(0L, 0.0f, false);
+            clearColosseumParticles();
+            return;
+        }
+        ColosseumMoteRenderer.hasParticles(); // Release a previous world's retained particles promptly.
 
         boolean auraReaderRequired = com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs.getInstance().getShadowConfig().auraReaderRequiredForAura();
         boolean hasAuraReader = auraReaderRequired && com.jayemceekay.shadowedhearts.integration.accessories.SnagAccessoryBridgeHolder.INSTANCE.isAuraReaderEquipped(mc.player);
 
         // Update & emit, remove dead/expired.
         long now = level.getGameTime();
+        List<ColosseumRenderSource> colosseumSources = new ArrayList<>();
+        int activeColosseumGroups = 0;
         Iterator<Map.Entry<Integer, EmitterGroup>> it = ACTIVE.entrySet().iterator();
         while (it.hasNext()) {
             var en = it.next();
@@ -78,32 +158,72 @@ public final class LuminousMoteEmitters {
                 continue;
             }
 
+            boolean visible = true;
             if (auraReaderRequired && !hasAuraReader) {
                 Entity ent = group.entityRef.get();
                 if (ent instanceof PokemonEntity pe && pe.getPokemon().cosmeticItem().is(com.jayemceekay.shadowedhearts.registry.ModItems.SHADOW_SHARD.get())) {
                     // Bypass Aura Reader requirement for Shadow Shard cosmetic item
                 } else {
-                    continue;
+                    visible = false;
                 }
             }
 
-            if (!group.tickAndEmit(level, partialTicks)) {
+            boolean active = visible && !mc.isPaused();
+            if (group.lifecycle.style() == ShadowAuraStyle.COLOSSEUM) {
+                colosseumSources.add(new ColosseumRenderSource(en.getKey(), group, active));
+                if (active) activeColosseumGroups++;
+                continue;
+            }
+            if (!group.tickAndEmit(level, partialTicks, active,
+                    com.jayemceekay.shadowedhearts.client.ClientEffects.ambientDensity())) {
                 it.remove();
+            }
+        }
+        double colosseumBudget = colosseumBudgetScale(activeColosseumGroups)
+                * com.jayemceekay.shadowedhearts.client.ClientEffects.ambientDensity();
+        COLOSSEUM_BUDGET.advance(now, partialTicks, activeColosseumGroups > 0);
+        int first = COLOSSEUM_BUDGET.firstSource(colosseumSources.size());
+        for (int offset = 0; offset < colosseumSources.size(); offset++) {
+            int index = (first + offset) % colosseumSources.size();
+            ColosseumRenderSource source = colosseumSources.get(index);
+            int before = COLOSSEUM_BUDGET.remaining();
+            if (!source.group.tickAndEmit(level, partialTicks, source.active, colosseumBudget)) {
+                ACTIVE.remove(source.entityId, source.group);
+            }
+            if (COLOSSEUM_BUDGET.remaining() < before) {
+                COLOSSEUM_BUDGET.sourceServed(index, colosseumSources.size());
             }
         }
     }
 
+    private record ColosseumRenderSource(int entityId, EmitterGroup group, boolean active) {}
+
     // Group of emitters around the entity, count scaled by bbox size and spaced via Poisson sampling
     private static final class EmitterGroup {
         private final WeakReference<Entity> entityRef;
-        private final java.util.UUID entityUuid;
-        private final long endTick;
+        private final LuminousMoteLifecycle lifecycle;
         private final Emitter[] emitters;
+        private final LuminousMoteEmissionClock emissionClock = new LuminousMoteEmissionClock();
+        private final ColosseumMoteSpawnSequence colosseumSequence;
+        private double colosseumCarry;
+        private ColosseumAuraVolume posedVolume;
+        private Vec3 volumeOrigin;
+        private long volumeTick = Long.MIN_VALUE;
 
-        private EmitterGroup(Entity e, long endTick) {
+        private EmitterGroup(PokemonEntity e, long now, ShadowAuraStyle style) {
             this.entityRef = new WeakReference<>(e);
-            this.entityUuid = e.getUUID();
-            this.endTick = endTick;
+            this.lifecycle = new LuminousMoteLifecycle(style, now,
+                    ShadowAspectUtil.isHoldingShadowShard(e.getPokemon()));
+            this.colosseumSequence = style == ShadowAuraStyle.COLOSSEUM
+                    ? new ColosseumMoteSpawnSequence(e.getUUID().getMostSignificantBits()
+                    ^ Long.rotateLeft(e.getUUID().getLeastSignificantBits(), 23) ^ now) : null;
+
+            // Colosseum samples independent births throughout its whole aura.
+            // Only Signature retains the original fixed lobe emitters.
+            if (style == ShadowAuraStyle.COLOSSEUM) {
+                this.emitters = new Emitter[0];
+                return;
+            }
 
             // Compute number of emitters based on bounding box size.
             // Map size ~1 -> 3 emitters, ~2.5 -> 6, up to a cap.
@@ -116,17 +236,17 @@ public final class LuminousMoteEmitters {
             this.emitters = new Emitter[count];
 
             // Generate Poisson-disc-like angles around the entity to avoid clumping.
-            long seed = (((long) e.getId()) << 32) ^ endTick;
+            long seed = (((long) e.getId()) << 32) ^ now;
             double[] angles = poissonAngles(count, seed);
 
             // Keep the overall particle budget roughly constant by splitting base rate among emitters.
-            double totalRatePerSec = 15.0; // approximately what we had before: 3 * 10/sec
+            double totalRatePerSec = 15.0;
             double perEmitterRate = totalRatePerSec / Math.max(1, count);
 
             // Alternate inside/outside bias so motes spawn just inside and just outside the AABB.
             for (int i = 0; i < count; i++) {
                 boolean outside = (i % 2 == 0);
-                emitters[i] = new Emitter(this.entityRef, endTick, angles[i], perEmitterRate, outside);
+                emitters[i] = new Emitter(this.entityRef, angles[i], perEmitterRate, outside);
             }
         }
 
@@ -167,59 +287,90 @@ public final class LuminousMoteEmitters {
             return result;
         }
 
-        static EmitterGroup create(Entity e, long endTick) {
-            return new EmitterGroup(e, endTick);
+        static EmitterGroup create(PokemonEntity e, long now, ShadowAuraStyle style) {
+            return new EmitterGroup(e, now, style);
         }
 
         boolean isExpired(long now) {
             Entity ent = entityRef.get();
-            if (ent == null || !ent.isAlive()) return true;
-            if (now >= endTick) return true;
-            if (ent instanceof PokemonEntity pe && !ShadowAspectUtil.shouldHaveShadowAura(pe.getPokemon())) {
+            if (ent == null || !ent.isAlive() || ent.level() != Minecraft.getInstance().level) return true;
+            if (ent instanceof PokemonEntity pe && (!ShadowAspectUtil.shouldHaveShadowAura(pe.getPokemon())
+                    || lifecycle.expired(now, resolvedStyle(pe)))) {
                 return true;
             }
             return false;
         }
 
         // Returns false if group should be removed
-        boolean tickAndEmit(ClientLevel level, float partialTicks) {
+        boolean tickAndEmit(ClientLevel level, float partialTicks, boolean active, double colosseumBudget) {
             Entity ent = entityRef.get();
             if (ent == null || !ent.isAlive()) return false;
+            double elapsedSeconds = emissionClock.sample(level.getGameTime(), partialTicks, active);
+            if (elapsedSeconds <= 0.0) return true;
+            if (lifecycle.style() == ShadowAuraStyle.COLOSSEUM) {
+                emitColosseum(level, ent, elapsedSeconds, colosseumBudget);
+                return true;
+            }
             for (Emitter em : emitters) {
-                if (em != null) em.tickAndEmit(level, partialTicks);
+                if (em != null) em.tickAndEmit(level, elapsedSeconds * colosseumBudget);
             }
             return true;
         }
 
-        public java.util.UUID getEntityUuid() {
-            return entityUuid;
+        void observeVolume(Entity entity, AABB bounds, long now) {
+            posedVolume = ColosseumAuraVolume.fromBounds(bounds);
+            volumeOrigin = entity.position();
+            volumeTick = now;
         }
+
+        private void emitColosseum(ClientLevel level, Entity entity, double elapsedSeconds, double budget) {
+            boolean freshPose = posedVolume != null && volumeTick != Long.MIN_VALUE
+                    && level.getGameTime() >= volumeTick && level.getGameTime() - volumeTick <= 12;
+            ColosseumAuraVolume volume = freshPose ? posedVolume : ColosseumAuraVolume.fromBounds(entity.getBoundingBox());
+            Vec3 translation = freshPose ? entity.position().subtract(volumeOrigin) : Vec3.ZERO;
+            double sourceSize = volume.modelBounds().getSize();
+            double desired = colosseumCarry + colosseumRate(sourceSize) * budget * elapsedSeconds;
+            int requested = (int) Math.floor(desired);
+            colosseumCarry = desired - requested;
+            int count = COLOSSEUM_BUDGET.take(requested);
+            double motionScale = Math.max(0.7, Math.min(1.6, Math.sqrt(Math.max(0.0, sourceSize))));
+            for (int i = 0; i < count; i++) {
+                var birth = colosseumSequence.next(volume, motionScale);
+                Vec3 position = birth.position().add(translation);
+                Vec3 velocity = birth.velocity();
+                var particle = Minecraft.getInstance().particleEngine.createParticle(ModParticleTypes.LUMINOUS_MOTE.get(),
+                        position.x, position.y, position.z, velocity.x, velocity.y, velocity.z);
+                if (particle instanceof LuminousMoteParticle mote) {
+                    mote.configureColosseum((float) sourceSize, (float) motionScale,
+                            birth.paletteRoll(), birth.sizeRoll(), birth.lifetimeRoll());
+                    if (entity instanceof PokemonEntity source) mote.setAuraSource(source);
+                    ColosseumMoteRenderer.track(level, mote);
+                }
+            }
+        }
+
     }
 
     // Single attached emitter instance for one lobe
     private static final class Emitter {
         private final WeakReference<Entity> entityRef;
-        private final long endTick;
+        // Own the stream: model rendering may reseed the shared world RNG as the view changes.
+        private final RandomSource random = RandomSource.create();
         private final double baseAngleRad;
         private final boolean outsideBias; // true = outside edge, false = just inside edge
-        private double ratePerSec; // average particles/sec for this emitter (group-scaled)
+        private final double ratePerSec; // average particles/sec for this emitter (group-scaled)
         private double carry = 0.0;       // fractional carry between frames
 
-        Emitter(WeakReference<Entity> entityRef, long endTick, double baseAngleRad, double ratePerSec, boolean outsideBias) {
+        Emitter(WeakReference<Entity> entityRef, double baseAngleRad,
+                double ratePerSec, boolean outsideBias) {
             this.entityRef = entityRef;
-            this.endTick = endTick;
             this.baseAngleRad = baseAngleRad;
             this.ratePerSec = ratePerSec;
             this.outsideBias = outsideBias;
         }
 
-        boolean isExpired(long now) {
-            Entity e = entityRef.get();
-            return e == null || !e.isAlive() || now >= endTick;
-        }
-
         // Returns false if emitter should be removed immediately
-        boolean tickAndEmit(ClientLevel level, float partialTicks) {
+        boolean tickAndEmit(ClientLevel level, double elapsedSeconds) {
             Entity e = entityRef.get();
             if (e == null || !e.isAlive()) return false;
 
@@ -233,25 +384,17 @@ public final class LuminousMoteEmitters {
             // Derive a simple scale factor from the entity's bounding box size (blocks/meters)
             float scale = (float) entityRef.get().getBoundingBox().getSize();
 
-            // Spawn count this frame (approximate real-time rate), scaled by bbox
-            double dtSec = Math.max(0.0, partialTicks / 20.0);
-            double emitRate = ratePerSec * (0.015 + 1.0 * scale);
-            double want = emitRate * dtSec + carry;
+            // Integrate elapsed game time once per group, independent of frame rate.
+            double emitRate = ratePerSec * (0.015 + scale);
+            double want = emitRate * elapsedSeconds + carry;
             int count = (int) Math.floor(want);
             carry = want - count;
-
-            // Slight initial burst for the first 0.6 seconds (optional)
-            long now = level.getGameTime();
-            double timeLeft = Math.max(0.0, (endTick - now) / 20.0);
-            if (timeLeft > 4.4) {
-                // count += 1;
-            }
 
             // Emit
             for (int i = 0; i < count; i++) {
                 // Lobe-biased emission around the entity with upward bias
                 double spread = Math.PI / 6.0; // +/-30 degrees around base angle
-                double ang = this.baseAngleRad + (level.random.nextDouble() * 2.0 - 1.0) * spread;
+                double ang = this.baseAngleRad + (random.nextDouble() * 2.0 - 1.0) * spread;
 
                 // Compute distance to the horizontal AABB edge in direction ang, then offset
                 // slightly to land either just outside or just inside the edge.
@@ -263,16 +406,16 @@ public final class LuminousMoteEmitters {
 
                 double r;
                 if (outsideBias) {
-                    double jitter = level.random.nextDouble() * (0.02 * Math.max(1.0, w));
+                    double jitter = random.nextDouble() * (0.02 * Math.max(1.0, w));
                     r = edge + margin + jitter; // just outside
                 } else {
-                    double jitterIn = level.random.nextDouble() * (0.02 * Math.max(1.0, w));
+                    double jitterIn = random.nextDouble() * (0.02 * Math.max(1.0, w));
                     r = Math.max(0.6 * edge, edge - margin - jitterIn); // just inside, but not too close to center
                 }
 
                 double sx = cx + cosA * r;
                 double sz = cz + sinA * r;
-                double sy = cy + (-0.05 + level.random.nextDouble() * 0.10) * Math.max(0.6, h);
+                double sy = cy + (-0.05 + random.nextDouble() * 0.10) * Math.max(0.6, h);
 
                 // Give each emitter a spawn area radius (disc in XZ) scaled to entity size
                 double areaR = Math.max(0.08, 0.12 * w);
@@ -282,8 +425,8 @@ public final class LuminousMoteEmitters {
                 double tx = -sinA;
                 double tz = cosA;
                 // Sample uniform-in-disc offset
-                double phi2 = level.random.nextDouble() * (Math.PI * 2.0);
-                double rr = Math.sqrt(level.random.nextDouble()) * areaR;
+                double phi2 = random.nextDouble() * (Math.PI * 2.0);
+                double rr = Math.sqrt(random.nextDouble()) * areaR;
                 // Slight bias outward when outside-biased; slight inward when inside-biased
                 double bias = (outsideBias ? 0.25 : -0.10) * areaR;
                 double offN = rr * Math.sin(phi2) + bias;
@@ -296,17 +439,14 @@ public final class LuminousMoteEmitters {
                 // Scale initial speeds by bbox as well so larger entities get slightly more energetic motes
                 // Added a floor (0.2) to prevent particles from being stationary on very small entities.
                 double speedScale = Math.max(0.2, 0.75 * scale);
-                double speedH = (0.008 + level.random.nextDouble() * 0.1) * speedScale; // horizontal speed
-                double vy = (0.04 + level.random.nextDouble() * 0.10) * speedScale;     // upward speed
+                double speedH = (0.008 + random.nextDouble() * 0.1) * speedScale; // horizontal speed
+                double vy = (0.04 + random.nextDouble() * 0.10) * speedScale;     // upward speed
                 double vx = dir.x * speedH;
                 double vz = dir.z * speedH;
 
                 // Add the particle; we pass the velocity vector via the speed parameters.
-                level.addParticle(
-                        ModParticleTypes.LUMINOUS_MOTE.get(),
-                        sx, sy, sz,
-                        vx, vy, vz
-                );
+                LuminousMoteParticle.emitForPokemon(level, e instanceof PokemonEntity source ? source : null,
+                        sx, sy, sz, vx, vy, vz);
             }
             return true;
         }

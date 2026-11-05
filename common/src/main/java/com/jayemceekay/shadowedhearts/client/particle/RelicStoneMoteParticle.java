@@ -7,6 +7,7 @@ import net.minecraft.client.particle.SpriteSet;
 import net.minecraft.client.particle.TextureSheetParticle;
 import net.minecraft.core.particles.SimpleParticleType;
 import net.minecraft.util.Mth;
+import net.minecraft.util.RandomSource;
 import org.jetbrains.annotations.NotNull;
 
 public class RelicStoneMoteParticle extends TextureSheetParticle {
@@ -15,7 +16,6 @@ public class RelicStoneMoteParticle extends TextureSheetParticle {
     private final float twinkleAmp;
     private final float twinkleHz;
     private final float driftAmp;
-    private final float driftSpeed; // radians/sec
     private final float seed;       // stable per-particle (0..1)
 
     protected RelicStoneMoteParticle(ClientLevel level, double x, double y, double z,
@@ -23,14 +23,13 @@ public class RelicStoneMoteParticle extends TextureSheetParticle {
                                    SpriteSet sprites,
                                    float size,
                                    float twinkleAmp, float twinkleHz,
-                                   float driftAmp, float driftSpeed) {
+                                   float driftAmp) {
         super(level, x, y, z, 0, 0, 0);
         this.sprites = sprites;
         this.baseSize = size;
         this.twinkleAmp = twinkleAmp;
         this.twinkleHz = twinkleHz;
         this.driftAmp = driftAmp;
-        this.driftSpeed = driftSpeed;
 
         // Bright green color as requested
         this.rCol = 0.4f;
@@ -39,16 +38,15 @@ public class RelicStoneMoteParticle extends TextureSheetParticle {
         
         this.alpha = 0.0f; // fade-in
 
-        float spMag = (float) Math.sqrt(vx * vx + vy * vy + vz * vz);
-        float lifeScale = Mth.clamp(spMag / 0.035f, 0.7f, 1.6f) * (size + random.nextFloat() * 0.75f);
-        this.lifetime = Math.max(8, (int) ((20 + this.random.nextInt(20)) * lifeScale));
+        // Every mote needs enough time to show its curl, including the smaller sprites.
+        this.lifetime = 24 + random.nextInt(13);
         this.quadSize = size;
         this.setSize(0.01f, 0.01f);
 
-        // Increased horizontal motion as requested
-        this.xd = (float) vx * 1.5f + (random.nextFloat() - 0.5f) * 0.01;
+        // Gentle outward travel lets the curl remain visible from different viewpoints.
+        this.xd = vx * 0.5 + (random.nextFloat() - 0.5f) * 0.004;
         this.yd = (float) vy;
-        this.zd = (float) vz * 1.5f + (random.nextFloat() - 0.5f) * 0.01;
+        this.zd = vz * 0.5 + (random.nextFloat() - 0.5f) * 0.004;
 
         this.gravity = 0.0f;
         this.hasPhysics = false;
@@ -60,15 +58,13 @@ public class RelicStoneMoteParticle extends TextureSheetParticle {
     @Override
     public void tick() {
         super.tick();
-        if (this.age >= this.lifetime) return;
+        if (!this.isAlive()) return;
 
         float t = (float) this.age / (float) this.lifetime;
 
-        double theta = (seed * Math.PI * 2.0) + (this.level.getGameTime() / 20.0) * driftSpeed;
-        double cx = Math.cos(theta) * driftAmp;
-        double cz = Math.sin(theta) * driftAmp;
-        this.x += cx * 0.03; // Slightly more drift
-        this.z += cz * 0.03;
+        var drift = RelicStoneMoteMotion.driftDelta(age, lifetime, seed, driftAmp);
+        // Keep the bounding box in sync so the next vanilla tick retains the drift.
+        this.move(drift.x, drift.y, drift.z);
 
         this.yd += 0.0005;
 
@@ -93,6 +89,8 @@ public class RelicStoneMoteParticle extends TextureSheetParticle {
 
     public static class Provider implements ParticleProvider<SimpleParticleType> {
         private final SpriteSet sprites;
+        // Block rendering can reseed level.random every frame and repeat the same sizes.
+        private final RandomSource random = RandomSource.create();
 
         public Provider(SpriteSet sprites) {
             this.sprites = sprites;
@@ -106,7 +104,7 @@ public class RelicStoneMoteParticle extends TextureSheetParticle {
             float scaleHint = Mth.clamp(speedMag / 0.035f, 0.7f, 2.0f);
 
             // Increase base size slightly: from 0.005-0.055 to 0.01-0.08
-            float size = (0.01f + level.random.nextFloat() * 0.07f) * scaleHint;
+            float size = (0.01f + random.nextFloat() * 0.07f) * scaleHint;
             float driftAmp = 0.08f * scaleHint;
 
             return new RelicStoneMoteParticle(
@@ -116,8 +114,7 @@ public class RelicStoneMoteParticle extends TextureSheetParticle {
                     size,
                     0.60f,
                     1.5f,
-                    driftAmp,
-                    0.9f
+                    driftAmp
             );
         }
     }

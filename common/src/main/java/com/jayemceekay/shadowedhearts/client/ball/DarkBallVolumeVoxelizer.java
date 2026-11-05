@@ -2,7 +2,6 @@ package com.jayemceekay.shadowedhearts.client.ball;
 
 import com.jayemceekay.shadowedhearts.client.render.DarkBallFieldMaskBufferSource.CapturedTriangle;
 import com.mojang.blaze3d.platform.NativeImage;
-import net.minecraft.util.FastColor;
 import net.minecraft.util.Mth;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
@@ -10,38 +9,103 @@ import org.joml.Vector3f;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.function.BooleanSupplier;
 
 final class DarkBallVolumeVoxelizer {
+    private static final DarkBallVolumeVoxelizer FULL = new DarkBallVolumeVoxelizer(
+            DarkBallVolumeGrid.X_SLICES, DarkBallVolumeGrid.SLICE_SIZE);
+    private final int xSize;
+    private final int sideSize;
+
     static final float PHYSICAL_MATERIAL_THRESHOLD = 0.018f;
 
-    /** Three source voxels is about 1.5 voxels in the rendered analytical atlas. */
-    private static final int COHESIVE_CLOSE_RADIUS_VOXELS = 3;
-    private static final float NARROW_ENVELOPE_VOXELS = 1.25f;
     private static final float MINIMUM_SURFACE_COVERAGE = 0.08f;
     private static final float HALF_VOXEL_DIAGONAL = 0.8660254f;
     private static final float HALF_OPEN_VOXEL_BIAS = 0.0001f;
 
-    private DarkBallVolumeVoxelizer() {
+    private DarkBallVolumeVoxelizer(int xSize, int sideSize) {
+        this.xSize = xSize;
+        this.sideSize = sideSize;
     }
 
     static DarkBallVolumeBuildResult build(Vec3 ballPos, Vec3 pokemonCenter, AABB pokemonBounds,
                                            List<Vec3> capturedModelVertices,
                                            List<CapturedTriangle> capturedModelTriangles,
                                            NativeImage textureImage) {
+        return build(ballPos, pokemonCenter, pokemonBounds, capturedModelVertices,
+                capturedModelTriangles, textureImage, null);
+    }
+
+    static DarkBallVolumeBuildResult build(Vec3 ballPos, Vec3 pokemonCenter, AABB pokemonBounds,
+                                           List<Vec3> capturedModelVertices,
+                                           List<CapturedTriangle> capturedModelTriangles,
+                                           NativeImage textureImage,
+                                           BooleanSupplier cancellationRequested) {
+        return DarkBallPreparationCancellation.run(cancellationRequested,
+                () -> build(ballPos, pokemonCenter, pokemonBounds,
+                        capturedModelVertices, capturedModelTriangles,
+                        DarkBallSnapshotTextures.fromBase(textureImage),
+                        cancellationRequested));
+    }
+
+    static DarkBallVolumeBuildResult build(Vec3 ballPos, Vec3 pokemonCenter, AABB pokemonBounds,
+                                           List<Vec3> capturedModelVertices,
+                                           List<CapturedTriangle> capturedModelTriangles,
+                                           DarkBallSnapshotTextures textures,
+                                           BooleanSupplier cancellationRequested) {
+        return DarkBallPreparationCancellation.run(cancellationRequested,
+                () -> FULL.buildInternal(ballPos, pokemonCenter, pokemonBounds,
+                        capturedModelVertices, capturedModelTriangles, textures));
+    }
+
+    /** Published fields always use the fixed consumer grid. */
+    static int voxelIndex(int x, int y, int z) {
+        return (x * DarkBallVolumeGrid.SLICE_SIZE + z) * DarkBallVolumeGrid.SLICE_SIZE + y;
+    }
+
+    static void rasterizeTexturedTriangle(float[] surfaceCoverage, boolean[] visibleShell,
+                                          Vector3f a, Vector3f b, Vector3f c, CapturedTriangle source,
+                                          DarkBallTextureAlphaClipper.AlphaField textureAlpha) {
+        FULL.rasterizeTexturedTriangleInternal(surfaceCoverage, visibleShell, a, b, c, source, textureAlpha);
+    }
+
+    static void rasterizeSurfaceTriangle(float[] surfaceCoverage, boolean[] visibleShell,
+                                         Vector3f a, Vector3f b, Vector3f c) {
+        FULL.rasterizeSurfaceTriangleInternal(surfaceCoverage, visibleShell, a, b, c);
+    }
+
+    static boolean[] buildTextureExtrudedMaterial(boolean[] topologyShell, float[] topologySurfaceAlpha,
+                                                  float[] topologySurfaceDistance, boolean[] visibleShell,
+                                                  float voxelStepX, float voxelStepYz) {
+        return FULL.buildTextureExtrudedMaterialInternal(topologyShell, topologySurfaceAlpha,
+                topologySurfaceDistance, visibleShell, voxelStepX, voxelStepYz);
+    }
+
+    static float[] computeSignedDistanceField(boolean[] material, float voxelStepX, float voxelStepYz) {
+        return FULL.computeSignedDistanceFieldInternal(material, voxelStepX, voxelStepYz);
+    }
+
+    static float[] computeLocalThicknessField(boolean[] material, float voxelStepX, float voxelStepYz) {
+        return FULL.computeLocalThicknessFieldInternal(material, voxelStepX, voxelStepYz);
+    }
+
+    private DarkBallVolumeBuildResult buildInternal(
+            Vec3 ballPos, Vec3 pokemonCenter, AABB pokemonBounds,
+            List<Vec3> capturedModelVertices,
+            List<CapturedTriangle> capturedModelTriangles,
+            DarkBallSnapshotTextures textures) {
         Vec3 captureDir = ballPos.subtract(pokemonCenter);
         if (captureDir.lengthSqr() < 1e-6) captureDir = new Vec3(0, 1, 0);
         captureDir = captureDir.normalize();
         Vec3 side = DarkBallCaptureMath.stableSide(captureDir);
         Vec3 up = captureDir.cross(side).normalize();
-        DarkBallTextureAlphaClipper.AlphaField textureAlpha =
-                captureTextureAlpha(textureImage);
 
         double maxExtent = Math.max(pokemonBounds.getXsize(),
                 Math.max(pokemonBounds.getYsize(), pokemonBounds.getZsize()));
         MeshCaptureBounds meshBounds = capturedMeshBounds(
                 capturedModelVertices,
                 capturedModelTriangles,
-                textureAlpha,
+                textures,
                 pokemonCenter,
                 captureDir,
                 side,
@@ -60,8 +124,8 @@ final class DarkBallVolumeVoxelizer {
         float lateralScale = Math.max(0.001f,
                 Math.max(meshBounds.maxSideAbs(), meshBounds.maxUpAbs()) + lateralMargin);
 
-        int sliceSize = DarkBallVolumeGrid.SLICE_SIZE;
-        int voxelCount = DarkBallVolumeGrid.X_SLICES * sliceSize * sliceSize;
+        int sliceSize = sideSize;
+        int voxelCount = xSize * sliceSize * sliceSize;
         float[] visibleSurfaceCoverage = new float[voxelCount];
         boolean[] visibleShell = new boolean[voxelCount];
         boolean[] topologyShell = new boolean[voxelCount];
@@ -69,26 +133,28 @@ final class DarkBallVolumeVoxelizer {
         float[] topologySurfaceDistance = new float[voxelCount];
         Arrays.fill(topologySurfaceDistance, Float.POSITIVE_INFINITY);
         float voxelStepX = captureLength / Math.max(
-                1, DarkBallVolumeGrid.X_SLICES - 1);
+                1, xSize - 1);
         float voxelStepYz = lateralScale * 2.0f / Math.max(
                 1, sliceSize - 1);
 
         if (!capturedModelTriangles.isEmpty()) {
             for (CapturedTriangle triangle : capturedModelTriangles) {
+                DarkBallPreparationCancellation.check();
+                DarkBallTextureAlphaClipper.AlphaField textureAlpha = textures.alphaFor(triangle);
                 Vector3f a = toVolumeGridPosition(triangle.a(), root, captureDir, side, up, captureLength, lateralScale);
                 Vector3f b = toVolumeGridPosition(triangle.b(), root, captureDir, side, up, captureLength, lateralScale);
                 Vector3f c = toVolumeGridPosition(triangle.c(), root, captureDir, side, up, captureLength, lateralScale);
                 rasterizeTopologyTriangle(topologyShell, topologySurfaceAlpha,
                         topologySurfaceDistance, a, b, c, triangle, textureAlpha,
                         voxelStepX, voxelStepYz);
-                rasterizeTexturedTriangle(visibleSurfaceCoverage, visibleShell,
+                rasterizeTexturedTriangleInternal(visibleSurfaceCoverage, visibleShell,
                         a, b, c, triangle, textureAlpha);
             }
         }
 
         boolean[] physicalMaterial;
         if (hasAnyVoxel(topologyShell)) {
-            physicalMaterial = buildTextureExtrudedMaterial(
+            physicalMaterial = buildTextureExtrudedMaterialInternal(
                     topologyShell,
                     topologySurfaceAlpha,
                     topologySurfaceDistance,
@@ -101,30 +167,18 @@ final class DarkBallVolumeVoxelizer {
             // capture. It is deliberately unreachable for normal textured
             // triangle captures.
             float[] fallbackCore = new float[voxelCount];
-            float[] fallbackEnvelope = new float[voxelCount];
             for (Vec3 vertex : capturedModelVertices) {
+                DarkBallPreparationCancellation.check();
                 Vector3f local = toVolumeLocalPosition(vertex, root, captureDir, side, up, captureLength, lateralScale);
-                splatSoftVolume(fallbackCore, fallbackEnvelope, local.x, local.y, local.z);
+                splatSoftVolume(fallbackCore, local.x, local.y, local.z);
             }
             physicalMaterial = buildPhysicalMaterialMask(fallbackCore);
         }
 
-        float[] signedDistanceField = computeSignedDistanceField(physicalMaterial, voxelStepX, voxelStepYz);
-        float[] coreField = new float[voxelCount];
-        float[] envelopeField = new float[voxelCount];
-        populateMaterialFields(coreField, envelopeField, visibleSurfaceCoverage,
-                physicalMaterial, signedDistanceField, voxelStepX, voxelStepYz);
-        boolean[] cohesiveMaterial = closeVoxels(physicalMaterial,
-                COHESIVE_CLOSE_RADIUS_VOXELS);
-        float[] cohesiveSignedDistanceField = computeSignedDistanceField(
-                cohesiveMaterial, voxelStepX, voxelStepYz);
-        float[][] sdfGradient = computeSdfGradientField(signedDistanceField, voxelStepX, voxelStepYz);
-        float[] localThicknessField = computeLocalThicknessField(physicalMaterial, voxelStepX, voxelStepYz);
-        float[] surfaceDepthField = computeSurfaceDepthField(visibleShell,
-                physicalMaterial);
+        float[] signedDistanceField = computeSignedDistanceFieldInternal(physicalMaterial, voxelStepX, voxelStepYz);
+        float[] localThicknessField = computeLocalThicknessFieldInternal(physicalMaterial, voxelStepX, voxelStepYz);
 
-        return new DarkBallVolumeBuildResult(
-                root,
+        return new DarkBallVolumeBuildResult(root,
                 captureDir,
                 side,
                 up,
@@ -132,35 +186,30 @@ final class DarkBallVolumeVoxelizer {
                 captureLength,
                 bodyRadius,
                 lateralScale,
-                coreField,
-                envelopeField,
-                surfaceDepthField,
                 signedDistanceField,
-                cohesiveSignedDistanceField,
-                sdfGradient[0],
-                sdfGradient[1],
-                sdfGradient[2],
                 localThicknessField,
                 voxelStepX,
-                voxelStepYz
-        );
+                voxelStepYz);
     }
 
-    static int voxelIndex(int x, int y, int z) {
-        return (x * DarkBallVolumeGrid.SLICE_SIZE + z) * DarkBallVolumeGrid.SLICE_SIZE + y;
+    private int voxelIndexInternal(int x, int y, int z) {
+        return (x * sideSize + z) * sideSize + y;
     }
 
-    private static MeshCaptureBounds capturedMeshBounds(List<Vec3> capturedModelVertices,
+    private MeshCaptureBounds capturedMeshBounds(List<Vec3> capturedModelVertices,
                                                          List<CapturedTriangle> capturedModelTriangles,
-                                                         DarkBallTextureAlphaClipper.AlphaField textureAlpha,
+                                                         DarkBallSnapshotTextures textures,
                                                          Vec3 center, Vec3 axis, Vec3 side,
                                                          Vec3 up, double fallbackExtent) {
         MutableMeshCaptureBounds bounds = new MutableMeshCaptureBounds();
-        if (textureAlpha != null) {
+        boolean materialAware = textures.hasAnyAlpha()
+                || capturedModelTriangles.stream().anyMatch(triangle -> triangle.material() != null);
+        if (materialAware) {
             for (CapturedTriangle source : capturedModelTriangles) {
+                DarkBallPreparationCancellation.check();
                 DarkBallTextureAlphaClipper.forEachVisibleTriangle(
                         source,
-                        textureAlpha,
+                        textures.alphaFor(source),
                         clipped -> {
                             bounds.include(worldPoint(source, clipped.a()),
                                     center, axis, side, up);
@@ -173,8 +222,9 @@ final class DarkBallVolumeVoxelizer {
             }
         }
 
-        if (!bounds.hasSamples()) {
+        if (!bounds.hasSamples() && !materialAware) {
             for (Vec3 vertex : capturedModelVertices) {
+                DarkBallPreparationCancellation.check();
                 bounds.include(vertex, center, axis, side, up);
             }
         }
@@ -192,7 +242,7 @@ final class DarkBallVolumeVoxelizer {
         );
     }
 
-    private static Vector3f toVolumeLocalPosition(Vec3 vertex, Vec3 root, Vec3 axis, Vec3 side, Vec3 up,
+    private Vector3f toVolumeLocalPosition(Vec3 vertex, Vec3 root, Vec3 axis, Vec3 side, Vec3 up,
                                                   float captureLength, float lateralScale) {
         Vec3 rel = vertex.subtract(root);
         return new Vector3f(
@@ -202,42 +252,24 @@ final class DarkBallVolumeVoxelizer {
         );
     }
 
-    private static Vector3f toVolumeGridPosition(Vec3 vertex, Vec3 root, Vec3 axis, Vec3 side, Vec3 up,
+    private Vector3f toVolumeGridPosition(Vec3 vertex, Vec3 root, Vec3 axis, Vec3 side, Vec3 up,
                                                  float captureLength, float lateralScale) {
         Vector3f local = toVolumeLocalPosition(vertex, root, axis, side, up, captureLength, lateralScale);
         return new Vector3f(
-                local.x * (DarkBallVolumeGrid.X_SLICES - 1),
-                local.y * (DarkBallVolumeGrid.SLICE_SIZE - 1),
-                local.z * (DarkBallVolumeGrid.SLICE_SIZE - 1)
+                local.x * (xSize - 1),
+                local.y * (sideSize - 1),
+                local.z * (sideSize - 1)
         );
     }
 
-    private static DarkBallTextureAlphaClipper.AlphaField captureTextureAlpha(
-            NativeImage textureImage) {
-        if (textureImage == null || textureImage.getWidth() <= 0
-                || textureImage.getHeight() <= 0) {
-            return null;
-        }
-        int width = textureImage.getWidth();
-        int height = textureImage.getHeight();
-        float[] alpha = new float[width * height];
-        for (int y = 0; y < height; y++) {
-            for (int x = 0; x < width; x++) {
-                alpha[y * width + x] = FastColor.ABGR32.alpha(
-                        textureImage.getPixelRGBA(x, y)) / 255.0f;
-            }
-        }
-        return new DarkBallTextureAlphaClipper.AlphaField(width, height, alpha);
-    }
-
-    private static Vec3 worldPoint(CapturedTriangle source,
+    private Vec3 worldPoint(CapturedTriangle source,
                                    DarkBallTextureAlphaClipper.ParamVertex point) {
         return source.a().scale(point.weightA())
                 .add(source.b().scale(point.weightB()))
                 .add(source.c().scale(point.weightC()));
     }
 
-    private static Vector3f gridPoint(Vector3f a, Vector3f b, Vector3f c,
+    private Vector3f gridPoint(Vector3f a, Vector3f b, Vector3f c,
                                       DarkBallTextureAlphaClipper.ParamVertex point) {
         return new Vector3f(
                 a.x * point.weightA() + b.x * point.weightB()
@@ -249,7 +281,7 @@ final class DarkBallVolumeVoxelizer {
         );
     }
 
-    static void rasterizeTexturedTriangle(float[] surfaceCoverage,
+    private void rasterizeTexturedTriangleInternal(float[] surfaceCoverage,
                                           boolean[] visibleShell,
                                           Vector3f a, Vector3f b, Vector3f c,
                                           CapturedTriangle source,
@@ -257,7 +289,7 @@ final class DarkBallVolumeVoxelizer {
         DarkBallTextureAlphaClipper.forEachVisibleTriangle(
                 source,
                 textureAlpha,
-                clipped -> rasterizeSurfaceTriangle(
+                clipped -> rasterizeSurfaceTriangleInternal(
                         surfaceCoverage,
                         visibleShell,
                         gridPoint(a, b, c, clipped.a()),
@@ -267,7 +299,7 @@ final class DarkBallVolumeVoxelizer {
         );
     }
 
-    private static void rasterizeTopologyTriangle(boolean[] topologyShell,
+    private void rasterizeTopologyTriangle(boolean[] topologyShell,
                                                   float[] surfaceAlpha,
                                                   float[] surfaceDistance,
                                                   Vector3f a, Vector3f b, Vector3f c,
@@ -281,22 +313,22 @@ final class DarkBallVolumeVoxelizer {
         float halfExtent = 0.5001f;
         int minX = Mth.clamp((int) Math.floor(
                         Math.min(a.x, Math.min(b.x, c.x)) - halfExtent),
-                0, DarkBallVolumeGrid.X_SLICES - 1);
+                0, xSize - 1);
         int maxX = Mth.clamp((int) Math.ceil(
                         Math.max(a.x, Math.max(b.x, c.x)) + halfExtent),
-                0, DarkBallVolumeGrid.X_SLICES - 1);
+                0, xSize - 1);
         int minY = Mth.clamp((int) Math.floor(
                         Math.min(a.y, Math.min(b.y, c.y)) - halfExtent),
-                0, DarkBallVolumeGrid.SLICE_SIZE - 1);
+                0, sideSize - 1);
         int maxY = Mth.clamp((int) Math.ceil(
                         Math.max(a.y, Math.max(b.y, c.y)) + halfExtent),
-                0, DarkBallVolumeGrid.SLICE_SIZE - 1);
+                0, sideSize - 1);
         int minZ = Mth.clamp((int) Math.floor(
                         Math.min(a.z, Math.min(b.z, c.z)) - halfExtent),
-                0, DarkBallVolumeGrid.SLICE_SIZE - 1);
+                0, sideSize - 1);
         int maxZ = Mth.clamp((int) Math.ceil(
                         Math.max(a.z, Math.max(b.z, c.z)) + halfExtent),
-                0, DarkBallVolumeGrid.SLICE_SIZE - 1);
+                0, sideSize - 1);
 
         Vector3f physicalA = new Vector3f(
                 a.x * voxelStepX, a.y * voxelStepYz, a.z * voxelStepYz);
@@ -306,6 +338,7 @@ final class DarkBallVolumeVoxelizer {
                 c.x * voxelStepX, c.y * voxelStepYz, c.z * voxelStepYz);
         float[] barycentric = new float[3];
         for (int x = minX; x <= maxX; x++) {
+            DarkBallPreparationCancellation.check();
             for (int z = minZ; z <= maxZ; z++) {
                 for (int y = minY; y <= maxY; y++) {
                     if (!triangleIntersectsUnitVoxel(a, b, c, x, y, z)) {
@@ -316,7 +349,7 @@ final class DarkBallVolumeVoxelizer {
                             y * voxelStepYz,
                             z * voxelStepYz,
                             physicalA, physicalB, physicalC, barycentric);
-                    int index = voxelIndex(x, y, z);
+                    int index = voxelIndexInternal(x, y, z);
                     topologyShell[index] = true;
                     float alpha = sourceAlphaAt(source, textureAlpha,
                             barycentric[0], barycentric[1], barycentric[2]);
@@ -332,7 +365,7 @@ final class DarkBallVolumeVoxelizer {
         }
     }
 
-    static void rasterizeSurfaceTriangle(float[] surfaceCoverage,
+    private void rasterizeSurfaceTriangleInternal(float[] surfaceCoverage,
                                          boolean[] visibleShell,
                                          Vector3f a, Vector3f b, Vector3f c) {
         if (isDegenerateTriangle(a, b, c)) {
@@ -341,24 +374,25 @@ final class DarkBallVolumeVoxelizer {
         float halfExtent = 0.5001f;
         int minX = Mth.clamp((int) Math.floor(
                         Math.min(a.x, Math.min(b.x, c.x)) - halfExtent),
-                0, DarkBallVolumeGrid.X_SLICES - 1);
+                0, xSize - 1);
         int maxX = Mth.clamp((int) Math.ceil(
                         Math.max(a.x, Math.max(b.x, c.x)) + halfExtent),
-                0, DarkBallVolumeGrid.X_SLICES - 1);
+                0, xSize - 1);
         int minY = Mth.clamp((int) Math.floor(
                         Math.min(a.y, Math.min(b.y, c.y)) - halfExtent),
-                0, DarkBallVolumeGrid.SLICE_SIZE - 1);
+                0, sideSize - 1);
         int maxY = Mth.clamp((int) Math.ceil(
                         Math.max(a.y, Math.max(b.y, c.y)) + halfExtent),
-                0, DarkBallVolumeGrid.SLICE_SIZE - 1);
+                0, sideSize - 1);
         int minZ = Mth.clamp((int) Math.floor(
                         Math.min(a.z, Math.min(b.z, c.z)) - halfExtent),
-                0, DarkBallVolumeGrid.SLICE_SIZE - 1);
+                0, sideSize - 1);
         int maxZ = Mth.clamp((int) Math.ceil(
                         Math.max(a.z, Math.max(b.z, c.z)) + halfExtent),
-                0, DarkBallVolumeGrid.SLICE_SIZE - 1);
+                0, sideSize - 1);
 
         for (int x = minX; x <= maxX; x++) {
+            DarkBallPreparationCancellation.check();
             for (int z = minZ; z <= maxZ; z++) {
                 for (int y = minY; y <= maxY; y++) {
                     if (!triangleIntersectsUnitVoxel(a, b, c, x, y, z)) {
@@ -368,7 +402,7 @@ final class DarkBallVolumeVoxelizer {
                             x, y, z, a, b, c, null));
                     float coverage = Math.max(MINIMUM_SURFACE_COVERAGE,
                             1.0f - distance / HALF_VOXEL_DIAGONAL);
-                    int index = voxelIndex(x, y, z);
+                    int index = voxelIndexInternal(x, y, z);
                     visibleShell[index] = true;
                     surfaceCoverage[index] = Math.max(
                             surfaceCoverage[index], coverage);
@@ -377,7 +411,7 @@ final class DarkBallVolumeVoxelizer {
         }
     }
 
-    private static boolean isDegenerateTriangle(Vector3f a, Vector3f b,
+    private boolean isDegenerateTriangle(Vector3f a, Vector3f b,
                                                 Vector3f c) {
         float abx = b.x - a.x;
         float aby = b.y - a.y;
@@ -391,7 +425,7 @@ final class DarkBallVolumeVoxelizer {
         return nx * nx + ny * ny + nz * nz < 1e-8f;
     }
 
-    private static boolean triangleIntersectsUnitVoxel(Vector3f a, Vector3f b,
+    private boolean triangleIntersectsUnitVoxel(Vector3f a, Vector3f b,
                                                        Vector3f c,
                                                        float centerX,
                                                        float centerY,
@@ -443,7 +477,7 @@ final class DarkBallVolumeVoxelizer {
                 ax, ay, az, bx, by, bz, cx, cy, cz);
     }
 
-    private static boolean separatedOnEdgeAxes(float edgeX, float edgeY,
+    private boolean separatedOnEdgeAxes(float edgeX, float edgeY,
                                                float edgeZ,
                                                float ax, float ay, float az,
                                                float bx, float by, float bz,
@@ -456,7 +490,7 @@ final class DarkBallVolumeVoxelizer {
                 ax, ay, az, bx, by, bz, cx, cy, cz);
     }
 
-    private static boolean separatedOnAxis(float axisX, float axisY, float axisZ,
+    private boolean separatedOnAxis(float axisX, float axisY, float axisZ,
                                            float ax, float ay, float az,
                                            float bx, float by, float bz,
                                            float cx, float cy, float cz) {
@@ -475,7 +509,7 @@ final class DarkBallVolumeVoxelizer {
         return minimum > radius || maximum < -radius;
     }
 
-    private static float sourceAlphaAt(CapturedTriangle source,
+    private float sourceAlphaAt(CapturedTriangle source,
                                        DarkBallTextureAlphaClipper.AlphaField textureAlpha,
                                        float weightA, float weightB, float weightC) {
         float vertexAlpha = (source.alphaA() * weightA
@@ -501,7 +535,7 @@ final class DarkBallVolumeVoxelizer {
      * well-defined 3D interior without letting an intentional alpha opening
      * drain the whole flood-filled body.
      */
-    static boolean[] buildTextureExtrudedMaterial(boolean[] topologyShell,
+    private boolean[] buildTextureExtrudedMaterialInternal(boolean[] topologyShell,
                                                   float[] topologySurfaceAlpha,
                                                   float[] topologySurfaceDistance,
                                                   boolean[] visibleShell,
@@ -513,12 +547,13 @@ final class DarkBallVolumeVoxelizer {
         float[] ownershipAlpha = new float[topologyShell.length];
         Arrays.fill(ownershipDistance, Float.POSITIVE_INFINITY);
         int seeds = 0;
-        int sliceSize = DarkBallVolumeGrid.SLICE_SIZE;
+        int sliceSize = sideSize;
 
-        for (int x = 0; x < DarkBallVolumeGrid.X_SLICES; x++) {
+        for (int x = 0; x < xSize; x++) {
+            DarkBallPreparationCancellation.check();
             for (int z = 0; z < sliceSize; z++) {
                 for (int y = 0; y < sliceSize; y++) {
-                    int index = voxelIndex(x, y, z);
+                    int index = voxelIndexInternal(x, y, z);
                     rawSolid[index] = topologyShell[index] || !exterior[index];
                     if (topologyShell[index]
                             && Float.isFinite(topologySurfaceDistance[index])
@@ -541,6 +576,7 @@ final class DarkBallVolumeVoxelizer {
         // entire source.
         if (seeds == 0) {
             for (int i = 0; i < topologyShell.length; i++) {
+                DarkBallPreparationCancellation.checkEvery(i);
                 if (topologyShell[i]
                         && Float.isFinite(topologySurfaceDistance[i])) {
                     ownershipDistance[i] = Mth.sqrt(
@@ -558,6 +594,7 @@ final class DarkBallVolumeVoxelizer {
                 voxelStepX, voxelStepYz);
         boolean[] material = new boolean[topologyShell.length];
         for (int i = 0; i < material.length; i++) {
+            DarkBallPreparationCancellation.checkEvery(i);
             material[i] = visibleShell[i]
                     || (!topologyShell[i] && !exterior[i]
                     && ownershipAlpha[i]
@@ -566,7 +603,7 @@ final class DarkBallVolumeVoxelizer {
         return material;
     }
 
-    private static boolean touchesExterior(boolean[] exterior,
+    private boolean touchesExterior(boolean[] exterior,
                                            int x, int y, int z) {
         return isExterior(exterior, x - 1, y, z)
                 || isExterior(exterior, x + 1, y, z)
@@ -576,90 +613,74 @@ final class DarkBallVolumeVoxelizer {
                 || isExterior(exterior, x, y, z + 1);
     }
 
-    private static boolean isExterior(boolean[] exterior,
+    private boolean isExterior(boolean[] exterior,
                                       int x, int y, int z) {
-        if (x < 0 || x >= DarkBallVolumeGrid.X_SLICES
-                || y < 0 || y >= DarkBallVolumeGrid.SLICE_SIZE
-                || z < 0 || z >= DarkBallVolumeGrid.SLICE_SIZE) {
+        if (x < 0 || x >= xSize
+                || y < 0 || y >= sideSize
+                || z < 0 || z >= sideSize) {
             return true;
         }
-        return exterior[voxelIndex(x, y, z)];
+        return exterior[voxelIndexInternal(x, y, z)];
     }
 
-    private static void propagateNearestAlpha(boolean[] rawSolid,
+    private void propagateNearestAlpha(boolean[] rawSolid,
                                               float[] distance,
                                               float[] alpha,
                                               float voxelStepX,
                                               float voxelStepYz) {
+        NeighborStep[] previous = neighborSteps(voxelStepX, voxelStepYz, true);
+        NeighborStep[] next = neighborSteps(voxelStepX, voxelStepYz, false);
         for (int iteration = 0; iteration < 2; iteration++) {
-            propagateAlphaPass(rawSolid, distance, alpha,
-                    voxelStepX, voxelStepYz, true);
-            propagateAlphaPass(rawSolid, distance, alpha,
-                    voxelStepX, voxelStepYz, false);
+            propagateAlphaPass(rawSolid, distance, alpha, previous, true);
+            propagateAlphaPass(rawSolid, distance, alpha, next, false);
         }
     }
 
-    private static void propagateAlphaPass(boolean[] rawSolid,
+    private void propagateAlphaPass(boolean[] rawSolid,
                                            float[] distance,
                                            float[] alpha,
-                                           float voxelStepX,
-                                           float voxelStepYz,
+                                           NeighborStep[] neighbors,
                                            boolean forward) {
-        int xStart = forward ? 0 : DarkBallVolumeGrid.X_SLICES - 1;
-        int xEnd = forward ? DarkBallVolumeGrid.X_SLICES : -1;
+        int xStart = forward ? 0 : xSize - 1;
+        int xEnd = forward ? xSize : -1;
         int xStep = forward ? 1 : -1;
-        int zStart = forward ? 0 : DarkBallVolumeGrid.SLICE_SIZE - 1;
-        int zEnd = forward ? DarkBallVolumeGrid.SLICE_SIZE : -1;
+        int zStart = forward ? 0 : sideSize - 1;
+        int zEnd = forward ? sideSize : -1;
         int zStep = forward ? 1 : -1;
-        int yStart = forward ? 0 : DarkBallVolumeGrid.SLICE_SIZE - 1;
-        int yEnd = forward ? DarkBallVolumeGrid.SLICE_SIZE : -1;
+        int yStart = forward ? 0 : sideSize - 1;
+        int yEnd = forward ? sideSize : -1;
         int yStep = forward ? 1 : -1;
 
         for (int x = xStart; x != xEnd; x += xStep) {
+            DarkBallPreparationCancellation.check();
             for (int z = zStart; z != zEnd; z += zStep) {
                 for (int y = yStart; y != yEnd; y += yStep) {
-                    int index = voxelIndex(x, y, z);
+                    int index = voxelIndexInternal(x, y, z);
                     if (!rawSolid[index]) {
                         continue;
                     }
                     float bestDistance = distance[index];
                     float bestAlpha = alpha[index];
-                    for (int ox = -1; ox <= 1; ox++) {
-                        for (int oz = -1; oz <= 1; oz++) {
-                            for (int oy = -1; oy <= 1; oy++) {
-                                if (ox == 0 && oy == 0 && oz == 0) {
-                                    continue;
-                                }
-                                if (forward && !isPreviousNeighbor(ox, oy, oz)) {
-                                    continue;
-                                }
-                                if (!forward && !isNextNeighbor(ox, oy, oz)) {
-                                    continue;
-                                }
-                                int nx = x + ox;
-                                int ny = y + oy;
-                                int nz = z + oz;
-                                if (nx < 0 || nx >= DarkBallVolumeGrid.X_SLICES
-                                        || ny < 0 || ny >= DarkBallVolumeGrid.SLICE_SIZE
-                                        || nz < 0 || nz >= DarkBallVolumeGrid.SLICE_SIZE) {
-                                    continue;
-                                }
-                                int neighbor = voxelIndex(nx, ny, nz);
-                                if (!rawSolid[neighbor]
-                                        || !Float.isFinite(distance[neighbor])) {
-                                    continue;
-                                }
-                                float candidate = distance[neighbor]
-                                        + neighborDistance(ox, oy, oz,
-                                        voxelStepX, voxelStepYz);
-                                if (candidate + 1e-6f < bestDistance
-                                        || (Math.abs(candidate - bestDistance)
-                                        <= 1e-6f
-                                        && alpha[neighbor] < bestAlpha)) {
-                                    bestDistance = candidate;
-                                    bestAlpha = alpha[neighbor];
-                                }
-                            }
+                    for (NeighborStep step : neighbors) {
+                        int nx = x + step.x;
+                        int ny = y + step.y;
+                        int nz = z + step.z;
+                        if (nx < 0 || nx >= xSize
+                                || ny < 0 || ny >= sideSize
+                                || nz < 0 || nz >= sideSize) {
+                            continue;
+                        }
+                        int neighbor = index + step.indexOffset;
+                        if (!rawSolid[neighbor]
+                                || !Float.isFinite(distance[neighbor])) {
+                            continue;
+                        }
+                        float candidate = distance[neighbor] + step.distance;
+                        if (candidate + 1e-6f < bestDistance
+                                || (Math.abs(candidate - bestDistance) <= 1e-6f
+                                && alpha[neighbor] < bestAlpha)) {
+                            bestDistance = candidate;
+                            bestAlpha = alpha[neighbor];
                         }
                     }
                     distance[index] = bestDistance;
@@ -669,43 +690,23 @@ final class DarkBallVolumeVoxelizer {
         }
     }
 
-    private static void populateMaterialFields(float[] core,
-                                               float[] envelope,
-                                               float[] surfaceCoverage,
-                                               boolean[] material,
-                                               float[] signedDistance,
-                                               float voxelStepX,
-                                               float voxelStepYz) {
-        float envelopeWidth = Math.max(voxelStepX, voxelStepYz)
-                * NARROW_ENVELOPE_VOXELS;
-        for (int i = 0; i < material.length; i++) {
-            if (material[i]) {
-                core[i] = Math.max(0.96f, surfaceCoverage[i]);
-                envelope[i] = 1.0f;
-            } else {
-                envelope[i] = DarkBallCaptureMath.smoothstep(
-                        envelopeWidth, 0.0f,
-                        Math.max(signedDistance[i], 0.0f));
-            }
-        }
-    }
-
-    private static boolean hasAnyVoxel(boolean[] voxels) {
+    private boolean hasAnyVoxel(boolean[] voxels) {
         for (boolean voxel : voxels) {
             if (voxel) return true;
         }
         return false;
     }
 
-    private static boolean[] floodExteriorEmpty(boolean[] barrier) {
-        int xCount = DarkBallVolumeGrid.X_SLICES;
-        int sliceSize = DarkBallVolumeGrid.SLICE_SIZE;
+    private boolean[] floodExteriorEmpty(boolean[] barrier) {
+        int xCount = xSize;
+        int sliceSize = sideSize;
         boolean[] exterior = new boolean[barrier.length];
         int[] queue = new int[barrier.length];
         int head = 0;
         int tail = 0;
 
         for (int x = 0; x < xCount; x++) {
+            DarkBallPreparationCancellation.check();
             for (int z = 0; z < sliceSize; z++) {
                 tail = enqueueExteriorBoundary(barrier, exterior, queue, tail, x, 0, z);
                 tail = enqueueExteriorBoundary(barrier, exterior, queue, tail, x, sliceSize - 1, z);
@@ -723,6 +724,7 @@ final class DarkBallVolumeVoxelizer {
         }
 
         while (head < tail) {
+            DarkBallPreparationCancellation.checkEvery(head);
             int packed = queue[head++];
             int x = packed / (sliceSize * sliceSize);
             int rem = packed - x * sliceSize * sliceSize;
@@ -740,115 +742,50 @@ final class DarkBallVolumeVoxelizer {
         return exterior;
     }
 
-    private static int enqueueExteriorBoundary(boolean[] barrier, boolean[] exterior, int[] queue, int tail,
+    private int enqueueExteriorBoundary(boolean[] barrier, boolean[] exterior, int[] queue, int tail,
                                                int x, int y, int z) {
-        int index = voxelIndex(x, y, z);
+        int index = voxelIndexInternal(x, y, z);
         if (barrier[index] || exterior[index]) return tail;
         exterior[index] = true;
         queue[tail] = index;
         return tail + 1;
     }
 
-    private static int enqueueExteriorNeighbor(boolean[] barrier, boolean[] exterior, int[] queue, int tail,
+    private int enqueueExteriorNeighbor(boolean[] barrier, boolean[] exterior, int[] queue, int tail,
                                                int x, int y, int z) {
-        if (x < 0 || x >= DarkBallVolumeGrid.X_SLICES
-                || y < 0 || y >= DarkBallVolumeGrid.SLICE_SIZE
-                || z < 0 || z >= DarkBallVolumeGrid.SLICE_SIZE) {
+        if (x < 0 || x >= xSize
+                || y < 0 || y >= sideSize
+                || z < 0 || z >= sideSize) {
             return tail;
         }
-        int index = voxelIndex(x, y, z);
+        int index = voxelIndexInternal(x, y, z);
         if (barrier[index] || exterior[index]) return tail;
         exterior[index] = true;
         queue[tail] = index;
         return tail + 1;
     }
 
-    private static float[] computeSurfaceDepthField(boolean[] shell,
-                                                    boolean[] material) {
-        int[] distances = new int[shell.length];
-        java.util.Arrays.fill(distances, -1);
-
-        int[] queue = new int[shell.length];
-        int head = 0;
-        int tail = 0;
-        for (int i = 0; i < shell.length; i++) {
-            if (!shell[i]) continue;
-
-            distances[i] = 0;
-            queue[tail++] = i;
-        }
-
-        int sliceSize = DarkBallVolumeGrid.SLICE_SIZE;
-        while (head < tail) {
-            int index = queue[head++];
-            int x = index / (sliceSize * sliceSize);
-            int rem = index - x * sliceSize * sliceSize;
-            int z = rem / sliceSize;
-            int y = rem - z * sliceSize;
-            int nextDistance = distances[index] + 1;
-
-            tail = enqueueSurfaceDepthNeighbor(material, distances, queue, tail, nextDistance, x - 1, y, z);
-            tail = enqueueSurfaceDepthNeighbor(material, distances, queue, tail, nextDistance, x + 1, y, z);
-            tail = enqueueSurfaceDepthNeighbor(material, distances, queue, tail, nextDistance, x, y - 1, z);
-            tail = enqueueSurfaceDepthNeighbor(material, distances, queue, tail, nextDistance, x, y + 1, z);
-            tail = enqueueSurfaceDepthNeighbor(material, distances, queue, tail, nextDistance, x, y, z - 1);
-            tail = enqueueSurfaceDepthNeighbor(material, distances, queue, tail, nextDistance, x, y, z + 1);
-        }
-
-        int maxDistance = 1;
-        for (int i = 0; i < distances.length; i++) {
-            if (material[i]) {
-                maxDistance = Math.max(maxDistance, distances[i]);
-            }
-        }
-
-        float[] field = new float[shell.length];
-        for (int i = 0; i < field.length; i++) {
-            if (!material[i] || distances[i] < 0) continue;
-
-            field[i] = Mth.clamp(distances[i] / (float) maxDistance, 0f, 1f);
-        }
-        return field;
-    }
-
-    private static int enqueueSurfaceDepthNeighbor(boolean[] material,
-                                                   int[] distances, int[] queue,
-                                                   int tail, int nextDistance, int x, int y, int z) {
-        if (x < 0 || x >= DarkBallVolumeGrid.X_SLICES
-                || y < 0 || y >= DarkBallVolumeGrid.SLICE_SIZE
-                || z < 0 || z >= DarkBallVolumeGrid.SLICE_SIZE) {
-            return tail;
-        }
-
-        int index = voxelIndex(x, y, z);
-        if (distances[index] >= 0 || !material[index]) {
-            return tail;
-        }
-
-        distances[index] = nextDistance;
-        queue[tail] = index;
-        return tail + 1;
-    }
-
-    private static boolean[] buildPhysicalMaterialMask(float[] core) {
+    private boolean[] buildPhysicalMaterialMask(float[] core) {
         boolean[] material = new boolean[core.length];
         for (int i = 0; i < core.length; i++) {
+            DarkBallPreparationCancellation.checkEvery(i);
             material[i] = core[i] > PHYSICAL_MATERIAL_THRESHOLD;
         }
         return material;
     }
 
-    static float[] computeSignedDistanceField(boolean[] material,
+    private float[] computeSignedDistanceFieldInternal(boolean[] material,
                                               float voxelStepX,
                                               float voxelStepYz) {
         float[] insideDistance = computeClassDistanceField(material, true, voxelStepX, voxelStepYz);
         float[] outsideDistance = computeClassDistanceField(material, false, voxelStepX, voxelStepYz);
         float maxDistance = Math.max(
-                DarkBallVolumeGrid.X_SLICES * voxelStepX,
-                DarkBallVolumeGrid.SLICE_SIZE * voxelStepYz
+                xSize * voxelStepX,
+                sideSize * voxelStepYz
         );
         float[] sdf = new float[material.length];
         for (int i = 0; i < sdf.length; i++) {
+            DarkBallPreparationCancellation.checkEvery(i);
             float d = material[i] ? -insideDistance[i] : outsideDistance[i];
             if (!Float.isFinite(d) || Math.abs(d) > maxDistance) {
                 d = material[i] ? -maxDistance : maxDistance;
@@ -858,17 +795,18 @@ final class DarkBallVolumeVoxelizer {
         return sdf;
     }
 
-    private static float[] computeClassDistanceField(boolean[] material, boolean targetMaterial,
+    private float[] computeClassDistanceField(boolean[] material, boolean targetMaterial,
                                                      float voxelStepX, float voxelStepYz) {
-        int xCount = DarkBallVolumeGrid.X_SLICES;
-        int sliceSize = DarkBallVolumeGrid.SLICE_SIZE;
+        int xCount = xSize;
+        int sliceSize = sideSize;
         float[] distance = new float[material.length];
         java.util.Arrays.fill(distance, Float.POSITIVE_INFINITY);
 
         for (int x = 0; x < xCount; x++) {
+            DarkBallPreparationCancellation.check();
             for (int z = 0; z < sliceSize; z++) {
                 for (int y = 0; y < sliceSize; y++) {
-                    int index = voxelIndex(x, y, z);
+                    int index = voxelIndexInternal(x, y, z);
                     if (material[index] == targetMaterial) {
                         distance[index] = classBoundaryDistance(
                                 material, targetMaterial, x, y, z,
@@ -878,20 +816,22 @@ final class DarkBallVolumeVoxelizer {
             }
         }
 
-        chamferDistancePass(material, targetMaterial, distance, voxelStepX, voxelStepYz, true);
-        chamferDistancePass(material, targetMaterial, distance, voxelStepX, voxelStepYz, false);
-        chamferDistancePass(material, targetMaterial, distance, voxelStepX, voxelStepYz, true);
-        chamferDistancePass(material, targetMaterial, distance, voxelStepX, voxelStepYz, false);
+        NeighborStep[] previous = neighborSteps(voxelStepX, voxelStepYz, true);
+        NeighborStep[] next = neighborSteps(voxelStepX, voxelStepYz, false);
+        chamferDistancePass(material, targetMaterial, distance, previous, true);
+        chamferDistancePass(material, targetMaterial, distance, next, false);
+        chamferDistancePass(material, targetMaterial, distance, previous, true);
+        chamferDistancePass(material, targetMaterial, distance, next, false);
         return distance;
     }
 
-    private static float classBoundaryDistance(boolean[] material,
+    private float classBoundaryDistance(boolean[] material,
                                                boolean targetMaterial,
                                                int x, int y, int z,
                                                float voxelStepX,
                                                float voxelStepYz) {
-        int xCount = DarkBallVolumeGrid.X_SLICES;
-        int sliceSize = DarkBallVolumeGrid.SLICE_SIZE;
+        int xCount = xSize;
+        int sliceSize = sideSize;
         float best = Float.POSITIVE_INFINITY;
         best = boundaryFaceDistance(material, targetMaterial,
                 x - 1, y, z, xCount, sliceSize, voxelStepX, best);
@@ -908,7 +848,7 @@ final class DarkBallVolumeVoxelizer {
         return best;
     }
 
-    private static float boundaryFaceDistance(boolean[] material,
+    private float boundaryFaceDistance(boolean[] material,
                                               boolean targetMaterial,
                                               int x, int y, int z,
                                               int xCount, int sliceSize,
@@ -920,63 +860,50 @@ final class DarkBallVolumeVoxelizer {
                     ? Math.min(currentBest, faceSpacing * 0.5f)
                     : currentBest;
         }
-        if (material[voxelIndex(x, y, z)] != targetMaterial) {
+        if (material[voxelIndexInternal(x, y, z)] != targetMaterial) {
             return Math.min(currentBest, faceSpacing * 0.5f);
         }
         return currentBest;
     }
 
-    private static void chamferDistancePass(boolean[] material, boolean targetMaterial, float[] distance,
-                                            float voxelStepX, float voxelStepYz, boolean forward) {
-        int xStart = forward ? 0 : DarkBallVolumeGrid.X_SLICES - 1;
-        int xEnd = forward ? DarkBallVolumeGrid.X_SLICES : -1;
+    private void chamferDistancePass(boolean[] material, boolean targetMaterial, float[] distance,
+                                            NeighborStep[] neighbors, boolean forward) {
+        int xStart = forward ? 0 : xSize - 1;
+        int xEnd = forward ? xSize : -1;
         int xStep = forward ? 1 : -1;
-        int zStart = forward ? 0 : DarkBallVolumeGrid.SLICE_SIZE - 1;
-        int zEnd = forward ? DarkBallVolumeGrid.SLICE_SIZE : -1;
+        int zStart = forward ? 0 : sideSize - 1;
+        int zEnd = forward ? sideSize : -1;
         int zStep = forward ? 1 : -1;
-        int yStart = forward ? 0 : DarkBallVolumeGrid.SLICE_SIZE - 1;
-        int yEnd = forward ? DarkBallVolumeGrid.SLICE_SIZE : -1;
+        int yStart = forward ? 0 : sideSize - 1;
+        int yEnd = forward ? sideSize : -1;
         int yStep = forward ? 1 : -1;
 
         for (int x = xStart; x != xEnd; x += xStep) {
+            DarkBallPreparationCancellation.check();
             for (int z = zStart; z != zEnd; z += zStep) {
                 for (int y = yStart; y != yEnd; y += yStep) {
-                    int index = voxelIndex(x, y, z);
+                    int index = voxelIndexInternal(x, y, z);
                     if (material[index] != targetMaterial) {
                         continue;
                     }
 
                     float best = distance[index];
-                    for (int ox = -1; ox <= 1; ox++) {
-                        for (int oz = -1; oz <= 1; oz++) {
-                            for (int oy = -1; oy <= 1; oy++) {
-                                if (ox == 0 && oy == 0 && oz == 0) {
-                                    continue;
-                                }
-                                if (forward && !isPreviousNeighbor(ox, oy, oz)) {
-                                    continue;
-                                }
-                                if (!forward && !isNextNeighbor(ox, oy, oz)) {
-                                    continue;
-                                }
-
-                                int nx = x + ox;
-                                int ny = y + oy;
-                                int nz = z + oz;
-                                if (nx < 0 || nx >= DarkBallVolumeGrid.X_SLICES
-                                        || ny < 0 || ny >= DarkBallVolumeGrid.SLICE_SIZE
-                                        || nz < 0 || nz >= DarkBallVolumeGrid.SLICE_SIZE) {
-                                    continue;
-                                }
-                                int neighbor = voxelIndex(nx, ny, nz);
-                                if (material[neighbor] != targetMaterial) {
-                                    continue;
-                                }
-                                float candidate = distance[neighbor] + neighborDistance(ox, oy, oz, voxelStepX, voxelStepYz);
-                                if (candidate < best) {
-                                    best = candidate;
-                                }
-                            }
+                    for (NeighborStep step : neighbors) {
+                        int nx = x + step.x;
+                        int ny = y + step.y;
+                        int nz = z + step.z;
+                        if (nx < 0 || nx >= xSize
+                                || ny < 0 || ny >= sideSize
+                                || nz < 0 || nz >= sideSize) {
+                            continue;
+                        }
+                        int neighbor = index + step.indexOffset;
+                        if (material[neighbor] != targetMaterial) {
+                            continue;
+                        }
+                        float candidate = distance[neighbor] + step.distance;
+                        if (candidate < best) {
+                            best = candidate;
                         }
                     }
                     distance[index] = best;
@@ -985,113 +912,101 @@ final class DarkBallVolumeVoxelizer {
         }
     }
 
-    private static boolean isPreviousNeighbor(int ox, int oy, int oz) {
+    /**
+     * The same thirteen steps are visited at every voxel in one sweep. Build
+     * their physical lengths and flat offsets once, retaining the original
+     * x/z/y order because nearest-alpha ties depend on that order.
+     */
+    private NeighborStep[] neighborSteps(float voxelStepX, float voxelStepYz, boolean forward) {
+        NeighborStep[] neighbors = new NeighborStep[13];
+        int index = 0;
+        for (int ox = -1; ox <= 1; ox++) {
+            for (int oz = -1; oz <= 1; oz++) {
+                for (int oy = -1; oy <= 1; oy++) {
+                    if (forward ? isPreviousNeighbor(ox, oy, oz) : isNextNeighbor(ox, oy, oz)) {
+                        neighbors[index++] = new NeighborStep(ox, oy, oz,
+                                (ox * sideSize + oz) * sideSize + oy,
+                                neighborDistance(ox, oy, oz, voxelStepX, voxelStepYz));
+                    }
+                }
+            }
+        }
+        return neighbors;
+    }
+
+    private record NeighborStep(int x, int y, int z, int indexOffset, float distance) {
+    }
+
+    private boolean isPreviousNeighbor(int ox, int oy, int oz) {
         return ox < 0 || (ox == 0 && oz < 0) || (ox == 0 && oz == 0 && oy < 0);
     }
 
-    private static boolean isNextNeighbor(int ox, int oy, int oz) {
+    private boolean isNextNeighbor(int ox, int oy, int oz) {
         return ox > 0 || (ox == 0 && oz > 0) || (ox == 0 && oz == 0 && oy > 0);
     }
 
-    private static float neighborDistance(int ox, int oy, int oz, float voxelStepX, float voxelStepYz) {
+    private float neighborDistance(int ox, int oy, int oz, float voxelStepX, float voxelStepYz) {
         float dx = ox * voxelStepX;
         float dy = oy * voxelStepYz;
         float dz = oz * voxelStepYz;
         return Mth.sqrt(dx * dx + dy * dy + dz * dz);
     }
 
-    private static float[][] computeSdfGradientField(float[] sdf, float voxelStepX, float voxelStepYz) {
-        float[] gx = new float[sdf.length];
-        float[] gy = new float[sdf.length];
-        float[] gz = new float[sdf.length];
-        int xCount = DarkBallVolumeGrid.X_SLICES;
-        int sliceSize = DarkBallVolumeGrid.SLICE_SIZE;
-
-        for (int x = 0; x < xCount; x++) {
-            for (int z = 0; z < sliceSize; z++) {
-                for (int y = 0; y < sliceSize; y++) {
-                    int index = voxelIndex(x, y, z);
-                    float dx = sampleSdf(sdf, Mth.clamp(x + 1, 0, xCount - 1), y, z)
-                            - sampleSdf(sdf, Mth.clamp(x - 1, 0, xCount - 1), y, z);
-                    float dy = sampleSdf(sdf, x, Mth.clamp(y + 1, 0, sliceSize - 1), z)
-                            - sampleSdf(sdf, x, Mth.clamp(y - 1, 0, sliceSize - 1), z);
-                    float dz = sampleSdf(sdf, x, y, Mth.clamp(z + 1, 0, sliceSize - 1))
-                            - sampleSdf(sdf, x, y, Mth.clamp(z - 1, 0, sliceSize - 1));
-
-                    dx /= Math.max(voxelStepX * 2.0f, 0.0001f);
-                    dy /= Math.max(voxelStepYz * 2.0f, 0.0001f);
-                    dz /= Math.max(voxelStepYz * 2.0f, 0.0001f);
-                    float lenSq = dx * dx + dy * dy + dz * dz;
-                    if (lenSq < 1e-7f) {
-                        gx[index] = 1.0f;
-                        gy[index] = 0.0f;
-                        gz[index] = 0.0f;
-                    } else {
-                        float invLen = 1.0f / Mth.sqrt(lenSq);
-                        gx[index] = dx * invLen;
-                        gy[index] = dy * invLen;
-                        gz[index] = dz * invLen;
-                    }
-                }
+    private float[] computeLocalThicknessFieldInternal(boolean[] material, float voxelStepX, float voxelStepYz) {
+        int xCount = xSize;
+        int sliceSize = sideSize;
+        float[] thickness = new float[material.length];
+        Arrays.fill(thickness, Float.POSITIVE_INFINITY);
+        float maxThickness = Math.max(xCount * voxelStepX, sliceSize * voxelStepYz);
+        // Every occupied cell in one contiguous axis run has the same run
+        // length. Measure that run once, preserving the former six-direction
+        // definition exactly without walking the same run from every cell.
+        for (int z = 0; z < sliceSize; z++) {
+            DarkBallPreparationCancellation.check();
+            for (int y = 0; y < sliceSize; y++) {
+                applyThicknessRuns(material, thickness, voxelIndexInternal(0, y, z),
+                        sliceSize * sliceSize, xCount, voxelStepX);
             }
         }
-        return new float[][]{gx, gy, gz};
-    }
-
-    private static float[] computeLocalThicknessField(boolean[] material, float voxelStepX, float voxelStepYz) {
-        int xCount = DarkBallVolumeGrid.X_SLICES;
-        int sliceSize = DarkBallVolumeGrid.SLICE_SIZE;
-        float[] thickness = new float[material.length];
-        float maxThickness = Math.max(xCount * voxelStepX, sliceSize * voxelStepYz);
-
         for (int x = 0; x < xCount; x++) {
-            for (int z = 0; z < sliceSize; z++) {
-                for (int y = 0; y < sliceSize; y++) {
-                    int index = voxelIndex(x, y, z);
-                    if (!material[index]) {
-                        continue;
-                    }
-
-                    float axisThickness = materialRunLength(material, x, y, z, 1, 0, 0) * voxelStepX;
-                    float sideThickness = materialRunLength(material, x, y, z, 0, 1, 0) * voxelStepYz;
-                    float upThickness = materialRunLength(material, x, y, z, 0, 0, 1) * voxelStepYz;
-                    float localThickness = Math.min(axisThickness, Math.min(sideThickness, upThickness));
-                    thickness[index] = Mth.clamp(localThickness, Math.min(voxelStepX, voxelStepYz), maxThickness);
-                }
+            DarkBallPreparationCancellation.check();
+            for (int line = 0; line < sliceSize; line++) {
+                applyThicknessRuns(material, thickness, voxelIndexInternal(x, 0, line),
+                        1, sliceSize, voxelStepYz);
+                applyThicknessRuns(material, thickness, voxelIndexInternal(x, line, 0),
+                        sliceSize, sliceSize, voxelStepYz);
             }
+        }
+        for (int index = 0; index < material.length; index++) {
+            DarkBallPreparationCancellation.checkEvery(index);
+            thickness[index] = material[index]
+                    ? Mth.clamp(thickness[index], Math.min(voxelStepX, voxelStepYz), maxThickness)
+                    : 0.0f;
         }
         return thickness;
     }
 
-    private static int materialRunLength(boolean[] material, int x, int y, int z, int dx, int dy, int dz) {
-        int count = 1;
-        count += countMaterialDirection(material, x, y, z, dx, dy, dz);
-        count += countMaterialDirection(material, x, y, z, -dx, -dy, -dz);
-        return count;
-    }
-
-    private static int countMaterialDirection(boolean[] material, int x, int y, int z, int dx, int dy, int dz) {
-        int count = 0;
-        int nx = x + dx;
-        int ny = y + dy;
-        int nz = z + dz;
-        while (nx >= 0 && nx < DarkBallVolumeGrid.X_SLICES
-                && ny >= 0 && ny < DarkBallVolumeGrid.SLICE_SIZE
-                && nz >= 0 && nz < DarkBallVolumeGrid.SLICE_SIZE
-                && material[voxelIndex(nx, ny, nz)]) {
-            count++;
-            nx += dx;
-            ny += dy;
-            nz += dz;
+    private void applyThicknessRuns(boolean[] material, float[] thickness,
+                                           int start, int stride, int length, float voxelStep) {
+        for (int cell = 0; cell < length;) {
+            DarkBallPreparationCancellation.checkEvery(cell);
+            if (!material[start + cell * stride]) {
+                cell++;
+                continue;
+            }
+            int first = cell++;
+            while (cell < length && material[start + cell * stride]) {
+                cell++;
+            }
+            float runThickness = (cell - first) * voxelStep;
+            for (int occupied = first; occupied < cell; occupied++) {
+                int index = start + occupied * stride;
+                thickness[index] = Math.min(thickness[index], runThickness);
+            }
         }
-        return count;
     }
 
-    private static float sampleSdf(float[] sdf, int x, int y, int z) {
-        return sdf[voxelIndex(x, y, z)];
-    }
-
-    private static float pointTriangleDistanceSqr(float px, float py, float pz,
+    private float pointTriangleDistanceSqr(float px, float py, float pz,
                                                   Vector3f a, Vector3f b, Vector3f c,
                                                   float[] barycentric) {
         float abx = b.x - a.x;
@@ -1164,7 +1079,7 @@ final class DarkBallVolumeVoxelizer {
                 a.z + abz * v + acz * w);
     }
 
-    private static void setBarycentric(float[] target, float a, float b, float c) {
+    private void setBarycentric(float[] target, float a, float b, float c) {
         if (target == null) {
             return;
         }
@@ -1173,32 +1088,33 @@ final class DarkBallVolumeVoxelizer {
         target[2] = c;
     }
 
-    private static float dot(float ax, float ay, float az, float bx, float by, float bz) {
+    private float dot(float ax, float ay, float az, float bx, float by, float bz) {
         return ax * bx + ay * by + az * bz;
     }
 
-    private static float distanceSqr(float ax, float ay, float az, float bx, float by, float bz) {
+    private float distanceSqr(float ax, float ay, float az, float bx, float by, float bz) {
         float dx = ax - bx;
         float dy = ay - by;
         float dz = az - bz;
         return dx * dx + dy * dy + dz * dz;
     }
 
-    private static void splatSoftVolume(float[] core, float[] envelope, float lx, float ly, float lz) {
+    private void splatSoftVolume(float[] core, float lx, float ly, float lz) {
         if (lx < -0.05f || lx > 1.05f || ly < -0.08f || ly > 1.08f || lz < -0.08f || lz > 1.08f) return;
 
-        float cx = lx * (DarkBallVolumeGrid.X_SLICES - 1);
-        float cy = ly * (DarkBallVolumeGrid.SLICE_SIZE - 1);
-        float cz = lz * (DarkBallVolumeGrid.SLICE_SIZE - 1);
+        float cx = lx * (xSize - 1);
+        float cy = ly * (sideSize - 1);
+        float cz = lz * (sideSize - 1);
         int radius = 3;
-        int minX = Mth.clamp((int) Math.floor(cx - radius), 0, DarkBallVolumeGrid.X_SLICES - 1);
-        int maxX = Mth.clamp((int) Math.ceil(cx + radius), 0, DarkBallVolumeGrid.X_SLICES - 1);
-        int minY = Mth.clamp((int) Math.floor(cy - radius), 0, DarkBallVolumeGrid.SLICE_SIZE - 1);
-        int maxY = Mth.clamp((int) Math.ceil(cy + radius), 0, DarkBallVolumeGrid.SLICE_SIZE - 1);
-        int minZ = Mth.clamp((int) Math.floor(cz - radius), 0, DarkBallVolumeGrid.SLICE_SIZE - 1);
-        int maxZ = Mth.clamp((int) Math.ceil(cz + radius), 0, DarkBallVolumeGrid.SLICE_SIZE - 1);
+        int minX = Mth.clamp((int) Math.floor(cx - radius), 0, xSize - 1);
+        int maxX = Mth.clamp((int) Math.ceil(cx + radius), 0, xSize - 1);
+        int minY = Mth.clamp((int) Math.floor(cy - radius), 0, sideSize - 1);
+        int maxY = Mth.clamp((int) Math.ceil(cy + radius), 0, sideSize - 1);
+        int minZ = Mth.clamp((int) Math.floor(cz - radius), 0, sideSize - 1);
+        int maxZ = Mth.clamp((int) Math.ceil(cz + radius), 0, sideSize - 1);
 
         for (int x = minX; x <= maxX; x++) {
+            DarkBallPreparationCancellation.check();
             float dx = (x - cx) / 1.75f;
             for (int z = minZ; z <= maxZ; z++) {
                 float dz = (z - cz) / 1.95f;
@@ -1208,132 +1124,11 @@ final class DarkBallVolumeVoxelizer {
                     if (d2 > 2.75f) continue;
 
                     float coreWeight = DarkBallCaptureMath.smoothstep(0.95f, 0.04f, d2) * 0.78f;
-                    float envelopeWeight = DarkBallCaptureMath.smoothstep(2.75f, 0.12f, d2);
-                    int index = voxelIndex(x, y, z);
+                    int index = voxelIndexInternal(x, y, z);
                     core[index] = Math.max(core[index], coreWeight);
-                    envelope[index] = Math.max(envelope[index], envelopeWeight);
                 }
             }
         }
-    }
-
-    /**
-     * Performs a true binary closing (dilation followed by erosion) with a
-     * spherical voxel kernel. The operation is deliberately kept separate
-     * from the detailed physical mask: it supplies a cohesive visual core only
-     * while turbulence is active, so the undeformed Pokemon outline remains
-     * unchanged.
-     */
-    static boolean[] closeVoxels(boolean[] source, int radius) {
-        int expectedLength = DarkBallVolumeGrid.X_SLICES
-                * DarkBallVolumeGrid.SLICE_SIZE
-                * DarkBallVolumeGrid.SLICE_SIZE;
-        if (source == null || source.length != expectedLength) {
-            throw new IllegalArgumentException("source must match the Dark Ball voxel grid");
-        }
-        if (radius <= 0) {
-            return source.clone();
-        }
-        int xCount = DarkBallVolumeGrid.X_SLICES;
-        int sliceSize = DarkBallVolumeGrid.SLICE_SIZE;
-        int paddedXCount = xCount + radius * 2;
-        int paddedSliceSize = sliceSize + radius * 2;
-        boolean[] paddedSource = new boolean[paddedXCount
-                * paddedSliceSize * paddedSliceSize];
-        for (int x = 0; x < xCount; x++) {
-            for (int z = 0; z < sliceSize; z++) {
-                for (int y = 0; y < sliceSize; y++) {
-                    paddedSource[morphologyIndex(x + radius, y + radius,
-                            z + radius, paddedSliceSize)] = source[voxelIndex(x, y, z)];
-                }
-            }
-        }
-
-        boolean[] dilated = dilateClosingVoxels(paddedSource, radius,
-                paddedXCount, paddedSliceSize);
-        boolean[] eroded = erodeClosingVoxels(dilated, radius,
-                paddedXCount, paddedSliceSize);
-        boolean[] result = new boolean[source.length];
-        for (int x = 0; x < xCount; x++) {
-            for (int z = 0; z < sliceSize; z++) {
-                for (int y = 0; y < sliceSize; y++) {
-                    result[voxelIndex(x, y, z)] = eroded[morphologyIndex(
-                            x + radius, y + radius, z + radius, paddedSliceSize)];
-                }
-            }
-        }
-        return result;
-    }
-
-    private static boolean[] dilateClosingVoxels(boolean[] source, int radius,
-                                                  int xCount, int sliceSize) {
-        boolean[] result = new boolean[source.length];
-        int radiusSquared = radius * radius;
-        for (int x = 0; x < xCount; x++) {
-            for (int z = 0; z < sliceSize; z++) {
-                for (int y = 0; y < sliceSize; y++) {
-                    if (!source[morphologyIndex(x, y, z, sliceSize)]) {
-                        continue;
-                    }
-                    for (int dx = -radius; dx <= radius; dx++) {
-                        for (int dy = -radius; dy <= radius; dy++) {
-                            for (int dz = -radius; dz <= radius; dz++) {
-                                if (dx * dx + dy * dy + dz * dz > radiusSquared) {
-                                    continue;
-                                }
-                                int nx = x + dx;
-                                int ny = y + dy;
-                                int nz = z + dz;
-                                if (nx >= 0 && nx < xCount
-                                        && ny >= 0 && ny < sliceSize
-                                        && nz >= 0 && nz < sliceSize) {
-                                    result[morphologyIndex(nx, ny, nz, sliceSize)] = true;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        return result;
-    }
-
-    private static boolean[] erodeClosingVoxels(boolean[] source, int radius,
-                                                 int xCount, int sliceSize) {
-        boolean[] result = new boolean[source.length];
-        int radiusSquared = radius * radius;
-        for (int x = 0; x < xCount; x++) {
-            for (int z = 0; z < sliceSize; z++) {
-                for (int y = 0; y < sliceSize; y++) {
-                    boolean survives = true;
-                    for (int dx = -radius; dx <= radius && survives; dx++) {
-                        for (int dy = -radius; dy <= radius && survives; dy++) {
-                            for (int dz = -radius; dz <= radius; dz++) {
-                                if (dx * dx + dy * dy + dz * dz > radiusSquared) {
-                                    continue;
-                                }
-                                int nx = x + dx;
-                                int ny = y + dy;
-                                int nz = z + dz;
-                                if (nx < 0 || nx >= xCount
-                                        || ny < 0 || ny >= sliceSize
-                                        || nz < 0 || nz >= sliceSize
-                                        || !source[morphologyIndex(nx, ny, nz, sliceSize)]) {
-                                    survives = false;
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                    result[morphologyIndex(x, y, z, sliceSize)] = survives;
-                }
-            }
-        }
-        return result;
-    }
-
-    private static int morphologyIndex(int x, int y, int z, int sliceSize) {
-        return (x * sliceSize + z) * sliceSize + y;
     }
 
     private static final class MutableMeshCaptureBounds {

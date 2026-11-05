@@ -1,7 +1,6 @@
 package com.jayemceekay.shadowedhearts.config;
 
 import com.jayemceekay.shadowedhearts.Shadowedhearts;
-import com.jayemceekay.shadowedhearts.client.aura.ShadowAuraStyle;
 import net.neoforged.neoforge.common.ModConfigSpec;
 
 import java.util.Locale;
@@ -25,14 +24,6 @@ public final class ClientConfig implements IClientConfig, ISoundConfig {
     }
 
     private static final class Data {
-        public ModConfigSpec.ConfigValue<String> shadowAuraStyle;
-        public ModConfigSpec.BooleanValue debugShadowAuraEmitters;
-        public ModConfigSpec.IntValue darkBallSurfelBudget;
-        public ModConfigSpec.BooleanValue darkBallForceExactMaskOnly;
-        public ModConfigSpec.BooleanValue
-                darkBallVisualizeSpikeIndentAmplitude;
-        public ModConfigSpec.DoubleValue darkBallBodyContourSheenStrength;
-        public ModConfigSpec.DoubleValue darkBallBodyDepthSpecularStrength;
         public ModConfigSpec.EnumValue<ClientEffectPolicy.Preset> accessibilityPreset;
         public ModConfigSpec.EnumValue<ClientEffectPolicy.EffectOverride> scanPulseEffects;
         public ModConfigSpec.EnumValue<ClientEffectPolicy.EffectOverride> darkBallEffects;
@@ -120,20 +111,6 @@ public final class ClientConfig implements IClientConfig, ISoundConfig {
                     .translation("shadowedhearts.configuration.client.shadowAura.xdPixelation")
                     .defineEnum("xdPixelation", AuraPixelationStyle.SMOOTH);
             builder.pop();
-
-            shadowAuraStyle = builder
-                    .comment(
-                            "Default Shadow aura presentation. A Pokemon with an explicit aura-style aspect overrides this value.",
-                            "Allowed values: signature, colosseum, xd_faithful.")
-                    .define(
-                            "shadowAuraStyle",
-                            ShadowAuraStyle.DEFAULT.serializedName(),
-                            ShadowAuraStyle::isValidSerializedName);
-
-            debugShadowAuraEmitters = builder
-                    .comment("Debug: render tiny red marker spheres at Shadow aura emitter anchor positions.")
-                    .define("debugShadowAuraEmitters", false);
-            
 
             auraReaderYOffset = builder
                     .comment("The Y offset for the Aura Reader model.")
@@ -296,62 +273,6 @@ public final class ClientConfig implements IClientConfig, ISoundConfig {
                     .comment("Anime-style Dark Ball capture quality: low, medium, or high.")
                     .translation("shadowedhearts.configuration.client.darkBallVfx.quality")
                     .defineEnum("quality", DarkBallQuality.MEDIUM);
-            darkBallSurfelBudget = builder
-                    .comment(
-                            "Manual Dark Ball body-surfel budget. "
-                                    + "0 uses the quality preset "
-                                    + "(low=1350, medium=2200, high=3200).",
-                            "Higher values can tighten coverage but increase "
-                                    + "asynchronous preparation, VBO size, "
-                                    + "vertex work, and fragment overlap. "
-                                    + "Applied to newly started captures.")
-                    .defineInRange(
-                            "surfelBudget",
-                            0,
-                            0,
-                            16000);
-            darkBallForceExactMaskOnly = builder
-                    .comment(
-                            "Diagnostic: bypass Dark Ball surfel preparation "
-                                    + "and keep the captured texture/depth mask "
-                                    + "as the only body presentation. This "
-                                    + "intentionally reproduces the clean "
-                                    + "exact-mask safety path for comparison.")
-                    .define("forceExactMaskOnly", false);
-            darkBallVisualizeSpikeIndentAmplitude = builder
-                    .comment(
-                            "Diagnostic: replace the Dark Ball body material "
-                                    + "with a signed deformation-amplitude "
-                                    + "heatmap. Outward spikes are red/orange, "
-                                    + "inward indentations are cyan/blue, and "
-                                    + "neutral surfels are dark.")
-                    .define("visualizeSpikeIndentAmplitude", false);
-            darkBallBodyContourSheenStrength = builder
-                    .comment(
-                            "Strength of the stable Dark Ball body contour "
-                                    + "sheen. This uses the final silhouette "
-                                    + "distance field rather than reconstructed "
-                                    + "surfel depth normals, so it does not "
-                                    + "produce moving prism-like facets. "
-                                    + "Set to 0 to disable it.")
-                    .defineInRange(
-                            "bodyContourSheenStrength",
-                            0.045,
-                            0.0,
-                            0.06);
-            darkBallBodyDepthSpecularStrength = builder
-                    .comment(
-                            "Strength of the guarded Dark Ball body depth "
-                                    + "highlight. It uses a strict four-neighbor "
-                                    + "depth normal only on the inner silhouette "
-                                    + "shoulder and omits Fresnel lighting to "
-                                    + "avoid moving prism-like facets. Set to 0 "
-                                    + "to disable it.")
-                    .defineInRange(
-                            "bodyDepthSpecularStrength",
-                            0.09,
-                            0.0,
-                            0.12);
             builder.pop();
         }
 
@@ -637,57 +558,6 @@ public final class ClientConfig implements IClientConfig, ISoundConfig {
     @Override
     public ModConfigSpec getSpec() {
         return SPEC;
-    }
-
-    @Override
-    public ShadowAuraStyle shadowAuraStyle() {
-        if (!isLoaded()) return IClientConfig.super.shadowAuraStyle();
-        return ShadowAuraStyle.fromSerializedName(DATA.shadowAuraStyle.get());
-    }
-
-    @Override
-    public boolean debugShadowAuraEmitters() {
-        if (!isLoaded()) return IClientConfig.super.debugShadowAuraEmitters();
-        return DATA.debugShadowAuraEmitters.get();
-    }
-
-    @Override
-    public int darkBallSurfelBudget() {
-        if (!isLoaded()) return IClientConfig.super.darkBallSurfelBudget();
-        return DATA.darkBallSurfelBudget.get();
-    }
-
-    @Override
-    public boolean darkBallForceExactMaskOnly() {
-        if (!isLoaded()) {
-            return IClientConfig.super.darkBallForceExactMaskOnly();
-        }
-        return DATA.darkBallForceExactMaskOnly.get();
-    }
-
-    @Override
-    public boolean darkBallVisualizeSpikeIndentAmplitude() {
-        if (!isLoaded()) {
-            return IClientConfig.super
-                    .darkBallVisualizeSpikeIndentAmplitude();
-        }
-        return DATA.darkBallVisualizeSpikeIndentAmplitude.get();
-    }
-
-    @Override
-    public float darkBallBodyContourSheenStrength() {
-        if (!isLoaded()) {
-            return IClientConfig.super.darkBallBodyContourSheenStrength();
-        }
-        return DATA.darkBallBodyContourSheenStrength.get().floatValue();
-    }
-
-    @Override
-    public float darkBallBodyDepthSpecularStrength() {
-        if (!isLoaded()) {
-            return IClientConfig.super.darkBallBodyDepthSpecularStrength();
-        }
-        return DATA.darkBallBodyDepthSpecularStrength.get().floatValue();
     }
 
     @Override

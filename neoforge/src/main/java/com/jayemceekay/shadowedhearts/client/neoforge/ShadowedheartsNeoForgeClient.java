@@ -2,10 +2,6 @@ package com.jayemceekay.shadowedhearts.client.neoforge;
 
 
 import com.cobblemon.mod.common.entity.pokeball.EmptyPokeBallEntity;
-import net.minecraft.world.phys.Vec3;
-import com.mojang.blaze3d.vertex.PoseStack;
-import com.jayemceekay.shadowedhearts.util.HeldItemAnchorCache;
-import com.jayemceekay.shadowedhearts.client.render.HeldBallSnagGlowRenderer;
 import com.jayemceekay.shadowedhearts.Shadowedhearts;
 import com.jayemceekay.shadowedhearts.client.ModKeybinds;
 import com.jayemceekay.shadowedhearts.client.ShadowedHeartsClient;
@@ -135,67 +131,25 @@ public final class ShadowedheartsNeoForgeClient {
             ShadowAuraEmitters.onRender(cam, cam.getPartialTickTime());
             BallEmitters.onRender(cam, cam.getPartialTickTime());
 
-        } else if (e.getStage() == RenderLevelStageEvent.Stage.AFTER_LEVEL && (AuraReaderPulseRenderer.IRIS_HANDLER == null || !AuraReaderPulseRenderer.IRIS_HANDLER.isShaderPackInUse())) {
+        } else if (e.getStage() == RenderLevelStageEvent.Stage.AFTER_LEVEL && !ShadowPokemonAuraSystem.isIrisShaderPackActive()) {
+            // Fabulous combines its transparency targets after AFTER_WEATHER.
+            PenumbraTrailSystem.compositeWorld();
+            ShadowPokemonAuraSystem.compositeWorld();
             VanillaWorldShaderFrame.render();
         }
 
         if (e.getStage() == RenderLevelStageEvent.Stage.AFTER_PARTICLES) {
             float pt = e.getPartialTick().getGameTimeDeltaPartialTick(true);
             LuminousMoteEmitters.onRender(pt);
-            PenumbraTrailSystem.renderDensityPipeline(e.getCamera(), pt);
-            BallEmitters.onRenderFBO(e.getCamera(), pt);
         }
 
         if (e.getStage() == RenderLevelStageEvent.Stage.AFTER_WEATHER) {
             float pt = e.getPartialTick().getGameTimeDeltaPartialTick(true);
+            PenumbraTrailSystem.renderWorldDensityOnly(e.getCamera(), pt,
+                    e.getProjectionMatrix(), e.getModelViewMatrix());
+            ShadowPokemonAuraSystem.renderWorldDensityOnly(e.getCamera(), pt,
+                    e.getProjectionMatrix(), e.getModelViewMatrix());
             VanillaWorldShaderFrame.capture(e.getCamera(), pt, e.getProjectionMatrix(), e.getModelViewMatrix());
-            if (!ShadowPokemonAuraSystem.isIrisShaderPackActive()) {
-                ShadowPokemonAuraSystem.renderDensityPipeline(e.getCamera(), pt, e.getProjectionMatrix());
-            }
-
-
-            var mc = Minecraft.getInstance();
-            if (mc.level == null) return;
-
-            PoseStack pose = e.getPoseStack();
-            var buffers = mc.renderBuffers().bufferSource();
-
-            // "frame id" so we only use anchors captured this same frame
-            int frameId = mc.getFrameTimeNs() != 0 ? (int) (mc.getFrameTimeNs() & 0x7fffffff) : (int) (System.nanoTime() & 0x7fffffff);
-            Vec3 view = mc.gameRenderer.getMainCamera().getPosition();
-
-            pose.pushPose();
-            pose.translate(-view.x, -view.y, -view.z); // world-space rendering in this pass :contentReference[oaicite:4]{index=4}
-
-            for (var p : mc.level.players()) {
-                var a = HeldItemAnchorCache.get(p, frameId);
-                if (a == null) continue;
-
-                pose.pushPose();
-
-                pose.translate(a.worldPos().x, a.worldPos().y, a.worldPos().z);
-
-                // Billboard to *this client’s* camera
-                pose.mulPose(mc.getEntityRenderDispatcher().cameraOrientation());
-
-                if (p == mc.player && !mc.options.getCameraType().isFirstPerson()) {
-                    if (!HeldBallSnagGlowRenderer.isPokeball(p.getMainHandItem()))
-                        continue;
-                    HeldBallSnagGlowRenderer.renderAtHandPoseThirdPerson(pt, pose, buffers);
-                }
-
-                // draw your quad/rings here (optionally multiply by a.approxScale())
-                if (p != mc.player) {
-                    if (!HeldBallSnagGlowRenderer.isPokeball(p.getMainHandItem()))
-                        continue;
-                    HeldBallSnagGlowRenderer.renderAtHandPoseThirdPerson(pt, pose, buffers);
-                }
-
-                pose.popPose();
-            }
-
-            pose.popPose();
-            buffers.endBatch();
         }
     }
 

@@ -8,14 +8,14 @@ uniform float AuraTime;
 uniform float FilamentSeed;
 uniform float FilamentPhase;
 
-in vec4 vertexColor;
+flat in vec4 vertexColor;
 in vec2 texCoord0;
 
 out vec4 fragColor;
 
 void main() {
-    vec4 texColor = texture(Sampler0, texCoord0);
-    if (texColor.a < 0.01) discard;
+    // Ribbon UV spans its whole path; the circular puff mask does not apply.
+    vec4 texColor = vec4(1.0);
 
     fragColor = shadowPokemonAuraXdFilamentDensity(
             texColor,
@@ -25,5 +25,5 @@ void main() {
             FilamentSeed,
             FilamentPhase
     );
-    if (fragColor.g < 0.001 && fragColor.b < 0.001) discard;
+    if (max(max(fragColor.r, fragColor.g), max(fragColor.b, fragColor.a)) < 0.001) discard;
 }

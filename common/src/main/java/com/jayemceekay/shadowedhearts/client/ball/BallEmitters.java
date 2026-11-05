@@ -7,6 +7,10 @@ import com.jayemceekay.shadowedhearts.client.ModShaders;
 import com.jayemceekay.shadowedhearts.client.aura.AuraReaderPulseRenderer;
 import com.jayemceekay.shadowedhearts.client.aura.ShadowPokemonAuraSystem;
 import com.jayemceekay.shadowedhearts.client.particle.PenumbraTrailSystem;
+import com.jayemceekay.shadowedhearts.client.render.DensityFboPipeline;
+import com.jayemceekay.shadowedhearts.client.render.SnagDissolveRenderer;
+import com.jayemceekay.shadowedhearts.client.render.HeldBallSnagGlowRenderer;
+import com.jayemceekay.shadowedhearts.client.render.IrisScaledWorldTarget;
 import com.jayemceekay.shadowedhearts.client.render.rendertypes.BallRenderTypes;
 import com.jayemceekay.shadowedhearts.config.IClientConfig;
 import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs;
@@ -21,6 +25,7 @@ import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.ShaderInstance;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.util.Mth;
+import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.Entity;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Matrix4f;
@@ -47,7 +52,7 @@ import java.util.function.BooleanSupplier;
 public final class BallEmitters {
     private BallEmitters() {
     }
-
+    private static final RandomSource random = RandomSource.create();
     private static final Map<Integer, BallInstance> ACTIVE = new ConcurrentHashMap<>();
     private static WeakReference<Object> clientLevelRef = new WeakReference<>(null);
     private static boolean clientLevelActive;
@@ -65,7 +70,7 @@ public final class BallEmitters {
         var mc = Minecraft.getInstance();
         if (!prepareClientLevel(mc)) return;
         long now = mc.level.getGameTime();
-        // Register all balls; snag/penumbra classification is deferred until aspects sync
+        // Register all balls; effect classification is deferred until aspects sync.
         ACTIVE.put(entity.getId(), new BallInstance(entity.getId(), entity, now, 4, 400, 8, false, false, false));
     }
 
@@ -73,6 +78,7 @@ public final class BallEmitters {
      * Begins a short fade-out for the despawned entity.
      */
     public static void onEntityDespawn(int entityId) {
+        DarkBallCaptureVfx.stop(entityId);
         var mc = Minecraft.getInstance();
         long now = (mc != null && mc.level != null) ? mc.level.getGameTime() : 0L;
         ACTIVE.computeIfPresent(entityId, (id, inst) -> {
@@ -87,38 +93,40 @@ public final class BallEmitters {
      */
     public static void onClientTick(Minecraft minecraft) {
         prepareClientLevel(minecraft);
+        // Config screens and disconnects need cleanup even without a world-render callback.
+        if (!ShadowedHeartsConfigs.getInstance().getClientConfig().snagShakeVfxEnabled()) {
+            SnagShakeVfx.clearAll();
+        }
         com.jayemceekay.shadowedhearts.client.render.VanillaWorldShaderFrame.onClientTick(minecraft);
     }
 
     /**
-     * Per-frame world-render entry point for CPU-side tracking and non-FBO VFX.
+     * Per-frame world-render entry point for CPU-side tracking and particle emission.
      *
-     * <p>Framebuffer-dependent effects are intentionally deferred to
-     * {@link #onRenderFBO(net.minecraft.client.Camera, float)} so shader mods and
-     * the vanilla renderer have restored a predictable target before offscreen
-     * passes run.
+     * <p>World drawing is deferred to {@link #onRenderFBO(net.minecraft.client.Camera,
+     * float, Matrix4f, Matrix4f)} with the scene depth retained before Fabulous
+     * combines its transparency targets.
      */
     public static void onRender(net.minecraft.client.Camera camera, float partialTicks) {
+        if (AuraReaderPulseRenderer.IRIS_HANDLER != null
+                && AuraReaderPulseRenderer.IRIS_HANDLER.isShadowRenderActive()) return;
         var mc = Minecraft.getInstance();
         if (!prepareClientLevel(mc)) return;
-
-        // Tick and render all active Snag Capture VFX sequences
+        // Advance the capture choreography before either native or Iris drawing.
         SnagCaptureVfx.tickAll(1f / 20f);
         DarkBallCaptureVfx.tickAll(1f / 20f);
 
-        // Main pass: billboards, flashes, orb, lens flare (non-density effects)
-        SnagCaptureVfx.renderAll(camera, partialTicks);
-
-        // Snag throw VFX: orange glow + diffraction spikes on in-flight snag balls
         SnagThrowVfx.pruneAll();
-        SnagThrowVfx.renderAll(camera, partialTicks);
 
-        // Tick and render shake-phase VFX for Snag Balls
+        // Advance shake-phase VFX before either native or Iris drawing.
         IClientConfig cfg = ShadowedHeartsConfigs.getInstance().getClientConfig();
         if (cfg.snagShakeVfxEnabled()) {
             SnagShakeVfx.tickAll();
-            SnagShakeVfx.renderAll(camera, partialTicks);
+        } else {
+            SnagShakeVfx.clearAll();
         }
+
+        HeldBallSnagGlowRenderer.queueWorldHandsForIris(camera, partialTicks);
 
         for (Map.Entry<Integer, BallInstance> en : ACTIVE.entrySet()) {
             BallInstance inst = en.getValue();
@@ -135,19 +143,21 @@ public final class BallEmitters {
             boolean useEnt = ent != null && ent.isAlive() && ent.getId() == inst.entityId;
             if (!useEnt) continue;
 
-            // Lazy-resolve snag/penumbra once aspects sync arrives from server
+            // Lazy-resolve ball effects once aspects sync arrives from server.
             if (!inst.resolved && ent instanceof EmptyPokeBallEntity ball) {
                 boolean hasSnagAspect = ball.getAspects().contains("snag_ball");
                 String ballName = ball.getPokeBall().getName().getPath();
-                boolean isPenumbra = ballName.equals("penumbra_ball");
+                boolean usesPenumbraTrail = ballName.equals("penumbra_ball")
+                        || ballName.equals("antumbra_ball")
+                        || ballName.equals("umbra_ball");
                 boolean isDarkBall = ballName.equals("dark_ball");
-                if (hasSnagAspect || isPenumbra || isDarkBall) {
+                if (hasSnagAspect || usesPenumbraTrail || isDarkBall) {
                     inst.isSnagBall = hasSnagAspect && !isDarkBall;
-                    inst.isPenumbraBall = isPenumbra;
+                    inst.usesPenumbraTrail = usesPenumbraTrail;
                     inst.isDarkBall = isDarkBall;
                     inst.resolved = true;
                 }
-                // If neither after ~5 ticks, remove to avoid tracking every ball forever
+                // If no effect resolves after ~5 ticks, stop tracking this ball.
                 if (!inst.resolved && mc.level.getGameTime() - inst.startTick > 5) {
                     ACTIVE.remove(en.getKey());
                     continue;
@@ -164,8 +174,8 @@ public final class BallEmitters {
             // We use the interpolated world position
             BallTrailManager.addPointForId(inst.entityId, ix, iy, iz);
 
-            // Emit penumbra trail particles (shadow aura fog puffs) behind the ball
-            if (inst.isPenumbraBall && ent instanceof EmptyPokeBallEntity) {
+            // Share Penumbra's particles and density fog with Antumbra and Umbra.
+            if (inst.usesPenumbraTrail && ent instanceof EmptyPokeBallEntity) {
                 emitPenumbraTrailParticles(mc, ent, ix, iy, iz, inst);
             }
 
@@ -194,60 +204,144 @@ public final class BallEmitters {
             }
 
             // Track Snag Balls that have entered the shake phase
-            if (inst.isSnagBall && ent instanceof EmptyPokeBallEntity ball2) {
+            if (cfg.snagShakeVfxEnabled() && inst.isSnagBall && ent instanceof EmptyPokeBallEntity ball2) {
                 SnagShakeVfx.maybeTrack(ball2);
             }
         }
     }
 
     /**
-     * Renders the FBO-dependent density and bloom pipelines for Snag Capture VFX.
-     * <p>
-     * This must be called at a late render stage (e.g. {@code WorldRenderEvents.END}
-     * on Fabric or {@code AFTER_PARTICLES} on NeoForge) so that Iris/Oculus has
-     * already finished its own pipeline and restored the vanilla framebuffer.
-     * Non-FBO rendering (billboards, trails, sparks) stays in {@link #onRender}.
+     * Vanilla late-render entry point. Iris submits the Snag pipelines through
+     * its pre-final world hook instead of either loader's late callback.
      */
     public static void onRenderFBO(net.minecraft.client.Camera camera, float partialTicks) {
+        onRenderFBO(camera, partialTicks, RenderSystem.getProjectionMatrix(), RenderSystem.getModelViewMatrix());
+    }
+
+    /** Draws native ball effects into the caller's scene target with its retained world depth. */
+    public static void onRenderFBO(net.minecraft.client.Camera camera, float partialTicks,
+                                   Matrix4f projectionMatrix, Matrix4f modelViewMatrix) {
+        if (AuraReaderPulseRenderer.IRIS_HANDLER != null
+                && (AuraReaderPulseRenderer.IRIS_HANDLER.isShaderPackInUse()
+                || AuraReaderPulseRenderer.IRIS_HANDLER.isShadowRenderActive())) return;
+        if (camera == null || !DarkBallRenderContext.isUsablePerspective(projectionMatrix)
+                || !DarkBallRenderContext.isUsableModelView(modelViewMatrix)) return;
         var mc = Minecraft.getInstance();
         if (!prepareClientLevel(mc)) return;
-        DarkBallCaptureVfx.FboPreviewCapture darkBallPreviewCapture = null;
-        DarkBallDensityFBO.PreviewFrame darkBallPreviewFrame = null;
-        boolean irisShaderPackActive =
-                ShadowPokemonAuraSystem.isIrisShaderPackActive();
+        try (var state = DensityFboPipeline.preserveRenderState();
+             var snagView = SnagRenderContext.install(modelViewMatrix);
+             var darkView = DarkBallRenderContext.install(modelViewMatrix, projectionMatrix)) {
+            RenderSystem.setProjectionMatrix(new Matrix4f(projectionMatrix), VertexSorting.DISTANCE_TO_ORIGIN);
+            RenderSystem.getModelViewMatrix().set(modelViewMatrix);
+            SnagCaptureVfx.renderAll(camera, partialTicks);
+            SnagThrowVfx.renderAll(camera, partialTicks);
+            if (ShadowedHeartsConfigs.getInstance().getClientConfig().snagShakeVfxEnabled()) {
+                SnagShakeVfx.renderAll(camera, partialTicks);
+            }
+            renderSnagFboPasses(camera, partialTicks);
+            renderDarkBallComposites(camera, partialTicks);
+            DarkBallAnimeBallFinish.updateAndRender(camera, partialTicks);
+        }
+    }
+
+    /** Whether native ball drawing needs this frame's retained scene depth. */
+    public static boolean hasWorldEffects() {
+        return hasSnagEffects() || !DarkBallCaptureVfx.getActiveInstances().isEmpty()
+                || DarkBallAnimeBallFinish.hasActive();
+    }
+
+    /** Called inside Iris' core-shader/color-output scope before final passes. */
+    public static boolean hasSnagEffects() {
+        return SnagDissolveRenderer.hasQueuedMeshes()
+                || HeldBallSnagGlowRenderer.hasQueuedMeshes()
+                || !SnagCaptureVfx.getActiveInstances().isEmpty()
+                || SnagThrowVfx.hasActive() || SnagShakeVfx.hasActive()
+                || SnagTrailDensitySystem.hasActive();
+    }
+
+    /** Called inside Iris' core-shader/color-output scope before final passes. */
+    public static void renderSnagIris() {
+        if (!hasSnagEffects()) return;
+        var iris = AuraReaderPulseRenderer.IRIS_HANDLER;
+        if (iris == null || !iris.isShaderPackInUse() || iris.isShadowRenderActive()) return;
+        var mc = Minecraft.getInstance();
+        if (!prepareClientLevel(mc) || mc.gameRenderer == null) return;
+        var frame = iris.getIrisRenderingSnapshot();
+        if (frame == null || frame.depthTexture <= 0
+                || !DarkBallRenderContext.isUsableIrisFrame(frame.modelViewMatrix,
+                frame.projectionMatrix, frame.renderWidth, frame.renderHeight)) return;
+        var camera = mc.gameRenderer.getMainCamera();
+        float partialTicks = camera.getPartialTickTime();
+        try (var state = DensityFboPipeline.preserveRenderState();
+             var view = SnagRenderContext.install(frame.modelViewMatrix);
+             var scaled = IrisScaledWorldTarget.open(frame.renderWidth, frame.renderHeight, frame.depthTexture)) {
+            if (scaled == null) return;
+            RenderSystem.setProjectionMatrix(frame.projectionMatrix, VertexSorting.DISTANCE_TO_ORIGIN);
+            RenderSystem.getModelViewMatrix().set(frame.modelViewMatrix);
+            RenderSystem.viewport(0, 0, frame.renderWidth, frame.renderHeight);
+            RenderSystem.setShaderColor(1f, 1f, 1f, 1f);
+            RenderSystem.enableDepthTest();
+            RenderSystem.depthFunc(GL11.GL_LEQUAL);
+            RenderSystem.disableCull();
+            RenderSystem.colorMask(true, true, true, true);
+            GL11.glEnable(GL11.GL_DEPTH_TEST);
+            GL11.glDepthFunc(GL11.GL_LEQUAL);
+            GL11.glDisable(GL11.GL_CULL_FACE);
+            GL11.glDisable(GL11.GL_SCISSOR_TEST);
+            GL11.glDisable(GL11.GL_STENCIL_TEST);
+            GL11.glColorMask(true, true, true, true);
+            RenderSystem.activeTexture(org.lwjgl.opengl.GL13.GL_TEXTURE0);
+            org.lwjgl.opengl.GL13.glActiveTexture(org.lwjgl.opengl.GL13.GL_TEXTURE0);
+            RenderSystem.bindTexture(0);
+            GL11.glBindTexture(GL11.GL_TEXTURE_2D, 0);
+            SnagDissolveRenderer.renderIris();
+            RenderSystem.depthMask(false);
+            GL11.glDepthMask(false);
+            RenderSystem.enableBlend();
+            GL11.glEnable(GL11.GL_BLEND);
+            RenderSystem.blendFuncSeparate(GL11.GL_ONE, GL11.GL_ONE, GL11.GL_ONE, GL11.GL_ONE);
+            org.lwjgl.opengl.GL14.glBlendFuncSeparate(GL11.GL_ONE, GL11.GL_ONE, GL11.GL_ONE, GL11.GL_ONE);
+            GL20.glBlendEquationSeparate(org.lwjgl.opengl.GL14.GL_FUNC_ADD, org.lwjgl.opengl.GL14.GL_FUNC_ADD);
+            HeldBallSnagGlowRenderer.renderIris();
+            SnagCaptureVfx.renderAll(camera, partialTicks);
+            SnagThrowVfx.renderAll(camera, partialTicks);
+            if (ShadowedHeartsConfigs.getInstance().getClientConfig().snagShakeVfxEnabled()) {
+                SnagShakeVfx.renderAll(camera, partialTicks);
+            }
+            renderSnagFboPasses(camera, partialTicks);
+            scaled.present();
+        }
+    }
+
+    private static void renderSnagFboPasses(net.minecraft.client.Camera camera, float partialTicks) {
 
         // Snag trail density pipeline (orange smoke and purple motes)
-        SnagTrailDensitySystem.renderDensityPipeline(camera, partialTicks);
+        if (ShadowPokemonAuraSystem.isIrisShaderPackActive()) {
+            SnagTrailDensitySystem.renderIris(camera, partialTicks);
+        } else {
+            SnagTrailDensitySystem.renderDensityPipeline(camera, partialTicks);
+        }
 
         // Density FBO pass: render beam splats + particle splats → blur → composite
         if (!SnagCaptureVfx.getActiveInstances().isEmpty()
                 && SnagDensityFBO.beginDensityPass()) {
-            SnagCaptureVfx.renderAllDensityPass(camera, partialTicks);
-            SnagDensityFBO.endDensityPass();
+            try {
+                SnagCaptureVfx.renderAllDensityPass(camera, partialTicks);
+            } finally {
+                SnagDensityFBO.endDensityPass();
+            }
             SnagDensityFBO.blur();
             SnagDensityFBO.composite();
-        }
-
-        if (!irisShaderPackActive) {
-            DarkBallPreviewResult previewResult = renderDarkBallComposites(
-                    camera, partialTicks);
-            darkBallPreviewCapture = previewResult.capture();
-            darkBallPreviewFrame = previewResult.frame();
-        }
-
-        // Snapshot the main framebuffer while it still represents the
-        // immediate Dark Ball result. Later Snag bloom is a separate effect
-        // and must not contaminate the diagnostic "final composite" tile.
-        if (!irisShaderPackActive) {
-            DarkBallFboDebugPreview.afterCompositeFrame(
-                    darkBallPreviewCapture, darkBallPreviewFrame);
         }
 
         // Bloom pass: re-render snag VFX into a half-res FBO, blur, composite
         IClientConfig cfg = ShadowedHeartsConfigs.getInstance().getClientConfig();
         if (cfg.snagBloomEnabled() && SnagBloomFBO.shouldRun() && SnagBloomFBO.beginBloomPass()) {
-            SnagCaptureVfx.renderAll(camera, partialTicks);
-            SnagBloomFBO.endBloomPass();
+            try {
+                SnagCaptureVfx.renderAll(camera, partialTicks);
+            } finally {
+                SnagBloomFBO.endBloomPass();
+            }
             SnagBloomFBO.blurAndComposite();
         }
     }
@@ -270,7 +364,8 @@ public final class BallEmitters {
                 || mc.level == null) {
             return;
         }
-        if (DarkBallCaptureVfx.getActiveInstances().isEmpty()) {
+        if (DarkBallCaptureVfx.getActiveInstances().isEmpty()
+                && !DarkBallAnimeBallFinish.hasActive()) {
             irisTransactionDiagnosticLogged = false;
             return;
         }
@@ -323,19 +418,9 @@ public final class BallEmitters {
                     0, 0,
                     irisSnapshot.renderWidth,
                     irisSnapshot.renderHeight);
-            DarkBallPreviewResult previewResult = renderDarkBallComposites(
+            renderDarkBallComposites(
                     camera, camera.getPartialTickTime());
-            if (irisSnapshot.diffuseTexture > 0) {
-                DarkBallFboDebugPreview.afterCompositeFrame(
-                        previewResult.capture(),
-                        previewResult.frame(),
-                        irisSnapshot.diffuseTexture,
-                        irisSnapshot.renderWidth,
-                        irisSnapshot.renderHeight);
-            } else {
-                DarkBallFboDebugPreview.afterCompositeFrame(
-                        previewResult.capture(), previewResult.frame());
-            }
+            DarkBallAnimeBallFinish.updateAndRender(camera, camera.getPartialTickTime());
         } finally {
             RenderSystem.getModelViewMatrix().set(savedModelView);
             RenderSystem.setProjectionMatrix(
@@ -349,19 +434,17 @@ public final class BallEmitters {
     /**
      * Runs one complete clear -> draw -> resolve -> composite transaction per
      * capture. Screen-sized scratch targets are reused serially, while every
-     * capture keeps independent exact-mask, proxy-depth, JFA, and surfel state.
+     * capture keeps independent exact-mask, proxy-depth and anime energy state.
      */
-    private static DarkBallPreviewResult renderDarkBallComposites(
+    private static void renderDarkBallComposites(
             net.minecraft.client.Camera camera,
             float partialTicks) {
         var captures = DarkBallCaptureVfx.orderedActiveCaptures(camera);
         if (captures.isEmpty()) {
-            return DarkBallPreviewResult.EMPTY;
+            return;
         }
 
         DarkBallCaptureVfx.beginDirectCompositeFrame();
-        DarkBallCaptureVfx.FboPreviewCapture previewCapture = null;
-        DarkBallDensityFBO.PreviewFrame previewFrame = null;
 
         for (int index = 0; index < captures.size(); index++) {
             DarkBallCaptureVfx capture = captures.get(index);
@@ -414,49 +497,31 @@ public final class BallEmitters {
                 // The caller target is no longer trustworthy. Do not start a
                 // later capture transaction or diagnostic draw on unknown GL
                 // state; fail the remaining frame closed.
-                return abortDarkBallCapture(capture);
+                abortDarkBallCapture(capture);
+                return;
             }
 
             if (passReady) {
                 try {
-                    compositeRendered = DarkBallDensityFBO.composite();
+                    compositeRendered = DarkBallDensityFBO.composite(capture);
                 } catch (RuntimeException failure) {
                     Shadowedhearts.LOGGER.error(
                             "[ShadowedHearts] Dark Ball capture composite "
                                     + "failed; aborting the remaining frame "
                                     + "because restored GL state is unknown",
                             failure);
-                    return abortDarkBallCapture(capture);
+                    abortDarkBallCapture(capture);
+                return;
                 }
             }
             DarkBallCaptureVfx.finishDirectCompositeCapture(
                     capture, compositeRendered);
 
-            // Diagnostics deliberately focus the nearest capture (the final
-            // back-to-front job). Earlier scratch attachments have already
-            // been reused and must never be reported as if they were current.
-            if (index == captures.size() - 1
-                    && compositeRendered
-                    && DarkBallFboDebugPreview.isEnabled()) {
-                previewCapture =
-                        DarkBallCaptureVfx.fboPreviewCapture(capture);
-                previewFrame = DarkBallDensityFBO.previewFrame();
-            }
         }
-        return new DarkBallPreviewResult(previewCapture, previewFrame);
     }
 
-    private static DarkBallPreviewResult abortDarkBallCapture(
-            DarkBallCaptureVfx capture) {
+    private static void abortDarkBallCapture(DarkBallCaptureVfx capture) {
         DarkBallCaptureVfx.finishDirectCompositeCapture(capture, false);
-        return DarkBallPreviewResult.EMPTY;
-    }
-
-    private record DarkBallPreviewResult(
-            DarkBallCaptureVfx.FboPreviewCapture capture,
-            DarkBallDensityFBO.PreviewFrame frame) {
-        private static final DarkBallPreviewResult EMPTY =
-                new DarkBallPreviewResult(null, null);
     }
 
     private static void logIrisTransactionDiagnosticOnce(
@@ -538,6 +603,7 @@ public final class BallEmitters {
         if (currentLevel == null) {
             if (clientLevelActive) {
                 DarkBallCaptureVfx.clearAll();
+                SnagShakeVfx.clearAll();
                 DarkBallDensityFBO.destroy();
             }
             clientLevelRef = new WeakReference<>(null);
@@ -550,6 +616,7 @@ public final class BallEmitters {
             // active. Clear stale per-capture GPU resources on the first hook
             // for a replacement world as well as on an observed null world.
             DarkBallCaptureVfx.clearAll();
+            SnagShakeVfx.clearAll();
             if (clientLevelActive) {
                 DarkBallDensityFBO.destroy();
             }
@@ -734,17 +801,17 @@ public final class BallEmitters {
             for (int i = 0; i < count; i++) {
                 double t = (double) i / count;
                 // More aggressive perpendicular spread for smokier trails (suggestion L)
-                double lx = Mth.lerp(t, prev.x, curr.x) + (mc.level.random.nextFloat() - 0.5) * 0.2;
-                double ly = Mth.lerp(t, prev.y, curr.y) + (mc.level.random.nextFloat() - 0.5) * 0.2;
-                double lz = Mth.lerp(t, prev.z, curr.z) + (mc.level.random.nextFloat() - 0.5) * 0.2;
+                double lx = Mth.lerp(t, prev.x, curr.x) + (random.nextFloat() - 0.5) * 0.2;
+                double ly = Mth.lerp(t, prev.y, curr.y) + (random.nextFloat() - 0.5) * 0.2;
+                double lz = Mth.lerp(t, prev.z, curr.z) + (random.nextFloat() - 0.5) * 0.2;
                 spawnPenumbraTrailPuff(mc, lx, ly, lz, vx, vy, vz);
             }
         } else {
             // First frame: seed a small cluster at the current position
             for (int i = 0; i < 3; i++) {
-                double ox = curr.x + (mc.level.random.nextFloat() - 0.5) * 0.40;
-                double oy = curr.y + (mc.level.random.nextFloat() - 0.5) * 0.30;
-                double oz = curr.z + (mc.level.random.nextFloat() - 0.5) * 0.40;
+                double ox = curr.x + (random.nextFloat() - 0.5) * 0.40;
+                double oy = curr.y + (random.nextFloat() - 0.5) * 0.30;
+                double oz = curr.z + (random.nextFloat() - 0.5) * 0.40;
                 spawnPenumbraTrailPuff(mc, ox, oy, oz, vx, vy, vz);
             }
         }
@@ -756,14 +823,9 @@ public final class BallEmitters {
                                                 double vx, double vy, double vz) {
         if (mc.level == null) return;
 
-        mc.level.addParticle(
-                ModParticleTypes.PENUMBRA_TRAIL.get(),
-                x, y, z,
-                vx, vy, vz
-        );
-
-        // Mirror the same spawn into our dedicated density trail manager.
-        // This keeps the FBO pipeline independent from ParticleEngine internals.
+        // The density manager owns the visible trail. The old ParticleEngine
+        // mirror used ZERO/ONE blending (invisible), but still applied a custom
+        // shader outside the scoped Iris pass.
         PenumbraTrailSystem.registerPuff(x, y, z, vx, vy, vz);
     }
 
@@ -799,9 +861,9 @@ public final class BallEmitters {
             int count = Math.max(6, Math.min(28, (int) (gap * SNAG_PARTICLES_PER_BLOCK)));
             for (int i = 0; i < count; i++) {
                 double t = (double) i / count;
-                double lx = Mth.lerp(t, prev.x, curr.x) + (mc.level.random.nextFloat() - 0.5) * 0.52;
-                double ly = Mth.lerp(t, prev.y, curr.y) + (mc.level.random.nextFloat() - 0.5) * 0.52;
-                double lz = Mth.lerp(t, prev.z, curr.z) + (mc.level.random.nextFloat() - 0.5) * 0.52;
+                double lx = Mth.lerp(t, prev.x, curr.x) + (random.nextFloat() - 0.5) * 0.52;
+                double ly = Mth.lerp(t, prev.y, curr.y) + (random.nextFloat() - 0.5) * 0.52;
+                double lz = Mth.lerp(t, prev.z, curr.z) + (random.nextFloat() - 0.5) * 0.52;
                 SnagTrailDensitySystem.registerOrangeSmokePuff(lx, ly, lz, vx, vy, vz);
                 // Emit purple motes at lower density (roughly 1 in 3 positions)
                 if (i % 3 == 0) {
@@ -810,9 +872,9 @@ public final class BallEmitters {
             }
         } else {
             for (int i = 0; i < 4; i++) {
-                double ox = curr.x + (mc.level.random.nextFloat() - 0.5) * 0.25;
-                double oy = curr.y + (mc.level.random.nextFloat() - 0.5) * 0.20;
-                double oz = curr.z + (mc.level.random.nextFloat() - 0.5) * 0.25;
+                double ox = curr.x + (random.nextFloat() - 0.5) * 0.25;
+                double oy = curr.y + (random.nextFloat() - 0.5) * 0.20;
+                double oz = curr.z + (random.nextFloat() - 0.5) * 0.25;
                 SnagTrailDensitySystem.registerOrangeSmokePuff(ox, oy, oz, vx, vy, vz);
                 SnagTrailDensitySystem.registerPurpleMote(ox, oy, oz, vx, vy, vz);
             }
@@ -831,7 +893,7 @@ public final class BallEmitters {
         final int entityId;
         final WeakReference<Entity> entityRef;
         boolean isSnagBall;
-        boolean isPenumbraBall;
+        boolean usesPenumbraTrail;
         boolean isDarkBall;
         final OneShotStartLatch darkCaptureStart = new OneShotStartLatch();
         boolean resolved = false;
@@ -845,11 +907,11 @@ public final class BallEmitters {
         long lastSnagSpawnTick = Long.MIN_VALUE;
 
         BallInstance(int entityId, @Nullable Entity ent, long startTick, int fi, int sus, int fo,
-                     boolean isSnagBall, boolean isPenumbraBall, boolean isDarkBall) {
+                     boolean isSnagBall, boolean usesPenumbraTrail, boolean isDarkBall) {
             this.entityId = entityId;
             this.entityRef = new WeakReference<>(ent);
             this.isSnagBall = isSnagBall;
-            this.isPenumbraBall = isPenumbraBall;
+            this.usesPenumbraTrail = usesPenumbraTrail;
             this.isDarkBall = isDarkBall;
             this.startTick = startTick;
             this.fadeInTicks = Math.max(1, fi);

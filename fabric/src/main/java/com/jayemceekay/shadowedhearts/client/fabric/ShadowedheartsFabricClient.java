@@ -1,11 +1,6 @@
 package com.jayemceekay.shadowedhearts.client.fabric;
 
 import com.cobblemon.mod.common.entity.pokeball.EmptyPokeBallEntity;
-import net.minecraft.world.phys.Vec3;
-import com.mojang.blaze3d.vertex.PoseStack;
-import com.jayemceekay.shadowedhearts.util.HeldItemAnchorCache;
-import com.jayemceekay.shadowedhearts.client.render.HeldBallSnagGlowRenderer;
-import com.jayemceekay.shadowedhearts.client.ball.DarkBallFboDebugPreview;
 import com.jayemceekay.shadowedhearts.Shadowedhearts;
 import com.jayemceekay.shadowedhearts.client.ModKeybinds;
 import com.jayemceekay.shadowedhearts.client.ModShaders;
@@ -93,11 +88,7 @@ public final class ShadowedheartsFabricClient implements ClientModInitializer {
             AuraReaderPulseRenderer.tick();
             RelicStoneSoundManager.tick();
         });
-        HudRenderCallback.EVENT.register((graphics, tickCounter) -> {
-            AuraReaderHud.render(graphics, tickCounter);
-            ShadowPokemonAuraSystem.renderDebugHud(graphics);
-            DarkBallFboDebugPreview.renderHud(graphics);
-        });
+        HudRenderCallback.EVENT.register(AuraReaderHud::render);
         HudRenderCallback.EVENT.register((graphics, delta) ->
                 com.jayemceekay.shadowedhearts.client.moonwound.MoonwoundClient.renderHud(graphics));
         // Screens
@@ -167,74 +158,24 @@ public final class ShadowedheartsFabricClient implements ClientModInitializer {
             ShadowAuraEmitters.onRender(context.camera(), context.camera().getPartialTickTime());
             BallEmitters.onRender(context.camera(), context.camera().getPartialTickTime());
             // Capture scene depth before Fabulous' transparency combine overwrites it.
+            PenumbraTrailSystem.renderWorldDensityOnly(context.camera(), context.camera().getPartialTickTime(),
+                    context.projectionMatrix(), context.positionMatrix());
+            ShadowPokemonAuraSystem.renderWorldDensityOnly(
+                    context.camera(), context.camera().getPartialTickTime(),
+                    context.projectionMatrix(), context.positionMatrix());
             VanillaWorldShaderFrame.capture(context.camera(), context.camera().getPartialTickTime(),
                     context.projectionMatrix(), context.positionMatrix());
         });
 
         WorldRenderEvents.END.register(worldRenderContext -> {
-            PenumbraTrailSystem.renderDensityPipeline(
-                    worldRenderContext.camera(),
-                    worldRenderContext.camera().getPartialTickTime()
-            );
-            if (!ShadowPokemonAuraSystem.isIrisShaderPackActive()) {
-                ShadowPokemonAuraSystem.renderDensityPipeline(
-                        worldRenderContext.camera(),
-                        worldRenderContext.camera().getPartialTickTime(),
-                        worldRenderContext.projectionMatrix()
-                );
-            }
-            BallEmitters.onRenderFBO(
-                    worldRenderContext.camera(),
-                    worldRenderContext.camera().getPartialTickTime()
-            );
+            PenumbraTrailSystem.compositeWorld();
+            ShadowPokemonAuraSystem.compositeWorld();
             VanillaWorldShaderFrame.render();
         });
 
         WorldRenderEvents.AFTER_ENTITIES.register(context -> {
             LuminousMoteEmitters.onRender(context.tickCounter().getGameTimeDeltaPartialTick(true));
 
-        });
-
-        WorldRenderEvents.LAST.register(context -> {
-            var mc = Minecraft.getInstance();
-            if (mc.level == null) return;
-
-            PoseStack pose = context.matrixStack();
-            var buffers = mc.renderBuffers().bufferSource();
-            float pt = context.tickCounter().getGameTimeDeltaPartialTick(true);
-
-            // "frame id" so we only use anchors captured this same frame
-            int frameId = (int) (System.nanoTime() & 0x7fffffff);
-            Vec3 view = context.camera().getPosition();
-
-            pose.pushPose();
-            pose.translate(-view.x, -view.y, -view.z);
-
-            for (var p : mc.level.players()) {
-                var a = HeldItemAnchorCache.get(p, frameId);
-                if (a == null) continue;
-
-                pose.pushPose();
-                pose.translate(a.worldPos().x, a.worldPos().y, a.worldPos().z);
-                pose.mulPose(mc.getEntityRenderDispatcher().cameraOrientation());
-
-                if (p == mc.player && !mc.options.getCameraType().isFirstPerson()) {
-                    if (!HeldBallSnagGlowRenderer.isPokeball(p.getMainHandItem()))
-                        continue;
-                    HeldBallSnagGlowRenderer.renderAtHandPoseThirdPerson(pt, pose, buffers);
-                }
-
-                if (p != mc.player) {
-                    if (!HeldBallSnagGlowRenderer.isPokeball(p.getMainHandItem()))
-                        continue;
-                    HeldBallSnagGlowRenderer.renderAtHandPoseThirdPerson(pt, pose, buffers);
-                }
-
-                pose.popPose();
-            }
-
-            pose.popPose();
-            buffers.endBatch();
         });
 
         ClientEntityEvents.ENTITY_UNLOAD.register((entity, clientLevel) -> {

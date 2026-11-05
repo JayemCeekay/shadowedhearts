@@ -8,6 +8,7 @@
     "emi.MixinEmiChamberRecipeReturn",
     "client.MoonwoundBossHealthOverlayAccessor",
     "client.MoonwoundChatComponentAccessor",
+    "client.MixinPosableModelDarkBallLayers",
     "client.DarkBallCompositeRenderTypeAccessor",
     "client.DarkBallCompositeStateAccessor",
     "client.DarkBallTextureStateAccessor",

@@ -1108,7 +1108,7 @@ class PurificationStorageWidget(
                 if (centerPokemon != null) {
                     val centerRenderablePokemon = centerPokemon.asRenderablePokemon()
                     val hasShadowAura =
-                        ShadowedHeartsConfigs.getInstance().clientConfig.enableShadowAura() &&
+                        com.jayemceekay.shadowedhearts.client.ClientEffects.auraVisible() &&
                             ShadowAspectUtil.hasShadowAspect(centerPokemon)
                     val shadowAuraStrength =
                         ShadowAspectUtil.getHeartGaugeValue(centerPokemon) / 100.0f

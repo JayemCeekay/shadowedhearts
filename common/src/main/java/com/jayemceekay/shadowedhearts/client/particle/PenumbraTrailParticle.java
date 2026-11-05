@@ -9,6 +9,7 @@ import net.minecraft.client.particle.SpriteSet;
 import net.minecraft.client.particle.TextureSheetParticle;
 import net.minecraft.core.particles.SimpleParticleType;
 import net.minecraft.util.Mth;
+import net.minecraft.util.RandomSource;
 import org.jetbrains.annotations.NotNull;
 
 /**
@@ -94,7 +95,7 @@ public class PenumbraTrailParticle extends TextureSheetParticle {
 
     public static class Provider implements ParticleProvider<SimpleParticleType> {
         private final SpriteSet sprites;
-
+        private final RandomSource random = RandomSource.create();
         public Provider(SpriteSet sprites) {
             this.sprites = sprites;
         }
@@ -104,7 +105,7 @@ public class PenumbraTrailParticle extends TextureSheetParticle {
                                                     double x, double y, double z,
                                                     double vx, double vy, double vz) {
             // Size range: 0.4–1.1 blocks — larger for billowy overlap
-            float size = 0.4f + level.random.nextFloat() * 0.7f;
+            float size = 0.4f + random.nextFloat() * 0.7f;
             return new PenumbraTrailParticle(level, x, y, z, vx, vy, vz, this.sprites, size);
         }
     }

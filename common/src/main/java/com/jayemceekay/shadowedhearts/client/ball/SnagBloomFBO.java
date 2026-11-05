@@ -1,6 +1,8 @@
 package com.jayemceekay.shadowedhearts.client.ball;
 
 import com.jayemceekay.shadowedhearts.client.ModShaders;
+import com.jayemceekay.shadowedhearts.client.render.DepthCopyFormat;
+import com.jayemceekay.shadowedhearts.client.render.DensityFboPipeline;
 import com.jayemceekay.shadowedhearts.mixin.RenderTargetAccessor;
 import com.mojang.blaze3d.pipeline.RenderTarget;
 import com.mojang.blaze3d.pipeline.TextureTarget;
@@ -13,302 +15,271 @@ import net.minecraft.client.renderer.ShaderInstance;
 import org.joml.Matrix4f;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL14;
+import org.lwjgl.opengl.GL20;
 import org.lwjgl.opengl.GL30;
 
 import java.nio.IntBuffer;
 
 /**
- * Manages offscreen framebuffers for the snag ball bloom/glow pipeline.
- *
- * <p>Pipeline:
- * <ol>
- *   <li>{@link #beginBloomPass()} — bind half-res bloom FBO, clear it</li>
- *   <li>Caller renders bright VFX (beams, sparks, flashes, orb) into this FBO</li>
- *   <li>{@link #endBloomPass()} — restore main FBO</li>
- *   <li>{@link #blurAndComposite()} — two-pass Gaussian blur, then additive composite over scene</li>
- * </ol>
- *
- * <p>The bloom FBO runs at half resolution for performance. Two blur iterations
- * (H+V each) produce a soft glow that is then additively blended onto the
- * main framebuffer.
+ * Half-resolution bloom for snag VFX, using the caller's scene target and
+ * viewport. Iris can own both independently of Minecraft's main render target.
+ * The world pass retains the caller's matched projection/model-view matrices;
+ * only the fullscreen blur and composite temporarily install identity matrices.
  */
 public final class SnagBloomFBO {
-
     private static final int BLUR_ITERATIONS = 2;
-    private static final float BLOOM_INTENSITY = 0.8f;
 
     private static RenderTarget bloomTarget;
     private static RenderTarget blurTempTarget;
     private static int lastWidth = -1;
     private static int lastHeight = -1;
-
-    // State capture for begin/end pass
-    private static int restoreFramebufferId = -1;
-    private static int restoreViewportX;
-    private static int restoreViewportY;
-    private static int restoreViewportW;
-    private static int restoreViewportH;
-
-    // Matrix state capture for begin/end pass
-    private static Matrix4f savedModelView;
-    private static Matrix4f savedProjection;
+    private static DensityFboPipeline.RenderStateScope bloomPassState;
+    private static SceneTarget sceneTarget;
+    private static boolean bloomReady;
 
     private SnagBloomFBO() {}
 
-    /**
-     * Ensures both FBOs exist and match half the main framebuffer resolution.
-     */
-    private static void ensureTargets() {
-        RenderTarget main = Minecraft.getInstance().getMainRenderTarget();
-        int mw = ((RenderTargetAccessor) (Object) main).getWidth();
-        int mh = ((RenderTargetAccessor) (Object) main).getHeight();
-        int hw = Math.max(1, mw / 2);
-        int hh = Math.max(1, mh / 2);
-
-        if (bloomTarget == null || lastWidth != hw || lastHeight != hh) {
-            if (bloomTarget != null) bloomTarget.destroyBuffers();
-            if (blurTempTarget != null) blurTempTarget.destroyBuffers();
-
-            bloomTarget = new TextureTarget(hw, hh, true, Minecraft.ON_OSX);
-            bloomTarget.setClearColor(0f, 0f, 0f, 0f);
-
-            blurTempTarget = new TextureTarget(hw, hh, false, Minecraft.ON_OSX);
-            blurTempTarget.setClearColor(0f, 0f, 0f, 0f);
-
-            lastWidth = hw;
-            lastHeight = hh;
-
-            // Briefly bind each to initialize, then restore previous state
-            int prevFbo = GL11.glGetInteger(GL30.GL_DRAW_FRAMEBUFFER_BINDING);
-            IntBuffer prevViewport = BufferUtils.createIntBuffer(4);
-            GL11.glGetIntegerv(GL11.GL_VIEWPORT, prevViewport);
-
-            bloomTarget.bindWrite(false);
-            blurTempTarget.bindWrite(false);
-
-            GL30.glBindFramebuffer(GL30.GL_FRAMEBUFFER, prevFbo);
-            RenderSystem.viewport(prevViewport.get(0), prevViewport.get(1),
-                    prevViewport.get(2), prevViewport.get(3));
+    private static void ensureTargets(int sourceWidth, int sourceHeight) {
+        int width = Math.max(1, sourceWidth / 2);
+        int height = Math.max(1, sourceHeight / 2);
+        if (bloomTarget != null && blurTempTarget != null
+                && lastWidth == width && lastHeight == height) {
+            return;
         }
+
+        destroyTargets();
+        bloomTarget = new TextureTarget(width, height, true, Minecraft.ON_OSX);
+        bloomTarget.setClearColor(0f, 0f, 0f, 0f);
+        blurTempTarget = new TextureTarget(width, height, false, Minecraft.ON_OSX);
+        blurTempTarget.setClearColor(0f, 0f, 0f, 0f);
+        lastWidth = width;
+        lastHeight = height;
     }
 
     /**
-     * Binds the bloom FBO for the bright VFX pass. Clears it and sets the viewport.
-     *
-     * @return true if the bloom FBO is ready; false if setup failed
+     * Captures the caller before target allocation or clearing, then copies the
+     * active scene depth. A failed copy skips bloom so it cannot glow through
+     * world geometry. Pair every successful begin with end in a finally block.
      */
     public static boolean beginBloomPass() {
-        ShaderInstance blur = ModShaders.SNAG_BLOOM_BLUR;
-        ShaderInstance comp = ModShaders.SNAG_BLOOM_COMPOSITE;
-        if (blur == null || comp == null) return false;
-
-        ensureTargets();
-        if (bloomTarget == null) return false;
-
-        captureCurrentRenderState();
-
-        // Blit main depth buffer to bloom FBO so VFX are depth-tested against world
-        blitMainDepthToBloom();
-
-        bloomTarget.clear(Minecraft.ON_OSX);
-
-        // Re-blit depth after clear (clear wipes depth too)
-        blitMainDepthToBloom();
-
-        bloomTarget.bindWrite(false);
-        RenderSystem.viewport(0, 0, lastWidth, lastHeight);
-
-        // Save current matrices and set up proper 3D view matrix so that
-        // billboard VFX (diffraction spikes, convergence rings, lens flares)
-        // are correctly positioned even when rendering at a late stage (END /
-        // AFTER_PARTICLES) where the level renderer may have reset the GL state.
-        savedModelView = new Matrix4f(RenderSystem.getModelViewMatrix());
-        savedProjection = new Matrix4f(RenderSystem.getProjectionMatrix());
-
-        net.minecraft.client.Camera camera = Minecraft.getInstance().gameRenderer.getMainCamera();
-        org.joml.Quaternionf viewRot = new org.joml.Quaternionf(camera.rotation()).conjugate();
-        RenderSystem.getModelViewMatrix().set(new Matrix4f().rotation(viewRot));
-
-        return true;
-    }
-
-    /**
-     * Restores the main framebuffer and matrices after the bright VFX pass.
-     */
-    public static void endBloomPass() {
-        // Restore matrices saved in beginBloomPass()
-        if (savedModelView != null) {
-            RenderSystem.getModelViewMatrix().set(savedModelView);
-            savedModelView = null;
+        if (bloomPassState != null) {
+            return false;
         }
-        if (savedProjection != null) {
-            RenderSystem.setProjectionMatrix(savedProjection, VertexSorting.DISTANCE_TO_ORIGIN);
-            savedProjection = null;
+        bloomReady = false;
+        sceneTarget = null;
+        if (ModShaders.SNAG_BLOOM_BLUR == null
+                || ModShaders.SNAG_BLOOM_COMPOSITE == null) {
+            return false;
         }
-        restoreCapturedRenderState();
-    }
 
-    /**
-     * Runs two-pass Gaussian blur on the bloom texture, then composites it
-     * additively onto the main framebuffer.
-     */
-    public static void blurAndComposite() {
-        if (bloomTarget == null || blurTempTarget == null) return;
+        bloomPassState = DensityFboPipeline.preserveRenderState();
+        try {
+            sceneTarget = SceneTarget.capture();
+            if (sceneTarget.width() <= 0 || sceneTarget.height() <= 0) {
+                endBloomPass();
+                return false;
+            }
+            ensureTargets(sceneTarget.width(), sceneTarget.height());
+            RenderSystem.colorMask(true, true, true, true);
+            GL11.glColorMask(true, true, true, true);
+            clearTargetUnscissored(bloomTarget);
+            if (!blitSceneDepthToBloom()) {
+                endBloomPass();
+                return false;
+            }
 
-        ShaderInstance blurShader = ModShaders.SNAG_BLOOM_BLUR;
-        ShaderInstance compShader = ModShaders.SNAG_BLOOM_COMPOSITE;
-        if (blurShader == null || compShader == null) return;
-
-        // Save current state
-        int prevFbo = GL11.glGetInteger(GL30.GL_DRAW_FRAMEBUFFER_BINDING);
-        IntBuffer prevViewport = BufferUtils.createIntBuffer(4);
-        GL11.glGetIntegerv(GL11.GL_VIEWPORT, prevViewport);
-        int pvX = prevViewport.get(0), pvY = prevViewport.get(1);
-        int pvW = prevViewport.get(2), pvH = prevViewport.get(3);
-
-        Matrix4f savedMV = new Matrix4f(RenderSystem.getModelViewMatrix());
-        Matrix4f savedProj = new Matrix4f(RenderSystem.getProjectionMatrix());
-        RenderSystem.getModelViewMatrix().identity();
-        RenderSystem.setProjectionMatrix(new Matrix4f(), VertexSorting.ORTHOGRAPHIC_Z);
-
-        RenderSystem.depthMask(false);
-        RenderSystem.disableDepthTest();
-        RenderSystem.enableBlend();
-        RenderSystem.blendFunc(GlStateManager.SourceFactor.ONE, GlStateManager.DestFactor.ZERO);
-
-        float texelW = 1.0f / lastWidth;
-        float texelH = 1.0f / lastHeight;
-
-        // ── Blur passes ──────────────────────────────────────────────────
-        for (int i = 0; i < BLUR_ITERATIONS; i++) {
-            float radius = 1.0f + i * 0.5f;
-
-            // Horizontal: bloom → blurTemp
-            blurTempTarget.clear(Minecraft.ON_OSX);
-            blurTempTarget.bindWrite(false);
-            RenderSystem.viewport(0, 0, lastWidth, lastHeight);
-            RenderSystem.setShaderTexture(0, bloomTarget.getColorTextureId());
-
-            Uniform uDir = blurShader.getUniform("Direction");
-            Uniform uRad = blurShader.getUniform("BlurRadius");
-            if (uDir != null) uDir.set(texelW, 0.0f);
-            if (uRad != null) uRad.set(radius);
-
-            RenderSystem.setShader(() -> blurShader);
-            drawFullScreenQuad();
-
-            // Vertical: blurTemp → bloom
-            bloomTarget.clear(Minecraft.ON_OSX);
             bloomTarget.bindWrite(false);
             RenderSystem.viewport(0, 0, lastWidth, lastHeight);
-            RenderSystem.setShaderTexture(0, blurTempTarget.getColorTextureId());
-
-            if (uDir != null) uDir.set(0.0f, texelH);
-            if (uRad != null) uRad.set(radius);
-
-            RenderSystem.setShader(() -> blurShader);
-            drawFullScreenQuad();
+            bloomReady = true;
+            return true;
+        } catch (RuntimeException | Error failure) {
+            endBloomPass();
+            throw failure;
         }
-
-        blurShader.clear();
-
-        // ── Composite: additive blend bloom onto main framebuffer ─────
-        GL30.glBindFramebuffer(GL30.GL_FRAMEBUFFER, prevFbo);
-        RenderSystem.viewport(pvX, pvY, pvW, pvH);
-
-        RenderSystem.setShaderTexture(0, bloomTarget.getColorTextureId());
-        RenderSystem.blendFunc(GlStateManager.SourceFactor.ONE, GlStateManager.DestFactor.ONE);
-
-        float intensity = com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs
-                .getInstance().getClientConfig().snagBloomIntensity();
-        Uniform uIntensity = compShader.getUniform("BloomIntensity");
-        if (uIntensity != null) uIntensity.set(intensity);
-
-        RenderSystem.setShader(() -> compShader);
-        drawFullScreenQuad();
-
-        compShader.clear();
-
-        // ── Restore state ────────────────────────────────────────────────
-        RenderSystem.getModelViewMatrix().set(savedMV);
-        RenderSystem.setProjectionMatrix(savedProj, VertexSorting.DISTANCE_TO_ORIGIN);
-        RenderSystem.enableDepthTest();
-        RenderSystem.depthMask(true);
-        RenderSystem.defaultBlendFunc();
     }
 
-    /**
-     * @return true if there are active snag VFX that benefit from bloom
-     */
+    /** Restores the exact caller state, including independent read/draw targets. */
+    public static void endBloomPass() {
+        DensityFboPipeline.RenderStateScope savedState = bloomPassState;
+        bloomPassState = null;
+        if (savedState != null) {
+            savedState.close();
+        }
+    }
+
+    /** Blurs the last successful pass and additively presents it into its scene. */
+    public static void blurAndComposite() {
+        if (!bloomReady || bloomPassState != null || sceneTarget == null
+                || bloomTarget == null || blurTempTarget == null) {
+            return;
+        }
+        bloomReady = false;
+        ShaderInstance blurShader = ModShaders.SNAG_BLOOM_BLUR;
+        ShaderInstance compositeShader = ModShaders.SNAG_BLOOM_COMPOSITE;
+        if (blurShader == null || compositeShader == null) {
+            return;
+        }
+
+        try (var ignored = DensityFboPipeline.preserveRenderState()) {
+            RenderSystem.getModelViewMatrix().identity();
+            RenderSystem.setProjectionMatrix(new Matrix4f(), VertexSorting.ORTHOGRAPHIC_Z);
+            prepareFullscreenState();
+
+            float texelWidth = 1.0f / lastWidth;
+            float texelHeight = 1.0f / lastHeight;
+            Uniform direction = blurShader.getUniform("Direction");
+            Uniform blurRadius = blurShader.getUniform("BlurRadius");
+            try {
+                for (int i = 0; i < BLUR_ITERATIONS; i++) {
+                    float radius = 1.0f + i * 0.5f;
+                    clearTargetUnscissored(blurTempTarget);
+                    blurTempTarget.bindWrite(false);
+                    RenderSystem.viewport(0, 0, lastWidth, lastHeight);
+                    RenderSystem.setShaderTexture(0, bloomTarget.getColorTextureId());
+                    if (direction != null) direction.set(texelWidth, 0.0f);
+                    if (blurRadius != null) blurRadius.set(radius);
+                    RenderSystem.setShader(() -> blurShader);
+                    drawFullScreenQuad();
+
+                    clearTargetUnscissored(bloomTarget);
+                    bloomTarget.bindWrite(false);
+                    RenderSystem.viewport(0, 0, lastWidth, lastHeight);
+                    RenderSystem.setShaderTexture(0, blurTempTarget.getColorTextureId());
+                    if (direction != null) direction.set(0.0f, texelHeight);
+                    if (blurRadius != null) blurRadius.set(radius);
+                    RenderSystem.setShader(() -> blurShader);
+                    drawFullScreenQuad();
+                }
+            } finally {
+                blurShader.clear();
+            }
+
+            // Restore only the draw target here; the surrounding scope preserves
+            // the independent read target and the rest of Iris' render state.
+            GL30.glBindFramebuffer(GL30.GL_DRAW_FRAMEBUFFER, sceneTarget.framebuffer());
+            RenderSystem.viewport(sceneTarget.x(), sceneTarget.y(),
+                    sceneTarget.width(), sceneTarget.height());
+            RenderSystem.setShaderTexture(0, bloomTarget.getColorTextureId());
+            RenderSystem.blendFunc(GlStateManager.SourceFactor.ONE, GlStateManager.DestFactor.ONE);
+            GL11.glBlendFunc(GL11.GL_ONE, GL11.GL_ONE);
+
+            float intensity = com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs
+                    .getInstance().getClientConfig().snagBloomIntensity();
+            Uniform bloomIntensity = compositeShader.getUniform("BloomIntensity");
+            if (bloomIntensity != null) bloomIntensity.set(intensity);
+            try {
+                RenderSystem.setShader(() -> compositeShader);
+                drawFullScreenQuad();
+            } finally {
+                compositeShader.clear();
+            }
+        }
+    }
+
     public static boolean shouldRun() {
         return !SnagCaptureVfx.getActiveInstances().isEmpty();
     }
 
-    // ═══════════════════════════════════════════════════════════════════════
-    // Helpers
-    // ═══════════════════════════════════════════════════════════════════════
+    private static void prepareFullscreenState() {
+        RenderSystem.colorMask(true, true, true, true);
+        GL11.glColorMask(true, true, true, true);
+        RenderSystem.depthMask(false);
+        GL11.glDepthMask(false);
+        RenderSystem.disableDepthTest();
+        GL11.glDisable(GL11.GL_DEPTH_TEST);
+        RenderSystem.disableCull();
+        GL11.glDisable(GL11.GL_CULL_FACE);
+        GL11.glDisable(GL11.GL_SCISSOR_TEST);
+        RenderSystem.enableBlend();
+        GL11.glEnable(GL11.GL_BLEND);
+        RenderSystem.blendFunc(GlStateManager.SourceFactor.ONE, GlStateManager.DestFactor.ZERO);
+        GL11.glBlendFunc(GL11.GL_ONE, GL11.GL_ZERO);
+        GL20.glBlendEquationSeparate(GL14.GL_FUNC_ADD, GL14.GL_FUNC_ADD);
+    }
+
+    private static void clearTargetUnscissored(RenderTarget target) {
+        boolean scissorEnabled = GL11.glIsEnabled(GL11.GL_SCISSOR_TEST);
+        boolean depthMask = GL11.glGetBoolean(GL11.GL_DEPTH_WRITEMASK);
+        GL11.glDisable(GL11.GL_SCISSOR_TEST);
+        RenderSystem.depthMask(true);
+        GL11.glDepthMask(true);
+        try {
+            target.clear(Minecraft.ON_OSX);
+        } finally {
+            RenderSystem.depthMask(depthMask);
+            GL11.glDepthMask(depthMask);
+            if (scissorEnabled) GL11.glEnable(GL11.GL_SCISSOR_TEST);
+        }
+    }
+
+    private static boolean blitSceneDepthToBloom() {
+        if (!DepthCopyFormat.prepareDepthTexture(sceneTarget.framebuffer(),
+                bloomTarget.getDepthTextureId(), lastWidth, lastHeight)) {
+            return false;
+        }
+        int bloomFramebuffer = ((RenderTargetAccessor) (Object) bloomTarget).getFrameBufferId();
+        int previousDraw = GL11.glGetInteger(GL30.GL_DRAW_FRAMEBUFFER_BINDING);
+        int previousRead = GL11.glGetInteger(GL30.GL_READ_FRAMEBUFFER_BINDING);
+        boolean scissorEnabled = GL11.glIsEnabled(GL11.GL_SCISSOR_TEST);
+        GL11.glDisable(GL11.GL_SCISSOR_TEST);
+        try {
+            GL30.glBindFramebuffer(GL30.GL_READ_FRAMEBUFFER, sceneTarget.framebuffer());
+            GL30.glBindFramebuffer(GL30.GL_DRAW_FRAMEBUFFER, bloomFramebuffer);
+            if (GL30.glCheckFramebufferStatus(GL30.GL_READ_FRAMEBUFFER) != GL30.GL_FRAMEBUFFER_COMPLETE
+                    || GL30.glCheckFramebufferStatus(GL30.GL_DRAW_FRAMEBUFFER) != GL30.GL_FRAMEBUFFER_COMPLETE) {
+                return false;
+            }
+            for (int i = 0; i < 16 && GL11.glGetError() != GL11.GL_NO_ERROR; i++) {
+                // Discard preceding errors so the copy reports its own result.
+            }
+            GL30.glBlitFramebuffer(sceneTarget.x(), sceneTarget.y(),
+                    sceneTarget.x() + sceneTarget.width(), sceneTarget.y() + sceneTarget.height(),
+                    0, 0, lastWidth, lastHeight, GL11.GL_DEPTH_BUFFER_BIT, GL11.GL_NEAREST);
+            return GL11.glGetError() == GL11.GL_NO_ERROR;
+        } finally {
+            GL30.glBindFramebuffer(GL30.GL_DRAW_FRAMEBUFFER, previousDraw);
+            GL30.glBindFramebuffer(GL30.GL_READ_FRAMEBUFFER, previousRead);
+            if (scissorEnabled) GL11.glEnable(GL11.GL_SCISSOR_TEST);
+        }
+    }
 
     private static void drawFullScreenQuad() {
-        var tess = Tesselator.getInstance();
-        var buf = tess.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_TEX);
-        buf.addVertex(-1f, -1f, 0f).setUv(0f, 0f);
-        buf.addVertex( 1f, -1f, 0f).setUv(1f, 0f);
-        buf.addVertex( 1f,  1f, 0f).setUv(1f, 1f);
-        buf.addVertex(-1f,  1f, 0f).setUv(0f, 1f);
-        BufferUploader.drawWithShader(buf.buildOrThrow());
+        var buffer = Tesselator.getInstance().begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_TEX);
+        buffer.addVertex(-1f, -1f, 0f).setUv(0f, 0f);
+        buffer.addVertex( 1f, -1f, 0f).setUv(1f, 0f);
+        buffer.addVertex( 1f,  1f, 0f).setUv(1f, 1f);
+        buffer.addVertex(-1f,  1f, 0f).setUv(0f, 1f);
+        BufferUploader.drawWithShader(buffer.buildOrThrow());
     }
 
-    private static void blitMainDepthToBloom() {
-        Minecraft mc = Minecraft.getInstance();
-        RenderTarget main = mc.getMainRenderTarget();
-        int mainFbo = ((RenderTargetAccessor) (Object) main).getFrameBufferId();
-        int bloomFbo = ((RenderTargetAccessor) (Object) bloomTarget).getFrameBufferId();
-        int mainW = ((RenderTargetAccessor) (Object) main).getWidth();
-        int mainH = ((RenderTargetAccessor) (Object) main).getHeight();
-
-        GL30.glBindFramebuffer(GL30.GL_READ_FRAMEBUFFER, mainFbo);
-        GL30.glBindFramebuffer(GL30.GL_DRAW_FRAMEBUFFER, bloomFbo);
-        GL30.glBlitFramebuffer(
-                0, 0, mainW, mainH,
-                0, 0, lastWidth, lastHeight,
-                GL11.GL_DEPTH_BUFFER_BIT,
-                GL11.GL_NEAREST
-        );
-    }
-
-    private static void captureCurrentRenderState() {
-        restoreFramebufferId = GL11.glGetInteger(GL30.GL_DRAW_FRAMEBUFFER_BINDING);
-        IntBuffer viewport = BufferUtils.createIntBuffer(4);
-        GL11.glGetIntegerv(GL11.GL_VIEWPORT, viewport);
-        restoreViewportX = viewport.get(0);
-        restoreViewportY = viewport.get(1);
-        restoreViewportW = viewport.get(2);
-        restoreViewportH = viewport.get(3);
-    }
-
-    private static void restoreCapturedRenderState() {
-        if (restoreFramebufferId >= 0) {
-            GL30.glBindFramebuffer(GL30.GL_FRAMEBUFFER, restoreFramebufferId);
-            RenderSystem.viewport(restoreViewportX, restoreViewportY,
-                    restoreViewportW, restoreViewportH);
-        } else {
-            Minecraft mc = Minecraft.getInstance();
-            mc.getMainRenderTarget().bindWrite(false);
-            RenderTarget main = mc.getMainRenderTarget();
-            int mw = ((RenderTargetAccessor) (Object) main).getWidth();
-            int mh = ((RenderTargetAccessor) (Object) main).getHeight();
-            RenderSystem.viewport(0, 0, mw, mh);
+    private record SceneTarget(int framebuffer, int x, int y, int width, int height) {
+        static SceneTarget capture() {
+            IntBuffer viewport = BufferUtils.createIntBuffer(4);
+            GL11.glGetIntegerv(GL11.GL_VIEWPORT, viewport);
+            return new SceneTarget(GL11.glGetInteger(GL30.GL_DRAW_FRAMEBUFFER_BINDING),
+                    viewport.get(0), viewport.get(1), viewport.get(2), viewport.get(3));
         }
-        restoreFramebufferId = -1;
     }
 
-    /**
-     * Releases all FBO resources. Call on client shutdown or resource reload.
-     */
-    public static void destroy() {
-        if (bloomTarget != null) { bloomTarget.destroyBuffers(); bloomTarget = null; }
-        if (blurTempTarget != null) { blurTempTarget.destroyBuffers(); blurTempTarget = null; }
+    private static void destroyTargets() {
+        if (bloomTarget != null) {
+            bloomTarget.destroyBuffers();
+            bloomTarget = null;
+        }
+        if (blurTempTarget != null) {
+            blurTempTarget.destroyBuffers();
+            blurTempTarget = null;
+        }
         lastWidth = -1;
         lastHeight = -1;
+    }
+
+    /** Releases resources without carrying a pending pass into the next reload. */
+    public static void destroy() {
+        endBloomPass();
+        bloomReady = false;
+        sceneTarget = null;
+        destroyTargets();
     }
 }

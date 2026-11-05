@@ -6,6 +6,7 @@ import com.jayemceekay.shadowedhearts.client.ModShaders;
 import com.jayemceekay.shadowedhearts.client.render.rendertypes.BallRenderTypes;
 import com.mojang.blaze3d.shaders.Uniform;
 import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.ByteBufferBuilder;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
@@ -52,6 +53,8 @@ import java.util.concurrent.ConcurrentHashMap;
  * continuous energy transfer rather than several sequential events.
  */
 public final class SnagCaptureVfx {
+    private static final MultiBufferSource.BufferSource VFX_BUFFERS =
+            MultiBufferSource.immediate(new ByteBufferBuilder(262144));
 
     // ── Timing constants (seconds) — five overlapping concurrent tracks ─────
     // These windows intentionally overlap so the effect reads as a single
@@ -192,7 +195,7 @@ public final class SnagCaptureVfx {
         Minecraft mc = Minecraft.getInstance();
         if (mc.level == null) return;
 
-        MultiBufferSource.BufferSource buf = mc.renderBuffers().bufferSource();
+        MultiBufferSource.BufferSource buf = VFX_BUFFERS;
         Vec3 camPos = camera.getPosition();
 
         for (SnagCaptureVfx vfx : ACTIVE.values()) {
@@ -880,14 +883,20 @@ public final class SnagCaptureVfx {
         com.mojang.blaze3d.systems.RenderSystem.depthMask(false);
         com.mojang.blaze3d.systems.RenderSystem.disableCull();
 
-        // Set ModelViewMat to the camera's view matrix (inverse rotation).
-        // Vertex positions are camera-relative world-space offsets, so the view matrix
-        // must transform them into view space before the perspective projection.
-        org.joml.Matrix4f savedMV = new org.joml.Matrix4f(
-                com.mojang.blaze3d.systems.RenderSystem.getModelViewMatrix());
-        org.joml.Quaternionf viewRot = new org.joml.Quaternionf(camera.rotation()).conjugate();
+        // Camera-relative vertices use the captured world view under Iris.
+        // Rebuilding only rotation here would lose walking/hurt bobbing.
         com.mojang.blaze3d.systems.RenderSystem.getModelViewMatrix()
-                .set(new org.joml.Matrix4f().rotation(viewRot));
+                .set(SnagRenderContext.modelView(camera));
+        org.lwjgl.opengl.GL11.glEnable(org.lwjgl.opengl.GL11.GL_DEPTH_TEST);
+        org.lwjgl.opengl.GL11.glDepthFunc(org.lwjgl.opengl.GL11.GL_LEQUAL);
+        org.lwjgl.opengl.GL11.glDepthMask(false);
+        org.lwjgl.opengl.GL11.glEnable(org.lwjgl.opengl.GL11.GL_BLEND);
+        org.lwjgl.opengl.GL11.glBlendFunc(org.lwjgl.opengl.GL11.GL_ONE, org.lwjgl.opengl.GL11.GL_ONE);
+        org.lwjgl.opengl.GL14.glBlendEquation(org.lwjgl.opengl.GL14.GL_FUNC_ADD);
+        org.lwjgl.opengl.GL11.glDisable(org.lwjgl.opengl.GL11.GL_CULL_FACE);
+        org.lwjgl.opengl.GL11.glDisable(org.lwjgl.opengl.GL11.GL_SCISSOR_TEST);
+        org.lwjgl.opengl.GL11.glDisable(org.lwjgl.opengl.GL11.GL_STENCIL_TEST);
+        org.lwjgl.opengl.GL11.glColorMask(true, true, true, true);
 
         var tess = com.mojang.blaze3d.vertex.Tesselator.getInstance();
         var buf = tess.begin(com.mojang.blaze3d.vertex.VertexFormat.Mode.QUADS,
@@ -1105,11 +1114,7 @@ public final class SnagCaptureVfx {
             com.mojang.blaze3d.vertex.BufferUploader.drawWithShader(mesh);
         }
 
-        // Restore state
-        com.mojang.blaze3d.systems.RenderSystem.getModelViewMatrix().set(savedMV);
-        com.mojang.blaze3d.systems.RenderSystem.enableCull();
-        com.mojang.blaze3d.systems.RenderSystem.defaultBlendFunc();
-        com.mojang.blaze3d.systems.RenderSystem.depthMask(true);
+        // The enclosing density transaction restores the caller exactly.
     }
 
     /**

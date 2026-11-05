@@ -9,6 +9,10 @@ public final class ModShadersPlatformImpl {
 
     public static void registerShaders() {
         CoreShaderRegistrationCallback.EVENT.register((registrationContext) -> {
+            com.jayemceekay.shadowedhearts.client.ball.DarkBallCaptureVfx.onResourceReload();
+            com.jayemceekay.shadowedhearts.client.aura.ShadowPokemonAuraFBO.destroy();
+            ModShaders.SHADOW_AURA_PIXEL_RESOLVE = null;
+            ModShaders.SHADOW_AURA_PIXEL_PRESENT = null;
             com.jayemceekay.shadowedhearts.client.voidshadow.VoidShadowShaders.LIQUID = null;
             ModShaders.UMBRA_LIQUID = null;
             ModShaders.UMBRAFALL_CORE_SEEP = null;
@@ -33,6 +37,16 @@ public final class ModShadersPlatformImpl {
                         shader -> com.jayemceekay.shadowedhearts.client.moonwound.MoonwoundPortalRenderer.PIXEL_PRESENT = shader);
             } catch (java.io.IOException failure) {
                 com.jayemceekay.shadowedhearts.Shadowedhearts.LOGGER.warn("[Moonwound] Pixelation shaders unavailable; using smooth rendering", failure);
+            }
+            try {
+                registrationContext.register(ResourceLocation.parse("shadowedhearts:aura/continuous_pixel_resolve"),
+                        com.jayemceekay.shadowedhearts.client.render.ContinuousPixelationPass.FORMAT,
+                        shader -> ModShaders.SHADOW_AURA_PIXEL_RESOLVE = shader);
+                registrationContext.register(ResourceLocation.parse("shadowedhearts:aura/continuous_pixel_present"),
+                        com.jayemceekay.shadowedhearts.client.render.ContinuousPixelationPass.FORMAT,
+                        shader -> ModShaders.SHADOW_AURA_PIXEL_PRESENT = shader);
+            } catch (java.io.IOException failure) {
+                com.jayemceekay.shadowedhearts.Shadowedhearts.LOGGER.warn("[Aura] Pixelation shaders unavailable; using smooth rendering", failure);
             }
             try {
                 registrationContext.register(
@@ -81,12 +95,6 @@ public final class ModShadersPlatformImpl {
                         program -> ModShaders.UMBRA_INFUSER_BACKGROUND = program
                 );
 
-                registrationContext.register(
-                        ResourceLocation.parse("shadowedhearts:voidshadow/void_shadow_liquid"),
-                        DefaultVertexFormat.NEW_ENTITY,
-                        program -> com.jayemceekay.shadowedhearts.client.voidshadow.VoidShadowShaders.LIQUID = program
-                );
-
                 // Poké Ball glow overlay — texture-based (additive + fullbright)
                 registrationContext.register(
                         ResourceLocation.parse("shadowedhearts:snag/ball_glow"),
@@ -123,6 +131,12 @@ public final class ModShadersPlatformImpl {
                 );
 
                 // Pokémon dissolve (noise-based dissolution with glowing edge)
+                registrationContext.register(
+                        ResourceLocation.parse("shadowedhearts:voidshadow/void_shadow_liquid"),
+                        DefaultVertexFormat.NEW_ENTITY,
+                        program -> com.jayemceekay.shadowedhearts.client.voidshadow.VoidShadowShaders.LIQUID = program
+                );
+
                 registrationContext.register(
                         ResourceLocation.parse("shadowedhearts:snag/snag_dissolve"),
                         DefaultVertexFormat.NEW_ENTITY,
@@ -187,29 +201,19 @@ public final class ModShadersPlatformImpl {
                         program -> ModShaders.DARK_BALL_REDUCED_UPSAMPLE = program
                 );
                 registrationContext.register(
-                        ResourceLocation.parse("shadowedhearts:darkball/dark_ball_surface_splat"),
+                        ResourceLocation.parse("shadowedhearts:darkball/dark_ball_anime_source"),
                         ModShaders.DARK_BALL_MANUAL_ENTITY_FORMAT,
-                        program -> ModShaders.DARK_BALL_SURFACE_SPLAT = program
+                        program -> ModShaders.DARK_BALL_ANIME_SOURCE = program
                 );
                 registrationContext.register(
-                        ResourceLocation.parse("shadowedhearts:darkball/dark_ball_surface_splat_resolve"),
+                        ResourceLocation.parse("shadowedhearts:darkball/dark_ball_anime_energy"),
                         DefaultVertexFormat.POSITION_TEX,
-                        program -> ModShaders.DARK_BALL_SURFACE_SPLAT_RESOLVE = program
+                        program -> ModShaders.DARK_BALL_ANIME_ENERGY = program
                 );
                 registrationContext.register(
-                        ResourceLocation.parse("shadowedhearts:darkball/dark_ball_siphon_surface_mesh"),
-                        ModShaders.DARK_BALL_MANUAL_ENTITY_FORMAT,
-                        program -> ModShaders.DARK_BALL_SIPHON_SURFACE_MESH = program
-                );
-                registrationContext.register(
-                        ResourceLocation.parse("shadowedhearts:darkball/dark_ball_edge_tongues"),
+                        ResourceLocation.parse("shadowedhearts:darkball/dark_ball_material_resolve"),
                         DefaultVertexFormat.POSITION_TEX,
-                        program -> ModShaders.DARK_BALL_EDGE_TONGUES = program
-                );
-                registrationContext.register(
-                        ResourceLocation.parse("shadowedhearts:darkball/dark_ball_fbo_preview"),
-                        DefaultVertexFormat.POSITION_TEX,
-                        program -> ModShaders.DARK_BALL_FBO_PREVIEW = program
+                        program -> ModShaders.DARK_BALL_MATERIAL_RESOLVE = program
                 );
 
                 // Snag trail orange smoke density pipeline (FBM noise + warm orange composite)
@@ -256,6 +260,18 @@ public final class ModShadersPlatformImpl {
                 );
 
                 registrationContext.register(
+                        ResourceLocation.parse("shadowedhearts:aura/luminous_mote_fabulous"),
+                        DefaultVertexFormat.PARTICLE,
+                        program -> ModShaders.LUMINOUS_MOTE_FABULOUS = program
+                );
+
+                registrationContext.register(
+                        ResourceLocation.parse("shadowedhearts:aura/luminous_mote_colosseum"),
+                        DefaultVertexFormat.PARTICLE,
+                        program -> ModShaders.LUMINOUS_MOTE_COLOSSEUM = program
+                );
+
+                registrationContext.register(
                         ResourceLocation.parse("shadowedhearts:aura/penumbra_trail"),
                         DefaultVertexFormat.PARTICLE,
                         program -> ModShaders.PENUMBRA_TRAIL = program
@@ -277,6 +293,12 @@ public final class ModShadersPlatformImpl {
                         ResourceLocation.parse("shadowedhearts:aura/penumbra_blur"),
                         DefaultVertexFormat.POSITION_TEX,
                         program -> ModShaders.PENUMBRA_BLUR = program
+                );
+
+                registrationContext.register(
+                        ResourceLocation.parse("shadowedhearts:aura/shadow_pokemon_aura_xd_faithful_blur"),
+                        DefaultVertexFormat.POSITION_TEX,
+                        program -> ModShaders.SHADOW_POKEMON_AURA_XD_FAITHFUL_BLUR = program
                 );
 
                 registrationContext.register(
@@ -422,12 +444,6 @@ public final class ModShadersPlatformImpl {
                         DefaultVertexFormat.POSITION_TEX,
                         program -> ModShaders.SHADOW_POKEMON_AURA_GUI_PRESENT = program
                 );
-
-                // Screen-space electromagnetic static overlay
-
-
-
-
 
             } catch (Exception e) {
                 throw new RuntimeException("Failed to load shaders (Fabric)", e);

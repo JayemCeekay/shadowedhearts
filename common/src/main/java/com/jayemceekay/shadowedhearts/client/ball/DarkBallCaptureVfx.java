@@ -11,7 +11,6 @@ import com.jayemceekay.shadowedhearts.client.render.DarkBallFieldMaskBufferSourc
 import com.jayemceekay.shadowedhearts.client.render.rendertypes.BallRenderTypes;
 import com.jayemceekay.shadowedhearts.common.capture.DarkBallCaptureTimings;
 import com.mojang.blaze3d.platform.GlStateManager;
-import com.mojang.blaze3d.platform.NativeImage;
 import com.mojang.blaze3d.shaders.Uniform;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.BufferBuilder;
@@ -25,7 +24,6 @@ import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.ShaderInstance;
 import net.minecraft.client.renderer.texture.OverlayTexture;
-import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
@@ -40,25 +38,19 @@ import org.joml.Vector4f;
 import org.lwjgl.opengl.GL11;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Comparator;
-import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
- * Dark Ball capture VFX: a cohesive black conversion mass that keeps the
- * target silhouette briefly, then collapses into a twisting Bezier siphon.
+ * Dark Ball capture VFX: a captured silhouette that deforms and flows into
+ * the ball as anime energy.
  */
 public final class DarkBallCaptureVfx {
 
@@ -66,18 +58,9 @@ public final class DarkBallCaptureVfx {
     public static final float VFX_END = DarkBallCaptureTimings.VFX_DURATION_SECONDS;
     private static final float CONVERSION_START_FRACTION = 0.021621622f;
     private static final float CONVERSION_SOLID_FRACTION = 0.15135135f;
-    private static final float VISIBLE_EXPANSION_FULL_FRACTION = 0.20383784f;
     private static final float TURBULENCE_START_FRACTION = 0.05383784f;
     private static final float SIPHON_START_FRACTION = 0.45383784f;
     private static final float SIPHON_END_FRACTION = 0.970f;
-    private static final float SIPHON_COLLAPSE_START_FRACTION = 0.895f;
-    /*
-     * Keep the last locally transported surfels alive for the opening beat of
-     * siphon retraction. The transport retirement feather consumes most of
-     * this interval internally, leaving only a narrow visible overlap instead
-     * of the former post-sink pause.
-     */
-    private static final float SPLAT_RETRACTION_OVERLAP_FRACTION = 0.040f;
     private static final float BALL_ABSORB_END_FRACTION = 0.990f;
 
     public static final float CONVERSION_START =
@@ -89,183 +72,65 @@ public final class DarkBallCaptureVfx {
             CONVERSION_SOLID * 0.62f;
     static final float CAPTURE_CLEANUP_AGE_SECONDS =
             DarkBallCaptureTimings.HIT_TO_FALL_DELAY_SECONDS;
-    public static final float VISIBLE_EXPANSION_RAMP_SECONDS =
-            VFX_END * VISIBLE_EXPANSION_FULL_FRACTION
-                    - FROZEN_MODEL_CROSSFADE_END;
-    public static final float VISIBLE_EXPANSION_FULL =
-            VFX_END * VISIBLE_EXPANSION_FULL_FRACTION;
-    public static final float TURBULENCE_RAMP_SECONDS =
-            VFX_END * (VISIBLE_EXPANSION_FULL_FRACTION
-                    - TURBULENCE_START_FRACTION);
-    public static final float TURBULENCE_FULL = VISIBLE_EXPANSION_FULL;
     public static final float TURBULENCE_START =
             VFX_END * TURBULENCE_START_FRACTION;
-    public static final float MAX_TURBULENCE_HOLD_SECONDS =
-            VFX_END * (SIPHON_START_FRACTION
-                    - VISIBLE_EXPANSION_FULL_FRACTION);
     public static final float SIPHON_START =
             VFX_END * SIPHON_START_FRACTION;
     public static final float SIPHON_END =
             VFX_END * SIPHON_END_FRACTION;
-    public static final float SIPHON_DRAIN_LEAD_SECONDS =
-            VFX_END * (SIPHON_END_FRACTION
-                    - SIPHON_COLLAPSE_START_FRACTION);
-    public static final float SIPHON_COLLAPSE_START =
-            VFX_END * SIPHON_COLLAPSE_START_FRACTION;
-    static final float SPLAT_RETRACTION_OVERLAP_SECONDS =
-            VFX_END * SPLAT_RETRACTION_OVERLAP_FRACTION;
-    static final float SPLAT_SINK_COMPLETE_AGE =
-            SIPHON_COLLAPSE_START
-                    + SPLAT_RETRACTION_OVERLAP_SECONDS;
     public static final float BALL_ABSORB_END =
             VFX_END * BALL_ABSORB_END_FRACTION;
     static final float PROXY_DEPTH_FADE_START =
             SIPHON_END + (BALL_ABSORB_END - SIPHON_END) * 0.5f;
-    static final float BODY_COLLAPSE_RETAINED_SPAN = 0.08f;
-    static final float MATERIAL_COVERAGE_DEPTH_CUTOFF = 0.08f;
-    // Mirrors the splat accumulation weight floor, not the final material
-    // coverage cutoff: overlapping low-weight splats can still fuse visibly.
-    static final float SPLAT_BODY_ACTIVITY_EPSILON = 0.0005f;
-    static final float SIPHON_LEADING_EASE_START = 0.003f;
-    static final float SIPHON_LEADING_EASE_END = 0.18f;
-    static final float SIPHON_TRAILING_EASE_START = 0.015f;
-    static final float SIPHON_TRAILING_EASE_END = 0.96f;
-    static final float BODY_RETIRE_EASE_END = 0.20f;
-    static final float BODY_RELEASE_RETIRE_FRONT_START = 0.76f;
-    static final float BODY_RELEASE_RETIRE_FRONT_END = 0.86f;
-    static final float SIPHON_INLET_CONTRACTION_FRONT_START = 0.78f;
-    static final float SIPHON_INLET_CONTRACTION_FRONT_END = 1.04f;
-    static final float SIPHON_CONTRACTED_INLET_RADIUS_SCALE = 0.38f;
     private static final int MAX_SNAPSHOT_QUADS = 12000;
-    private static final float MIN_CHAINABLE_CUBE_AXIS = 3.25f;
-    private static final double MIN_ROUTING_GEOMETRY_MEASURE = 1.0e-4;
     private static final int FULLBRIGHT = 0x00F000F0;
-    private static final boolean ENABLE_VISIBLE_FIELD_MASK = false;
-    /**
-     * Shader maximum: 0.04R uniform expansion plus 0.22R outward spike.
-     * Keep a small conservative pad so the projected sweep scissor never
-     * clips a peak at full turbulence.
-     */
-    private static final float SURFACE_SPLAT_MAX_OUTWARD_TURBULENCE = 0.27f;
     /**
      * One delayed render/simulation-step budget reserved by activation
      * scheduling. This is not a cap on the visual choreography clock.
      */
-    static final float MAX_TICK_DELTA_SECONDS = 0.10f;
-    static final float SURFACE_SPLAT_LATE_ACTIVATION_RAMP_SECONDS =
+    static final float BODY_ACTIVATION_RAMP_SECONDS =
             VFX_END * 0.045f;
-    static final float SURFACE_SPLAT_MIN_LATE_ACTIVATION_RAMP_SECONDS =
+    static final float MIN_BODY_ACTIVATION_RAMP_SECONDS =
             Math.min(0.020f, VFX_END * 0.010f);
-    /**
-     * Threshold between the unchanged schedule and late-ready remapping. It is
-     * no longer a rejection deadline: a valid result after this point receives
-     * a compressed remaining presentation schedule.
-     */
-    static final float SURFACE_SPLAT_SELECTION_DEADLINE =
-            SIPHON_START
-                    - SURFACE_SPLAT_LATE_ACTIVATION_RAMP_SECONDS
-                    - MAX_TICK_DELTA_SECONDS;
-    private static final AtomicInteger PREPARATION_THREAD_SEQUENCE =
-            new AtomicInteger();
     /**
      * Isolates capture preparation from Minecraft's shared background pool.
      * Two daemon workers preserve simultaneous-capture progress without
      * allowing voxel/SDF work to fan out across every processor.
      */
-    private static final ExecutorService PREPARATION_EXECUTOR =
-            Executors.newFixedThreadPool(2, task -> {
-                Thread thread = new Thread(
-                        task,
-                        "ShadowedHearts-DarkBall-Prep-"
-                                + PREPARATION_THREAD_SEQUENCE
-                                .incrementAndGet());
-                thread.setDaemon(true);
-                thread.setPriority(Thread.NORM_PRIORITY);
-                return thread;
-            });
-    private static final String STAGE_CHAT_MESSAGES_PROPERTY =
-            "shadowedhearts.darkBallStageMessages";
-    private static final boolean STAGE_CHAT_MESSAGES_ENABLED =
-            Boolean.parseBoolean(System.getProperty(
-                    STAGE_CHAT_MESSAGES_PROPERTY, "true"));
-    private static final List<StageChatMarker> STAGE_CHAT_MARKERS = List.of(
-            new StageChatMarker(
-                    CONVERSION_START,
-                    "Stage 1/6: formation / silhouette conversion"),
-            new StageChatMarker(
-                    TURBULENCE_START,
-                    "Stage 2/6: turbulence ramp"),
-            new StageChatMarker(
-                    TURBULENCE_FULL,
-                    "Stage 3/6: maximum turbulence hold"),
-            new StageChatMarker(
-                    SIPHON_START,
-                    "Stage 4/6: bone-routed collapse / siphon extension"),
-            new StageChatMarker(
-                    SIPHON_COLLAPSE_START,
-                    "Stage 5/6: overlapping terminal drain / siphon contraction"),
-            new StageChatMarker(
-                    BALL_ABSORB_END,
-                    "Stage 6/6: final absorption fade"),
-            new StageChatMarker(
-                    VFX_END,
-                    "Complete: visible Dark Ball VFX ended"));
+    private static final DarkBallPreparationExecutor PREPARATION_EXECUTOR =
+            new DarkBallPreparationExecutor(2, 8);
     private static final MultiBufferSource.BufferSource MASK_BUFFERS =
             MultiBufferSource.immediate(new ByteBufferBuilder(786432));
 
     private static final Map<Integer, DarkBallCaptureVfx> ACTIVE = new ConcurrentHashMap<>();
     private static final AtomicLong NEXT_CAPTURE_GENERATION =
             new AtomicLong();
-    private static long lastTickNanos = 0L;
+    private static final DarkBallPresentationClock PRESENTATION_CLOCK =
+            new DarkBallPresentationClock();
     private static float lastChoreographyDeltaSeconds;
     private static long lastMaskFrameToken = Long.MIN_VALUE;
     private static boolean maskCapturedThisFrame;
     private static boolean renderingModelMask;
-    private static float compositeMaskClipStrength;
-    private static float compositeMaskVisibleStrength;
-    private static float compositeProxyDepthStrength;
     private static float compositeProxyDepthAvailable;
     private static boolean compositeExactMaskReady;
+    private static boolean compositeAnimeEnergyCoverage;
+    private static float compositeAnimeIntakePulse;
+    private static final Vector2f compositeAnimeFlowDirection = new Vector2f(0, 1);
     private static float compositeDeformationBlend;
-    private static float compositeDepthHighlightBlend;
-    private static float compositeSignedBodyAuthority;
-    private static float compositePreCollapseInteriorGuard;
-    private static float compositeTurbulenceBlend;
-    private static float compositeDeformationTime;
-    private static float compositeSiphonRootU = 0.5f;
-    private static float compositeSiphonRootV = 0.5f;
-    private static float compositeBallU = 0.5f;
-    private static float compositeBallV = 0.5f;
-    private static float compositeSiphonProgress;
-    private static float compositeBodyCollapseEnvelopeScale = 1.0f;
-    private static final Vector2f compositeProjectedUp = new Vector2f(0f, 1f);
     private static final Vector4f compositeBodyUvBounds = new Vector4f(0f, 0f, 1f, 1f);
-    private static int compositeMassTextureId;
-    private static int compositeSiphonTextureId;
-    private static float compositeBodyVolumeStrength;
-    private static float compositeAnalyticSiphonStrength;
     private static final Matrix4f compositeInvProjection = new Matrix4f();
-    private static final Matrix4f compositeProjection = new Matrix4f();
-    private static final Matrix4f compositeCameraToWorld = new Matrix4f();
-    private static final Vector3f compositeCameraPos = new Vector3f();
-    private static final Vector3f compositeVolumeRoot = new Vector3f();
-    private static final Vector3f compositeVolumeAxis = new Vector3f(1f, 0f, 0f);
-    private static final Vector3f compositeVolumeSide = new Vector3f(0f, 1f, 0f);
-    private static final Vector3f compositeVolumeUp = new Vector3f(0f, 0f, 1f);
-    private static final Vector3f compositeVolumeSize = new Vector3f(1f, 1f, 1f);
-    private static final Vector3f compositeSiphonP0 = new Vector3f();
-    private static final Vector3f compositeSiphonP1 = new Vector3f();
-    private static final Vector3f compositeSiphonP2 = new Vector3f();
-    private static final Vector3f compositeSiphonP3 = new Vector3f();
     private static boolean reconstructionAuxiliaryTargetsCleared;
     private static ModelSnapshotCapture activeSnapshotCapture;
     private static TexturedSnapshotCapture activeTexturedSnapshotCapture;
 
     public static void start(EmptyPokeBallEntity ball, PokemonEntity pokemon) {
+        if (!com.jayemceekay.shadowedhearts.client.ClientEffects.darkBallReplacement()) return;
         installCapture(ball, pokemon);
     }
 
     public static void startAtHit(EmptyPokeBallEntity ball, PokemonEntity pokemon) {
+        // Decide once at the hit. Existing captures retain their snapshot ownership and clock.
+        if (!com.jayemceekay.shadowedhearts.client.ClientEffects.darkBallReplacement()) return;
         DarkBallCaptureVfx vfx = installCapture(ball, pokemon);
         vfx.markHitStage();
     }
@@ -282,8 +147,12 @@ public final class DarkBallCaptureVfx {
      */
     private static synchronized DarkBallCaptureVfx installCapture(
             EmptyPokeBallEntity ball, PokemonEntity pokemon) {
-        int ballId = ball.getId();
-        int pokemonId = pokemon.getId();
+        DarkBallCaptureVfx capture = installCapture(ball.getId(), pokemon.getId());
+        DarkBallAnimeBallFinish.arm(ball);
+        return capture;
+    }
+
+    static synchronized DarkBallCaptureVfx installCapture(int ballId, int pokemonId) {
         DarkBallCaptureVfx current = ACTIVE.get(ballId);
         if (current != null && current.pokemonId == pokemonId) {
             return current;
@@ -294,16 +163,18 @@ public final class DarkBallCaptureVfx {
             DarkBallCaptureVfx active = entry.getValue();
             if ((entry.getKey() == ballId || active.pokemonId == pokemonId)
                     && ACTIVE.remove(entry.getKey(), active)) {
+                DarkBallAnimeBallFinish.stop(active.ballId);
                 active.destroy();
             }
         }
 
-        DarkBallCaptureVfx installed = new DarkBallCaptureVfx(ball, pokemon);
+        DarkBallCaptureVfx installed = new DarkBallCaptureVfx(ballId, pokemonId);
         ACTIVE.put(ballId, installed);
         return installed;
     }
 
     public static void stop(int ballId) {
+        DarkBallAnimeBallFinish.stop(ballId);
         DarkBallCaptureVfx removed = ACTIVE.remove(ballId);
         if (removed != null) {
             removed.destroy();
@@ -311,11 +182,12 @@ public final class DarkBallCaptureVfx {
     }
 
     public static void clearAll() {
+        DarkBallAnimeBallFinish.clear();
         for (DarkBallCaptureVfx vfx : ACTIVE.values()) {
             vfx.destroy();
         }
         ACTIVE.clear();
-        lastTickNanos = 0L;
+        PRESENTATION_CLOCK.reset();
         lastChoreographyDeltaSeconds = 0.0f;
         activeSnapshotCapture = null;
         activeTexturedSnapshotCapture = null;
@@ -323,8 +195,21 @@ public final class DarkBallCaptureVfx {
         renderingModelMask = false;
     }
 
+    /** Retire resources and captured material handles before shader reload. */
+    public static void onResourceReload() {
+        clearAll();
+        DarkBallDensityFBO.destroy();
+    }
+
     public static DarkBallCaptureVfx get(int ballId) {
         return ACTIVE.get(ballId);
+    }
+
+    /** Closure callbacks share the live capture clock, including its pause behavior. */
+    public static float getRemainingAnimeCaptureSeconds(int ballId) {
+        DarkBallCaptureVfx vfx = ACTIVE.get(ballId);
+        return vfx != null
+                ? Math.max(VFX_END - vfx.age, 0.0f) : Float.NaN;
     }
 
     /** Returns true only after the direct replacement has rendered successfully. */
@@ -336,279 +221,6 @@ public final class DarkBallCaptureVfx {
 
     public static java.util.Collection<DarkBallCaptureVfx> getActiveInstances() {
         return List.copyOf(ACTIVE.values());
-    }
-
-    static FboPreviewCapture fboPreviewCapture(DarkBallCaptureVfx vfx) {
-        if (vfx == null || ACTIVE.get(vfx.ballId) != vfx) {
-            return null;
-        }
-        String renderPath = switch (vfx.surfaceMeshPath) {
-            case SPLAT -> "splat";
-            case PENDING -> "pending";
-            case FAILED -> vfx.forceExactMaskOnly
-                    ? "forced-exact-mask"
-                    : "failed";
-        };
-        float activationBlend =
-                vfx.currentDirectBodyActivationBlend();
-        String presentationAuthority = switch (vfx.surfaceMeshPath) {
-            case PENDING -> "exact-mask";
-            case SPLAT -> activationBlend < 0.999f
-                    ? "splat-activation"
-                    : "splat";
-            case FAILED -> vfx.forceExactMaskOnly
-                    ? "exact-mask-forced"
-                    : "exact-mask";
-        };
-        DarkBallSplatBoneRoutePlan.Result boneRoute =
-                vfx.surfaceSplatSamplePlan == null
-                        ? null
-                        : vfx.surfaceSplatSamplePlan
-                        .boneRoutePlan();
-        int routeSampleCount = boneRoute == null
-                ? 0
-                : boneRoute.assignedSamples()
-                + boneRoute.fallbackSamples();
-        float routedFraction = routeSampleCount <= 0
-                ? 0.0f
-                : boneRoute.assignedSamples()
-                / (float) routeSampleCount;
-        DarkBallDensityFBO.PreviewFrame previewFrame =
-                DarkBallDensityFBO.previewFrame();
-        boolean previewFrameCurrent =
-                DarkBallDensityFBO
-                        .isPreviewFrameCurrent(previewFrame);
-        Float projectedPixelAreaFraction = previewFrameCurrent
-                ? projectedUvAreaFraction(
-                previewFrame.effectMinU(),
-                previewFrame.effectMinV(),
-                previewFrame.effectMaxU(),
-                previewFrame.effectMaxV())
-                : null;
-        Boolean reducedCompositeUsed = previewFrameCurrent
-                ? previewFrame.reducedCompositeUsed()
-                : null;
-        Integer splatSampleCount =
-                vfx.surfaceSplatRenderer != null
-                        && vfx.surfaceSplatRenderer.uploadedSampleCount() > 0
-                        ? vfx.surfaceSplatRenderer.uploadedSampleCount()
-                        : null;
-        float presentationAge = vfx.currentStagePresentationAge();
-        return new FboPreviewCapture(
-                vfx.captureGeneration,
-                vfx.ballId,
-                vfx.pokemonId,
-                vfx.age,
-                lastChoreographyDeltaSeconds,
-                vfx.currentDirectBodyTurbulenceBlend(),
-                vfx.currentDirectBodyTurbulenceComplexityBlend(),
-                vfx.currentDirectBodySpikeFlowTime(),
-                siphonProgressAt(presentationAge),
-                vfx.surfaceMeshPath == SurfaceMeshPath.SPLAT
-                        ? splatBodyReleaseFrontAt(presentationAge)
-                        : bodyReleaseFrontAt(presentationAge),
-                bodyPresentationGateAt(presentationAge),
-                finalCollapseAt(presentationAge),
-                siphonTrailingGateAt(presentationAge, 0.0f),
-                siphonTrailingGateAt(presentationAge, 1.0f),
-                Float.isFinite(vfx.voxelReadyAge)
-                        ? vfx.voxelReadyAge
-                        : null,
-                vfx.voxelBuildMillis >= 0L
-                        ? vfx.voxelBuildMillis
-                        : null,
-                Float.isFinite(vfx.surfaceReadyAge)
-                        ? vfx.surfaceReadyAge
-                        : null,
-                vfx.surfaceBuildMillis >= 0L
-                        ? vfx.surfaceBuildMillis
-                        : null,
-                Float.isFinite(vfx.directBodyActivationAge)
-                        ? vfx.directBodyActivationAge
-                        : null,
-                vfx.surfaceSplatRequestedBudget > 0
-                        ? vfx.surfaceSplatRequestedBudget
-                        : null,
-                splatSampleCount,
-                vfx.surfaceMeshPath == SurfaceMeshPath.SPLAT
-                        ? vfx.surfaceSplatBodySubmittedThisFrame
-                        : null,
-                vfx.surfaceMeshPath == SurfaceMeshPath.SPLAT
-                        ? splatLastSectionBodyOwnershipAt(presentationAge)
-                        : null,
-                vfx.surfaceMeshPath == SurfaceMeshPath.SPLAT
-                        ? vfx.surfaceSplatUploadOccurredThisFrame
-                        : null,
-                vfx.surfaceSplatRenderer != null
-                        ? vfx.surfaceSplatRenderer.uploadGeneration()
-                        : null,
-                vfx.surfaceSplatRenderer != null
-                        && vfx.surfaceSplatRenderer
-                        .lastPreparationUploadCpuMicros() >= 0L
-                        ? vfx.surfaceSplatRenderer
-                        .lastPreparationUploadCpuMicros()
-                        : null,
-                vfx.surfaceSplatDrawCpuMicros >= 0L
-                        ? vfx.surfaceSplatDrawCpuMicros
-                        : null,
-                vfx.surfaceSplatResolveCpuMicros >= 0L
-                        ? vfx.surfaceSplatResolveCpuMicros
-                        : null,
-                vfx.siphonBuildCpuMicros >= 0L
-                        ? vfx.siphonBuildCpuMicros
-                        : null,
-                vfx.siphonDrawCpuMicros >= 0L
-                        ? vfx.siphonDrawCpuMicros
-                        : null,
-                vfx.depthRestoreCpuMicros >= 0L
-                        ? vfx.depthRestoreCpuMicros
-                        : null,
-                nullableGpuMicros(
-                        vfx.gpuTimer,
-                        DarkBallGpuTimer.Stage.SPLAT_DRAW),
-                nullableGpuMicros(
-                        vfx.gpuTimer,
-                        DarkBallGpuTimer.Stage.SPLAT_RESOLVE),
-                nullableGpuMicros(
-                        vfx.gpuTimer,
-                        DarkBallGpuTimer.Stage.SIPHON_DRAW),
-                nullableGpuMicros(
-                        vfx.gpuTimer,
-                        DarkBallGpuTimer.Stage.DEPTH_RESTORE),
-                vfx.analyticalQuality == null
-                        ? null
-                        : vfx.analyticalQuality.name().toLowerCase(
-                        java.util.Locale.ROOT),
-                previewFrameCurrent ? previewFrame.width() : null,
-                previewFrameCurrent ? previewFrame.height() : null,
-                renderPath,
-                presentationAuthority,
-                activationBlend,
-                "bone-tree",
-                boneRoute != null && boneRoute.guided()
-                        ? "parent-chain"
-                        : "retire-on-release",
-                routedFraction,
-                boneRoute == null
-                        ? 0
-                        : boneRoute.paletteCount(),
-                DarkBallSplatBoneRoutePlan.MAX_PARENT_HOPS,
-                Mth.clamp(
-                        splatBodyReleaseFrontAt(presentationAge),
-                        0.0f,
-                        1.0f),
-                0.0f,
-                1.0f,
-                1.0f,
-                boneRoute == null
-                        ? "route plan unavailable"
-                        : boneRoute.summary(),
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                projectedPixelAreaFraction,
-                reducedCompositeUsed);
-    }
-
-    private static Long nullableGpuMicros(
-            DarkBallGpuTimer timer,
-            DarkBallGpuTimer.Stage stage) {
-        long micros = timer.latestMicros(stage);
-        return micros >= 0L ? micros : null;
-    }
-
-    private static Float projectedUvAreaFraction(
-            float minU,
-            float minV,
-            float maxU,
-            float maxV) {
-        if (!Float.isFinite(minU)
-                || !Float.isFinite(minV)
-                || !Float.isFinite(maxU)
-                || !Float.isFinite(maxV)
-                || maxU <= minU
-                || maxV <= minV) {
-            return null;
-        }
-        return Mth.clamp(maxU - minU, 0.0f, 1.0f)
-                * Mth.clamp(maxV - minV, 0.0f, 1.0f);
-    }
-
-    record FboPreviewCapture(
-            long captureKey,
-            int ballId,
-            int pokemonId,
-            float age,
-            float choreographyDeltaSeconds,
-            float turbulenceAmplitudeBlend,
-            float turbulenceComplexityBlend,
-            float spikeFlowTime,
-            float siphonProgress,
-            float bodyReleaseFront,
-            float bodyPresentationGate,
-            float finalCollapse,
-            float siphonRootGate,
-            float siphonTipGate,
-            Float voxelReadyAge,
-            Long voxelBuildMillis,
-            Float surfaceReadyAge,
-            Long surfaceBuildMillis,
-            Float directRendererActivationAge,
-            Integer splatRequestedBudget,
-            Integer splatSampleCount,
-            Boolean splatBodySubmittedCurrentFrame,
-            Float splatLastSectionBodyOwnership,
-            Boolean splatUploadOccurredCurrentFrame,
-            Long splatUploadGeneration,
-            Long splatPreparationUploadCpuMicros,
-            Long splatDrawCpuMicros,
-            Long splatResolveCpuMicros,
-            Long siphonBuildCpuMicros,
-            Long siphonDrawCpuMicros,
-            Long depthRestoreCpuMicros,
-            Long splatDrawGpuMicros,
-            Long splatResolveGpuMicros,
-            Long siphonDrawGpuMicros,
-            Long depthRestoreGpuMicros,
-            String quality,
-            Integer rawTargetWidth,
-            Integer rawTargetHeight,
-            String renderPath,
-            String presentationAuthority,
-            float presentationActivationBlend,
-            String sweepMode,
-            String sweepPath,
-            float sweepStrength,
-            int sweepNodeCount,
-            int sweepSliceCount,
-            float sweepPinchCenter,
-            float sweepPinchStrength,
-            float sweepMinimumSectionScale,
-            float sweepMaximumSectionScale,
-            String sweepAuthority,
-            Boolean bridgePresentationActive,
-            Float bridgeMaterialActivation,
-            Float bridgeRetractionProgress,
-            Float bridgeRetractionFront,
-            Integer bridgeFirstActiveRing,
-            Integer bridgeLastActiveRing,
-            Integer bridgeActiveRingCount,
-            Float bridgePathLength,
-            Float bridgePathStartRadius,
-            Float bridgePathShoulderRadius,
-            Float bridgeInletRadius,
-            Float bridgeProjectedPixelAreaFraction,
-            Float projectedPixelAreaFraction,
-            Boolean reducedCompositeUsed) {
     }
 
     /** Clears last frame's readiness before the direct FBO pipeline runs. */
@@ -715,7 +327,6 @@ public final class DarkBallCaptureVfx {
         vfx.texturedSnapshotQuads.clear();
         vfx.capturedModelVertices.clear();
         vfx.capturedModelTriangles.clear();
-        vfx.capturedBoneNodes = List.of();
         vfx.voxelVolume = null;
         vfx.voxelReadyAge = Float.NaN;
         vfx.voxelBuildMillis = -1L;
@@ -723,7 +334,6 @@ public final class DarkBallCaptureVfx {
         vfx.surfaceBuildMillis = -1L;
         vfx.cancelPendingVoxelBuild();
         vfx.destroyCapturedVolumeResources();
-        vfx.siphonDrainRootValid = false;
         vfx.snapshotBounds = null;
         vfx.snapshotTexture = texture;
         vfx.texturedSnapshotCapturing = true;
@@ -739,23 +349,32 @@ public final class DarkBallCaptureVfx {
     }
 
     public static void tickAll(float ignoredDt) {
+        Minecraft minecraft = Minecraft.getInstance();
         long now = System.nanoTime();
-        float choreographyDt;
-        if (lastTickNanos == 0L || ACTIVE.isEmpty()) {
-            choreographyDt = 0f;
-        } else {
-            choreographyDt =
-                    choreographyDeltaSeconds(lastTickNanos, now);
-        }
-        lastTickNanos = now;
+        float choreographyDt = PRESENTATION_CLOCK.sample(
+                now, minecraft.isPaused(), !ACTIVE.isEmpty());
         lastChoreographyDeltaSeconds = choreographyDt;
 
         ACTIVE.entrySet().removeIf(entry -> {
-            entry.getValue().tick(choreographyDt);
-            boolean expired = entry.getValue().age
+            DarkBallCaptureVfx capture = entry.getValue();
+            Entity ball = minecraft.level == null ? null
+                    : minecraft.level.getEntity(capture.ballId);
+            Entity pokemon = minecraft.level == null ? null
+                    : minecraft.level.getEntity(capture.pokemonId);
+            boolean aborted = !(ball instanceof EmptyPokeBallEntity pokeBall)
+                    || !(pokemon instanceof PokemonEntity)
+                    || (capture.hitStageSeen
+                    && pokeBall.getCaptureState() == EmptyPokeBallEntity.CaptureState.NOT);
+            if (aborted) {
+                DarkBallAnimeBallFinish.stop(capture.ballId);
+                capture.destroy();
+                return true;
+            }
+            capture.tick(choreographyDt);
+            boolean expired = capture.age
                     > CAPTURE_CLEANUP_AGE_SECONDS;
             if (expired) {
-                entry.getValue().destroy();
+                capture.destroy();
             }
             return expired;
         });
@@ -767,25 +386,18 @@ public final class DarkBallCaptureVfx {
      * <p>The instance tick has no simulation consumer: it only installs
      * asynchronous results and advances {@link #age}. Splat and volume
      * simulations separately cap or fixed-step their age-derived deltas, so a
-     * slow render frame must not stretch the ten-second visual sequence.
+     * slow render frame must not stretch the capture sequence.
      */
     static float choreographyDeltaSeconds(long previousNanos,
                                           long currentNanos) {
-        if (previousNanos == 0L) {
-            return 0.0f;
-        }
-        long elapsedNanos = currentNanos - previousNanos;
-        if (elapsedNanos <= 0L) {
-            return 0.0f;
-        }
-        return elapsedNanos / 1_000_000_000.0f;
+        return DarkBallPresentationClock.elapsedSeconds(previousNanos, currentNanos);
     }
 
     /**
      * Returns an immutable, deterministic back-to-front render queue.
      *
      * <p>Each entry is composited in its own complete FBO transaction. That
-     * keeps exact masks, proxy depth, surfel accumulation, and silhouette
+     * keeps exact masks, proxy depth, anime material, and silhouette
      * distance fields isolated while allowing the expensive screen-sized
      * scratch targets to be reused. Nearer captures render last so two Dark
      * Ball presentations have stable overlap ownership.</p>
@@ -891,55 +503,15 @@ public final class DarkBallCaptureVfx {
     }
 
     private static void resetCompositeContext(Camera camera, Vec3 camPos) {
-        compositeMaskClipStrength = 0.0f;
-        compositeMaskVisibleStrength = 0.0f;
-        compositeProxyDepthStrength = 0.0f;
         compositeProxyDepthAvailable = 0.0f;
         compositeExactMaskReady = false;
-        compositeDeformationBlend = 0.0f;
-        compositeDepthHighlightBlend = 0.0f;
-        compositeSignedBodyAuthority = 0.0f;
-        compositePreCollapseInteriorGuard = 0.0f;
-        compositeTurbulenceBlend = 0.0f;
-        compositeDeformationTime = 0.0f;
-        compositeSiphonRootU = 0.5f;
-        compositeSiphonRootV = 0.5f;
-        compositeBallU = 0.5f;
-        compositeBallV = 0.5f;
-        compositeSiphonProgress = 0.0f;
-        compositeBodyCollapseEnvelopeScale = 1.0f;
-        compositeProjectedUp.set(0.0f, 1.0f);
-        compositeBodyUvBounds.set(0.0f, 0.0f, 1.0f, 1.0f);
-        compositeMassTextureId = 0;
-        compositeSiphonTextureId = 0;
-        compositeBodyVolumeStrength = 0.0f;
-        compositeAnalyticSiphonStrength = 0.0f;
-        compositeVolumeRoot.zero();
-        compositeVolumeAxis.set(1.0f, 0.0f, 0.0f);
-        compositeVolumeSide.set(0.0f, 1.0f, 0.0f);
-        compositeVolumeUp.set(0.0f, 0.0f, 1.0f);
-        compositeVolumeSize.set(1.0f, 1.0f, 1.0f);
-        compositeSiphonP0.zero();
-        compositeSiphonP1.zero();
-        compositeSiphonP2.zero();
-        compositeSiphonP3.zero();
-        compositeCameraPos.set((float) camPos.x, (float) camPos.y, (float) camPos.z);
-        compositeProjection.set(RenderSystem.getProjectionMatrix());
-        compositeInvProjection.set(compositeProjection).invert();
-        compositeCameraToWorld.identity().rotation(camera.rotation());
+        compositeAnimeEnergyCoverage = false;
+        compositeAnimeIntakePulse = 0;
+        compositeAnimeFlowDirection.set(0, 1);
+        compositeDeformationBlend = 0;
+        compositeBodyUvBounds.set(0, 0, 1, 1);
+        compositeInvProjection.set(RenderSystem.getProjectionMatrix()).invert();
         reconstructionAuxiliaryTargetsCleared = false;
-    }
-
-    public static float getCompositeMaskClipStrength() {
-        return compositeMaskClipStrength;
-    }
-
-    public static float getCompositeMaskVisibleStrength() {
-        return ENABLE_VISIBLE_FIELD_MASK ? compositeMaskVisibleStrength : 0.0f;
-    }
-
-    public static float getCompositeProxyDepthStrength() {
-        return compositeProxyDepthStrength;
     }
 
     public static float getCompositeProxyDepthAvailable() {
@@ -950,136 +522,20 @@ public final class DarkBallCaptureVfx {
         return compositeExactMaskReady;
     }
 
+    public static boolean isCompositeAnimeEnergyCoverage() { return compositeAnimeEnergyCoverage; }
+    public static float getCompositeAnimeIntakePulse() { return compositeAnimeIntakePulse; }
+    public static Vector2f getCompositeAnimeFlowDirection() { return compositeAnimeFlowDirection; }
+
     public static float getCompositeDeformationBlend() {
         return compositeDeformationBlend;
-    }
-
-    public static float getCompositeDepthHighlightBlend() {
-        return compositeDepthHighlightBlend;
-    }
-
-    public static float getCompositeSignedBodyAuthority() {
-        return compositeSignedBodyAuthority;
-    }
-
-    public static float getCompositePreCollapseInteriorGuard() {
-        return compositePreCollapseInteriorGuard;
-    }
-
-    public static float getCompositeTurbulenceBlend() {
-        return compositeTurbulenceBlend;
-    }
-
-    public static float getCompositeDeformationTime() {
-        return compositeDeformationTime;
-    }
-
-    public static float getCompositeSiphonRootU() {
-        return compositeSiphonRootU;
-    }
-
-    public static float getCompositeSiphonRootV() {
-        return compositeSiphonRootV;
-    }
-
-    public static float getCompositeBallU() {
-        return compositeBallU;
-    }
-
-    public static float getCompositeBallV() {
-        return compositeBallV;
-    }
-
-    public static float getCompositeSiphonProgress() {
-        return compositeSiphonProgress;
-    }
-
-    public static float getCompositeBodyCollapseEnvelopeScale() {
-        return compositeBodyCollapseEnvelopeScale;
-    }
-
-    public static Vector2f getCompositeProjectedUp() {
-        return compositeProjectedUp;
     }
 
     public static Vector4f getCompositeBodyUvBounds() {
         return compositeBodyUvBounds;
     }
 
-    public static int getCompositeMassTextureId() {
-        return compositeMassTextureId;
-    }
-
-    public static int getCompositeSiphonTextureId() {
-        return compositeSiphonTextureId;
-    }
-
-    static int getPreviewBodyTransportTextureId() {
-        return 0;
-    }
-
-    static int getPreviewSiphonTransportTextureId() {
-        return 0;
-    }
-
-    public static float getCompositeBodyVolumeStrength() {
-        return compositeBodyVolumeStrength;
-    }
-
-    public static float getCompositeAnalyticSiphonStrength() {
-        return compositeAnalyticSiphonStrength;
-    }
-
     public static Matrix4f getCompositeInvProjection() {
         return compositeInvProjection;
-    }
-
-    public static Matrix4f getCompositeProjection() {
-        return compositeProjection;
-    }
-
-    public static Matrix4f getCompositeCameraToWorld() {
-        return compositeCameraToWorld;
-    }
-
-    public static Vector3f getCompositeCameraPos() {
-        return compositeCameraPos;
-    }
-
-    public static Vector3f getCompositeVolumeRoot() {
-        return compositeVolumeRoot;
-    }
-
-    public static Vector3f getCompositeVolumeAxis() {
-        return compositeVolumeAxis;
-    }
-
-    public static Vector3f getCompositeVolumeSide() {
-        return compositeVolumeSide;
-    }
-
-    public static Vector3f getCompositeVolumeUp() {
-        return compositeVolumeUp;
-    }
-
-    public static Vector3f getCompositeVolumeSize() {
-        return compositeVolumeSize;
-    }
-
-    public static Vector3f getCompositeSiphonP0() {
-        return compositeSiphonP0;
-    }
-
-    public static Vector3f getCompositeSiphonP1() {
-        return compositeSiphonP1;
-    }
-
-    public static Vector3f getCompositeSiphonP2() {
-        return compositeSiphonP2;
-    }
-
-    public static Vector3f getCompositeSiphonP3() {
-        return compositeSiphonP3;
     }
 
     public static void beginModelSnapshotCapture(PokemonEntity entity, PoseStack renderStack, Bone rootPart) {
@@ -1109,23 +565,6 @@ public final class DarkBallCaptureVfx {
         Vector3f rawModelOrigin = renderStack.last().pose().transformPosition(0.0f, 0.0f, 0.0f, new Vector3f());
         Vec3 poseToWorldOffset = sourceWorld.subtract(rawModelOrigin.x, rawModelOrigin.y, rawModelOrigin.z);
 
-        // The textured capture is the normal successful path, but it cannot
-        // retain ModelPart ownership after its triangles are voxelized into an
-        // SDF. Snapshot the fully posed Cobblemon bone hierarchy here, before
-        // that path's early return, and keep only immutable numeric data for
-        // the later asynchronous mesh-order build.
-        try {
-            vfx.capturedBoneNodes = capturePosedBoneHierarchy(
-                    rootPart, renderStack, poseToWorldOffset);
-        } catch (Throwable failure) {
-            vfx.capturedBoneNodes = List.of();
-            Shadowedhearts.LOGGER.warn(
-                    "[ShadowedHearts] Dark Ball posed bone capture failed "
-                            + "for pokemon {}; using radial-only mesh "
-                            + "compression order",
-                    entity.getId(),
-                    failure);
-        }
         boolean captureGeometry = !vfx.texturedSnapshotCapturing;
         if (captureGeometry) {
             vfx.snapshotQuads.clear();
@@ -1137,145 +576,6 @@ public final class DarkBallCaptureVfx {
                 captureGeometry);
     }
 
-    private static List<CapturedBoneNode> capturePosedBoneHierarchy(
-            Bone rootPart,
-            PoseStack renderStack,
-            Vec3 poseToWorldOffset) {
-        PoseStack posedStack = new PoseStack();
-        posedStack.last().pose().set(renderStack.last().pose());
-        posedStack.last().normal().set(renderStack.last().normal());
-        List<CapturedBoneNode> nodes = new ArrayList<>();
-        Set<Bone> visited = Collections.newSetFromMap(
-                new IdentityHashMap<>());
-        capturePosedBoneNode(
-                rootPart,
-                posedStack,
-                poseToWorldOffset,
-                -1,
-                "root",
-                0,
-                visited,
-                nodes);
-        return List.copyOf(nodes);
-    }
-
-    private static void capturePosedBoneNode(
-            Bone bone,
-            PoseStack stack,
-            Vec3 poseToWorldOffset,
-            int parentIndex,
-            String path,
-            int depth,
-            Set<Bone> visited,
-            List<CapturedBoneNode> nodes) {
-        if (bone == null
-                || depth > 24
-                || !visited.add(bone)
-                || bone instanceof ModelPart part && !part.visible) {
-            return;
-        }
-
-        stack.pushPose();
-        try {
-            bone.transform(stack);
-            Matrix4f pose = stack.last().pose();
-            boolean ownsGeometry =
-                    bone instanceof ModelPart part
-                            && ownsRoutingGeometry(part);
-            boolean chainable =
-                    bone instanceof ModelPart part
-                            && isChainableModelPart(part);
-            Vec3 anchorWorld = posedBoneAnchorWorld(
-                    bone, pose, poseToWorldOffset, ownsGeometry);
-            int nodeIndex = nodes.size();
-            nodes.add(new CapturedBoneNode(
-                    anchorWorld,
-                    parentIndex,
-                    path,
-                    ownsGeometry,
-                    chainable));
-
-            Map<String, Bone> children = bone.getChildren();
-            if (children == null || children.isEmpty()) {
-                return;
-            }
-            List<Map.Entry<String, Bone>> orderedChildren =
-                    new ArrayList<>(children.entrySet());
-            orderedChildren.sort(Map.Entry.comparingByKey(
-                    Comparator.nullsFirst(String::compareTo)));
-            int unnamedIndex = 0;
-            for (Map.Entry<String, Bone> child : orderedChildren) {
-                String childName = child.getKey();
-                if (childName == null || childName.isBlank()) {
-                    childName = "child" + unnamedIndex;
-                }
-                unnamedIndex++;
-                capturePosedBoneNode(
-                        child.getValue(),
-                        stack,
-                        poseToWorldOffset,
-                        nodeIndex,
-                        path + "/" + childName,
-                        depth + 1,
-                        visited,
-                        nodes);
-            }
-        } finally {
-            stack.popPose();
-        }
-    }
-
-    private static Vec3 posedBoneAnchorWorld(
-            Bone bone,
-            Matrix4f pose,
-            Vec3 poseToWorldOffset,
-            boolean ownsGeometry) {
-        if (ownsGeometry && bone instanceof ModelPart part) {
-            double weightedX = 0.0;
-            double weightedY = 0.0;
-            double weightedZ = 0.0;
-            double totalWeight = 0.0;
-            for (ModelPart.Cube cube : part.cubes) {
-                double sizeX = Math.abs(cube.maxX - cube.minX);
-                double sizeY = Math.abs(cube.maxY - cube.minY);
-                double sizeZ = Math.abs(cube.maxZ - cube.minZ);
-                double volume = sizeX * sizeY * sizeZ;
-                double surfaceArea = 2.0 * (
-                        sizeX * sizeY
-                                + sizeX * sizeZ
-                                + sizeY * sizeZ);
-                double weight = Math.max(
-                        volume,
-                        surfaceArea * 0.18);
-                if (weight <= MIN_ROUTING_GEOMETRY_MEASURE) {
-                    continue;
-                }
-                Vector3f center = pose.transformPosition(
-                        (cube.minX + cube.maxX) / 32.0f,
-                        (cube.minY + cube.maxY) / 32.0f,
-                        (cube.minZ + cube.maxZ) / 32.0f,
-                        new Vector3f());
-                weightedX += center.x * weight;
-                weightedY += center.y * weight;
-                weightedZ += center.z * weight;
-                totalWeight += weight;
-            }
-            if (totalWeight > 0.0) {
-                return new Vec3(
-                        weightedX / totalWeight + poseToWorldOffset.x,
-                        weightedY / totalWeight + poseToWorldOffset.y,
-                        weightedZ / totalWeight + poseToWorldOffset.z);
-            }
-        }
-
-        Vector3f origin = pose.transformPosition(
-                0.0f, 0.0f, 0.0f, new Vector3f());
-        return new Vec3(
-                origin.x + poseToWorldOffset.x,
-                origin.y + poseToWorldOffset.y,
-                origin.z + poseToWorldOffset.z);
-    }
-
     public static void captureRenderedModelPart(ModelPart part, PoseStack stack) {
         ModelSnapshotCapture capture = activeSnapshotCapture;
         if (capture == null || part == null || stack == null) {
@@ -1283,28 +583,6 @@ public final class DarkBallCaptureVfx {
         }
 
         Matrix4f pose = stack.last().pose();
-        boolean ownsGeometry = ownsRoutingGeometry(part);
-        boolean chainable = isChainableModelPart(part);
-        int parentIndex = capture.renderedPartStack.isEmpty()
-                ? -1
-                : capture.renderedPartStack
-                .get(capture.renderedPartStack.size() - 1)
-                .nodeIndex();
-        Vec3 geometryCenter = renderedPartGeometryCenterWorld(
-                part,
-                pose,
-                capture.poseToWorldOffset,
-                ownsGeometry);
-        int nodeIndex = capture.renderedBoneNodes.size();
-        capture.renderedBoneNodes.add(new CapturedBoneNode(
-                geometryCenter,
-                parentIndex,
-                "rendered/" + nodeIndex,
-                ownsGeometry,
-                chainable));
-        capture.renderedPartStack.add(
-                new RenderedCapturedPart(part, nodeIndex));
-
         if (capture.captureGeometry
                 && capture.vfx.snapshotQuads.size() < MAX_SNAPSHOT_QUADS) {
             for (ModelPart.Cube cube : part.cubes) {
@@ -1317,139 +595,11 @@ public final class DarkBallCaptureVfx {
         }
     }
 
-    /**
-     * Mirrors the rendered {@link ModelPart} recursion rather than the logical
-     * Cobblemon bone hierarchy. This sees the final transforms that actually
-     * produced the frozen snapshot and gives every captured node a stable
-     * rendered parent for later surfel routing.
-     */
-    public static void endRenderedModelPart(ModelPart part) {
-        ModelSnapshotCapture capture = activeSnapshotCapture;
-        if (capture == null
-                || part == null
-                || capture.renderedPartStack.isEmpty()) {
-            return;
-        }
-
-        int last = capture.renderedPartStack.size() - 1;
-        if (capture.renderedPartStack.get(last).part() == part) {
-            capture.renderedPartStack.remove(last);
-            return;
-        }
-
-        // Be defensive around renderers that return through an unexpected
-        // nested path. Discard the unmatched suffix so one malformed part
-        // cannot assign all later surfels to the wrong anatomical branch.
-        for (int index = last - 1; index >= 0; index--) {
-            if (capture.renderedPartStack.get(index).part() == part) {
-                capture.renderedPartStack.subList(
-                        index,
-                        capture.renderedPartStack.size()).clear();
-                return;
-            }
-        }
-    }
-
-    private static Vec3 renderedPartGeometryCenterWorld(
-            ModelPart part,
-            Matrix4f pose,
-            Vec3 poseToWorldOffset,
-            boolean ownsGeometry) {
-        if (ownsGeometry) {
-            double weightedX = 0.0;
-            double weightedY = 0.0;
-            double weightedZ = 0.0;
-            double totalWeight = 0.0;
-            for (ModelPart.Cube cube : part.cubes) {
-                double sizeX = Math.abs(cube.maxX - cube.minX);
-                double sizeY = Math.abs(cube.maxY - cube.minY);
-                double sizeZ = Math.abs(cube.maxZ - cube.minZ);
-                double volume = sizeX * sizeY * sizeZ;
-                double surfaceArea = 2.0 * (
-                        sizeX * sizeY
-                                + sizeX * sizeZ
-                                + sizeY * sizeZ);
-                double weight = Math.max(
-                        volume,
-                        surfaceArea * 0.18);
-                Vector3f center = pose.transformPosition(
-                        (cube.minX + cube.maxX) / 32.0f,
-                        (cube.minY + cube.maxY) / 32.0f,
-                        (cube.minZ + cube.maxZ) / 32.0f,
-                        new Vector3f());
-                weightedX += center.x * weight;
-                weightedY += center.y * weight;
-                weightedZ += center.z * weight;
-                totalWeight += weight;
-            }
-            if (totalWeight > 0.0) {
-                return new Vec3(
-                        weightedX / totalWeight + poseToWorldOffset.x,
-                        weightedY / totalWeight + poseToWorldOffset.y,
-                        weightedZ / totalWeight + poseToWorldOffset.z);
-            }
-        }
-
-        Vector3f origin = pose.transformPosition(
-                0.0f, 0.0f, 0.0f, new Vector3f());
-        return new Vec3(
-                origin.x + poseToWorldOffset.x,
-                origin.y + poseToWorldOffset.y,
-                origin.z + poseToWorldOffset.z);
-    }
-
-    /**
-     * Uses the same conservative body-chain cutoff as the Shadow Aura. Thin
-     * decorative planes may own captured surface, but do not create long
-     * anatomical transport branches.
-     */
-    private static boolean isChainableModelPart(ModelPart part) {
-        if (part == null || part.skipDraw) {
-            return false;
-        }
-        for (ModelPart.Cube cube : part.cubes) {
-            float sizeX = Math.abs(cube.maxX - cube.minX);
-            float sizeY = Math.abs(cube.maxY - cube.minY);
-            float sizeZ = Math.abs(cube.maxZ - cube.minZ);
-            if (sizeX >= MIN_CHAINABLE_CUBE_AXIS
-                    && sizeY >= MIN_CHAINABLE_CUBE_AXIS
-                    && sizeZ >= MIN_CHAINABLE_CUBE_AXIS) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private static boolean ownsRoutingGeometry(ModelPart part) {
-        if (part == null || part.skipDraw) {
-            return false;
-        }
-        for (ModelPart.Cube cube : part.cubes) {
-            double sizeX = Math.abs(cube.maxX - cube.minX);
-            double sizeY = Math.abs(cube.maxY - cube.minY);
-            double sizeZ = Math.abs(cube.maxZ - cube.minZ);
-            double volume = sizeX * sizeY * sizeZ;
-            double surfaceArea = 2.0 * (
-                    sizeX * sizeY
-                            + sizeX * sizeZ
-                            + sizeY * sizeZ);
-            if (Math.max(volume, surfaceArea)
-                    > MIN_ROUTING_GEOMETRY_MEASURE) {
-                return true;
-            }
-        }
-        return false;
-    }
-
     public static void endModelSnapshotCapture(PokemonEntity entity) {
         ModelSnapshotCapture capture = activeSnapshotCapture;
         activeSnapshotCapture = null;
         if (capture == null || capture.entity != entity) {
             return;
-        }
-        if (capture.renderedBoneNodes.size() >= 2) {
-            capture.vfx.capturedBoneNodes =
-                    List.copyOf(capture.renderedBoneNodes);
         }
         if (capture.captureGeometry) {
             capture.vfx.finishSnapshotCapture(capture);
@@ -1546,7 +696,6 @@ public final class DarkBallCaptureVfx {
     private final List<DarkBallFieldMaskBufferSource.CapturedQuad> texturedSnapshotQuads = new ArrayList<>();
     private final List<Vec3> capturedModelVertices = new ArrayList<>();
     private final List<DarkBallFieldMaskBufferSource.CapturedTriangle> capturedModelTriangles = new ArrayList<>();
-    private List<CapturedBoneNode> capturedBoneNodes = List.of();
 
     boolean isMediumReducedCompositeLatched() {
         return mediumReducedCompositeLatched;
@@ -1558,7 +707,6 @@ public final class DarkBallCaptureVfx {
 
     public float age = 0f;
     private boolean hitStageSeen = false;
-    private int nextStageChatMarker;
     private boolean snapshotRequested = false;
     private boolean snapshotApplied = false;
     private boolean directReplacementReady = false;
@@ -1569,54 +717,63 @@ public final class DarkBallCaptureVfx {
     private float snapshotExtent = 1.0f;
     private AABB snapshotBounds;
     private DarkBallVolumeBuildResult voxelVolume;
-    private DarkBallAnalyticalVolume analyticalVolume;
-    private DarkBallVfxQuality analyticalQuality;
+    private DarkBallVfxQuality captureQuality;
+    private DarkBallAnimeSourceRenderer sourceRenderer;
+    private DarkBallAnimeEnergyRenderer animeEnergyRenderer;
+    private DarkBallAnimeMotion.Binding animeMotionBinding;
+    private DarkBallPreparationTimings preparationTimings;
+    private long nextFrameTimingLogNanos;
     private float voxelReadyAge = Float.NaN;
     private long voxelBuildMillis = -1L;
-    private boolean analyticalVolumeLogged;
-    private DarkBallAdvectedDensityField advectedDensityField;
-    private DarkBallAnalyticalVolume advectedDensityShape;
-    private DarkBallVfxQuality advectedDensityQuality;
-    private boolean advectedDensityLogged;
     private CompletableFuture<VoxelBuildOutput> voxelBuildFuture;
     private CompletableFuture<SurfaceMeshBuildOutput> surfaceMeshBuildFuture;
+    private CompletableFuture<SurfaceMeshBuildOutput> preparationJob;
     private AtomicBoolean surfaceMeshBuildCancellation;
     private float directBodyActivationAge = Float.NaN;
+    private float firstBodySubmissionAge = Float.NaN;
     private float surfaceReadyAge = Float.NaN;
     private long surfaceBuildMillis = -1L;
-    private int surfaceSplatRequestedBudget;
-    private boolean forceExactMaskOnly;
     private DarkBallSurfaceMesh surfaceMesh;
-    private DarkBallSurfaceSplatRenderer.SurfaceSamplePlan
-            surfaceSplatSamplePlan;
-    private DarkBallSurfaceSplatRenderer surfaceSplatRenderer;
-    private DarkBallSiphonSurfaceMeshRenderer siphonSurfaceMeshRenderer;
     private final DarkBallGpuTimer gpuTimer = new DarkBallGpuTimer();
-    private boolean surfaceSplatBodySubmittedThisFrame;
-    private boolean surfaceSplatUploadOccurredThisFrame;
-    private long surfaceSplatDrawCpuMicros = -1L;
-    private long surfaceSplatResolveCpuMicros = -1L;
-    private long siphonBuildCpuMicros = -1L;
-    private long siphonDrawCpuMicros = -1L;
+    private long bodyDrawCpuMicros = -1L;
     private long depthRestoreCpuMicros = -1L;
-    private SurfaceMeshPath surfaceMeshPath = initialSurfaceMeshPath();
-    private boolean surfaceMeshPathLogged;
+    private PreparationState preparationState = initialPreparationState();
+    private boolean preparationStateLogged;
+    private boolean bodyDeadlineLogged;
     private int voxelBuildGeneration;
-    private final Vector3f siphonDrainRootLocal = new Vector3f(0f, 0f, 0f);
-    private boolean siphonDrainRootValid = false;
 
-    private DarkBallCaptureVfx(EmptyPokeBallEntity ball, PokemonEntity pokemon) {
-        this.ballId = ball.getId();
-        this.pokemonId = pokemon.getId();
+    private DarkBallCaptureVfx(int ballId, int pokemonId) {
+        this.ballId = ballId;
+        this.pokemonId = pokemonId;
+    }
+
+    DarkBallVfxQuality quality() {
+        if (captureQuality == null) {
+            captureQuality = DarkBallVfxQuality.parse(
+                    com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs
+                            .getInstance().getClientConfig().darkBallVfxQuality());
+        }
+        return captureQuality;
+    }
+
+    DarkBallGpuTimer gpuTimer() {
+        return gpuTimer;
+    }
+
+    void logFrameTimings() {
+        if (!Boolean.getBoolean(DarkBallGpuTimer.ENABLED_PROPERTY)) return;
+        long now = System.nanoTime();
+        if (now < nextFrameTimingLogNanos) return;
+        nextFrameTimingLogNanos = now + 1_000_000_000L;
+        Shadowedhearts.LOGGER.info("[ShadowedHearts] Dark Ball anime frame pokemon={} generation={} bodyCpu_us={} depthCpu_us={} compositeGpu_us={}",
+                pokemonId, captureGeneration, bodyDrawCpuMicros, depthRestoreCpuMicros,
+                gpuTimer.latestMicros(DarkBallGpuTimer.Stage.COMPOSITE));
     }
 
     private void markHitStage() {
         if (!hitStageSeen) {
             hitStageSeen = true;
             age = 0f;
-            nextStageChatMarker = 0;
-            announceStageChatMessage(
-                    "Capture started: snapshot and surfel preparation");
         }
         if (!snapshotApplied) {
             snapshotRequested = true;
@@ -1646,20 +803,6 @@ public final class DarkBallCaptureVfx {
         return conversion * release;
     }
 
-    private float getSnapshotMaskStrength() {
-        float seed = getMaskStrength();
-        float handedOff = smoothstep(CONVERSION_SOLID * 0.62f,
-                SIPHON_START + 0.10f * TIMING_SCALE, age);
-        return seed * Mth.lerp(handedOff, 1.0f, 0.16f);
-    }
-
-    private float getFieldMaskClipStrength() {
-        if (usesSdfContainment()) {
-            return 0.0f;
-        }
-        return age < VFX_END ? 1.0f : 0.0f;
-    }
-
     private float getReconstructionMaskStrength() {
         // This texture is infrastructure, not a visible formation layer. Once
         // captured it is the mandatory coverage authority for every displayed
@@ -1680,36 +823,6 @@ public final class DarkBallCaptureVfx {
                 FROZEN_MODEL_CROSSFADE_END, captureAge);
     }
 
-    static float depthHighlightBlendAt(float captureAge,
-                                       float directBodyActivation) {
-        // Proxy-front depth remains available from the first exact-mask frame
-        // for ordering, but it must not light the captured model's individual
-        // planar faces during the clean black hit. Reveal depth styling only
-        // after the texture-exact handoff and only when the fused surfel body
-        // can actually own the presented surface.
-        return smoothstep(
-                FROZEN_MODEL_CROSSFADE_END,
-                VISIBLE_EXPANSION_FULL,
-                captureAge)
-                * Mth.clamp(directBodyActivation, 0.0f, 1.0f);
-    }
-
-    static float turbulenceBlendAt(float captureAge) {
-        // Square a smoothstep rather than advancing linearly. The silhouette
-        // stays restrained through the texture-exact handoff, escalates hard
-        // near the end of the ramp, then arrives with zero slope for a stable
-        // full-strength hold before depletion begins.
-        float eased = turbulenceComplexityBlendAt(captureAge);
-        return eased * eased;
-    }
-
-    static float turbulenceComplexityBlendAt(float captureAge) {
-        // Complexity reveals weaker phase-locked spikes and finer indentations
-        // over the full turbulence interval. Keep this unsquared so feature
-        // density can mature before the late-accelerating amplitude envelope.
-        return smoothstep(TURBULENCE_START, TURBULENCE_FULL, captureAge);
-    }
-
     static float directBodyActivationBlendAt(float captureAge,
                                              float activationAge) {
         if (!Float.isFinite(activationAge)) {
@@ -1728,271 +841,35 @@ public final class DarkBallCaptureVfx {
 
     static float lateActivationRampSecondsAt(float activationAge) {
         if (!Float.isFinite(activationAge)) {
-            return SURFACE_SPLAT_LATE_ACTIVATION_RAMP_SECONDS;
+            return BODY_ACTIVATION_RAMP_SECONDS;
         }
         float remaining = Math.max(VFX_END - activationAge, 0.0f);
         if (remaining <= 0.0f) {
             return 0.0f;
         }
         return Math.min(
-                SURFACE_SPLAT_LATE_ACTIVATION_RAMP_SECONDS,
+                BODY_ACTIVATION_RAMP_SECONDS,
                 Math.max(
-                        SURFACE_SPLAT_MIN_LATE_ACTIVATION_RAMP_SECONDS,
+                        MIN_BODY_ACTIVATION_RAMP_SECONDS,
                         remaining * 0.30f));
     }
 
-    /**
-     * Keeps a late but valid surfel result recoverable. The exact-mask
-     * presentation owns the pending interval; after activation, the remaining
-     * conceptual choreography is compressed so collapse begins only after the
-     * activation ramp and still reaches the terminal sink at {@link #VFX_END}.
-     */
-    static float surfacePresentationAgeAt(float captureAge,
-                                          float activationAge) {
-        if (!Float.isFinite(activationAge)
-                || activationAge <= SURFACE_SPLAT_SELECTION_DEADLINE
-                || captureAge <= activationAge) {
-            return captureAge;
-        }
-        float remaining = VFX_END - activationAge;
-        if (remaining <= 1.0e-5f) {
-            return VFX_END;
-        }
-        float progress = remapClamped(
-                captureAge,
-                activationAge,
-                VFX_END);
-        if (activationAge >= SIPHON_START) {
-            // Preparation completed after collapse had conceptually begun.
-            // Never rewind the presentation to turbulence: enter at the
-            // corresponding collapse state and compress only what remains.
-            return Mth.lerp(progress, activationAge, VFX_END);
-        }
-        float ramp = Math.min(
-                lateActivationRampSecondsAt(activationAge),
-                remaining * 0.90f);
-        float denominator = Math.max(remaining - ramp, 1.0e-5f);
-        float logicalStart =
-                (remaining * SIPHON_START - ramp * VFX_END)
-                        / denominator;
-        logicalStart = Mth.clamp(
-                logicalStart,
-                TURBULENCE_START,
-                SIPHON_START);
-        return Mth.lerp(progress, logicalStart, VFX_END);
-    }
-
-    static float directBodyTurbulenceBlendAt(float captureAge,
-                                             float activationAge) {
-        return turbulenceBlendAt(captureAge)
-                * directBodyActivationBlendAt(
-                captureAge, activationAge);
-    }
-
-    static float directBodyTurbulenceComplexityBlendAt(
-            float captureAge,
-            float activationAge) {
-        return turbulenceComplexityBlendAt(captureAge)
-                * directBodyActivationBlendAt(
-                captureAge, activationAge);
-    }
-
-    static float directBodySpikeFlowTimeAt(float captureAge,
-                                           float activationAge) {
-        if (!Float.isFinite(activationAge)) {
-            return 0.0f;
-        }
-        return Math.max(captureAge - TURBULENCE_START, 0.0f);
-    }
-
-    static float directBodyAuthorityAt(float captureAge,
-                                       float activationAge) {
-        return signedBodyAuthorityAt(captureAge)
-                * directBodyActivationBlendAt(
-                captureAge, activationAge);
-    }
-
-    static float signedBodyAuthorityAt(float captureAge) {
-        // Color first: the frozen model must finish fading onto the opaque,
-        // texture-exact black mask before signed SDF displacement can own the
-        // contour. Give the visible expansion its own art-directed ramp rather
-        // than compressing it into the short remainder of the turbulence ramp.
-        // The exact mask still releases completely so inward cuts are not
-        // permanently filled back in.
-        return smoothstep(FROZEN_MODEL_CROSSFADE_END,
-                VISIBLE_EXPANSION_FULL, captureAge);
-    }
-
-    static float finalCollapseAt(float captureAge) {
-        return remapClamped(captureAge, SIPHON_COLLAPSE_START,
-                BALL_ABSORB_END);
-    }
-
-    static float siphonProgressAt(float captureAge) {
-        return remapClamped(captureAge, SIPHON_START, SIPHON_END);
-    }
-
-    static float bodyCollapseEnvelopeScale(float siphonProgress) {
-        float releaseFront = Mth.clamp(siphonProgress * 1.16f - 0.045f,
-                0.0f, 1.0f);
-        return Mth.lerp(releaseFront, 1.0f,
-                BODY_COLLAPSE_RETAINED_SPAN);
-    }
-
-    static float bodyCollapseEnvelopeScaleAt(float captureAge) {
-        return bodyCollapseEnvelopeScale(siphonProgressAt(captureAge));
-    }
-
-    static float bodyReleaseFrontAt(float captureAge) {
-        float siphon = siphonProgressAt(captureAge);
-        if (siphon <= 0.001f) {
-            return -1.0f;
-        }
-        return Mth.clamp(siphon * 1.16f - 0.045f
-                + finalCollapseAt(captureAge) * 0.16f, 0.0f, 1.30f);
-    }
-
-    static float splatBodyReleaseFrontAt(float captureAge) {
-        if (captureAge <= SIPHON_START) {
-            return -1.0f;
-        }
-        float sinkProgress = smoothstep(
-                SIPHON_START,
-                SPLAT_SINK_COMPLETE_AGE,
-                captureAge);
-        return Mth.lerp(
-                sinkProgress,
-                -0.045f,
-                1.30f);
-    }
-
-    static float bodyPresentationGateAt(float captureAge) {
-        float trailingProgress = smoothstep(
-                SIPHON_TRAILING_EASE_START,
-                BODY_RETIRE_EASE_END,
-                finalCollapseAt(captureAge));
-        float trailingFront =
-                Mth.lerp(trailingProgress, -0.06f, 1.08f);
-        float rootCollarRetirement = smoothstep(
-                trailingFront - 0.045f,
-                trailingFront + 0.045f,
-                0.0f);
-        float releaseRetirement = 1.0f - smoothstep(
-                BODY_RELEASE_RETIRE_FRONT_START,
-                BODY_RELEASE_RETIRE_FRONT_END,
-                bodyReleaseFrontAt(captureAge));
-        return Math.min(rootCollarRetirement, releaseRetirement);
-    }
-
-    /**
-     * The inlet section is the final splat section to cross the transport
-     * throat. Its ownership is therefore a conservative CPU-side answer to
-     * whether any locally transported body material can still survive.
-     */
-    static float splatLastSectionBodyOwnershipAt(float captureAge) {
-        return DarkBallSplatTransportMath.sample(
-                1.0f,
-                splatBodyReleaseFrontAt(captureAge))
-                .bodyOwnership();
-    }
-
-    static boolean splatBodyPresentationRequiredAt(float captureAge) {
-        return captureAge < SIPHON_START
-                || splatLastSectionBodyOwnershipAt(captureAge)
-                > SPLAT_BODY_ACTIVITY_EPSILON;
-    }
-
-    static float bodyEffectFadeAt(float captureAge) {
-        float formation =
-                smoothstep(CONVERSION_START, CONVERSION_SOLID, captureAge);
-        float finalFade =
-                1.0f - smoothstep(BALL_ABSORB_END, VFX_END, captureAge);
-        return formation * finalFade
-                * bodyPresentationGateAt(captureAge);
-    }
-
-    static boolean bodyPresentationRequiredAt(float captureAge) {
-        // Before siphoning, the texture-exact edge resolve can still source the
-        // visible formation silhouette even if the indexed coverage is small.
-        // During contraction the body is intentionally retired with the root
-        // collar once no body fragment can survive the material cutoff.
-        return captureAge < SIPHON_START
-                || bodyEffectFadeAt(captureAge)
-                >= MATERIAL_COVERAGE_DEPTH_CUTOFF;
-    }
-
-    static float siphonInletRadiusScaleAt(float captureAge) {
-        float contraction = smoothstep(
-                SIPHON_COLLAPSE_START,
-                Mth.lerp(0.55f,
-                        SIPHON_COLLAPSE_START,
-                        BALL_ABSORB_END),
-                captureAge);
-        return Mth.lerp(
-                contraction,
-                1.0f,
-                SIPHON_CONTRACTED_INLET_RADIUS_SCALE);
-    }
-
-    static float siphonTrailingGateAt(float captureAge, float curveT) {
-        float trailingProgress = smoothstep(
-                SIPHON_TRAILING_EASE_START,
-                SIPHON_TRAILING_EASE_END,
-                finalCollapseAt(captureAge));
-        float trailingFront = Mth.lerp(trailingProgress, -0.06f, 1.08f);
-        return smoothstep(trailingFront - 0.045f,
-                trailingFront + 0.045f, curveT);
-    }
-
-    private boolean usesSdfContainment() {
-        return voxelVolume != null
-                && siphonDrainRootValid
-                && voxelVolume.signedDistanceField() != null
-                && voxelVolume.sdfGradientX() != null
-                && voxelVolume.sdfGradientY() != null
-                && voxelVolume.sdfGradientZ() != null;
-    }
-
     private void tick(float choreographyDt) {
+        // Timestamp readiness at this frame, including its elapsed preparation time.
+        age += choreographyDt;
         installVoxelBuildIfReady();
         installSurfaceMeshBuildIfReady();
-        age += choreographyDt;
-        announceCrossedStageChatMarkers();
-    }
-
-    private void announceCrossedStageChatMarkers() {
-        if (!STAGE_CHAT_MESSAGES_ENABLED) {
-            nextStageChatMarker = STAGE_CHAT_MARKERS.size();
-            return;
+        if (!bodyDeadlineLogged && snapshotApplied && age >= VFX_END
+                && !Float.isFinite(firstBodySubmissionAge)) {
+            bodyDeadlineLogged = true;
+            Shadowedhearts.LOGGER.warn(
+                    "[ShadowedHearts] Dark Ball body missed visible window for pokemon {} "
+                            + "(age={}ms, budget={}ms, preparation={}, voxelReady={}, sourceReady={}, "
+                            + "voxelBuild={}ms, sourceBuild={}ms); no active body draw was submitted before deadline",
+                    pokemonId, Math.round(age * 1000.0f), Math.round(VFX_END * 1000.0f),
+                    preparationState, voxelVolume != null, surfaceMesh != null,
+                    voxelBuildMillis, surfaceBuildMillis);
         }
-        float stageAge = currentStagePresentationAge();
-        while (nextStageChatMarker < STAGE_CHAT_MARKERS.size()) {
-            StageChatMarker marker =
-                    STAGE_CHAT_MARKERS.get(nextStageChatMarker);
-            if (stageAge < marker.startAge()) {
-                return;
-            }
-            announceStageChatMessage(marker.message());
-            nextStageChatMarker++;
-        }
-    }
-
-    private void announceStageChatMessage(String message) {
-        if (!STAGE_CHAT_MESSAGES_ENABLED || message == null) {
-            return;
-        }
-        Minecraft minecraft = Minecraft.getInstance();
-        if (minecraft.player == null) {
-            return;
-        }
-        String timedMessage = String.format(
-                java.util.Locale.ROOT,
-                "[Dark Ball] %s (%.3f s)",
-                message,
-                age);
-        minecraft.player.displayClientMessage(
-                Component.literal(timedMessage),
-                false);
     }
 
     private void destroy() {
@@ -2003,6 +880,11 @@ public final class DarkBallCaptureVfx {
 
     private void cancelPendingVoxelBuild() {
         voxelBuildGeneration++;
+        CompletableFuture<SurfaceMeshBuildOutput> job = preparationJob;
+        preparationJob = null;
+        if (job != null) {
+            job.cancel(false);
+        }
         CompletableFuture<VoxelBuildOutput> pending = voxelBuildFuture;
         voxelBuildFuture = null;
         if (pending != null) {
@@ -2010,12 +892,15 @@ public final class DarkBallCaptureVfx {
         }
         cancelPendingSurfaceMeshBuild();
         surfaceMesh = null;
-        surfaceSplatSamplePlan = null;
-        surfaceSplatRequestedBudget = 0;
+        animeMotionBinding = null;
+        preparationTimings = null;
+        nextFrameTimingLogNanos = 0L;
         directBodyActivationAge = Float.NaN;
+        firstBodySubmissionAge = Float.NaN;
         destroySurfaceMeshRenderer();
-        surfaceMeshPath = initialSurfaceMeshPath();
-        surfaceMeshPathLogged = false;
+        preparationState = initialPreparationState();
+        preparationStateLogged = false;
+        bodyDeadlineLogged = false;
     }
 
     private void cancelPendingSurfaceMeshBuild() {
@@ -2030,113 +915,52 @@ public final class DarkBallCaptureVfx {
         if (pending != null) {
             pending.cancel(false);
         }
-        surfaceSplatSamplePlan = null;
         directBodyActivationAge = Float.NaN;
     }
 
     private void destroyCapturedVolumeResources() {
-        if (advectedDensityField != null) {
-            advectedDensityField.destroy();
-            advectedDensityField = null;
-        }
-        advectedDensityShape = null;
-        advectedDensityQuality = null;
-        advectedDensityLogged = false;
-        if (analyticalVolume != null) {
-            analyticalVolume.destroy();
-            analyticalVolume = null;
-        }
-        analyticalQuality = null;
-        analyticalVolumeLogged = false;
+        voxelVolume = null;
     }
 
     private void destroySurfaceMeshRenderer() {
-        if (surfaceSplatRenderer != null) {
-            surfaceSplatRenderer.close();
-            surfaceSplatRenderer = null;
+        if (animeEnergyRenderer != null) {
+            animeEnergyRenderer.close();
+            animeEnergyRenderer = null;
         }
-        if (siphonSurfaceMeshRenderer != null) {
-            siphonSurfaceMeshRenderer.close();
-            siphonSurfaceMeshRenderer = null;
+        if (sourceRenderer != null) {
+            sourceRenderer.close();
+            sourceRenderer = null;
         }
     }
 
     private void startDirectBodyActivationIfNeeded() {
-        if (surfaceMeshPath != SurfaceMeshPath.SPLAT
+        if (preparationState != PreparationState.READY
                 || Float.isFinite(directBodyActivationAge)) {
             return;
         }
-        // Record the first frame that can actually submit the fused surfel
-        // field. Preserving this timestamp across a failed direct transaction
+        // Record the first frame that can actually submit the anime energy
+        // body. Preserving this timestamp across a failed direct transaction
         // keeps exact-mask recovery from changing the choreography clock.
         directBodyActivationAge = age;
     }
 
     private float currentSurfacePresentationAge() {
-        return surfacePresentationAgeAt(
-                age,
-                directBodyActivationAge);
+        return DarkBallAnimePresentation.presentationAgeAt(age, directBodyActivationAge, VFX_END);
     }
 
-    private float currentStagePresentationAge() {
-        if (surfaceMeshPath == SurfaceMeshPath.PENDING) {
-            return Math.min(
-                    age,
-                    SIPHON_START
-                            - SURFACE_SPLAT_LATE_ACTIVATION_RAMP_SECONDS);
-        }
-        if (surfaceMeshPath == SurfaceMeshPath.SPLAT) {
-            return currentSurfacePresentationAge();
-        }
-        return age;
-    }
+
 
     private float currentDirectBodyActivationBlend() {
-        if (surfaceMeshPath != SurfaceMeshPath.SPLAT) {
+        if (preparationState != PreparationState.READY) {
             return 0.0f;
         }
         return directBodyActivationBlendAt(
                 age, directBodyActivationAge);
     }
 
-    private float currentDirectBodyTurbulenceBlend() {
-        return turbulenceBlendAt(currentSurfacePresentationAge())
-                * currentDirectBodyActivationBlend();
-    }
-
-    private float currentDirectBodyTurbulenceComplexityBlend() {
-        return turbulenceComplexityBlendAt(
-                currentSurfacePresentationAge())
-                * currentDirectBodyActivationBlend();
-    }
-
-    private float currentDirectBodySpikeFlowTime() {
-        return Math.max(
-                currentSurfacePresentationAge()
-                        - TURBULENCE_START,
-                0.0f);
-    }
-
-    private float currentSurfaceSplatSpikeFlowTime() {
-        // Freeze the captured deformation carrier when local transport begins.
-        // The advancing release front must be the only authority that changes
-        // a splat's remaining inlet distance during collapse.
-        return Math.max(
-                Math.min(
-                        currentSurfacePresentationAge(),
-                        SIPHON_START)
-                        - TURBULENCE_START,
-                0.0f);
-    }
-
     private void renderDensityPass(Camera camera, Vec3 camPos, float partialTick,
                                    boolean allowDirectVolume) {
-        surfaceSplatBodySubmittedThisFrame = false;
-        surfaceSplatUploadOccurredThisFrame = false;
-        surfaceSplatDrawCpuMicros = -1L;
-        surfaceSplatResolveCpuMicros = -1L;
-        siphonBuildCpuMicros = -1L;
-        siphonDrawCpuMicros = -1L;
+        bodyDrawCpuMicros = -1L;
         depthRestoreCpuMicros = -1L;
         Minecraft mc = Minecraft.getInstance();
         if (mc.level == null) {
@@ -2163,11 +987,7 @@ public final class DarkBallCaptureVfx {
                 ? snapshotCenter
                 : bounds.getCenter().add(0, pokemon.getBbHeight() * 0.04, 0);
         if ((allowDirectVolume && voxelVolume != null) || renderReconstructionMask) {
-            // The direct advected renderer returns immediately on success, so
-            // all screen-space material inputs must be captured before it is
-            // attempted. This is intentionally independent of the auxiliary
-            // reconstruction mask's lifetime; the exact volume may outlive it.
-            // The legacy fallback consumes the same values later.
+            // Capture immutable projection inputs before the anime draw.
             updateCompositeReconstructionInputs(camera, camPos, ballPos,
                     pokemonCenter, bounds, allowDirectVolume);
         }
@@ -2178,329 +998,101 @@ public final class DarkBallCaptureVfx {
             restoreDensityPassDrawState();
         }
         if (allowDirectVolume && voxelVolume != null) {
-            ensureAnalyticalVolume(voxelVolume, ballPos);
-            ensureAdvectedDensityField(voxelVolume, ballPos);
-            if (surfaceMeshPath == SurfaceMeshPath.PENDING) {
+            if (preparationState == PreparationState.PENDING) {
                 // Preparation wall time does not scale with a shortened visual
                 // profile. Keep the exact captured mask while pending and
-                // accept the immutable surfel result whenever it completes;
+                // accept the immutable anime source whenever it completes;
                 // the instance schedule will compress only the remaining
                 // turbulence/collapse choreography.
                 return;
             }
-            if (surfaceMeshPath == SurfaceMeshPath.SPLAT) {
-                renderSurfaceSplatPath(ballPos, camera, camPos);
+            if (preparationState == PreparationState.READY) {
+                renderAnimeBody(ballPos, camera, camPos);
                 return;
             }
         }
-        // If surfels are not ready, the captured exact mask remains
+        // If anime source is not ready, the captured exact mask remains
         // authoritative. The live Pokemon stays suppressed.
     }
 
-    private boolean renderSurfaceSplatPath(Vec3 ballPos,
-                                           Camera camera,
-                                           Vec3 cameraPosition) {
-        surfaceSplatBodySubmittedThisFrame = false;
-        surfaceSplatUploadOccurredThisFrame = false;
-        surfaceSplatDrawCpuMicros = -1L;
-        surfaceSplatResolveCpuMicros = -1L;
-        siphonBuildCpuMicros = -1L;
-        siphonDrawCpuMicros = -1L;
+    private boolean renderAnimeBody(Vec3 ballPos, Camera camera, Vec3 cameraPosition) {
+        bodyDrawCpuMicros = -1L;
         depthRestoreCpuMicros = -1L;
-        if (surfaceMesh == null
-                || analyticalVolume == null
-                || advectedDensityField == null
-                || voxelVolume == null) {
-            failSurfaceSplatPath(
-                    "exact-mask safety path: surface-splat inputs unavailable");
+        if (surfaceMesh == null || voxelVolume == null || animeMotionBinding == null
+                || animeMotionBinding.energyShape() == null) {
+            failAnimeBody("anime source or energy binding unavailable");
             return false;
         }
-
         Vector3f ballLocal = volumeWorldToLocal(voxelVolume, ballPos);
-        if (!advectedDensityField.updateBallLocal(ballLocal)) {
-            failSurfaceSplatPath(
-                    "exact-mask safety path: splat ball-local update failed");
-            return false;
-        }
-
         startDirectBodyActivationIfNeeded();
         float presentationAge = currentSurfacePresentationAge();
-        float siphonProgress = siphonProgressAt(presentationAge);
-        boolean bodyRendered = true;
-        boolean bodyPresentationActive = true;
-        boolean siphonRendered = true;
-        boolean depthWriteSubmitted = false;
-        String splatFailure = null;
-        try {
-            Vector3f controlA =
-                    advectedDensityField.siphonControlALocal();
-            Vector3f controlB =
-                    advectedDensityField.siphonControlBLocal();
-            advectedDensityField.updateSiphonBoltPath(
-                    controlA,
-                    controlB,
-                    presentationAge);
-
-            float formation =
-                    smoothstep(CONVERSION_START, CONVERSION_SOLID, age);
-            float fade =
-                    1.0f - smoothstep(
-                            BALL_ABSORB_END,
-                            VFX_END,
-                            presentationAge);
-            float releaseFront =
-                    splatBodyReleaseFrontAt(presentationAge);
-            // Local transport owns body retirement in the splat shader. Keep
-            // EffectFade global only for formation/final fade, and use the
-            // final inlet section merely to decide when no splat can survive.
-            float bodyEffectFade = formation * fade;
-            float lastSectionBodyOwnership =
-                    DarkBallSplatTransportMath.sample(
-                    1.0f,
-                    releaseFront)
-                    .bodyOwnership();
-            bodyPresentationActive = presentationAge < SIPHON_START
-                    || lastSectionBodyOwnership
-                    > SPLAT_BODY_ACTIVITY_EPSILON;
-            Vector3f inletLocal =
-                    advectedDensityField.siphonRootLocal();
-            if (bodyPresentationActive) {
-                if (surfaceSplatRenderer == null) {
-                    surfaceSplatRenderer =
-                            new DarkBallSurfaceSplatRenderer();
-                }
-                DarkBallSurfaceSplatRenderer.Parameters parameters =
-                        new DarkBallSurfaceSplatRenderer.Parameters(
-                                inletLocal,
-                                advectedDensityField.outletLocal(),
-                                new Vector3f(controlA).sub(inletLocal),
-                                releaseFront,
-                                1.0f,
-                                currentDirectBodyTurbulenceBlend(),
-                                currentDirectBodyTurbulenceComplexityBlend(),
-                                 currentSurfaceSplatSpikeFlowTime(),
-                                 currentDirectBodySpikeFlowTime(),
-                                 bodyEffectFade,
-                                 pokemonId,
-                                 ballId,
-                                 presentationAge,
-                                 surfaceSplatSamplePlan);
-                gpuTimer.begin(DarkBallGpuTimer.Stage.SPLAT_DRAW);
-                try {
-                    bodyRendered = surfaceSplatRenderer.render(
-                            surfaceMesh,
-                            voxelVolume,
-                            analyticalQuality,
-                            camera,
-                            parameters);
-                } finally {
-                    gpuTimer.end(DarkBallGpuTimer.Stage.SPLAT_DRAW);
-                }
-                surfaceSplatUploadOccurredThisFrame =
-                        surfaceSplatRenderer
-                                .uploadOccurredLastRender();
-                surfaceSplatDrawCpuMicros =
-                        surfaceSplatRenderer.lastDrawCpuMicros();
-                surfaceSplatBodySubmittedThisFrame =
-                        surfaceSplatDrawCpuMicros >= 0L;
-                if (bodyRendered) {
-                    if (DarkBallDensityFBO
-                            .beginSurfaceSplatDiagnosticPass()) {
-                        try {
-                            if (surfaceSplatRenderer
-                                    .renderDiagnostic(camera)) {
-                                DarkBallDensityFBO
-                                        .markSurfaceSplatDiagnosticRendered();
-                            }
-                        } finally {
-                            DarkBallDensityFBO.resumeDensityPass();
-                        }
-                    }
-                    if (DarkBallDensityFBO
-                            .beginSurfaceSplatFrontDepthPass()) {
-                        try {
-                            if (surfaceSplatRenderer
-                                    .renderFrontDepth(camera)) {
-                                DarkBallDensityFBO
-                                        .markSurfaceSplatFrontDepthRendered();
-                            }
-                        } finally {
-                            DarkBallDensityFBO.resumeDensityPass();
-                            restoreDensityPassDrawState();
-                        }
-                    }
-                    float bodyVoxelSize = Math.max(Math.min(
-                            voxelVolume.sdfVoxelX(),
-                            voxelVolume.sdfVoxelYz()), 0.0001f);
-                    Matrix4f bodyProjection =
-                            new Matrix4f(
-                                    RenderSystem.getProjectionMatrix());
-                    DarkBallProjectedEffectBounds.UvBounds bodyBounds =
-                            DarkBallProjectedEffectBounds
-                                    .forSurfelAndSiphon(
-                                            advectedDensityField,
-                                            analyticalVolume,
-                                            voxelVolume,
-                                            bodyProjection,
-                                            camera,
-                                            cameraPosition,
-                                            currentDirectBodyTurbulenceBlend(),
-                                            bodyVoxelSize,
-                                            DarkBallCaptureMath
-                                                    .siphonEndRadius(),
-                                            true,
-                                            false,
-                                            siphonInletRadiusScaleAt(
-                                                    presentationAge),
-                                            surfaceSplatRenderer
-                                                    .uploadedProjectedReachRadius());
-                    long splatResolveStarted = System.nanoTime();
-                    gpuTimer.begin(
-                            DarkBallGpuTimer.Stage.SPLAT_RESOLVE);
-                    try {
-                        bodyRendered =
-                                DarkBallDensityFBO
-                                        .resolveSurfaceSplatField(bodyBounds);
-                    } finally {
-                        gpuTimer.end(
-                                DarkBallGpuTimer.Stage.SPLAT_RESOLVE);
-                    }
-                    surfaceSplatResolveCpuMicros =
-                            elapsedMicros(splatResolveStarted);
-                    if (!bodyRendered) {
-                        splatFailure =
-                                "surface-splat field resolve failed";
-                    }
+        float handoff = DarkBallAnimePresentation.energyHandoffAt(age, directBodyActivationAge, VFX_END);
+        DarkBallAnimePresentation.Tracks tracks = DarkBallAnimePresentation.at(presentationAge, VFX_END);
+        DarkBallAnimeMotion.Frame frame = animeMotionBinding.frame(new Vec3(ballLocal.x, ballLocal.y, ballLocal.z),
+                tracks.pull(), tracks.broadLobes() * currentDirectBodyActivationBlend(), presentationAge, tracks.squash());
+        boolean active = tracks.pull() < 1.0f;
+        boolean submittedDepth = false;
+        String failure = null;
+        long started = System.nanoTime();
+        try (var timing = DarkBallGpuTimer.measure(gpuTimer, DarkBallGpuTimer.Stage.HYBRID_CORE)) {
+            if (active && handoff > 0) {
+                if (animeEnergyRenderer == null) animeEnergyRenderer = new DarkBallAnimeEnergyRenderer();
+                DarkBallAnimeEnergyBody.Frame energy = DarkBallAnimeEnergyBody.frame(frame, handoff);
+                if (!animeEnergyRenderer.render(energy, voxelVolume, camera, tracks.conversion() * handoff))
+                    failure = "anime energy draw unavailable";
+                submittedDepth = energy.primitiveCount() > 0 || energy.rest() != null;
+            }
+            if (active && failure == null && handoff < 1) {
+                // Preserve energy coverage before restoring terrain depth for the complementary source draw.
+                if (!DarkBallDensityFBO.prepareBodyDepthSnapshot(this)
+                        || !DarkBallDensityFBO.restoreSceneDepthAfterDirectDraw()) {
+                    failure = "anime handoff depth snapshot/restore failed";
                 } else {
-                    splatFailure = "surface-splat body draw failed";
+                    if (sourceRenderer == null) sourceRenderer = new DarkBallAnimeSourceRenderer();
+                    DarkBallAnimeMotion.Frame source = animeMotionBinding.frame(frame.target(),
+                            frame.pullProgress(), 0, presentationAge, 0);
+                    if (!sourceRenderer.render(surfaceMesh, voxelVolume, camera,
+                            tracks.conversion() * (1 - handoff), source, handoff > 0))
+                        failure = "anime source handoff unavailable";
+                    submittedDepth = true;
                 }
             }
-
-            if (bodyRendered && siphonProgress > 0.001f) {
-                long siphonBuildStarted = System.nanoTime();
-                DarkBallSiphonSurfaceMesh siphonMesh =
-                        buildSiphonSurfaceMesh(siphonProgress);
-                siphonBuildCpuMicros =
-                        elapsedMicros(siphonBuildStarted);
-                if (hasVisibleSiphonMaterial(siphonMesh)) {
-                    if (siphonSurfaceMeshRenderer == null) {
-                        siphonSurfaceMeshRenderer =
-                                new DarkBallSiphonSurfaceMeshRenderer();
-                    }
-                    long siphonDrawStarted = System.nanoTime();
-                    gpuTimer.begin(DarkBallGpuTimer.Stage.SIPHON_DRAW);
-                    try {
-                        siphonRendered = siphonSurfaceMeshRenderer.render(
-                                siphonMesh,
-                                voxelVolume,
-                                camera,
-                                fade);
-                    } finally {
-                        gpuTimer.end(DarkBallGpuTimer.Stage.SIPHON_DRAW);
-                    }
-                    siphonDrawCpuMicros =
-                            elapsedMicros(siphonDrawStarted);
-                    depthWriteSubmitted |= siphonRendered;
-                    if (!siphonRendered) {
-                        splatFailure = "siphon indexed draw failed";
-                    }
-                }
-            }
-        } catch (Throwable failure) {
-            splatFailure = "surface-splat transaction threw "
-                    + failure.getClass().getSimpleName();
-            Shadowedhearts.LOGGER.error(
-                    "[ShadowedHearts] Dark Ball surface-splat transaction "
-                            + "failed for pokemon {}; resetting the material "
-                            + "target before exact-mask recovery",
-                    pokemonId,
-                    failure);
+        } catch (Throwable error) {
+            failure = "anime transaction threw " + error.getClass().getSimpleName();
+            Shadowedhearts.LOGGER.error("Dark Ball anime draw failed for pokemon {}; retaining captured mask", pokemonId, error);
+        } finally {
+            bodyDrawCpuMicros = elapsedMicros(started);
         }
-
-        boolean drawsSucceeded = splatFailure == null
-                && bodyRendered
-                && siphonRendered;
-        boolean depthRestored = false;
-        if (drawsSucceeded) {
-            long depthRestoreStarted = System.nanoTime();
-            gpuTimer.begin(DarkBallGpuTimer.Stage.DEPTH_RESTORE);
-            try {
-                depthRestored = !depthWriteSubmitted
-                        || DarkBallDensityFBO
-                        .restoreSceneDepthAfterDirectDraw();
+        if (failure == null && submittedDepth) {
+            started = System.nanoTime();
+            try (var timing = DarkBallGpuTimer.measure(gpuTimer, DarkBallGpuTimer.Stage.DEPTH_RESTORE)) {
+                if (!DarkBallDensityFBO.restoreSceneDepthAfterDirectDraw()) failure = "scene depth restore failed";
             } finally {
-                gpuTimer.end(DarkBallGpuTimer.Stage.DEPTH_RESTORE);
+                depthRestoreCpuMicros = elapsedMicros(started);
             }
-            if (depthWriteSubmitted) {
-                depthRestoreCpuMicros =
-                        elapsedMicros(depthRestoreStarted);
-            }
-            if (!depthRestored) {
-                DarkBallDensityFBO
-                        .resetDensityPassAfterFailedDirectDraw();
-            }
-        } else {
-            DarkBallDensityFBO
-                    .resetDensityPassAfterFailedDirectDraw();
         }
-        if (!drawsSucceeded || !depthRestored) {
+        if (failure != null) {
+            DarkBallDensityFBO.resetDensityPassAfterFailedDirectDraw();
             destroySurfaceMeshRenderer();
-            if (splatFailure == null) {
-                splatFailure = "scene-depth restore failed";
-            }
-            failSurfaceSplatPath(
-                    "exact-mask safety path: " + splatFailure);
+            failAnimeBody(failure);
             return false;
         }
-
-        if (bodyPresentationActive
-                && surfaceSplatBodySubmittedThisFrame) {
-            // This authority belongs only to a successfully submitted splat
-            // body. It reaches zero at the exact siphon boundary so the
-            // texture-exact reference can repair enclosed pre-collapse
-            // pinholes without ever surviving as a collapse ghost.
-            compositePreCollapseInteriorGuard = Math.max(
-                    compositePreCollapseInteriorGuard,
-                    preCollapseInteriorGuardAt(presentationAge)
-                            * currentDirectBodyActivationBlend());
+        compositeAnimeEnergyCoverage = handoff > 0;
+        compositeAnimeIntakePulse = tracks.intakePulse();
+        compositeDeformationBlend = compositeAnimeEnergyCoverage ? 1.0f
+                : Math.max(compositeDeformationBlend, tracks.conversion());
+        Vector2f bodyUv = projectWorldToScreenUv(snapshotCenter, camera, cameraPosition);
+        Vector2f ballUv = projectWorldToScreenUv(ballPos, camera, cameraPosition);
+        if (bodyUv != null && ballUv != null) {
+            Vector2f direction = new Vector2f(ballUv).sub(bodyUv);
+            if (direction.lengthSquared() > 1.0e-8f) compositeAnimeFlowDirection.set(direction.normalize());
         }
-
-        float voxelSize = Math.max(Math.min(
-                voxelVolume.sdfVoxelX(),
-                voxelVolume.sdfVoxelYz()), 0.0001f);
-        Matrix4f projection =
-                new Matrix4f(RenderSystem.getProjectionMatrix());
-        DarkBallProjectedEffectBounds.UvBounds geometryBounds =
-                DarkBallProjectedEffectBounds.forSurfelAndSiphon(
-                        advectedDensityField,
-                        analyticalVolume,
-                        voxelVolume,
-                        projection,
-                        camera,
-                        cameraPosition,
-                        currentDirectBodyTurbulenceBlend(),
-                        voxelSize,
-                        DarkBallCaptureMath.siphonEndRadius(),
-                        bodyPresentationActive,
-                        siphonProgress > 0.0f
-                                || finalCollapseAt(presentationAge)
-                                > 0.0f,
-                        siphonInletRadiusScaleAt(presentationAge),
-                        surfaceSplatRenderer == null
-                                ? 0.0f
-                                : surfaceSplatRenderer
-                                .uploadedProjectedReachRadius());
-        DarkBallDensityFBO.markDirectVolumeRendered(
-                geometryBounds,
-                bodyPresentationActive);
-        int sampleCount = surfaceSplatRenderer == null
-                ? 0
-                : surfaceSplatRenderer.uploadedSampleCount();
-        logSurfaceMeshPath(
-                "fused topology-independent surface splats (samples="
-                        + sampleCount
-                        + ", resolve=3x3, transport=bone-tree-routed"
-                        + ") + siphon mesh");
+        DarkBallDensityFBO.markBodyMaterialRendered(DarkBallProjectedEffectBounds.UvBounds.fullScreen(), active);
+        if (active && submittedDepth) {
+            if (!Float.isFinite(firstBodySubmissionAge)) firstBodySubmissionAge = age;
+            logPreparationState("anime energy body, transport="
+                    + (animeMotionBinding.restVolume() != null ? "elastic-pose-to-arc" : "cohesive-arc"));
+        }
         return true;
     }
 
@@ -2510,78 +1102,30 @@ public final class DarkBallCaptureVfx {
                 0L);
     }
 
-    private DarkBallSiphonSurfaceMesh buildSiphonSurfaceMesh(
-            float siphonProgress) {
-        float presentationAge = currentSurfacePresentationAge();
-        Vector3f[] nodes =
-                new Vector3f[DarkBallSiphonBoltPath.NODE_COUNT];
-        float[] trailingGates = new float[nodes.length];
-        for (int node = 0; node < nodes.length; node++) {
-            nodes[node] = new Vector3f(
-                    advectedDensityField.siphonBoltNode(node));
-            float curveT = node / (nodes.length - 1.0f);
-            trailingGates[node] =
-                    siphonTrailingGateAt(presentationAge, curveT);
-        }
-
-        float voxelSize = Math.max(Math.min(
-                voxelVolume.sdfVoxelX(),
-                voxelVolume.sdfVoxelYz()), 0.0001f);
-        float inletRadiusScale =
-                siphonInletRadiusScaleAt(presentationAge);
-        float rootRadius = Math.max(
-                voxelVolume.bodyRadius() * 0.055f * inletRadiusScale,
-                voxelSize * 0.90f);
-        float shoulderRadius = Math.max(
-                voxelVolume.bodyRadius() * 0.070f * inletRadiusScale,
-                voxelSize * 1.10f);
-        float endRadius = Math.max(
-                DarkBallCaptureMath.siphonEndRadius() * 0.72f,
-                voxelSize * 0.90f);
-        return DarkBallSiphonSurfaceMesh.build(
-                nodes,
-                rootRadius,
-                shoulderRadius,
-                endRadius,
-                siphonProgress,
-                trailingGates);
-    }
-
-    private static boolean hasVisibleSiphonMaterial(
-            DarkBallSiphonSurfaceMesh mesh) {
-        if (mesh == null) {
-            return false;
-        }
-        for (float window : mesh.materialWindow()) {
-            if (window >= MATERIAL_COVERAGE_DEPTH_CUTOFF) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private void logSurfaceMeshPath(String description) {
-        if (surfaceMeshPathLogged) {
+    private void logPreparationState(String description) {
+        if (preparationStateLogged) {
             return;
         }
-        surfaceMeshPathLogged = true;
+        preparationStateLogged = true;
         Shadowedhearts.LOGGER.info(
                 "[ShadowedHearts] Dark Ball render path for pokemon {}: {} "
-                        + "(duration={}s)",
+                        + "(duration={}s, firstBodyFrame={}ms, sourceReady={}ms)",
                 pokemonId,
                 description,
-                VFX_END);
+                VFX_END,
+                Math.round(firstBodySubmissionAge * 1000.0f),
+                Math.round(surfaceReadyAge * 1000.0f));
     }
 
-    private void failSurfaceSplatPath(String description) {
+    private void failAnimeBody(String description) {
         boolean firstFailure =
-                surfaceMeshPath != SurfaceMeshPath.FAILED;
-        surfaceMeshPath = SurfaceMeshPath.FAILED;
+                preparationState != PreparationState.FAILED;
+        preparationState = PreparationState.FAILED;
         if (!firstFailure) {
             return;
         }
         Shadowedhearts.LOGGER.warn(
-                "[ShadowedHearts] Dark Ball surfel path for pokemon {} "
+                "[ShadowedHearts] Dark Ball anime path for pokemon {} "
                         + "failed after selection: {} (duration={}s); "
                         + "retaining the exact captured mask",
                 pokemonId,
@@ -2595,15 +1139,6 @@ public final class DarkBallCaptureVfx {
         RenderSystem.depthMask(false);
         RenderSystem.enableDepthTest();
         RenderSystem.disableCull();
-    }
-
-    private boolean hasSnapshotMask() {
-        return snapshotApplied && !snapshotQuads.isEmpty() && getSnapshotMaskStrength() > 0.002f;
-    }
-
-    private boolean shouldWaitForSnapshotBeforeSplats() {
-        return snapshotRequested && !snapshotApplied
-                && age < CONVERSION_SOLID + 0.20f * TIMING_SCALE;
     }
 
     private boolean hasTexturedSnapshotMask() {
@@ -2621,17 +1156,21 @@ public final class DarkBallCaptureVfx {
 
         boolean clearAuxiliaryTargets = !reconstructionAuxiliaryTargetsCleared;
         boolean exactMaskRendered = false;
-        if (DarkBallDensityFBO.beginMaskPass(clearAuxiliaryTargets, true)) {
-            setupSnapshotMaskUniforms();
-            exactMaskRendered = renderTexturedSnapshotMask(camPos);
+        try (var timing = DarkBallGpuTimer.measure(gpuTimer, DarkBallGpuTimer.Stage.MASK_DRAW)) {
+            if (DarkBallDensityFBO.beginMaskPass(clearAuxiliaryTargets, true)) {
+                setupSnapshotMaskUniforms();
+                exactMaskRendered = renderTexturedSnapshotMask(camPos);
+            }
         }
 
         float proxyStrength = getProxyDepthStrength();
         if (proxyStrength > 0.002f && ModShaders.DARK_BALL_PROXY_DEPTH != null) {
-            boolean frontRendered = renderTexturedSnapshotProxyDepth(
-                    camPos, proxyStrength, clearAuxiliaryTargets);
-            if (frontRendered) {
-                compositeProxyDepthAvailable = 1.0f;
+            try (var timing = DarkBallGpuTimer.measure(gpuTimer, DarkBallGpuTimer.Stage.PROXY_DRAW)) {
+                boolean frontRendered = renderTexturedSnapshotProxyDepth(
+                        camPos, proxyStrength, clearAuxiliaryTargets);
+                if (frontRendered) {
+                    compositeProxyDepthAvailable = 1.0f;
+                }
             }
         }
 
@@ -2647,19 +1186,34 @@ public final class DarkBallCaptureVfx {
         }
 
         setupSnapshotMaskUniforms();
-        RenderType maskType = BallRenderTypes.darkBallMask(snapshotTexture);
-        VertexConsumer consumer = MASK_BUFFERS.getBuffer(maskType);
+        RenderType maskType = null;
+        VertexConsumer consumer = null;
+        DarkBallFieldMaskBufferSource.CapturedMaterial currentMaterial = null;
         Matrix4f identity = new Matrix4f();
         int color = packMaskColor(strength);
 
         for (DarkBallFieldMaskBufferSource.CapturedQuad quad : texturedSnapshotQuads) {
+            if (maskType == null || !java.util.Objects.equals(currentMaterial, quad.material())) {
+                if (maskType != null) {
+                    MASK_BUFFERS.endBatch(maskType);
+                }
+                currentMaterial = quad.material();
+                ResourceLocation materialTexture = currentMaterial == null
+                        ? snapshotTexture : currentMaterial.texture();
+                maskType = BallRenderTypes.darkBallMask(materialTexture);
+                setSnapshotMaterialAlpha(ModShaders.DARK_BALL_MASK, currentMaterial);
+                consumer = MASK_BUFFERS.getBuffer(maskType);
+            }
             addTexturedSnapshotVertex(consumer, identity, quad.p1(), camPos, color);
             addTexturedSnapshotVertex(consumer, identity, quad.p2(), camPos, color);
             addTexturedSnapshotVertex(consumer, identity, quad.p3(), camPos, color);
             addTexturedSnapshotVertex(consumer, identity, quad.p4(), camPos, color);
         }
 
-        MASK_BUFFERS.endBatch(maskType);
+        if (maskType != null) {
+            MASK_BUFFERS.endBatch(maskType);
+        }
+        setSnapshotMaterialAlpha(ModShaders.DARK_BALL_MASK, null);
         return true;
     }
 
@@ -2682,21 +1236,47 @@ public final class DarkBallCaptureVfx {
         RenderSystem.enableCull();
         GL11.glCullFace(GL11.GL_BACK);
 
-        RenderType proxyType = BallRenderTypes.darkBallProxyDepth(snapshotTexture);
-        VertexConsumer consumer = MASK_BUFFERS.getBuffer(proxyType);
+        RenderType proxyType = null;
+        VertexConsumer consumer = null;
+        DarkBallFieldMaskBufferSource.CapturedMaterial currentMaterial = null;
         Matrix4f identity = new Matrix4f();
         int color = packMaskColor(1.0f);
 
         for (DarkBallFieldMaskBufferSource.CapturedQuad quad : texturedSnapshotQuads) {
+            if (proxyType == null || !java.util.Objects.equals(currentMaterial, quad.material())) {
+                if (proxyType != null) {
+                    MASK_BUFFERS.endBatch(proxyType);
+                }
+                currentMaterial = quad.material();
+                ResourceLocation materialTexture = currentMaterial == null
+                        ? snapshotTexture : currentMaterial.texture();
+                proxyType = BallRenderTypes.darkBallProxyDepth(materialTexture);
+                setSnapshotMaterialAlpha(shader, currentMaterial);
+                consumer = MASK_BUFFERS.getBuffer(proxyType);
+            }
             addTexturedSnapshotVertex(consumer, identity, quad.p1(), camPos, color);
             addTexturedSnapshotVertex(consumer, identity, quad.p2(), camPos, color);
             addTexturedSnapshotVertex(consumer, identity, quad.p3(), camPos, color);
             addTexturedSnapshotVertex(consumer, identity, quad.p4(), camPos, color);
         }
 
-        MASK_BUFFERS.endBatch(proxyType);
+        if (proxyType != null) {
+            MASK_BUFFERS.endBatch(proxyType);
+        }
+        setSnapshotMaterialAlpha(shader, null);
         GL11.glCullFace(GL11.GL_BACK);
         return true;
+    }
+
+    private static void setSnapshotMaterialAlpha(ShaderInstance shader,
+            DarkBallFieldMaskBufferSource.CapturedMaterial material) {
+        if (shader != null) {
+            Uniform uniform = shader.getUniform("u_ignoreTextureAlpha");
+            if (uniform != null) {
+                uniform.set(material != null
+                        && material.alphaMode() == DarkBallFieldMaskBufferSource.AlphaMode.OPAQUE ? 1.0f : 0.0f);
+            }
+        }
     }
 
     private static void addTexturedSnapshotVertex(VertexConsumer consumer,
@@ -2736,75 +1316,6 @@ public final class DarkBallCaptureVfx {
         }
     }
 
-    private void renderSnapshotMask(Vec3 camPos, Camera camera, BufferBuilder buffer) {
-        float strength = getSnapshotMaskStrength();
-        if (strength <= 0.002f || snapshotQuads.isEmpty()) {
-            return;
-        }
-
-        Vec3 viewDir = snapshotCenter.subtract(camPos);
-        if (viewDir.lengthSqr() < 1e-7) {
-            viewDir = new Vec3(0, 0, 1);
-        } else {
-            viewDir = viewDir.normalize();
-        }
-
-        float siphon = remapClamped(age, SIPHON_START, SIPHON_END);
-        float surfaceDensity = Mth.clamp(strength * Mth.lerp(siphon, 0.28f, 0.14f), 0.0f, 0.34f);
-        float extent = Math.max(0.18f, snapshotExtent);
-        Matrix4f identity = new Matrix4f();
-
-        for (SnapshotQuad quad : snapshotQuads) {
-            float depth01 = normalizedViewDepth(quad.center, snapshotCenter, viewDir, extent);
-            emitSnapshotQuad(buffer, identity, quad, camPos, surfaceDensity, depth01);
-        }
-    }
-
-    private static void emitSnapshotQuad(BufferBuilder buffer,
-                                         Matrix4f pose,
-                                         SnapshotQuad quad,
-                                         Vec3 camPos,
-                                         float density,
-                                         float depth01) {
-        float d = Mth.clamp(density, 0f, 1f);
-        float z = Mth.clamp(depth01, 0f, 1f);
-        addSnapshotVertex(buffer, pose, quad.p1, camPos, 0f, 1f, d, z);
-        addSnapshotVertex(buffer, pose, quad.p2, camPos, 1f, 1f, d, z);
-        addSnapshotVertex(buffer, pose, quad.p3, camPos, 1f, 0f, d, z);
-        addSnapshotVertex(buffer, pose, quad.p4, camPos, 0f, 0f, d, z);
-    }
-
-    private static void addSnapshotVertex(BufferBuilder buffer,
-                                          Matrix4f pose,
-                                          Vec3 world,
-                                          Vec3 camPos,
-                                          float u,
-                                          float v,
-                                          float density,
-                                          float depth01) {
-        buffer.addVertex(pose,
-                        (float) (world.x - camPos.x),
-                        (float) (world.y - camPos.y),
-                        (float) (world.z - camPos.z))
-                .setUv(u, v)
-                .setColor(density, depth01, 1.0f, 1.0f)
-                .setLight(FULLBRIGHT);
-    }
-
-    private static void setDensitySnapshotMode(ShaderInstance shader, float mode) {
-        Uniform uniform = shader.getUniform("SnapshotMode");
-        if (uniform != null) {
-            uniform.set(mode);
-        }
-    }
-
-    private static void setDensityProxyDepthMode(ShaderInstance shader, float mode) {
-        Uniform uniform = shader.getUniform("ProxyDepthMode");
-        if (uniform != null) {
-            uniform.set(mode);
-        }
-    }
-
     private float getProxyDepthStrength() {
         // Depth is also reconstruction infrastructure. Making it available on
         // the first exact-mask frame preserves the captured surface for later
@@ -2822,63 +1333,12 @@ public final class DarkBallCaptureVfx {
                 1.0f);
     }
 
-    static float preCollapseInteriorGuardAt(float captureAge) {
-        // SiphonProgress is zero both immediately before and exactly at the
-        // collapse boundary. Keep this age-domain gate discrete so repairs
-        // remain available for the final stable-body frame but are guaranteed
-        // absent from the first transport frame.
-        return captureAge < SIPHON_START ? 1.0f : 0.0f;
-    }
-
     private void updateCompositeReconstructionInputs(Camera camera, Vec3 camPos,
                                                       Vec3 ballPos, Vec3 pokemonCenter,
-                                                      AABB bodyBounds,
-                                                      boolean allowDirectVolume) {
-        if (allowDirectVolume
-                && voxelVolume != null
-                && analyticalVolume != null
-                && advectedDensityField != null) {
+                                                      AABB bodyBounds, boolean allowDirectVolume) {
+        if (allowDirectVolume && voxelVolume != null && animeMotionBinding != null)
             startDirectBodyActivationIfNeeded();
-        }
-        float directBodyActivation =
-                currentDirectBodyActivationBlend();
-        if (voxelVolume != null) {
-            // These components supply depth continuity and pseudo-surface
-            // scale to the fused surfel and exact-mask composite passes.
-            compositeVolumeSize.x = Math.max(voxelVolume.captureLength(), 0.0001f);
-            compositeVolumeSize.y = Math.max(voxelVolume.radius(), 0.0001f);
-        } else {
-            // The texture-exact handoff can render before the asynchronous
-            // volume build completes. Give its proxy-depth lighting a stable
-            // model-scale fallback without making that volume visible.
-            compositeVolumeSize.x = Math.max(snapshotExtent * 2.0f, 0.05f);
-        compositeVolumeSize.y = Math.max(snapshotExtent, 0.05f);
-        }
-        compositeDeformationBlend = Math.max(compositeDeformationBlend,
-                getDeformationBlend());
-        compositeDepthHighlightBlend = Math.max(
-                compositeDepthHighlightBlend,
-                depthHighlightBlendAt(age, directBodyActivation));
-        compositeSignedBodyAuthority = Math.max(
-                compositeSignedBodyAuthority,
-                signedBodyAuthorityAt(age) * directBodyActivation);
-        compositeTurbulenceBlend = Math.max(compositeTurbulenceBlend,
-                turbulenceBlendAt(age) * directBodyActivation);
-        compositeDeformationTime = Math.max(compositeDeformationTime,
-                DarkBallDeformationSettings.timeAt(age));
-        Vector2f centerUv = projectWorldToScreenUv(pokemonCenter, camera, camPos);
-        Vector2f worldUpUv = projectWorldToScreenUv(
-                pokemonCenter.add(0.0, 1.0, 0.0), camera, camPos);
-        if (centerUv != null && worldUpUv != null) {
-            float upX = worldUpUv.x - centerUv.x;
-            float upY = worldUpUv.y - centerUv.y;
-            float upLengthSquared = upX * upX + upY * upY;
-            if (upLengthSquared > 1.0e-8f) {
-                float inverseLength = Mth.invSqrt(upLengthSquared);
-                compositeProjectedUp.set(upX * inverseLength, upY * inverseLength);
-            }
-        }
-
+        compositeDeformationBlend = Math.max(compositeDeformationBlend, getDeformationBlend());
         if (bodyBounds != null) {
             Vector3d bodyCenter = new Vector3d(
                     (bodyBounds.minX + bodyBounds.maxX) * 0.5,
@@ -2908,28 +1368,6 @@ public final class DarkBallCaptureVfx {
                     bodyUvBounds.minU(), bodyUvBounds.minV(),
                     bodyUvBounds.maxU(), bodyUvBounds.maxV());
         }
-
-        Vector3f rootLocal = voxelVolume != null && siphonDrainRootValid
-                ? new Vector3f(siphonDrainRootLocal)
-                : null;
-        Vec3 rootWorld = rootLocal != null ? volumeLocalToWorld(voxelVolume, rootLocal) : pokemonCenter;
-
-        compositeSiphonProgress = Math.max(compositeSiphonProgress,
-                remapClamped(age, SIPHON_START, SIPHON_END));
-        float bodyEnvelopeScale = bodyCollapseEnvelopeScaleAt(age);
-        compositeBodyCollapseEnvelopeScale = Math.min(
-                compositeBodyCollapseEnvelopeScale,
-                bodyEnvelopeScale);
-        Vector2f rootUv = projectWorldToScreenUv(rootWorld, camera, camPos);
-        Vector2f ballUv = projectWorldToScreenUv(ballPos, camera, camPos);
-        if (rootUv == null || ballUv == null) {
-            return;
-        }
-
-        compositeSiphonRootU = Mth.clamp(rootUv.x, 0.0f, 1.0f);
-        compositeSiphonRootV = Mth.clamp(rootUv.y, 0.0f, 1.0f);
-        compositeBallU = Mth.clamp(ballUv.x, 0.0f, 1.0f);
-        compositeBallV = Mth.clamp(ballUv.y, 0.0f, 1.0f);
     }
 
     private static Vector2f projectWorldToScreenUv(Vec3 world, Camera camera, Vec3 camPos) {
@@ -2993,471 +1431,102 @@ public final class DarkBallCaptureVfx {
     }
 
     private void buildVoxelVolumeFromSnapshot(SnapshotBounds bounds) {
-        voxelVolume = null;
         cancelPendingVoxelBuild();
         destroyCapturedVolumeResources();
-        siphonDrainRootValid = false;
         if (capturedModelVertices.size() < 12 && capturedModelTriangles.size() < 6) {
             logVoxelBuild("insufficient captured mesh", capturedModelVertices.size(), capturedModelTriangles.size(), 0);
             return;
         }
-
         Minecraft mc = Minecraft.getInstance();
-        if (mc.level == null) {
-            return;
-        }
-
-        Entity ballEnt = mc.level.getEntity(ballId);
-        if (!(ballEnt instanceof EmptyPokeBallEntity ball)) {
-            logVoxelBuild("missing ball entity", capturedModelVertices.size(), capturedModelTriangles.size(), 0);
-            return;
-        }
-
-        Vec3 ballPos = new Vec3(ball.getX(), ball.getY(), ball.getZ()).add(0, 0.08, 0);
-        Vec3 capturedCenter = snapshotCenter;
+        if (mc.level == null || !(mc.level.getEntity(ballId) instanceof EmptyPokeBallEntity ball)) return;
+        Vec3 ballPos = ball.position().add(0, 0.08, 0);
+        Vec3 center = snapshotCenter;
         AABB capturedBounds = bounds.toAabb();
-        List<Vec3> capturedVertices = List.copyOf(capturedModelVertices);
-        List<DarkBallFieldMaskBufferSource.CapturedTriangle> capturedTriangles =
-                List.copyOf(capturedModelTriangles);
-        NativeImage textureImage = loadSnapshotTextureImage();
-        DarkBallVfxQuality quality = DarkBallVfxQuality.parse(
-                com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs
-                        .getInstance().getClientConfig().darkBallVfxQuality()
-        );
-        forceExactMaskOnly =
-                com.jayemceekay.shadowedhearts.config
-                        .ShadowedHeartsConfigs
-                        .getInstance()
-                        .getClientConfig()
-                        .darkBallForceExactMaskOnly();
-        int surfelBudget =
-                DarkBallSurfaceSplatRenderer.resolveSampleBudget(
-                        quality,
-                        com.jayemceekay.shadowedhearts.config
-                                .ShadowedHeartsConfigs
-                                .getInstance()
-                                .getClientConfig()
-                                .darkBallSurfelBudget());
-        surfaceSplatRequestedBudget =
-                forceExactMaskOnly ? 0 : surfelBudget;
-        List<CapturedBoneNode> capturedBoneNodeSnapshot =
-                List.copyOf(capturedBoneNodes);
+        List<Vec3> vertices = List.copyOf(capturedModelVertices);
+        List<DarkBallFieldMaskBufferSource.CapturedTriangle> triangles = List.copyOf(capturedModelTriangles);
+        DarkBallSnapshotTextures.CapturedResources resources = DarkBallSnapshotTextures.captureResources(
+                mc.getResourceManager(), triangles, snapshotTexture);
         int generation = voxelBuildGeneration;
-        AtomicBoolean preparationCancellation = new AtomicBoolean();
-        surfaceMeshBuildCancellation = preparationCancellation;
-
-        // Triangle rasterization, interior fill, SDF construction, gradients,
-        // component labeling, and release-order propagation are all CPU-only.
-        // Running them here used to stall the render thread exactly when the
-        // ball hit. Keep GL texture allocation deferred to the normal renderer.
-        voxelBuildFuture = CompletableFuture.supplyAsync(() -> {
+        AtomicBoolean cancellation = new AtomicBoolean();
+        surfaceMeshBuildCancellation = cancellation;
+        CompletableFuture<VoxelBuildOutput> voxelResult = new CompletableFuture<>();
+        voxelBuildFuture = voxelResult;
+        long submitted = System.nanoTime();
+        preparationJob = PREPARATION_EXECUTOR.submit(cancellation, () -> {
             long started = System.nanoTime();
-            try (NativeImage image = textureImage) {
-                DarkBallVolumeBuildResult volume = DarkBallVolumeVoxelizer.build(
-                        ballPos,
-                        capturedCenter,
-                        capturedBounds,
-                        capturedVertices,
-                        capturedTriangles,
-                        image
-                );
-                Vector3f ballLocal = volume == null
-                        ? new Vector3f()
-                        : volumeWorldToLocal(volume, ballPos);
-                DarkBallAnalyticalVolume analytical = volume == null
-                        ? null
-                        : DarkBallAnalyticalVolume.build(volume, ballLocal, quality);
-                long buildMillis = (System.nanoTime() - started) / 1_000_000L;
-                return new VoxelBuildOutput(
-                        generation,
-                        volume,
-                        analytical,
-                        quality,
-                        capturedVertices.size(),
-                        capturedTriangles.size(),
-                        buildMillis
-                );
-            }
-        }, PREPARATION_EXECUTOR);
-        if (forceExactMaskOnly) {
-            selectForcedExactMaskPath();
-        } else {
-            surfaceMeshBuildFuture = voxelBuildFuture.thenApplyAsync(result -> {
-                        List<DarkBallSplatBoneRoutePlan.Node> routeNodes =
-                                capturedBoneNodesToSplatLocal(
-                                        result.volume(),
-                                        capturedBoneNodeSnapshot);
-                        return buildSurfaceMeshOutput(
-                                result.generation(),
-                                result.analyticalVolume(),
-                                result.volume(),
-                                surfelBudget,
-                                routeNodes,
-                                preparationCancellation);
-                    }, PREPARATION_EXECUTOR);
-        }
+            DarkBallSnapshotTextures textures = resources.decode(cancellation::get);
+            long decoded = System.nanoTime();
+            DarkBallVolumeBuildResult volume = DarkBallVolumeVoxelizer.build(ballPos, center, capturedBounds,
+                    vertices, triangles, textures, cancellation::get);
+            long voxelBuilt = System.nanoTime();
+            if (cancellation.get()) throw new CancellationException();
+            voxelResult.complete(new VoxelBuildOutput(generation, volume, vertices.size(), triangles.size(),
+                    (voxelBuilt - started) / 1_000_000L));
+            if (volume == null) throw new IllegalStateException("Anime source volume unavailable");
+            DarkBallAnimeSourceMesh.MeshResult source = DarkBallAnimeSourceMesh.prepare(triangles, textures, volume, cancellation::get);
+            if (source.mesh() == null) throw new IllegalStateException("Anime source geometry unavailable: " + source.stats().summary());
+            Vector3f local = volumeWorldToLocal(volume, ballPos);
+            DarkBallAnimeMotion.Binding binding = DarkBallAnimeMotion.bindEnergy(source.mesh(),
+                    new Vec3(local.x, local.y, local.z), cancellation::get);
+            DarkBallAnimeRestVolume rest = DarkBallAnimeRestVolume.prepare(volume, binding.radius(), cancellation::get);
+            if (rest != null) binding = binding.withRestVolume(rest, cancellation::get);
+            else Shadowedhearts.LOGGER.warn("Dark Ball source envelope unavailable; retaining cohesive energy body");
+            DarkBallPreparationTimings timings = DarkBallPreparationTimings.completed(submitted, started, decoded, voxelBuilt, System.nanoTime());
+            return new SurfaceMeshBuildOutput(generation, source.mesh(), binding, timings,
+                    (System.nanoTime() - started) / 1_000_000L);
+        });
+        preparationJob.whenComplete((result, failure) -> {
+            if (failure != null) voxelResult.completeExceptionally(failure);
+        });
+        surfaceMeshBuildFuture = preparationJob;
     }
 
     private void installVoxelBuildIfReady() {
         CompletableFuture<VoxelBuildOutput> pending = voxelBuildFuture;
-        if (pending == null || !pending.isDone()) {
-            return;
-        }
+        if (pending == null || !pending.isDone()) return;
         voxelBuildFuture = null;
-
-        VoxelBuildOutput result;
         try {
-            result = pending.join();
+            VoxelBuildOutput result = pending.join();
+            if (result == null || result.generation() != voxelBuildGeneration) return;
+            voxelVolume = result.volume();
+            voxelReadyAge = age;
+            voxelBuildMillis = result.buildMillis();
+            logVoxelBuild("built asynchronously in " + result.buildMillis() + " ms", result.vertexCount(),
+                    result.triangleCount(), countVoxelCandidates(voxelVolume));
+            logVoxelSdfStats(voxelVolume);
+        } catch (CancellationException ignored) {
         } catch (CompletionException failure) {
-            Shadowedhearts.LOGGER.error(
-                    "[ShadowedHearts] Dark Ball asynchronous voxel build failed for pokemon {}",
-                    pokemonId,
-                    failure.getCause() == null ? failure : failure.getCause()
-            );
-            return;
+            Shadowedhearts.LOGGER.warn("Dark Ball source volume failed for pokemon {}; retaining captured mask", pokemonId, failure.getCause());
         }
-        if (result == null || result.generation() != voxelBuildGeneration) {
-            return;
-        }
-
-        voxelVolume = result.volume();
-        analyticalVolume = result.analyticalVolume();
-        analyticalQuality = result.quality();
-        voxelReadyAge = age;
-        voxelBuildMillis = result.buildMillis();
-        logVoxelBuild("built asynchronously in " + result.buildMillis() + " ms",
-                result.vertexCount(), result.triangleCount(),
-                countVoxelCandidates(voxelVolume));
-        logVoxelSdfStats(voxelVolume);
-
-        if (analyticalVolume != null) {
-            siphonDrainRootLocal.set(analyticalVolume.outletLocal());
-            siphonDrainRootValid = true;
-            analyticalVolumeLogged = true;
-            Shadowedhearts.LOGGER.info(
-                    "[ShadowedHearts] Dark Ball captured shape atlas for pokemon {} active ({})",
-                    pokemonId,
-                    analyticalVolume.summary()
-            );
-        }
-    }
-
-    private void startSurfaceMeshBuild(
-            int generation,
-            DarkBallAnalyticalVolume source) {
-        if (forceExactMaskOnly) {
-            selectForcedExactMaskPath();
-            return;
-        }
-        cancelPendingSurfaceMeshBuild();
-        surfaceMesh = null;
-        surfaceSplatSamplePlan = null;
-        surfaceMeshPath = SurfaceMeshPath.PENDING;
-        surfaceMeshPathLogged = false;
-        if (source == null) {
-            surfaceMeshPath = SurfaceMeshPath.FAILED;
-            return;
-        }
-
-        // Extraction, area-stratified sampling, neighborhood smoothing, and
-        // bone-route assignment are immutable one-time preparation stages.
-        // Keep all of them off the render thread.
-        AtomicBoolean cancellation = new AtomicBoolean();
-        DarkBallVfxQuality preparationQuality = analyticalQuality;
-        int preparationSurfelBudget =
-                DarkBallSurfaceSplatRenderer.resolveSampleBudget(
-                        preparationQuality,
-                        com.jayemceekay.shadowedhearts.config
-                                .ShadowedHeartsConfigs
-                                .getInstance()
-                                .getClientConfig()
-                                .darkBallSurfelBudget());
-        surfaceSplatRequestedBudget = preparationSurfelBudget;
-        DarkBallVolumeBuildResult preparationVolume = voxelVolume;
-        List<DarkBallSplatBoneRoutePlan.Node> routeNodes =
-                capturedBoneNodesToSplatLocal(
-                        preparationVolume,
-                        capturedBoneNodes);
-        surfaceMeshBuildCancellation = cancellation;
-        surfaceMeshBuildFuture = CompletableFuture.supplyAsync(
-                () -> buildSurfaceMeshOutput(
-                        generation,
-                        source,
-                        preparationVolume,
-                        preparationSurfelBudget,
-                        routeNodes,
-                        cancellation),
-                PREPARATION_EXECUTOR);
-    }
-
-    private void selectForcedExactMaskPath() {
-        cancelPendingSurfaceMeshBuild();
-        surfaceMesh = null;
-        surfaceSplatSamplePlan = null;
-        destroySurfaceMeshRenderer();
-        surfaceMeshPath = SurfaceMeshPath.FAILED;
-        if (surfaceMeshPathLogged) {
-            return;
-        }
-        surfaceMeshPathLogged = true;
-        Shadowedhearts.LOGGER.info(
-                "[ShadowedHearts] Dark Ball render path for pokemon {}: "
-                        + "intentional exact-mask-only diagnostic; surfel "
-                        + "preparation and submission are bypassed "
-                        + "(duration={}s)",
-                pokemonId,
-                VFX_END);
-    }
-
-    private static SurfaceMeshBuildOutput buildSurfaceMeshOutput(
-            int generation,
-            DarkBallAnalyticalVolume source,
-            DarkBallVolumeBuildResult preparationVolume,
-            int preparationSurfelBudget,
-            List<DarkBallSplatBoneRoutePlan.Node> routeNodes,
-            AtomicBoolean cancellation) {
-            if (source == null || cancellation.get()) {
-                return new SurfaceMeshBuildOutput(
-                        generation, source, null, null, "unavailable", 0L);
-            }
-            Vector3f routeInletLocal = source.outletLocal();
-            long started = System.nanoTime();
-            DarkBallSurfaceMesh mesh =
-                    source.buildSurfaceMesh(cancellation::get);
-            if (mesh == null || !mesh.hasFiniteSplatSamples()) {
-                return new SurfaceMeshBuildOutput(
-                        generation, source, mesh, null, "unavailable",
-                        (System.nanoTime() - started) / 1_000_000L);
-            }
-
-            float maximumVoxel = preparationVolume == null
-                    ? 0.0f
-                    : Math.max(
-                    preparationVolume.sdfVoxelX(),
-                    preparationVolume.sdfVoxelYz());
-            DarkBallSurfaceSplatRenderer.SurfaceSamplePlan splatSamplePlan =
-                    DarkBallSurfaceSplatRenderer.prepareSamples(
-                            mesh,
-                            preparationSurfelBudget,
-                            maximumVoxel);
-            if (splatSamplePlan == null) {
-                return new SurfaceMeshBuildOutput(
-                        generation, source, mesh, null,
-                        "sample preparation unavailable",
-                        (System.nanoTime() - started) / 1_000_000L);
-            }
-
-            float[] routedCarrierPositions =
-                    DarkBallSurfaceSplatRenderer.insetSamplePositions(
-                            splatSamplePlan,
-                            maximumVoxel);
-            DarkBallSplatBoneRoutePlan.Result routePlan =
-                    DarkBallSplatBoneRoutePlan.build(
-                            routedCarrierPositions,
-                            routeInletLocal,
-                            routeNodes,
-                            cancellation::get);
-            splatSamplePlan =
-                    splatSamplePlan.withBoneRoutePlan(routePlan);
-            int confidentPrincipalTangents = 0;
-            float principalConfidenceSum = 0.0f;
-            int thinSheetSamples = 0;
-            float thinSheetScoreSum = 0.0f;
-            int thinSheetPatchCount = 0;
-            int patchedThinSheetSamples = 0;
-            int largestThinSheetPatch = 0;
-            for (float confidence
-                    : splatSamplePlan.tangentConfidence()) {
-                principalConfidenceSum += confidence;
-                if (confidence >= 0.50f) {
-                    confidentPrincipalTangents++;
-                }
-            }
-            for (float sheetScore
-                    : splatSamplePlan.thinSheetScore()) {
-                thinSheetScoreSum += sheetScore;
-                if (sheetScore
-                        >= DarkBallSplatThinSheetPlan.MIN_PAIR_SCORE) {
-                    thinSheetSamples++;
-                }
-            }
-            for (int patchId
-                    : splatSamplePlan.thinSheetPatchId()) {
-                if (patchId >= 0) {
-                    thinSheetPatchCount = Math.max(
-                            thinSheetPatchCount,
-                            patchId + 1);
-                    patchedThinSheetSamples++;
-                }
-            }
-            if (thinSheetPatchCount > 0) {
-                int[] patchSizes =
-                        new int[thinSheetPatchCount];
-                for (int patchId
-                        : splatSamplePlan.thinSheetPatchId()) {
-                    if (patchId >= 0
-                            && patchId < patchSizes.length) {
-                        patchSizes[patchId]++;
-                    }
-                }
-                for (int patchSize : patchSizes) {
-                    largestThinSheetPatch = Math.max(
-                            largestThinSheetPatch, patchSize);
-                }
-            }
-            float meanPrincipalConfidence =
-                    splatSamplePlan.tangentConfidence().length > 0
-                            ? principalConfidenceSum
-                            / splatSamplePlan
-                            .tangentConfidence().length
-                            : 0.0f;
-            String preparationSummary =
-                    "surfelBudget=" + preparationSurfelBudget
-                            + ", samples="
-                            + splatSamplePlan.releaseOrder().length
-                            + ", meshVertices=" + mesh.vertexCount()
-                            + ", blueNoiseCandidates="
-                            + Math.multiplyExact(
-                            splatSamplePlan.releaseOrder().length,
-                            DarkBallSurfaceSplatRenderer
-                                    .BLUE_NOISE_CANDIDATE_MULTIPLIER)
-                            + ", selection=patch-aware-surface-blue-noise"
-                            + ", featureReserve="
-                            + Math.round(
-                            splatSamplePlan.releaseOrder().length
-                                    * DarkBallSurfaceSplatRenderer
-                                    .FEATURE_SAMPLE_FRACTION)
-                            + ", principalTangents="
-                            + confidentPrincipalTangents
-                            + "/"
-                            + splatSamplePlan.releaseOrder().length
-                            + ", principalConfidenceMean="
-                            + String.format(
-                            java.util.Locale.ROOT,
-                            "%.3f",
-                            meanPrincipalConfidence)
-                            + ", thinSheetSamples="
-                            + thinSheetSamples
-                            + ", thinSheetScoreMean="
-                            + String.format(
-                            java.util.Locale.ROOT,
-                            "%.3f",
-                            splatSamplePlan.thinSheetScore().length > 0
-                                    ? thinSheetScoreSum
-                                    / splatSamplePlan
-                                    .thinSheetScore().length
-                                    : 0.0f)
-                            + ", thinSheetPatches="
-                            + thinSheetPatchCount
-                            + ", patchedThinSheetSamples="
-                            + patchedThinSheetSamples
-                            + ", largestThinSheetPatch="
-                            + largestThinSheetPatch
-                            + ", neighbors="
-                            + DarkBallSplatNeighborhoodPlan.NEIGHBOR_COUNT
-                            + ", route=" + routePlan.summary();
-            return new SurfaceMeshBuildOutput(
-                    generation,
-                    source,
-                    mesh,
-                    splatSamplePlan,
-                    preparationSummary,
-                    (System.nanoTime() - started) / 1_000_000L);
     }
 
     private void installSurfaceMeshBuildIfReady() {
-        CompletableFuture<SurfaceMeshBuildOutput> pending =
-                surfaceMeshBuildFuture;
-        if (pending == null || !pending.isDone()) {
-            return;
-        }
+        CompletableFuture<SurfaceMeshBuildOutput> pending = surfaceMeshBuildFuture;
+        if (pending == null || !pending.isDone()) return;
         surfaceMeshBuildFuture = null;
         surfaceMeshBuildCancellation = null;
-
-        SurfaceMeshBuildOutput result;
         try {
-            result = pending.join();
+            SurfaceMeshBuildOutput result = pending.join();
+            if (result == null || result.generation() != voxelBuildGeneration) return;
+            surfaceMesh = result.mesh();
+            animeMotionBinding = result.animeBinding();
+            surfaceReadyAge = age;
+            surfaceBuildMillis = result.buildMillis();
+            preparationTimings = result.timings();
+            preparationState = PreparationState.READY;
+            Shadowedhearts.LOGGER.info("Dark Ball anime source for pokemon {} prepared in {} ms "
+                            + "(captureAge={}ms, remaining={}ms; {})",
+                    pokemonId, surfaceBuildMillis, Math.round(age * 1000.0f),
+                    Math.round(Math.max(0.0f, VFX_END - age) * 1000.0f), preparationTimings.summary());
         } catch (CancellationException ignored) {
-            return;
         } catch (CompletionException failure) {
-            surfaceMeshPath = SurfaceMeshPath.FAILED;
-            Shadowedhearts.LOGGER.warn(
-                    "[ShadowedHearts] Dark Ball surfel preparation failed "
-                            + "for pokemon {}; retaining the exact captured mask",
-                    pokemonId,
-                    failure.getCause() == null
-                            ? failure
-                            : failure.getCause());
-            return;
+            preparationState = PreparationState.FAILED;
+            Shadowedhearts.LOGGER.warn("Dark Ball anime preparation failed for pokemon {}; retaining captured mask", pokemonId, failure.getCause());
         }
-        if (result == null
-                || result.generation() != voxelBuildGeneration
-                || result.source() != analyticalVolume) {
-            return;
-        }
-
-        DarkBallSurfaceMesh candidate = result.mesh();
-        DarkBallSurfaceSplatRenderer.SurfaceSamplePlan samplePlan =
-                result.splatSamplePlan();
-        surfaceReadyAge = age;
-        surfaceBuildMillis = result.buildMillis();
-        if (candidate == null
-                || !candidate.hasFiniteSplatSamples()
-                || samplePlan == null) {
-            surfaceMeshPath = SurfaceMeshPath.FAILED;
-            Shadowedhearts.LOGGER.warn(
-                    "[ShadowedHearts] Dark Ball surfel source for pokemon {} "
-                            + "was unavailable; retaining the exact captured "
-                            + "mask ({}, preparation={})",
-                    pokemonId,
-                    candidate == null ? "mesh=missing" : candidate.summary(),
-                    result.splatPreparationSummary());
-            return;
-        }
-        boolean lateReadiness =
-                age >= SURFACE_SPLAT_SELECTION_DEADLINE;
-        surfaceMesh = candidate;
-        surfaceSplatSamplePlan = samplePlan;
-        surfaceMeshPath = SurfaceMeshPath.SPLAT;
-        Shadowedhearts.LOGGER.info(
-                "[ShadowedHearts] Dark Ball topology-independent bone-routed "
-                        + "surfel source for pokemon {} built asynchronously "
-                        + "in {} ms with {} readiness; topology and "
-                        + "collapse-authority guards are not part of this path "
-                        + "({}, preparation={})",
-                pokemonId,
-                result.buildMillis(),
-                lateReadiness ? "late-remapped" : "on-time",
-                candidate.summary(),
-                result.splatPreparationSummary());
     }
 
-    private static SurfaceMeshPath initialSurfaceMeshPath() {
-        return SurfaceMeshPath.PENDING;
-    }
-
-    private NativeImage loadSnapshotTextureImage() {
-        if (snapshotTexture == null) {
-            return null;
-        }
-        try {
-            var resource = Minecraft.getInstance().getResourceManager()
-                    .getResource(snapshotTexture);
-            if (resource.isEmpty()) {
-                return null;
-            }
-            try (var stream = resource.get().open()) {
-                return NativeImage.read(stream);
-            }
-        } catch (Exception failure) {
-            Shadowedhearts.LOGGER.warn(
-                    "[ShadowedHearts] Could not read Dark Ball snapshot texture {}; "
-                            + "falling back to geometry-only voxelization",
-                    snapshotTexture,
-                    failure
-            );
-            return null;
-        }
+    private static PreparationState initialPreparationState() {
+        return PreparationState.PENDING;
     }
 
     private static void captureCubeFaces(ModelSnapshotCapture capture, Matrix4f pose, ModelPart.Cube cube) {
@@ -3516,13 +1585,6 @@ public final class DarkBallCaptureVfx {
         return new Vec3(transformed.x + offset.x, transformed.y + offset.y, transformed.z + offset.z);
     }
 
-    private static Vec3 volumeLocalToWorld(DarkBallVolumeBuildResult volume, Vector3f local) {
-        return volume.root()
-                .add(volume.axis().scale(local.x))
-                .add(volume.side().scale(local.y))
-                .add(volume.up().scale(local.z));
-    }
-
     static Vector3f volumeWorldToLocal(DarkBallVolumeBuildResult volume, Vec3 world) {
         Vec3 rel = world.subtract(volume.root());
         return new Vector3f(
@@ -3532,166 +1594,11 @@ public final class DarkBallCaptureVfx {
         );
     }
 
-    private static List<DarkBallSplatBoneRoutePlan.Node>
-    capturedBoneNodesToSplatLocal(
-            DarkBallVolumeBuildResult volume,
-            List<CapturedBoneNode> capturedNodes) {
-        if (volume == null
-                || capturedNodes == null
-                || capturedNodes.isEmpty()) {
-            return List.of();
-        }
-        List<Vector3f> capturedPositions =
-                new ArrayList<>(capturedNodes.size());
-        Vector3f syntheticRoot = new Vector3f();
-        int rootContributors = 0;
-        for (CapturedBoneNode captured : capturedNodes) {
-            Vector3f local = captured == null
-                    || captured.worldPosition() == null
-                    ? null
-                    : volumeWorldToLocal(
-                    volume,
-                    captured.worldPosition());
-            capturedPositions.add(local);
-            if (local != null
-                    && Float.isFinite(local.x)
-                    && Float.isFinite(local.y)
-                    && Float.isFinite(local.z)
-                    && captured.ownsGeometry()) {
-                syntheticRoot.add(local);
-                rootContributors++;
-            }
-        }
-        if (rootContributors == 0) {
-            for (Vector3f local : capturedPositions) {
-                if (local != null
-                        && Float.isFinite(local.x)
-                        && Float.isFinite(local.y)
-                        && Float.isFinite(local.z)) {
-                    syntheticRoot.add(local);
-                    rootContributors++;
-                }
-            }
-        }
-        if (rootContributors > 0) {
-            syntheticRoot.div(rootContributors);
-        }
-
-        // Rendered ModelPart recursion may expose several top-level roots.
-        // Join them through one model-space center so every component follows
-        // its own parent chain instead of being projected onto a different
-        // limb's surviving route.
-        List<DarkBallSplatBoneRoutePlan.Node> localNodes =
-                new ArrayList<>(capturedNodes.size() + 1);
-        localNodes.add(new DarkBallSplatBoneRoutePlan.Node(
-                syntheticRoot,
-                -1,
-                "rendered-root",
-                false,
-                true));
-        for (int index = 0; index < capturedNodes.size(); index++) {
-            CapturedBoneNode captured = capturedNodes.get(index);
-            int capturedParent = captured == null
-                    ? -1
-                    : captured.parentIndex();
-            localNodes.add(new DarkBallSplatBoneRoutePlan.Node(
-                    capturedPositions.get(index),
-                    capturedParent < 0
-                            ? 0
-                            : capturedParent + 1,
-                    captured == null
-                            ? ""
-                            : captured.path(),
-                    captured != null
-                            && captured.ownsGeometry(),
-                    captured != null
-                            && captured.chainable()));
-        }
-        return List.copyOf(localNodes);
-    }
-
-    private void ensureAnalyticalVolume(DarkBallVolumeBuildResult volume, Vec3 ballPos) {
-        // Despite the historical name, this object now owns the captured
-        // shape/cohesive atlases consumed by the direct advected renderer.
-        if (volume == null) {
-            return;
-        }
-
-        DarkBallVfxQuality requestedQuality = DarkBallVfxQuality.parse(
-                com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs
-                        .getInstance().getClientConfig().darkBallVfxQuality()
-        );
-        if (analyticalVolume != null && analyticalQuality == requestedQuality) {
-            return;
-        }
-        if (analyticalVolume != null) {
-            analyticalVolume.destroy();
-        }
-
-        Vector3f ballLocal = volumeWorldToLocal(volume, ballPos);
-        analyticalVolume = DarkBallAnalyticalVolume.build(volume, ballLocal, requestedQuality);
-        analyticalQuality = requestedQuality;
-        startSurfaceMeshBuild(voxelBuildGeneration, analyticalVolume);
-        if (analyticalVolume != null && !analyticalVolumeLogged) {
-            siphonDrainRootLocal.set(analyticalVolume.outletLocal());
-            siphonDrainRootValid = true;
-            analyticalVolumeLogged = true;
-            Shadowedhearts.LOGGER.info(
-                    "[ShadowedHearts] Dark Ball captured shape atlas for pokemon {} active ({})",
-                    pokemonId,
-                    analyticalVolume.summary()
-            );
-        }
-    }
-
-    private void ensureAdvectedDensityField(DarkBallVolumeBuildResult volume, Vec3 ballPos) {
-        if (volume == null || analyticalVolume == null) {
-            return;
-        }
-
-        DarkBallVfxQuality requestedQuality = DarkBallVfxQuality.parse(
-                com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs
-                        .getInstance().getClientConfig().darkBallVfxQuality()
-        );
-        if (advectedDensityField != null
-                && advectedDensityQuality == requestedQuality
-                && advectedDensityShape == analyticalVolume) {
-            return;
-        }
-        if (advectedDensityField != null) {
-            advectedDensityField.destroy();
-        }
-
-        Vector3f ballLocal = volumeWorldToLocal(volume, ballPos);
-        advectedDensityField = DarkBallAdvectedDensityField.build(
-                volume, analyticalVolume, ballLocal, requestedQuality);
-        advectedDensityShape = analyticalVolume;
-        advectedDensityQuality = requestedQuality;
-        if (advectedDensityField != null && !advectedDensityLogged) {
-            siphonDrainRootLocal.set(advectedDensityField.outletLocal());
-            siphonDrainRootValid = true;
-            advectedDensityLogged = true;
-            Shadowedhearts.LOGGER.info(
-                    "[ShadowedHearts] Dark Ball siphon path state for pokemon {} active ({})",
-                    pokemonId,
-                    advectedDensityField.summary()
-            );
-        }
-    }
-
     private static int countVoxelCandidates(DarkBallVolumeBuildResult volume) {
-        if (volume == null || volume.coreField() == null || volume.envelopeField() == null
-                || volume.coreField().length != volume.envelopeField().length) {
-            return 0;
-        }
-
-        int candidates = 0;
-        for (int i = 0; i < volume.coreField().length; i++) {
-            if (volume.coreField()[i] > 0.018f || volume.envelopeField()[i] > 0.052f) {
-                candidates++;
-            }
-        }
-        return candidates;
+        if (volume == null || volume.signedDistanceField() == null) return 0;
+        int count = 0;
+        for (float distance : volume.signedDistanceField()) if (distance <= 0) count++;
+        return count;
     }
 
     private void logVoxelSdfStats(DarkBallVolumeBuildResult volume) {
@@ -3776,11 +1683,6 @@ public final class DarkBallCaptureVfx {
         return frameToken;
     }
 
-    private static float normalizedViewDepth(Vec3 pos, Vec3 center, Vec3 viewDir, float extent) {
-        float projected = (float) pos.subtract(center).dot(viewDir);
-        return Mth.clamp(projected / (extent * 2f) + 0.5f, 0f, 1f);
-    }
-
     private static float remapClamped(float x, float a, float b) {
         return Mth.clamp((x - a) / (b - a), 0f, 1f);
     }
@@ -3796,10 +1698,6 @@ public final class DarkBallCaptureVfx {
         private final Vec3 poseToWorldOffset;
         private final boolean captureGeometry;
         private final SnapshotBounds bounds = new SnapshotBounds();
-        private final List<CapturedBoneNode> renderedBoneNodes =
-                new ArrayList<>();
-        private final List<RenderedCapturedPart> renderedPartStack =
-                new ArrayList<>();
 
         private ModelSnapshotCapture(DarkBallCaptureVfx vfx,
                                      PokemonEntity entity,
@@ -3814,9 +1712,6 @@ public final class DarkBallCaptureVfx {
         private void include(Vec3 point) {
             bounds.include(point);
         }
-    }
-
-    private record StageChatMarker(float startAge, String message) {
     }
 
     private static final class TexturedSnapshotCapture {
@@ -3871,51 +1766,15 @@ public final class DarkBallCaptureVfx {
     private record SnapshotQuad(Vec3 p1, Vec3 p2, Vec3 p3, Vec3 p4, Vec3 center) {
     }
 
-    private record CapturedBoneNode(
-            Vec3 worldPosition,
-            int parentIndex,
-            String path,
-            boolean ownsGeometry,
-            boolean chainable
-    ) {
-    }
+    private record VoxelBuildOutput(int generation, DarkBallVolumeBuildResult volume,
+            int vertexCount, int triangleCount, long buildMillis) {}
 
-    private record RenderedCapturedPart(
-            ModelPart part,
-            int nodeIndex
-    ) {
-    }
+    private record SurfaceMeshBuildOutput(int generation, DarkBallSurfaceMesh mesh,
+            DarkBallAnimeMotion.Binding animeBinding, DarkBallPreparationTimings timings, long buildMillis) {}
 
-    private record VoxelBuildOutput(
-            int generation,
-            DarkBallVolumeBuildResult volume,
-            DarkBallAnalyticalVolume analyticalVolume,
-            DarkBallVfxQuality quality,
-            int vertexCount,
-            int triangleCount,
-            long buildMillis
-    ) {
-    }
-
-    private record SurfaceMeshBuildOutput(
-            int generation,
-            DarkBallAnalyticalVolume source,
-            DarkBallSurfaceMesh mesh,
-            DarkBallSurfaceSplatRenderer.SurfaceSamplePlan
-                    splatSamplePlan,
-            String splatPreparationSummary,
-            long buildMillis
-    ) {
-        private SurfaceMeshBuildOutput {
-            splatPreparationSummary = splatPreparationSummary == null
-                    ? "disabled"
-                    : splatPreparationSummary;
-        }
-    }
-
-    private enum SurfaceMeshPath {
+    private enum PreparationState {
         PENDING,
-        SPLAT,
+        READY,
         FAILED
     }
 

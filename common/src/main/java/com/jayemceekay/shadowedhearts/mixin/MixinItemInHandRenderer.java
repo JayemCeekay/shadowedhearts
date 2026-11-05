@@ -1,6 +1,7 @@
 package com.jayemceekay.shadowedhearts.mixin;
 
 import com.jayemceekay.shadowedhearts.client.render.HeldBallSnagGlowRenderer;
+import com.jayemceekay.shadowedhearts.client.render.DensityFboPipeline;
 import com.jayemceekay.shadowedhearts.client.snag.ClientSnagState;
 import com.llamalad7.mixinextras.sugar.Local;
 import com.mojang.blaze3d.vertex.ByteBufferBuilder;
@@ -23,13 +24,23 @@ public class MixinItemInHandRenderer {
     private void shadowedhearts$afterItemRender(Camera camera, float f, Matrix4f matrix4f, CallbackInfo ci, @Local PoseStack poseStack) {
 
         if (!ClientSnagState.isArmed()) return;
-        if (!HeldBallSnagGlowRenderer.isPokeball(Minecraft.getInstance().player.getMainHandItem()))
+        if (Minecraft.getInstance().player == null
+                || !HeldBallSnagGlowRenderer.isPokeball(Minecraft.getInstance().player.getMainHandItem()))
             return;
-        MultiBufferSource.BufferSource bufferSource = MultiBufferSource.immediate(new ByteBufferBuilder(8192));
-        poseStack.pushPose();
-        HeldBallSnagGlowRenderer.renderHeldBallRingsFirstPerson(poseStack, bufferSource, Minecraft.getInstance().getTimer().getGameTimeDeltaPartialTick(true));
-        poseStack.popPose();
-        bufferSource.endBatch();
+        // This hook follows the native hand model-view pop. Its projection is
+        // still the hand projection, including when Iris renders hands earlier.
+        try (var state = DensityFboPipeline.preserveRenderState();
+             ByteBufferBuilder memory = new ByteBufferBuilder(8192)) {
+            MultiBufferSource.BufferSource bufferSource = MultiBufferSource.immediate(memory);
+            poseStack.pushPose();
+            try {
+                HeldBallSnagGlowRenderer.renderHeldBallRingsFirstPerson(poseStack, bufferSource,
+                        Minecraft.getInstance().getTimer().getGameTimeDeltaPartialTick(true));
+                bufferSource.endBatch();
+            } finally {
+                poseStack.popPose();
+            }
+        }
 
     }
 

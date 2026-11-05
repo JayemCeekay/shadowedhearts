@@ -1,6 +1,9 @@
 package com.jayemceekay.shadowedhearts.client.particle;
 
 import com.jayemceekay.shadowedhearts.client.ModShaders;
+import com.jayemceekay.shadowedhearts.client.aura.AuraReaderPulseRenderer;
+import com.jayemceekay.shadowedhearts.client.aura.IrisHandler;
+import com.jayemceekay.shadowedhearts.client.render.DensityFboPipeline;
 import com.mojang.blaze3d.platform.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.*;
@@ -11,14 +14,15 @@ import net.minecraft.util.Mth;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.phys.Vec3;
 import org.joml.Matrix4f;
-import org.joml.Quaternionf;
+import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL14;
 
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
 /**
- * Dedicated penumbra puff manager and density pipeline entrypoint.
+ * Shared Penumbra, Antumbra and Umbra puff manager and density pipeline entrypoint.
  * <p>
  * This avoids ParticleEngine mixin coupling by owning its own puff list and
  * rendering the density FBO passes from stable platform render callbacks.
@@ -38,10 +42,15 @@ public final class PenumbraTrailSystem {
 
     private static long lastTickGameTime = Long.MIN_VALUE;
     private static long lastRenderFrameToken = Long.MIN_VALUE;
+    private static boolean worldCompositePending;
+    private static Object pendingWorldLevel;
+    private static long pendingWorldGameTime;
 
     private PenumbraTrailSystem() {}
 
     public static void registerPuff(double x, double y, double z, double vx, double vy, double vz) {
+        float density = com.jayemceekay.shadowedhearts.client.ClientEffects.ambientDensity();
+        if (density <= 0 || (density < 1 && RANDOM.nextFloat() >= density)) return;
         float roll = RANDOM.nextFloat();
         float baseSize;
         int lifetime;
@@ -78,9 +87,134 @@ public final class PenumbraTrailSystem {
         }
         lastTickGameTime = Long.MIN_VALUE;
         lastRenderFrameToken = Long.MIN_VALUE;
+        worldCompositePending = false;
+        pendingWorldLevel = null;
     }
 
     public static void renderDensityPipeline(Camera camera, float partialTicks) {
+        renderDensityPipeline(camera, partialTicks, RenderSystem.getProjectionMatrix());
+    }
+
+    public static void renderDensityPipeline(Camera camera, float partialTicks,
+                                             Matrix4f projectionMatrix) {
+        renderDensityPipeline(camera, partialTicks, projectionMatrix, RenderSystem.getModelViewMatrix());
+    }
+
+    public static void renderDensityPipeline(Camera camera, float partialTicks,
+                                             Matrix4f projectionMatrix, Matrix4f modelViewMatrix) {
+        renderVanillaDensityPipeline(camera, partialTicks, projectionMatrix, modelViewMatrix, true);
+    }
+
+    /** Captures scene depth before Fabulous combines its transparency targets. */
+    public static void renderWorldDensityOnly(Camera camera, float partialTicks,
+                                               Matrix4f projectionMatrix, Matrix4f modelViewMatrix) {
+        renderVanillaDensityPipeline(camera, partialTicks, projectionMatrix, modelViewMatrix, false);
+    }
+
+    private static void renderVanillaDensityPipeline(Camera camera, float partialTicks,
+                                                       Matrix4f projectionMatrix, Matrix4f modelViewMatrix,
+                                                       boolean compositeNow) {
+        IrisHandler iris = AuraReaderPulseRenderer.IRIS_HANDLER;
+        // Skip before consuming the frame token: Iris owns a separate world
+        // submission after translucents, and shadow passes must never draw puffs.
+        if (iris != null && (iris.isShaderPackInUse() || iris.isShadowRenderActive())) {
+            return;
+        }
+        if (Minecraft.getInstance().level == null || camera == null) {
+            clear();
+            return;
+        }
+        if (!hasPuffs()) {
+            worldCompositePending = false;
+            pendingWorldLevel = null;
+            return;
+        }
+        if (projectionMatrix == null || modelViewMatrix == null
+                || !projectionMatrix.isFinite() || !modelViewMatrix.isFinite()) return;
+        try (var ignored = DensityFboPipeline.preserveRenderState()) {
+            Minecraft.getInstance().getMainRenderTarget().bindWrite(true);
+            RenderSystem.setProjectionMatrix(new Matrix4f(projectionMatrix),
+                    VertexSorting.DISTANCE_TO_ORIGIN);
+            RenderSystem.getModelViewMatrix().set(modelViewMatrix);
+            renderDensityPipelineInternal(camera, partialTicks, modelViewMatrix, compositeNow);
+        }
+    }
+
+    /** Composites the saved density only after vanilla has finished its transparency passes. */
+    public static void compositeWorld() {
+        IrisHandler iris = AuraReaderPulseRenderer.IRIS_HANDLER;
+        if (iris != null && (iris.isShaderPackInUse() || iris.isShadowRenderActive())) return;
+        if (!worldCompositePending) return;
+        Minecraft mc = Minecraft.getInstance();
+        try {
+            if (mc.level == null || mc.level != pendingWorldLevel
+                    || mc.level.getGameTime() != pendingWorldGameTime
+                    || (mc.getFrameTimeNs() != 0 && mc.getFrameTimeNs() != lastRenderFrameToken)) return;
+            try (var ignored = DensityFboPipeline.preserveRenderState()) {
+                mc.getMainRenderTarget().bindWrite(true);
+                PenumbraDensityFBO.blur();
+                PenumbraDensityFBO.composite();
+            }
+        } finally {
+            worldCompositePending = false;
+            pendingWorldLevel = null;
+        }
+    }
+
+    /** Called with Iris' default world framebuffer bound, before its final passes. */
+    public static void renderIris() {
+        IrisHandler iris = AuraReaderPulseRenderer.IRIS_HANDLER;
+        if (iris == null || !iris.isShaderPackInUse() || iris.isShadowRenderActive()) {
+            return;
+        }
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.level == null || mc.gameRenderer == null) {
+            clear();
+            return;
+        }
+        if (!hasPuffs()) {
+            return;
+        }
+        IrisHandler.IrisRenderingSnapshot frame = iris.getIrisRenderingSnapshot();
+        if (!isUsableIrisFrame(frame)) {
+            return;
+        }
+        Camera camera = mc.gameRenderer.getMainCamera();
+        try (var ignored = DensityFboPipeline.preserveRenderState()) {
+            RenderSystem.setProjectionMatrix(frame.projectionMatrix,
+                    VertexSorting.DISTANCE_TO_ORIGIN);
+            // bindDefault() does not reset shader-pack viewport scaling. The
+            // density/depth copy must use the dimensions of the captured view.
+            RenderSystem.viewport(0, 0, frame.renderWidth, frame.renderHeight);
+            renderDensityPipelineInternal(camera, camera.getPartialTickTime(),
+                    frame.modelViewMatrix, true);
+        }
+    }
+
+    private static boolean isUsableIrisFrame(IrisHandler.IrisRenderingSnapshot frame) {
+        return frame != null && frame.depthTexture > 0
+                && frame.renderWidth > 0 && frame.renderHeight > 0
+                && frame.renderWidth <= 32768 && frame.renderHeight <= 32768
+                && frame.projectionMatrix.isFinite() && frame.modelViewMatrix.isFinite()
+                && Float.isFinite(frame.projectionMatrix.determinant())
+                && Float.isFinite(frame.modelViewMatrix.determinant())
+                && Math.abs(frame.projectionMatrix.determinant()) > 1.0e-8f
+                && Math.abs(frame.modelViewMatrix.determinant()) > 1.0e-8f
+                && Math.abs(frame.projectionMatrix.m23()) > 1.0e-6f;
+    }
+
+    private static boolean hasPuffs() {
+        if (com.jayemceekay.shadowedhearts.client.ClientEffects.ambientDensity() == 0) {
+            clear();
+            return false;
+        }
+        synchronized (ACTIVE) {
+            return !ACTIVE.isEmpty();
+        }
+    }
+
+    private static void renderDensityPipelineInternal(Camera camera, float partialTicks,
+                                                       Matrix4f modelView, boolean compositeNow) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.level == null || camera == null) {
             clear();
@@ -97,6 +231,8 @@ public final class PenumbraTrailSystem {
             return;
         }
         lastRenderFrameToken = frameToken;
+        worldCompositePending = false;
+        pendingWorldLevel = null;
 
         tickToGameTime(gameTime);
 
@@ -108,7 +244,9 @@ public final class PenumbraTrailSystem {
             return;
         }
 
-        if (ModShaders.PENUMBRA_DENSITY_SPLAT == null) {
+        if (ModShaders.PENUMBRA_DENSITY_SPLAT == null
+                || ModShaders.PENUMBRA_BLUR == null
+                || ModShaders.PENUMBRA_COMPOSITE == null) {
             return;
         }
 
@@ -117,13 +255,19 @@ public final class PenumbraTrailSystem {
         }
 
         try {
-            renderDensitySplats(camera, partialTicks);
+            renderDensitySplats(camera, partialTicks, modelView);
         } finally {
             PenumbraDensityFBO.endDensityPass();
         }
 
-        PenumbraDensityFBO.blur();
-        PenumbraDensityFBO.composite();
+        if (compositeNow) {
+            PenumbraDensityFBO.blur();
+            PenumbraDensityFBO.composite();
+        } else {
+            worldCompositePending = true;
+            pendingWorldLevel = mc.level;
+            pendingWorldGameTime = gameTime;
+        }
     }
 
     private static void tickToGameTime(long gameTime) {
@@ -176,28 +320,33 @@ public final class PenumbraTrailSystem {
         }
     }
 
-    private static void renderDensitySplats(Camera camera, float partialTicks) {
+    private static void renderDensitySplats(Camera camera, float partialTicks,
+                                            Matrix4f modelView) {
         // Enable depth test against the blitted main depth buffer so splats
         // behind terrain/blocks are occluded. Depth writes stay off so splats
         // don't interfere with each other's depth ordering.
         RenderSystem.enableDepthTest();
+        RenderSystem.depthFunc(GL11.GL_LEQUAL);
         RenderSystem.depthMask(false);
         RenderSystem.enableBlend();
         RenderSystem.blendFunc(GlStateManager.SourceFactor.ONE, GlStateManager.DestFactor.ONE);
         RenderSystem.disableCull();
         RenderSystem.colorMask(true, true, true, true);
+        // Iris also changes raw GL outside RenderSystem's state cache. Establish
+        // the splat state explicitly; endDensityPass restores both sets of state.
+        GL11.glEnable(GL11.GL_DEPTH_TEST);
+        GL11.glDepthFunc(GL11.GL_LEQUAL);
+        GL11.glDepthMask(false);
+        GL11.glEnable(GL11.GL_BLEND);
+        GL11.glBlendFunc(GL11.GL_ONE, GL11.GL_ONE);
+        GL14.glBlendEquation(GL14.GL_FUNC_ADD);
+        GL11.glDisable(GL11.GL_CULL_FACE);
+        GL11.glDisable(GL11.GL_SCISSOR_TEST);
+        GL11.glColorMask(true, true, true, true);
 
-        // Save current RenderSystem matrices
-        Matrix4f savedModelView = new Matrix4f(RenderSystem.getModelViewMatrix());
-
-        // Set the camera view matrix on RenderSystem directly — BufferUploader.drawWithShader()
-        // reads from RenderSystem and overwrites any values set on the shader instance.
-        // Puff positions are camera-relative world-space offsets (worldPos - camPos), so
-        // the view matrix (inverse camera rotation) must transform them into camera space
-        // before the perspective projection. The billboard rotation (camOrientation) on each
-        // quad combines with this view matrix to produce correctly oriented, positioned splats.
-        Quaternionf viewRot = new Quaternionf(camera.rotation()).conjugate();
-        RenderSystem.getModelViewMatrix().set(new Matrix4f().rotation(viewRot));
+        // BufferUploader reads RenderSystem matrices. Keep Iris' captured view
+        // paired with its projection instead of rebuilding only camera rotation.
+        RenderSystem.getModelViewMatrix().set(modelView);
 
         var shader = ModShaders.PENUMBRA_DENSITY_SPLAT;
         RenderSystem.setShader(() -> shader);
@@ -282,13 +431,7 @@ public final class PenumbraTrailSystem {
             BufferUploader.drawWithShader(mesh);
         }
 
-        // Restore original RenderSystem model-view matrix
-        RenderSystem.getModelViewMatrix().set(savedModelView);
-
-        RenderSystem.enableCull();
-        RenderSystem.defaultBlendFunc();
-        RenderSystem.depthMask(true);
-        RenderSystem.enableDepthTest();
+        // The enclosing density transaction restores state even if drawing fails.
     }
 
     private static float sampleSize(Puff puff, float partialTicks) {

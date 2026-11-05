@@ -1,10 +1,10 @@
 #version 150
 
-#moj_import <shadowedhearts:shadow_pokemon_aura_density.glsl>
+#moj_import <shadowedhearts:shadow_pokemon_aura_classic_density.glsl>
 
 uniform sampler2D Sampler0;
 uniform vec4 ColorModulator;
-uniform float GameTime;
+uniform float AuraTime;
 uniform float AuraNoiseScale;
 uniform float AuraMaskFalloff;
 
@@ -18,14 +18,11 @@ void main() {
     vec4 texColor = texture(Sampler0, texCoord0);
     if (texColor.a < 0.01) discard;
 
-    // XD puff density is isolated from both Signature and Colosseum. The
-    // initial material intentionally shares their proven density response;
-    // the style profile controls sparse burst emission independently.
-    fragColor = shadowPokemonAuraDensity(
+    fragColor = shadowPokemonAuraXdDensity(
             texColor,
             vertexColor * ColorModulator,
             worldPos,
-            GameTime,
+            AuraTime,
             AuraNoiseScale,
             AuraMaskFalloff
     );

@@ -4,11 +4,13 @@ import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.texture.OverlayTexture;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * Capture-only buffer wrapper for the Dark Ball impact snapshot.
@@ -40,7 +42,14 @@ public final class DarkBallFieldMaskBufferSource implements MultiBufferSource {
 
     @Override
     public @NotNull VertexConsumer getBuffer(@NotNull RenderType renderType) {
-        if (!DarkBallEntityRenderTypeFilter.accepts(renderType)) {
+        // VertexConsumer has no endVertex in this version. Finish the preceding
+        // draw's last vertex before recording another material, so its final
+        // quad cannot be replayed after a later coplanar overlay.
+        for (CapturingVertexConsumer consumer : consumers) {
+            consumer.finishCurrentVertex();
+        }
+        CapturedMaterial material = DarkBallEntityRenderTypeFilter.captureMaterial(renderType);
+        if (material == null) {
             return DISCARD;
         }
 
@@ -48,7 +57,8 @@ public final class DarkBallFieldMaskBufferSource implements MultiBufferSource {
                 capturedQuads,
                 capturedWorldPositions,
                 capturedTriangles,
-                cameraPosition
+                cameraPosition,
+                material
         );
         consumers.add(capturing);
         return capturing;
@@ -70,7 +80,26 @@ public final class DarkBallFieldMaskBufferSource implements MultiBufferSource {
                                CapturedVertex p2,
                                CapturedVertex p3,
                                CapturedVertex p4,
-                               Vec3 center) {
+                               Vec3 center,
+                               CapturedMaterial material) {
+        public CapturedQuad(CapturedVertex p1, CapturedVertex p2,
+                            CapturedVertex p3, CapturedVertex p4, Vec3 center) {
+            this(p1, p2, p3, p4, center, null);
+        }
+    }
+
+    /** The selected resource includes the frozen frame for discrete animation. */
+    public record CapturedMaterial(ResourceLocation texture, AlphaMode alphaMode) {
+        public CapturedMaterial {
+            Objects.requireNonNull(texture, "texture");
+            Objects.requireNonNull(alphaMode, "alphaMode");
+        }
+    }
+
+    /** Textured layers retain the capture silhouette's shared 0.08 cutoff. */
+    public enum AlphaMode {
+        TEXTURED,
+        OPAQUE
     }
 
     public record CapturedVertex(Vec3 worldPos,
@@ -93,7 +122,13 @@ public final class DarkBallFieldMaskBufferSource implements MultiBufferSource {
                                    float au, float av,
                                    float bu, float bv,
                                    float cu, float cv,
-                                   int alphaA, int alphaB, int alphaC) {
+                                   int alphaA, int alphaB, int alphaC,
+                                   CapturedMaterial material) {
+        public CapturedTriangle(Vec3 a, Vec3 b, Vec3 c,
+                                float au, float av, float bu, float bv, float cu, float cv,
+                                int alphaA, int alphaB, int alphaC) {
+            this(a, b, c, au, av, bu, bv, cu, cv, alphaA, alphaB, alphaC, null);
+        }
     }
 
     private static final class CapturingVertexConsumer implements VertexConsumer {
@@ -105,6 +140,7 @@ public final class DarkBallFieldMaskBufferSource implements MultiBufferSource {
         private final List<Vec3> capturedWorldPositions;
         private final List<CapturedTriangle> capturedTriangles;
         private final Vec3 cameraPosition;
+        private final CapturedMaterial material;
         private final CapturedVertex[] pendingFace = new CapturedVertex[4];
         private int pendingFaceCount = 0;
         private MutableVertex current;
@@ -112,11 +148,13 @@ public final class DarkBallFieldMaskBufferSource implements MultiBufferSource {
         private CapturingVertexConsumer(List<CapturedQuad> capturedQuads,
                                         List<Vec3> capturedWorldPositions,
                                         List<CapturedTriangle> capturedTriangles,
-                                        Vec3 cameraPosition) {
+                                        Vec3 cameraPosition,
+                                        CapturedMaterial material) {
             this.capturedQuads = capturedQuads;
             this.capturedWorldPositions = capturedWorldPositions;
             this.capturedTriangles = capturedTriangles;
             this.cameraPosition = cameraPosition;
+            this.material = material;
         }
 
         @Override
@@ -206,7 +244,8 @@ public final class DarkBallFieldMaskBufferSource implements MultiBufferSource {
                             pendingFace[1],
                             pendingFace[2],
                             pendingFace[3],
-                            center
+                            center,
+                            material
                     ));
                     if (capturedWorldPositions != null && capturedWorldPositions.size() < MAX_CAPTURED_VERTICES) {
                         capturedWorldPositions.add(center);
@@ -220,7 +259,8 @@ public final class DarkBallFieldMaskBufferSource implements MultiBufferSource {
                             pendingFace[0].u(), pendingFace[0].v(),
                             pendingFace[1].u(), pendingFace[1].v(),
                             pendingFace[2].u(), pendingFace[2].v(),
-                            pendingFace[0].alpha(), pendingFace[1].alpha(), pendingFace[2].alpha()
+                            pendingFace[0].alpha(), pendingFace[1].alpha(), pendingFace[2].alpha(),
+                            material
                     ));
                     capturedTriangles.add(new CapturedTriangle(
                             pendingFace[0].worldPos(),
@@ -229,7 +269,8 @@ public final class DarkBallFieldMaskBufferSource implements MultiBufferSource {
                             pendingFace[0].u(), pendingFace[0].v(),
                             pendingFace[2].u(), pendingFace[2].v(),
                             pendingFace[3].u(), pendingFace[3].v(),
-                            pendingFace[0].alpha(), pendingFace[2].alpha(), pendingFace[3].alpha()
+                            pendingFace[0].alpha(), pendingFace[2].alpha(), pendingFace[3].alpha(),
+                            material
                     ));
                 }
                 pendingFaceCount = 0;

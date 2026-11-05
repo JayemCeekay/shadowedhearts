@@ -1,26 +1,13 @@
 package com.jayemceekay.shadowedhearts.client.ball;
 
-import net.minecraft.client.Camera;
-import net.minecraft.util.Mth;
-import net.minecraft.world.phys.Vec3;
 import org.joml.Matrix4f;
 import org.joml.Quaternionf;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
 
-/**
- * Conservative screen-space bounds for the direct Dark Ball volume.
- *
- * <p>The volume shader renders an oriented body box and sixteen square siphon
- * prisms. This helper mirrors those coarse geometric envelopes on the CPU and
- * projects them before the expensive fragment shader is submitted. It never
- * attempts a tight bound through the near plane: an ambiguous projection
- * deliberately falls back to the full viewport so the optimization cannot
- * clip the effect.
- */
+/** Conservative screen-space bounds for the anime capture and its exact source mask. */
 final class DarkBallProjectedEffectBounds {
-    static final int PRESENTATION_PRISM_COUNT = 16;
     static final int DIRECT_PADDING_PIXELS = 1;
     static final int EDGE_PADDING_PIXELS = 2;
     // Four final-screen-pixel morphology reach plus one source-pixel filtering
@@ -28,129 +15,14 @@ final class DarkBallProjectedEffectBounds {
     static final int COMPOSITE_PADDING_PIXELS = 5;
 
     private static final float CLIP_W_EPSILON = 1.0e-5f;
-    private static final float SEGMENT_EPSILON = 1.0e-6f;
-    private static final float NORMALIZE_LENGTH_SQUARED_EPSILON =
-            1.0e-7f;
-    private static final float SQRT_TWO = 1.41421356f;
 
     private DarkBallProjectedEffectBounds() {
-    }
-
-    static UvBounds forSurfelAndSiphon(
-            DarkBallAdvectedDensityField field,
-            DarkBallAnalyticalVolume shape,
-            DarkBallVolumeBuildResult volume,
-            Matrix4f projection,
-            Camera camera,
-            Vec3 cameraPosition,
-            float turbulenceBlend,
-            float voxelSize,
-            float siphonEndRadius,
-            boolean includeBody,
-            boolean includeSiphon,
-            float siphonInletRadiusScale) {
-        return forSurfelAndSiphon(
-                field,
-                shape,
-                volume,
-                projection,
-                camera,
-                cameraPosition,
-                turbulenceBlend,
-                voxelSize,
-                siphonEndRadius,
-                includeBody,
-                includeSiphon,
-                siphonInletRadiusScale,
-                0.0f);
-    }
-
-    static UvBounds forSurfelAndSiphon(
-            DarkBallAdvectedDensityField field,
-            DarkBallAnalyticalVolume shape,
-            DarkBallVolumeBuildResult volume,
-            Matrix4f projection,
-            Camera camera,
-            Vec3 cameraPosition,
-            float turbulenceBlend,
-            float voxelSize,
-            float siphonEndRadius,
-            boolean includeBody,
-            boolean includeSiphon,
-            float siphonInletRadiusScale,
-            float extraBodyMargin) {
-        if (field == null
-                || shape == null
-                || volume == null
-                || camera == null
-                || cameraPosition == null) {
-            return UvBounds.fullScreen();
-        }
-
-        Vector3d worldRoot = toVector3d(volume.root());
-        Vector3d worldAxis = toVector3d(volume.axis());
-        Vector3d worldSide = toVector3d(volume.side());
-        Vector3d worldUp = toVector3d(volume.up());
-        Projection bounds = begin(
-                projection,
-                camera.rotation(),
-                toVector3d(cameraPosition));
-
-        if (includeBody) {
-            float baseMargin = Math.max(
-                    Math.max(
-                            voxelSize * 2.0f,
-                            volume.bodyRadius() * 0.090f),
-                    Math.max(extraBodyMargin, 0.0f));
-            float auraMargin = volume.bodyRadius() * 0.36f
-                    * Mth.clamp(turbulenceBlend, 0.0f, 1.0f);
-            bounds.includeOrientedBox(
-                    worldRoot,
-                    worldAxis,
-                    worldSide,
-                    worldUp,
-                    -baseMargin - auraMargin,
-                    -volume.radius() - auraMargin,
-                    -volume.radius() - auraMargin,
-                    shape.occupiedBodyMaxX()
-                            + baseMargin + auraMargin,
-                    volume.radius() + auraMargin,
-                    volume.radius() + auraMargin);
-        }
-
-        if (includeSiphon) {
-            Vector3f[] nodes =
-                    new Vector3f[DarkBallSiphonBoltPath.NODE_COUNT];
-            for (int node = 0; node < nodes.length; node++) {
-                nodes[node] =
-                        new Vector3f(field.siphonBoltNode(node));
-            }
-            bounds.includeSiphonPrisms(
-                    worldRoot,
-                    worldAxis,
-                    worldSide,
-                    worldUp,
-                    nodes,
-                    volume.bodyRadius(),
-                    voxelSize,
-                    siphonEndRadius,
-                    siphonInletRadiusScale);
-        }
-
-        return bounds.finish(
-                DarkBallDensityFBO.getTargetWidth(),
-                DarkBallDensityFBO.getTargetHeight(),
-                0);
     }
 
     static Projection begin(Matrix4f projection,
                             Quaternionf cameraRotation,
                             Vector3d cameraPosition) {
         return new Projection(projection, cameraRotation, cameraPosition);
-    }
-
-    private static Vector3d toVector3d(Vec3 vector) {
-        return new Vector3d(vector.x, vector.y, vector.z);
     }
 
     /**
@@ -502,115 +374,6 @@ final class DarkBallProjectedEffectBounds {
             return eyeView.sub(retainedEyeWorld);
         }
 
-        /**
-         * Includes the shader's sixteen node-aware Hermite presentation
-         * prisms. Each square cross-section is enclosed by a radius
-         * {@code sqrt(2) * halfWidth}, so this remains conservative without
-         * reproducing the shader's transported side/up frame.
-         */
-        void includeSiphonPrisms(Vector3d worldRoot,
-                                 Vector3d worldAxis,
-                                 Vector3d worldSide,
-                                 Vector3d worldUp,
-                                 Vector3f[] nodes,
-                                 float bodyRadius,
-                                 float voxelSize,
-                                 float siphonEndRadius) {
-            includeSiphonPrisms(
-                    worldRoot, worldAxis, worldSide, worldUp,
-                    nodes, bodyRadius, voxelSize, siphonEndRadius, 1.0f);
-        }
-
-        void includeSiphonPrisms(Vector3d worldRoot,
-                                 Vector3d worldAxis,
-                                 Vector3d worldSide,
-                                 Vector3d worldUp,
-                                 Vector3f[] nodes,
-                                 float bodyRadius,
-                                 float voxelSize,
-                                 float siphonEndRadius,
-                                 float siphonInletRadiusScale) {
-            if (forceFullScreen) {
-                return;
-            }
-            if (!validNodes(nodes)
-                    || !Float.isFinite(bodyRadius)
-                    || !Float.isFinite(voxelSize)
-                    || !Float.isFinite(siphonEndRadius)
-                    || !Float.isFinite(siphonInletRadiusScale)) {
-                forceFullScreen = true;
-                return;
-            }
-
-            Vector3f pathFallback = new Vector3f(
-                    nodes[nodes.length - 1]).sub(nodes[0]);
-            Vector3f previousAxis = normalizeOr(
-                    siphonPathNodeTangent(nodes, 0), pathFallback);
-            float previousLength = 0.0f;
-            float previousHalfWidth = siphonRadius(
-                    0.0f, bodyRadius, voxelSize, siphonEndRadius,
-                    siphonInletRadiusScale);
-            boolean hasPreviousPrism = false;
-            Vector3f prismStart = siphonPathPoint(nodes, 0.0f);
-
-            for (int prismIndex = 0;
-                 prismIndex < PRESENTATION_PRISM_COUNT;
-                 prismIndex++) {
-                float startT = siphonPresentationCurveT(prismIndex);
-                float endT = siphonPresentationCurveT(prismIndex + 1);
-                Vector3f prismEnd = siphonPathPoint(nodes, endT);
-                Vector3f segment = new Vector3f(prismEnd).sub(prismStart);
-                float prismLength = segment.length();
-                Vector3f prismAxis = normalizeOr(segment, previousAxis);
-                float prismHalfWidth = Math.max(
-                        siphonRadius(startT, bodyRadius, voxelSize,
-                                siphonEndRadius,
-                                siphonInletRadiusScale),
-                        siphonRadius(endT, bodyRadius, voxelSize,
-                                siphonEndRadius,
-                                siphonInletRadiusScale));
-
-                float startExtension = 0.0f;
-                if (hasPreviousPrism && prismLength > SEGMENT_EPSILON) {
-                    float turnCosine = clamp(
-                            previousAxis.dot(prismAxis), -0.995f, 1.0f);
-                    float turnTangent = (float) Math.sqrt(Math.max(
-                            (1.0f - turnCosine)
-                                    / (1.0f + turnCosine),
-                            0.0f));
-                    float requestedMiter = voxelSize * 0.12f
-                            + SQRT_TWO
-                            * Math.max(previousHalfWidth, prismHalfWidth)
-                            * turnTangent;
-                    float overlapCap = 0.45f
-                            * Math.min(previousLength, prismLength);
-                    startExtension = Math.min(
-                            requestedMiter, Math.max(overlapCap, 0.0f));
-                }
-
-                if (prismLength > SEGMENT_EPSILON) {
-                    Vector3f extendedStart = new Vector3f(prismStart)
-                            .fma(-startExtension, prismAxis);
-                    float envelope = SQRT_TWO
-                            * Math.max(prismHalfWidth, 0.0f);
-                    includeOrientedBox(
-                            worldRoot, worldAxis, worldSide, worldUp,
-                            Math.min(extendedStart.x, prismEnd.x) - envelope,
-                            Math.min(extendedStart.y, prismEnd.y) - envelope,
-                            Math.min(extendedStart.z, prismEnd.z) - envelope,
-                            Math.max(extendedStart.x, prismEnd.x) + envelope,
-                            Math.max(extendedStart.y, prismEnd.y) + envelope,
-                            Math.max(extendedStart.z, prismEnd.z) + envelope);
-
-                    hasPreviousPrism = true;
-                    previousAxis = prismAxis;
-                    previousLength = prismLength;
-                    previousHalfWidth = prismHalfWidth;
-                }
-                prismStart = prismEnd;
-            }
-        }
-
         UvBounds finish(int viewportWidth, int viewportHeight,
                         int paddingPixels) {
             if (forceFullScreen || !hasVisibleBounds) {
@@ -621,135 +384,6 @@ final class DarkBallProjectedEffectBounds {
                     .expandByPixels(
                             paddingPixels, viewportWidth, viewportHeight);
         }
-    }
-
-    static float siphonPresentationCurveT(int boundaryIndex) {
-        int segmentCount = DarkBallSiphonBoltPath.NODE_COUNT - 1;
-        if (boundaryIndex <= 0) {
-            return 0.0f;
-        }
-        if (boundaryIndex >= PRESENTATION_PRISM_COUNT) {
-            return 1.0f;
-        }
-        if (boundaryIndex <= 3) {
-            return boundaryIndex / (float) segmentCount;
-        }
-        int offsetIndex = boundaryIndex - 4;
-        int block = offsetIndex / 4;
-        int remainder = offsetIndex - block * 4;
-        float pathUnits = 3 + block * 3
-                + (remainder == 0 ? 0.5f : remainder);
-        return pathUnits / segmentCount;
-    }
-
-    static Vector3f siphonPathPoint(Vector3f[] nodes, float curveT) {
-        int segmentCount = DarkBallSiphonBoltPath.NODE_COUNT - 1;
-        float scaled = clamp01(curveT) * segmentCount;
-        int segmentIndex = Math.max(0, Math.min(
-                (int) Math.floor(scaled), segmentCount - 1));
-        float segmentT = clamp01(scaled - segmentIndex);
-        Vector3f start = nodes[segmentIndex];
-        Vector3f end = nodes[segmentIndex + 1];
-        Vector3f startTangent =
-                siphonPathNodeTangent(nodes, segmentIndex);
-        Vector3f endTangent =
-                siphonPathNodeTangent(nodes, segmentIndex + 1);
-
-        float t2 = segmentT * segmentT;
-        float t3 = t2 * segmentT;
-        return new Vector3f(start).mul(
-                        2.0f * t3 - 3.0f * t2 + 1.0f)
-                .fma(t3 - 2.0f * t2 + segmentT, startTangent)
-                .fma(-2.0f * t3 + 3.0f * t2, end)
-                .fma(t3 - t2, endTangent);
-    }
-
-    static Vector3f siphonPathNodeTangent(Vector3f[] nodes, int index) {
-        int lastIndex = DarkBallSiphonBoltPath.NODE_COUNT - 1;
-        if (index <= 0) {
-            return new Vector3f(nodes[1]).sub(nodes[0]).mul(0.68f);
-        }
-        if (index >= lastIndex) {
-            return new Vector3f(nodes[lastIndex])
-                    .sub(nodes[lastIndex - 1]).mul(0.68f);
-        }
-
-        Vector3f previousLeg =
-                new Vector3f(nodes[index]).sub(nodes[index - 1]);
-        Vector3f nextLeg =
-                new Vector3f(nodes[index + 1]).sub(nodes[index]);
-        float previousLength = previousLeg.length();
-        float nextLength = nextLeg.length();
-        Vector3f previousDirection = normalizeOr(previousLeg, nextLeg);
-        Vector3f nextDirection = normalizeOr(nextLeg, previousLeg);
-        Vector3f tangentDirection = normalizeOr(
-                new Vector3f(previousDirection).add(nextDirection),
-                nextDirection);
-        float alignment = clamp(
-                previousDirection.dot(nextDirection), -1.0f, 1.0f);
-        float cornerRetention = mix(
-                0.16f, 0.58f, smoothstep(0.94f, 0.995f, alignment));
-        return tangentDirection.mul(
-                Math.min(previousLength, nextLength) * cornerRetention);
-    }
-
-    static float siphonRadius(float curveT,
-                              float bodyRadius,
-                              float voxelSize,
-                              float siphonEndRadius) {
-        return siphonRadius(
-                curveT, bodyRadius, voxelSize, siphonEndRadius, 1.0f);
-    }
-
-    static float siphonRadius(float curveT,
-                              float bodyRadius,
-                              float voxelSize,
-                              float siphonEndRadius,
-                              float siphonInletRadiusScale) {
-        float u = clamp01(curveT);
-        float inletScale = clamp(
-                siphonInletRadiusScale, 0.0f, 1.0f);
-        float rootRadius = Math.max(
-                bodyRadius * 0.055f * inletScale,
-                voxelSize * 0.90f);
-        float shoulderRadius = Math.max(
-                bodyRadius * 0.070f * inletScale,
-                voxelSize * 1.10f);
-        float endRadius = Math.max(siphonEndRadius * 0.72f,
-                voxelSize * 0.90f);
-        float throat = smoothstep(0.0f, 0.12f, u);
-        float downstream = smoothstep(0.10f, 1.0f, u);
-        return mix(mix(rootRadius, shoulderRadius, throat),
-                endRadius, downstream);
-    }
-
-    private static Vector3f normalizeOr(Vector3f source,
-                                        Vector3f fallback) {
-        Vector3f result = new Vector3f(source);
-        if (result.lengthSquared()
-                <= NORMALIZE_LENGTH_SQUARED_EPSILON) {
-            result.set(fallback);
-        }
-        if (result.lengthSquared()
-                <= NORMALIZE_LENGTH_SQUARED_EPSILON) {
-            return result.set(1.0f, 0.0f, 0.0f);
-        }
-        return result.normalize();
-    }
-
-    private static boolean validNodes(Vector3f[] nodes) {
-        if (nodes == null
-                || nodes.length < DarkBallSiphonBoltPath.NODE_COUNT) {
-            return false;
-        }
-        for (int index = 0;
-             index < DarkBallSiphonBoltPath.NODE_COUNT;
-             index++) {
-            if (!isFinite(nodes[index])) {
-                return false;
-            }
-        }
-        return true;
     }
 
     private static boolean isFinite(Vector3d vector) {
@@ -778,17 +412,6 @@ final class DarkBallProjectedEffectBounds {
                 && Float.isFinite(quaternion.y)
                 && Float.isFinite(quaternion.z)
                 && Float.isFinite(quaternion.w);
-    }
-
-    private static float smoothstep(float edge0, float edge1,
-                                    float value) {
-        float t = clamp01((value - edge0)
-                / Math.max(edge1 - edge0, 1.0e-6f));
-        return t * t * (3.0f - 2.0f * t);
-    }
-
-    private static float mix(float start, float end, float amount) {
-        return start + (end - start) * amount;
     }
 
     private static float clamp01(float value) {

@@ -193,7 +193,7 @@ public final class ShadowAuraEmitters {
     }
 
     public static float getFboAuraMaskStrength(PokemonEntity entity) {
-        if (entity == null || !ShadowedHeartsConfigs.getInstance().getClientConfig().enableShadowAura()) {
+        if (entity == null || !com.jayemceekay.shadowedhearts.client.ClientEffects.auraVisible()) {
             return 0.0f;
         }
 
@@ -320,7 +320,7 @@ public final class ShadowAuraEmitters {
     }
 
     public static void onRender(Camera camera, float partialTicks) {
-        if (!ShadowedHeartsConfigs.getInstance().getClientConfig().enableShadowAura()) return;
+        if (!com.jayemceekay.shadowedhearts.client.ClientEffects.auraVisible()) return;
         var mc = Minecraft.getInstance();
         if (mc == null || mc.level == null) return;
 

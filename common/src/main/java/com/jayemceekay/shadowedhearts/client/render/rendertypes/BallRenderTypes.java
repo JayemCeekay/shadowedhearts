@@ -73,6 +73,7 @@ public final class BallRenderTypes {
                 .setDepthTestState(RenderStateShard.LEQUAL_DEPTH_TEST)
                 .setWriteMaskState(RenderStateShard.COLOR_WRITE)
                 .setCullState(RenderStateShard.NO_CULL)
+                .setOutputState(CURRENT_BOUND_TARGET)
                 .createCompositeState(true);
         return RenderType.create("shadowedhearts:ball_glow", DefaultVertexFormat.NEW_ENTITY, VertexFormat.Mode.QUADS, 256, false, true, state);
     }
@@ -113,6 +114,7 @@ public final class BallRenderTypes {
                 .setDepthTestState(RenderStateShard.LEQUAL_DEPTH_TEST)
                 .setWriteMaskState(RenderStateShard.COLOR_WRITE)
                 .setCullState(RenderStateShard.NO_CULL)
+                .setOutputState(CURRENT_BOUND_TARGET)
                 .createCompositeState(true);
         return RenderType.create("shadowedhearts:ball_orb_glow", DefaultVertexFormat.NEW_ENTITY, VertexFormat.Mode.QUADS, 256, false, true, state);
     }
@@ -153,6 +155,7 @@ public final class BallRenderTypes {
                 .setWriteMaskState(RenderStateShard.COLOR_WRITE)
                 .setCullState(RenderStateShard.NO_CULL)
                 .setLayeringState(RenderStateShard.NO_LAYERING)
+                .setOutputState(CURRENT_BOUND_TARGET)
                 .createCompositeState(true);
         return RenderType.create("shadowedhearts:ball_trail_add", DefaultVertexFormat.NEW_ENTITY, VertexFormat.Mode.QUADS, 512, false, true, state);
     }
@@ -194,6 +197,7 @@ public final class BallRenderTypes {
                 .setDepthTestState(RenderStateShard.LEQUAL_DEPTH_TEST)
                 .setWriteMaskState(RenderStateShard.COLOR_WRITE)
                 .setCullState(RenderStateShard.NO_CULL)
+                .setOutputState(CURRENT_BOUND_TARGET)
                 .createCompositeState(true);
         return RenderType.create("shadowedhearts:snag_flare", DefaultVertexFormat.NEW_ENTITY, VertexFormat.Mode.QUADS, 256, false, true, state);
     }
@@ -215,6 +219,7 @@ public final class BallRenderTypes {
                 .setDepthTestState(RenderStateShard.LEQUAL_DEPTH_TEST)
                 .setWriteMaskState(RenderStateShard.COLOR_WRITE)
                 .setCullState(RenderStateShard.NO_CULL)
+                .setOutputState(CURRENT_BOUND_TARGET)
                 .createCompositeState(true);
         return RenderType.create("shadowedhearts:snag_orb", DefaultVertexFormat.NEW_ENTITY, VertexFormat.Mode.QUADS, 256, false, true, state);
     }
@@ -234,6 +239,7 @@ public final class BallRenderTypes {
                 .setDepthTestState(RenderStateShard.LEQUAL_DEPTH_TEST)
                 .setWriteMaskState(RenderStateShard.COLOR_WRITE)
                 .setCullState(RenderStateShard.NO_CULL)
+                .setOutputState(CURRENT_BOUND_TARGET)
                 .createCompositeState(true);
         return RenderType.create("shadowedhearts:vfx_add", DefaultVertexFormat.NEW_ENTITY, VertexFormat.Mode.QUADS, 512, false, true, state);
     }
@@ -278,6 +284,7 @@ public final class BallRenderTypes {
                 .setDepthTestState(RenderStateShard.LEQUAL_DEPTH_TEST)
                 .setWriteMaskState(RenderStateShard.COLOR_DEPTH_WRITE)
                 .setCullState(RenderStateShard.NO_CULL)
+                .setOutputState(CURRENT_BOUND_TARGET)
                 .createCompositeState(true);
         return RenderType.create("shadowedhearts:snag_dissolve", DefaultVertexFormat.NEW_ENTITY, VertexFormat.Mode.QUADS, 256, true, false, state);
     }
@@ -351,6 +358,7 @@ public final class BallRenderTypes {
                 .setDepthTestState(RenderStateShard.LEQUAL_DEPTH_TEST)
                 .setWriteMaskState(RenderStateShard.COLOR_WRITE)
                 .setCullState(RenderStateShard.NO_CULL)
+                .setOutputState(CURRENT_BOUND_TARGET)
                 .createCompositeState(true);
         return RenderType.create("shadowedhearts:shock_ring_glow_add", DefaultVertexFormat.NEW_ENTITY, VertexFormat.Mode.QUADS, 512, false, true, state);
     }
@@ -370,6 +378,7 @@ public final class BallRenderTypes {
                 .setDepthTestState(RenderStateShard.LEQUAL_DEPTH_TEST)
                 .setWriteMaskState(RenderStateShard.COLOR_WRITE)
                 .setCullState(RenderStateShard.NO_CULL)
+                .setOutputState(CURRENT_BOUND_TARGET)
                 .createCompositeState(true);
         return RenderType.create("shadowedhearts:spark_glow_add", DefaultVertexFormat.NEW_ENTITY, VertexFormat.Mode.QUADS, 512, false, true, state);
     }
@@ -389,6 +398,7 @@ public final class BallRenderTypes {
                 .setDepthTestState(RenderStateShard.LEQUAL_DEPTH_TEST)
                 .setWriteMaskState(RenderStateShard.COLOR_WRITE)
                 .setCullState(RenderStateShard.NO_CULL)
+                .setOutputState(CURRENT_BOUND_TARGET)
                 .createCompositeState(true);
         return RenderType.create("shadowedhearts:ball_trail_core_add", DefaultVertexFormat.NEW_ENTITY, VertexFormat.Mode.QUADS, 512, false, true, state);
     }

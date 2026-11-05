@@ -1,6 +1,8 @@
 package com.jayemceekay.shadowedhearts.client.ball;
 
 import com.jayemceekay.shadowedhearts.client.ModShaders;
+import com.jayemceekay.shadowedhearts.client.aura.AuraReaderPulseRenderer;
+import com.jayemceekay.shadowedhearts.client.render.DensityFboPipeline;
 import com.mojang.blaze3d.platform.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.*;
@@ -13,6 +15,8 @@ import net.minecraft.util.RandomSource;
 import net.minecraft.world.phys.Vec3;
 import org.joml.Matrix4f;
 import org.joml.Quaternionf;
+import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL14;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -43,6 +47,12 @@ public final class SnagTrailDensitySystem {
     private static long lastRenderFrameToken = Long.MIN_VALUE;
 
     private SnagTrailDensitySystem() {}
+
+    public static boolean hasActive() {
+        synchronized (ACTIVE) {
+            return !ACTIVE.isEmpty();
+        }
+    }
 
     private enum PuffType {
         ORANGE_SMOKE,
@@ -119,6 +129,19 @@ public final class SnagTrailDensitySystem {
      * {@link SnagDensityFBO}.
      */
     public static void renderDensityPipeline(Camera camera, float partialTicks) {
+        var iris = AuraReaderPulseRenderer.IRIS_HANDLER;
+        if (iris != null && (iris.isShaderPackInUse() || iris.isShadowRenderActive())) return;
+        try (var state = DensityFboPipeline.preserveRenderState()) {
+            renderDensityPipelineInternal(camera, partialTicks);
+        }
+    }
+
+    /** Submitted only by the scoped Iris pre-final Snag pass. */
+    static void renderIris(Camera camera, float partialTicks) {
+        renderDensityPipelineInternal(camera, partialTicks);
+    }
+
+    private static void renderDensityPipelineInternal(Camera camera, float partialTicks) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.level == null || camera == null) {
             clear();
@@ -233,16 +256,25 @@ public final class SnagTrailDensitySystem {
                                                     PuffType typeFilter, ShaderInstance shader,
                                                     ResourceLocation densityTexture) {
         RenderSystem.enableDepthTest();
+        RenderSystem.depthFunc(GL11.GL_LEQUAL);
         RenderSystem.depthMask(false);
         RenderSystem.enableBlend();
         RenderSystem.blendFunc(GlStateManager.SourceFactor.ONE, GlStateManager.DestFactor.ONE);
         RenderSystem.disableCull();
         RenderSystem.colorMask(true, true, true, true);
 
-        Matrix4f savedModelView = new Matrix4f(RenderSystem.getModelViewMatrix());
-
-        Quaternionf viewRot = new Quaternionf(camera.rotation()).conjugate();
-        RenderSystem.getModelViewMatrix().set(new Matrix4f().rotation(viewRot));
+        // Iris also changes raw GL outside the RenderSystem caches.
+        GL11.glEnable(GL11.GL_DEPTH_TEST);
+        GL11.glDepthFunc(GL11.GL_LEQUAL);
+        GL11.glDepthMask(false);
+        GL11.glEnable(GL11.GL_BLEND);
+        GL11.glBlendFunc(GL11.GL_ONE, GL11.GL_ONE);
+        GL14.glBlendEquation(GL14.GL_FUNC_ADD);
+        GL11.glDisable(GL11.GL_CULL_FACE);
+        GL11.glDisable(GL11.GL_SCISSOR_TEST);
+        GL11.glDisable(GL11.GL_STENCIL_TEST);
+        GL11.glColorMask(true, true, true, true);
+        RenderSystem.getModelViewMatrix().set(SnagRenderContext.modelView(camera));
 
         RenderSystem.setShader(() -> shader);
         RenderSystem.setShaderTexture(0, densityTexture);
@@ -329,12 +361,7 @@ public final class SnagTrailDensitySystem {
             BufferUploader.drawWithShader(mesh);
         }
 
-        RenderSystem.getModelViewMatrix().set(savedModelView);
-
-        RenderSystem.enableCull();
-        RenderSystem.defaultBlendFunc();
-        RenderSystem.depthMask(true);
-        RenderSystem.enableDepthTest();
+        // endDensityPass restores the exact caller, including failed draws.
     }
 
     private static float sampleSize(Puff puff, float partialTicks) {

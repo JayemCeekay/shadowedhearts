@@ -3,12 +3,17 @@ package com.jayemceekay.shadowedhearts.client.render;
 import com.google.common.base.MoreObjects;
 import com.jayemceekay.shadowedhearts.client.ModShaders;
 import com.jayemceekay.shadowedhearts.client.ball.BallEmitters;
+import com.jayemceekay.shadowedhearts.client.aura.AuraReaderPulseRenderer;
 import com.jayemceekay.shadowedhearts.client.render.rendertypes.BallRenderTypes;
 import com.jayemceekay.shadowedhearts.client.trail.BallTrailManager;
+import com.jayemceekay.shadowedhearts.client.snag.ClientSnagState;
+import com.jayemceekay.shadowedhearts.util.HeldItemAnchorCache;
 import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.ByteBufferBuilder;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.math.Axis;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.Camera;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.resources.model.BakedModel;
@@ -29,6 +34,9 @@ import org.joml.Matrix4f;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * Renders a ball_glow billboard and three orbiting ball_trail quads around a held Poké Ball
  * when the Snag Machine is armed. First- and third-person friendly by approximating the
@@ -38,6 +46,97 @@ import org.joml.Vector3f;
  */
 public final class HeldBallSnagGlowRenderer {
     private HeldBallSnagGlowRenderer() {}
+
+    private static final int MAX_IRIS_HAND_POSES = 128;
+    private static final List<HeldPose> IRIS_HAND_POSES = new ArrayList<>();
+    private static boolean acceptingIrisHandPoses;
+
+    public static void beginFrame() {
+        IRIS_HAND_POSES.clear();
+        acceptingIrisHandPoses = true;
+    }
+
+    public static void clear() {
+        IRIS_HAND_POSES.clear();
+        acceptingIrisHandPoses = false;
+    }
+
+    public static boolean hasQueuedMeshes() { return !IRIS_HAND_POSES.isEmpty(); }
+
+    /** Caller owns the Iris world-color target and matched world matrices. */
+    public static void renderIris() {
+        acceptingIrisHandPoses = false;
+        try {
+            for (HeldPose held : IRIS_HAND_POSES) {
+                PoseStack poses = new PoseStack();
+                poses.last().pose().set(held.pose.pose());
+                poses.last().normal().set(held.pose.normal());
+                try (ByteBufferBuilder memory = new ByteBufferBuilder(8192)) {
+                    MultiBufferSource.BufferSource buffers = MultiBufferSource.immediate(memory);
+                    renderAtHandPoseThirdPersonImmediate(held.partialTicks, poses, buffers);
+                    buffers.endBatch();
+                }
+            }
+        } finally {
+            IRIS_HAND_POSES.clear();
+        }
+    }
+
+    private record HeldPose(PoseStack.Pose pose, float partialTicks) { }
+
+    /** World hand glows use the caller's captured world matrices and depth target. */
+    public static boolean hasWorldHands() {
+        var minecraft = Minecraft.getInstance();
+        if (!ClientSnagState.isArmed() || minecraft.level == null) return false;
+        for (Player player : minecraft.level.players()) {
+            if (shouldRenderWorldHand(minecraft, player)
+                    && HeldItemAnchorCache.get(player, 0) != null) return true;
+        }
+        return false;
+    }
+
+    /** Called after the world transparency combine with retained scene depth installed. */
+    public static void renderWorldHands(Camera camera, float partialTicks) {
+        var minecraft = Minecraft.getInstance();
+        if (!ClientSnagState.isArmed() || minecraft.level == null || camera == null) return;
+        var iris = AuraReaderPulseRenderer.IRIS_HANDLER;
+        if (iris != null && (iris.isShaderPackInUse() || iris.isShadowRenderActive())) return;
+        renderWorldHands(camera, partialTicks, false);
+    }
+
+    /** Collect native hand anchors before Iris reaches its final world-color seam. */
+    public static void queueWorldHandsForIris(Camera camera, float partialTicks) {
+        var minecraft = Minecraft.getInstance();
+        var iris = AuraReaderPulseRenderer.IRIS_HANDLER;
+        if (!ClientSnagState.isArmed() || minecraft.level == null || camera == null
+                || iris == null || !iris.isShaderPackInUse() || iris.isShadowRenderActive()) return;
+        renderWorldHands(camera, partialTicks, true);
+    }
+
+    private static void renderWorldHands(Camera camera, float partialTicks, boolean queueIris) {
+        var minecraft = Minecraft.getInstance();
+        Vec3 view = camera.getPosition();
+        try (var state = DensityFboPipeline.preserveRenderState();
+             ByteBufferBuilder memory = new ByteBufferBuilder(8192)) {
+            MultiBufferSource.BufferSource buffers = MultiBufferSource.immediate(memory);
+            for (Player player : minecraft.level.players()) {
+                if (!shouldRenderWorldHand(minecraft, player)) continue;
+                var anchor = HeldItemAnchorCache.get(player, 0);
+                if (anchor == null) continue;
+                PoseStack poses = new PoseStack();
+                poses.translate(anchor.worldPos().x - view.x, anchor.worldPos().y - view.y,
+                        anchor.worldPos().z - view.z);
+                if (queueIris) renderAtHandPoseThirdPerson(partialTicks, poses, buffers);
+                else renderAtHandPoseThirdPersonImmediate(partialTicks, poses, buffers);
+            }
+            buffers.endBatch();
+        }
+    }
+
+    private static boolean shouldRenderWorldHand(Minecraft minecraft, Player player) {
+        return (player != minecraft.player || !minecraft.options.getCameraType().isFirstPerson())
+                && isPokeball(player.getMainHandItem());
+    }
 
     // Cobblemon exposes #cobblemon:poke_balls (and nested tiers); match on the broad tag.
     private static final TagKey<net.minecraft.world.item.Item> POKE_BALLS_TAG = TagKey.create(Registries.ITEM, ResourceLocation.parse("cobblemon:poke_balls"));
@@ -65,82 +164,85 @@ public final class HeldBallSnagGlowRenderer {
             BallEmitters.apply(ModShaders.BALL_ORB_GLOW);
 
             poseStack.pushPose();
-            LocalPlayer playerEntity = Minecraft.getInstance().player;
+            try {
+                LocalPlayer playerEntity = Minecraft.getInstance().player;
 
-            poseStack.setIdentity();
+                poseStack.setIdentity();
 
-            Quaternionf quaternionf = Minecraft.getInstance().gameRenderer.getMainCamera().rotation().conjugate(new Quaternionf());
-            Matrix4f matrix4f2 = (new Matrix4f()).rotation(quaternionf);
-            bobView(poseStack, partialTicks);
+                Quaternionf quaternionf = Minecraft.getInstance().gameRenderer.getMainCamera().rotation().conjugate(new Quaternionf());
+                Matrix4f matrix4f2 = (new Matrix4f()).rotation(quaternionf);
+                bobView(poseStack, partialTicks);
 
-            boolean bl = Minecraft.getInstance().player.getUsedItemHand() == InteractionHand.MAIN_HAND;
-            HumanoidArm humanoidArm = bl ? Minecraft.getInstance().player.getMainArm() : Minecraft.getInstance().player.getMainArm().getOpposite();
-
-
-            float f = playerEntity.getAttackAnim(partialTicks);
-            InteractionHand interactionHand = MoreObjects.firstNonNull(playerEntity.swingingArm, InteractionHand.MAIN_HAND);
+                boolean bl = Minecraft.getInstance().player.getUsedItemHand() == InteractionHand.MAIN_HAND;
+                HumanoidArm humanoidArm = bl ? Minecraft.getInstance().player.getMainArm() : Minecraft.getInstance().player.getMainArm().getOpposite();
 
 
-            float g = Mth.lerp(partialTicks, playerEntity.xRotO, Minecraft.getInstance().player.getXRot());
-            float h = Mth.lerp(partialTicks, playerEntity.xBobO, playerEntity.xBob);
-            float i = Mth.lerp(partialTicks, playerEntity.yBobO, playerEntity.yBob);
+                float f = playerEntity.getAttackAnim(partialTicks);
+                InteractionHand interactionHand = MoreObjects.firstNonNull(playerEntity.swingingArm, InteractionHand.MAIN_HAND);
 
 
-            float j = interactionHand == InteractionHand.MAIN_HAND ? f : 0.0F;
-            float k = 1.0F - Mth.lerp(partialTicks, oMainHandHeight, mainHandHeight);
-
-            poseStack.mulPose(Axis.XP.rotationDegrees((playerEntity.getViewXRot(partialTicks) - h) * 0.1F));
-            poseStack.mulPose(Axis.YP.rotationDegrees((playerEntity.getViewYRot(partialTicks) - i) * 0.1F));
-
-            float n = -0.4F * Mth.sin(Mth.sqrt(j) * (float) Math.PI);
-            float m = 0.2F * Mth.sin(Mth.sqrt(j) * ((float) Math.PI * 2F));
-            float f1 = -0.2F * Mth.sin(j * (float) Math.PI);
-            int o = -1;
-
-            poseStack.translate((float) o * n, m, f1);
-            applyItemArmTransform(poseStack, humanoidArm, k);
-            applyItemArmAttackTransform(poseStack, humanoidArm, j);
+                float g = Mth.lerp(partialTicks, playerEntity.xRotO, Minecraft.getInstance().player.getXRot());
+                float h = Mth.lerp(partialTicks, playerEntity.xBobO, playerEntity.xBob);
+                float i = Mth.lerp(partialTicks, playerEntity.yBobO, playerEntity.yBob);
 
 
+                float j = interactionHand == InteractionHand.MAIN_HAND ? f : 0.0F;
+                float k = 1.0F - Mth.lerp(partialTicks, oMainHandHeight, mainHandHeight);
 
-            ResourceLocation itemResourceLocation = BuiltInRegistries.ITEM.getKey(mainHandItem.getItem());
+                poseStack.mulPose(Axis.XP.rotationDegrees((playerEntity.getViewXRot(partialTicks) - h) * 0.1F));
+                poseStack.mulPose(Axis.YP.rotationDegrees((playerEntity.getViewYRot(partialTicks) - i) * 0.1F));
 
-            BakedModel bakedmodel =  Minecraft.getInstance().getModelManager().getModel(ModelResourceLocation.vanilla(itemResourceLocation.getNamespace().toString(), itemResourceLocation.getPath()));
-            //Minecraft.getInstance().getItemRenderer().getModel(mainHandItem, Minecraft.getInstance().level, playerEntity, 0);
-            bakedmodel.getTransforms().getTransform(ItemDisplayContext.FIRST_PERSON_RIGHT_HAND).apply(false, poseStack);
+                float n = -0.4F * Mth.sin(Mth.sqrt(j) * (float) Math.PI);
+                float m = 0.2F * Mth.sin(Mth.sqrt(j) * ((float) Math.PI * 2F));
+                float f1 = -0.2F * Mth.sin(j * (float) Math.PI);
+                int o = -1;
 
-            poseStack.translate(-0.5f, -0.5f, -0.5f);
-            poseStack.translate(1.1f, 0.35f, 0f);
+                poseStack.translate((float) o * n, m, f1);
+                applyItemArmTransform(poseStack, humanoidArm, k);
+                applyItemArmAttackTransform(poseStack, humanoidArm, j);
 
-            VertexConsumer orb = buffers.getBuffer(BallRenderTypes.ballOrbGlow());
-            emitUnitQuad(orb, poseStack, bakedmodel.getTransforms().getTransform(ItemDisplayContext.FIRST_PERSON_RIGHT_HAND).rotation);
 
-            // Three scrolling rings around the held item (third-person hand pose)
-            float time = getTime(Minecraft.getInstance().level, partialTicks);
-            // Build a basis from the same camera billboard orientation used by emitUnitQuad(null)
-            Vector3f fwd = new Vector3f(0f, 0f, 1f);
-            Vector3f upV = new Vector3f(0f, 1f, 0f);
 
-            // Pose is already at the hand; use local center
-            Vec3 center = Vec3.ZERO;
-            float ringRadius = 0.75f;
-            float ringThickness = 0.25f;
-            int segments = 12;
-            float strength = 1.0f;
-            float[] anglesDeg = new float[]{0f, 120f, 240f};
-            float[] phase = new float[]{0f, 0.33f, 0.66f};
+                ResourceLocation itemResourceLocation = BuiltInRegistries.ITEM.getKey(mainHandItem.getItem());
 
-            for (int rings = 0; rings < 3; rings++) {
-                float angRad = (float) Math.toRadians(anglesDeg[rings]);
-                Quaternionf rot = new Quaternionf().fromAxisAngleRad(upV.x(), upV.y(), upV.z(), angRad);
-                Vector3f nV = new Vector3f(fwd);
-                rot.transform(nV);
-                Vec3 ringNormal = new Vec3(nV.x(), nV.y(), nV.z());
-                float scroll = time * 0.15f + phase[rings];
-                BallTrailManager.renderScrollingRing(center, ringNormal, ringRadius, ringThickness, segments, strength, scroll, partialTicks, poseStack, buffers);
+                BakedModel bakedmodel =  Minecraft.getInstance().getModelManager().getModel(ModelResourceLocation.vanilla(itemResourceLocation.getNamespace().toString(), itemResourceLocation.getPath()));
+                //Minecraft.getInstance().getItemRenderer().getModel(mainHandItem, Minecraft.getInstance().level, playerEntity, 0);
+                bakedmodel.getTransforms().getTransform(ItemDisplayContext.FIRST_PERSON_RIGHT_HAND).apply(false, poseStack);
+
+                poseStack.translate(-0.5f, -0.5f, -0.5f);
+                poseStack.translate(1.1f, 0.35f, 0f);
+
+                VertexConsumer orb = buffers.getBuffer(BallRenderTypes.ballOrbGlow());
+                emitUnitQuad(orb, poseStack, bakedmodel.getTransforms().getTransform(ItemDisplayContext.FIRST_PERSON_RIGHT_HAND).rotation);
+
+                // Three scrolling rings around the held item (third-person hand pose)
+                float time = getTime(Minecraft.getInstance().level, partialTicks);
+                // Build a basis from the same camera billboard orientation used by emitUnitQuad(null)
+                Vector3f fwd = new Vector3f(0f, 0f, 1f);
+                Vector3f upV = new Vector3f(0f, 1f, 0f);
+
+                // Pose is already at the hand; use local center
+                Vec3 center = Vec3.ZERO;
+                float ringRadius = 0.75f;
+                float ringThickness = 0.25f;
+                int segments = 12;
+                float strength = 1.0f;
+                float[] anglesDeg = new float[]{0f, 120f, 240f};
+                float[] phase = new float[]{0f, 0.33f, 0.66f};
+
+                for (int rings = 0; rings < 3; rings++) {
+                    float angRad = (float) Math.toRadians(anglesDeg[rings]);
+                    Quaternionf rot = new Quaternionf().fromAxisAngleRad(upV.x(), upV.y(), upV.z(), angRad);
+                    Vector3f nV = new Vector3f(fwd);
+                    rot.transform(nV);
+                    Vec3 ringNormal = new Vec3(nV.x(), nV.y(), nV.z());
+                    float scroll = time * 0.15f + phase[rings];
+                    BallTrailManager.renderScrollingRing(center, ringNormal, ringRadius, ringThickness, segments, strength, scroll, partialTicks, poseStack, buffers);
+                }
+
+            } finally {
+                poseStack.popPose();
             }
-
-            poseStack.popPose();
         }
     }
 
@@ -207,43 +309,64 @@ public final class HeldBallSnagGlowRenderer {
     public static void renderAtHandPoseThirdPerson(
             float partialTicks, PoseStack poseStack, MultiBufferSource buffers
     ) {
-        poseStack.pushPose();
-        BallEmitters.apply(ModShaders.BALL_ORB_GLOW);
-
-        var cam = Minecraft.getInstance().gameRenderer.getMainCamera();
-
-        //poseStack.mulPose(Minecraft.getInstance().getEntityRenderDispatcher().cameraOrientation());
-        poseStack.translate(0f, -0.05f, 0f);
-        VertexConsumer orb = buffers.getBuffer(BallRenderTypes.ballOrbGlow());
-        // Don’t apply extra per-quad rotations; the facing is handled above
-        emitUnitQuad(orb, poseStack, null);
-
-        // Three scrolling rings around the held item (third-person hand pose)
-        float time = getTime(Minecraft.getInstance().level, partialTicks);
-        // Build a basis from the same camera billboard orientation used by emitUnitQuad(null)
-        Quaternionf camQ = Minecraft.getInstance().getEntityRenderDispatcher().cameraOrientation();
-        Vector3f fwd = new Vector3f(0f, 0f, 1f); //camQ.transform(fwd);
-        Vector3f upV = new Vector3f(0f, 1f, 0f); //camQ.transform(upV);
-
-        // Pose is already at the hand; use local center
-        Vec3 center = Vec3.ZERO;
-        float ringRadius = 0.30f;
-        float ringThickness = 0.25f;
-        int segments = 12;
-        float strength = 1.0f;
-        float[] anglesDeg = new float[] { 0f, 120f, 240f };
-        float[] phase = new float[] { 0f, 0.33f, 0.66f };
-        for (int i = 0; i < 3; i++) {
-            float angRad = (float) Math.toRadians(anglesDeg[i]);
-            Quaternionf rot = new Quaternionf().fromAxisAngleRad(upV.x(), upV.y(), upV.z(), angRad);
-            Vector3f nV = new Vector3f(fwd);
-            rot.transform(nV);
-            Vec3 ringNormal = new Vec3(nV.x(), nV.y(), nV.z());
-            float scroll = time * 0.2f + phase[i];
-            BallTrailManager.renderScrollingRing(center, ringNormal, ringRadius, ringThickness, segments, strength, scroll, partialTicks, poseStack, buffers);
+        var iris = AuraReaderPulseRenderer.IRIS_HANDLER;
+        if (iris != null && iris.isShadowRenderActive()) return;
+        if (iris != null && iris.isShaderPackInUse()) {
+            // Loader callbacks run while Iris owns its entity/translucent
+            // pipeline. Retain the established hand pose for the inspected
+            // late-world seam instead of submitting an unknown shader here.
+            if (acceptingIrisHandPoses && IRIS_HAND_POSES.size() < MAX_IRIS_HAND_POSES
+                    && Float.isFinite(partialTicks) && poseStack.last().pose().isFinite()) {
+                IRIS_HAND_POSES.add(new HeldPose(poseStack.last().copy(), partialTicks));
+            }
+            return;
         }
+        renderAtHandPoseThirdPersonImmediate(partialTicks, poseStack, buffers);
+    }
 
-        poseStack.popPose();
+    private static void renderAtHandPoseThirdPersonImmediate(
+            float partialTicks, PoseStack poseStack, MultiBufferSource buffers
+    ) {
+        poseStack.pushPose();
+        try {
+            BallEmitters.apply(ModShaders.BALL_ORB_GLOW);
+
+            var cam = Minecraft.getInstance().gameRenderer.getMainCamera();
+
+            //poseStack.mulPose(Minecraft.getInstance().getEntityRenderDispatcher().cameraOrientation());
+            poseStack.translate(0f, -0.05f, 0f);
+            VertexConsumer orb = buffers.getBuffer(BallRenderTypes.ballOrbGlow());
+            // Don’t apply extra per-quad rotations; the facing is handled above
+            emitUnitQuad(orb, poseStack, null);
+
+            // Three scrolling rings around the held item (third-person hand pose)
+            float time = getTime(Minecraft.getInstance().level, partialTicks);
+            // Build a basis from the same camera billboard orientation used by emitUnitQuad(null)
+            Quaternionf camQ = Minecraft.getInstance().getEntityRenderDispatcher().cameraOrientation();
+            Vector3f fwd = new Vector3f(0f, 0f, 1f); //camQ.transform(fwd);
+            Vector3f upV = new Vector3f(0f, 1f, 0f); //camQ.transform(upV);
+
+            // Pose is already at the hand; use local center
+            Vec3 center = Vec3.ZERO;
+            float ringRadius = 0.30f;
+            float ringThickness = 0.25f;
+            int segments = 12;
+            float strength = 1.0f;
+            float[] anglesDeg = new float[] { 0f, 120f, 240f };
+            float[] phase = new float[] { 0f, 0.33f, 0.66f };
+            for (int i = 0; i < 3; i++) {
+                float angRad = (float) Math.toRadians(anglesDeg[i]);
+                Quaternionf rot = new Quaternionf().fromAxisAngleRad(upV.x(), upV.y(), upV.z(), angRad);
+                Vector3f nV = new Vector3f(fwd);
+                rot.transform(nV);
+                Vec3 ringNormal = new Vec3(nV.x(), nV.y(), nV.z());
+                float scroll = time * 0.2f + phase[i];
+                BallTrailManager.renderScrollingRing(center, ringNormal, ringRadius, ringThickness, segments, strength, scroll, partialTicks, poseStack, buffers);
+            }
+
+        } finally {
+            poseStack.popPose();
+        }
     }
 
     private static float getTime(Level level, float partial) {
@@ -253,41 +376,44 @@ public final class HeldBallSnagGlowRenderer {
 
     private static void emitUnitQuad(VertexConsumer vc, PoseStack stack, Vector3f rotation) {
         stack.pushPose();
-        var last = stack.last();
-        Matrix4f pose = last.pose();
+        try {
+            var last = stack.last();
+            Matrix4f pose = last.pose();
 
-        if (rotation != null) {
-            float rx = rotation.x();
-            float ry = rotation.y()+124f;
-            float rz = rotation.z();
-            // Heuristic: if any component looks larger than 2π, treat input as degrees and convert to radians
-            float twoPi = (float) (Math.PI * 2.0);
-            if (Math.abs(rx) > twoPi || Math.abs(ry) > twoPi || Math.abs(rz) > twoPi) {
-                rx = (float) Math.toRadians(rx);
-                ry = (float) Math.toRadians(ry);
-                rz = (float) Math.toRadians(rz);
+            if (rotation != null) {
+                float rx = rotation.x();
+                float ry = rotation.y()+124f;
+                float rz = rotation.z();
+                // Heuristic: if any component looks larger than 2π, treat input as degrees and convert to radians
+                float twoPi = (float) (Math.PI * 2.0);
+                if (Math.abs(rx) > twoPi || Math.abs(ry) > twoPi || Math.abs(rz) > twoPi) {
+                    rx = (float) Math.toRadians(rx);
+                    ry = (float) Math.toRadians(ry);
+                    rz = (float) Math.toRadians(rz);
+                }
+                pose.rotate(new Quaternionf().rotationXYZ(rx, ry, rz));
+                pose.translate(0f, 0f, 0.5f);
+            } else {
+                Vector3f itemPosition = new Vector3f(0f, 0f, 0f);
+                pose.getTranslation(itemPosition);
+                pose.identity();
+                pose.translate(itemPosition.x, itemPosition.y, itemPosition.z);
+                pose.rotate(Minecraft.getInstance().getEntityRenderDispatcher().cameraOrientation());
+                pose.scale(0.5f);
             }
-            pose.rotate(new Quaternionf().rotationXYZ(rx, ry, rz));
-            pose.translate(0f, 0f, 0.5f);
-        } else {
-            Vector3f itemPosition = new Vector3f(0f, 0f, 0f);
-            pose.getTranslation(itemPosition);
-            pose.identity();
-            pose.translate(itemPosition.x, itemPosition.y, itemPosition.z);
-            pose.rotate(Minecraft.getInstance().getEntityRenderDispatcher().cameraOrientation());
-            pose.scale(0.5f);
+
+            float x0 = -1f, y0 = -1f, x1 = 1f, y1 = 1f;
+            vc.addVertex(pose, x0, y0, 0f).setColor(1f, 1f, 1f, 1f).setUv(0f, 1f)
+                    .setOverlay(0).setLight(0x00F000F0).setNormal(last, 0f, 0f, 1f);
+            vc.addVertex(pose, x1, y0, 0f).setColor(1f, 1f, 1f, 1f).setUv(1f, 1f)
+                    .setOverlay(0).setLight(0x00F000F0).setNormal(last, 0f, 0f, 1f);
+            vc.addVertex(pose, x1, y1, 0f).setColor(1f, 1f, 1f, 1f).setUv(1f, 0f)
+                    .setOverlay(0).setLight(0x00F000F0).setNormal(last, 0f, 0f, 1f);
+            vc.addVertex(pose, x0, y1, 0f).setColor(1f, 1f, 1f, 1f).setUv(0f, 0f)
+                    .setOverlay(0).setLight(0x00F000F0).setNormal(last, 0f, 0f, 1f);
+
+        } finally {
+            stack.popPose();
         }
-
-        float x0 = -1f, y0 = -1f, x1 = 1f, y1 = 1f;
-        vc.addVertex(pose, x0, y0, 0f).setColor(1f, 1f, 1f, 1f).setUv(0f, 1f)
-                .setOverlay(0).setLight(0x00F000F0).setNormal(last, 0f, 0f, 1f);
-        vc.addVertex(pose, x1, y0, 0f).setColor(1f, 1f, 1f, 1f).setUv(1f, 1f)
-                .setOverlay(0).setLight(0x00F000F0).setNormal(last, 0f, 0f, 1f);
-        vc.addVertex(pose, x1, y1, 0f).setColor(1f, 1f, 1f, 1f).setUv(1f, 0f)
-                .setOverlay(0).setLight(0x00F000F0).setNormal(last, 0f, 0f, 1f);
-        vc.addVertex(pose, x0, y1, 0f).setColor(1f, 1f, 1f, 1f).setUv(0f, 0f)
-                .setOverlay(0).setLight(0x00F000F0).setNormal(last, 0f, 0f, 1f);
-
-        stack.popPose();
     }
 }

@@ -26,9 +26,9 @@ uniform float u_conversionStrength;
 // ─── Varyings from vertex shader ─────────────────────────────────────────────
 in float vertexDistance;
 in vec4 vertexColor;
+in vec4 lightMapColor;
 in vec4 overlayColor;
 in vec2 texCoord0;
-in vec2 texCoord1;
 
 out vec4 fragColor;
 
@@ -74,9 +74,9 @@ void main() {
                              clamp(u_conversionStrength * u_dissolveProgress, 0.0, 1.0));
     vec3 finalColor = convertedBase + u_dissolveColor * edgeIntensity;
 
-    // Apply lightmap (sample from Sampler2 using texCoord1)
-    vec4 lightColor = texture(Sampler2, texCoord1);
-    finalColor *= lightColor.rgb;
+    // The native entity-cutout vertex shader already fetches Sampler2 using
+    // packed UV2. Consume its actual varying; it does not emit texCoord1.
+    finalColor *= lightMapColor.rgb;
 
     // Apply fog
     float fogFade = linear_fog_fade(vertexDistance, FogStart, FogEnd);

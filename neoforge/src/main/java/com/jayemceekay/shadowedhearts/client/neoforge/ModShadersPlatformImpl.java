@@ -20,6 +20,10 @@ public class ModShadersPlatformImpl {
 
     @SubscribeEvent
     public static void registerShaders(RegisterShadersEvent evt) {
+        com.jayemceekay.shadowedhearts.client.ball.DarkBallCaptureVfx.onResourceReload();
+        com.jayemceekay.shadowedhearts.client.aura.ShadowPokemonAuraFBO.destroy();
+        ModShaders.SHADOW_AURA_PIXEL_RESOLVE = null;
+        ModShaders.SHADOW_AURA_PIXEL_PRESENT = null;
         com.jayemceekay.shadowedhearts.client.voidshadow.VoidShadowShaders.LIQUID = null;
         ModShaders.UMBRA_LIQUID = null;
         ModShaders.UMBRAFALL_CORE_SEEP = null;
@@ -43,6 +47,16 @@ public class ModShadersPlatformImpl {
                     shader -> com.jayemceekay.shadowedhearts.client.moonwound.MoonwoundPortalRenderer.PIXEL_PRESENT = shader);
         } catch (IOException failure) {
             Shadowedhearts.LOGGER.warn("[Moonwound] Pixelation shaders unavailable; using smooth rendering", failure);
+        }
+        try {
+            evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:aura/continuous_pixel_resolve",
+                            com.jayemceekay.shadowedhearts.client.render.ContinuousPixelationPass.FORMAT),
+                    shader -> ModShaders.SHADOW_AURA_PIXEL_RESOLVE = shader);
+            evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:aura/continuous_pixel_present",
+                            com.jayemceekay.shadowedhearts.client.render.ContinuousPixelationPass.FORMAT),
+                    shader -> ModShaders.SHADOW_AURA_PIXEL_PRESENT = shader);
+        } catch (IOException failure) {
+            Shadowedhearts.LOGGER.warn("[Aura] Pixelation shaders unavailable; using smooth rendering", failure);
         }
         try {
             evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:umbrafall/umbrafall_core_seep",
@@ -76,9 +90,6 @@ public class ModShadersPlatformImpl {
             evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:infusion/umbra_infuser_background", DefaultVertexFormat.POSITION_TEX),
                     shader -> ModShaders.UMBRA_INFUSER_BACKGROUND = shader);
 
-            evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:voidshadow/void_shadow_liquid", DefaultVertexFormat.NEW_ENTITY),
-                    shader -> com.jayemceekay.shadowedhearts.client.voidshadow.VoidShadowShaders.LIQUID = shader);
-
             // Poké Ball glow overlay — texture-based (additive + fullbright)
             evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:snag/ball_glow", DefaultVertexFormat.NEW_ENTITY),
                     shader -> ModShaders.BALL_GLOW = shader);
@@ -100,6 +111,9 @@ public class ModShadersPlatformImpl {
                     shader -> ModShaders.SNAG_ORB = shader);
 
             // Pokémon dissolve (noise-based dissolution with glowing edge)
+            evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:voidshadow/void_shadow_liquid", DefaultVertexFormat.NEW_ENTITY),
+                    shader -> com.jayemceekay.shadowedhearts.client.voidshadow.VoidShadowShaders.LIQUID = shader);
+
             evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:snag/snag_dissolve", DefaultVertexFormat.NEW_ENTITY),
                     shader -> ModShaders.SNAG_DISSOLVE = shader);
 
@@ -130,16 +144,12 @@ public class ModShadersPlatformImpl {
                     shader -> ModShaders.DARK_BALL_SILHOUETTE_DISTANCE_JUMP = shader);
             evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:darkball/dark_ball_reduced_upsample", DefaultVertexFormat.POSITION_TEX),
                     shader -> ModShaders.DARK_BALL_REDUCED_UPSAMPLE = shader);
-            evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:darkball/dark_ball_surface_splat", ModShaders.DARK_BALL_MANUAL_ENTITY_FORMAT),
-                    shader -> ModShaders.DARK_BALL_SURFACE_SPLAT = shader);
-            evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:darkball/dark_ball_surface_splat_resolve", DefaultVertexFormat.POSITION_TEX),
-                    shader -> ModShaders.DARK_BALL_SURFACE_SPLAT_RESOLVE = shader);
-            evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:darkball/dark_ball_siphon_surface_mesh", ModShaders.DARK_BALL_MANUAL_ENTITY_FORMAT),
-                    shader -> ModShaders.DARK_BALL_SIPHON_SURFACE_MESH = shader);
-            evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:darkball/dark_ball_edge_tongues", DefaultVertexFormat.POSITION_TEX),
-                    shader -> ModShaders.DARK_BALL_EDGE_TONGUES = shader);
-            evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:darkball/dark_ball_fbo_preview", DefaultVertexFormat.POSITION_TEX),
-                    shader -> ModShaders.DARK_BALL_FBO_PREVIEW = shader);
+            evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:darkball/dark_ball_anime_source", ModShaders.DARK_BALL_MANUAL_ENTITY_FORMAT),
+                    shader -> ModShaders.DARK_BALL_ANIME_SOURCE = shader);
+            evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:darkball/dark_ball_anime_energy", DefaultVertexFormat.POSITION_TEX),
+                    shader -> ModShaders.DARK_BALL_ANIME_ENERGY = shader);
+            evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:darkball/dark_ball_material_resolve", DefaultVertexFormat.POSITION_TEX),
+                    shader -> ModShaders.DARK_BALL_MATERIAL_RESOLVE = shader);
 
             // Snag trail orange smoke density pipeline (FBM noise + warm orange composite)
             evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:snag/snag_trail_density", DefaultVertexFormat.PARTICLE),
@@ -163,6 +173,12 @@ public class ModShadersPlatformImpl {
             evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:aura/luminous_mote", DefaultVertexFormat.PARTICLE),
                     shader -> ModShaders.LUMINOUS_MOTE = shader);
 
+            evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:aura/luminous_mote_fabulous", DefaultVertexFormat.PARTICLE),
+                    shader -> ModShaders.LUMINOUS_MOTE_FABULOUS = shader);
+
+            evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:aura/luminous_mote_colosseum", DefaultVertexFormat.PARTICLE),
+                    shader -> ModShaders.LUMINOUS_MOTE_COLOSSEUM = shader);
+
             evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:aura/penumbra_trail", DefaultVertexFormat.PARTICLE),
                     shader -> ModShaders.PENUMBRA_TRAIL = shader);
 
@@ -174,6 +190,9 @@ public class ModShadersPlatformImpl {
 
             evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:aura/penumbra_blur", DefaultVertexFormat.POSITION_TEX),
                     shader -> ModShaders.PENUMBRA_BLUR = shader);
+
+            evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:aura/shadow_pokemon_aura_xd_faithful_blur", DefaultVertexFormat.POSITION_TEX),
+                    shader -> ModShaders.SHADOW_POKEMON_AURA_XD_FAITHFUL_BLUR = shader);
 
             evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:aura/penumbra_composite", DefaultVertexFormat.POSITION_TEX),
                     shader -> ModShaders.PENUMBRA_COMPOSITE = shader);
@@ -246,12 +265,6 @@ public class ModShadersPlatformImpl {
 
             evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:aura/shadow_pokemon_aura_gui_present", DefaultVertexFormat.POSITION_TEX),
                     shader -> ModShaders.SHADOW_POKEMON_AURA_GUI_PRESENT = shader);
-
-            // Screen-space electromagnetic static overlay
-
-
-
-
 
         } catch (IOException e) {
             throw new RuntimeException("Failed to load shaders", e);

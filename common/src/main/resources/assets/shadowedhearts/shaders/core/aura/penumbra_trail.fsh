@@ -16,7 +16,8 @@ float hash31(vec3 p) {
     return fract((p.x + p.y) * p.z);
 }
 
-float noise3(vec3 p) {
+// GLSL's built-in noise3 returns vec3; keep this scalar helper distinct.
+float shValueNoise3(vec3 p) {
     vec3 i = floor(p), f = fract(p);
     vec3 u = f * f * (3.0 - 2.0 * f);
     float n000 = hash31(i + vec3(0, 0, 0));
@@ -39,7 +40,7 @@ float noise3(vec3 p) {
 float fbm3(vec3 p) {
     float a = 0.5, f = 0.0;
     for (int i = 0; i < 4; ++i) {
-        f += a * noise3(p);
+        f += a * shValueNoise3(p);
         p = p * 2.02 + vec3(31.416, 47.0, 19.19);
         a *= 0.5;
     }

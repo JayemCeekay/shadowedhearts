@@ -186,6 +186,11 @@ public final class ShadowPokemonAuraGuiRenderer {
                               float fallbackZ,
                               float fallbackWidth,
                               float fallbackHeight) {
+        if (!com.jayemceekay.shadowedhearts.client.ClientEffects.auraVisible()) {
+            deactivate(owner);
+            if (owner != null) owner.clear();
+            return;
+        }
         boolean useProfileFallback = hasUnconsumedCapture(owner);
         consumeCompletedCapture(owner);
         cancelUnconsumedCapture(owner);
@@ -197,12 +202,11 @@ public final class ShadowPokemonAuraGuiRenderer {
             owner.advance(System.nanoTime(), 0.0f);
             return;
         }
-        ShadowAuraStyle style = owner.style();
-        if (ShadowPokemonAuraFBO.guiDensityShader(style) == null) {
+        if (ShadowPokemonAuraFBO.guiDensityShader(owner.style()) == null) {
             return;
         }
 
-        if (useProfileFallback) {
+        if (useProfileFallback || (owner.style() == ShadowAuraStyle.COLOSSEUM && !owner.hasPose())) {
             owner.useFallbackPose(
                     fallbackCenterX,
                     fallbackCenterY,
@@ -213,6 +217,8 @@ public final class ShadowPokemonAuraGuiRenderer {
         }
         boolean persistentAura = owner.hasPose()
                 && owner.advance(System.nanoTime(), strength);
+        // Colosseum's age channel requires live puffs, including fallback poses.
+        if (!persistentAura && owner.style() == ShadowAuraStyle.COLOSSEUM) return;
         List<GuiAnchor> anchors = List.of();
         if (!persistentAura) {
             anchors = fallbackAnchors(
@@ -241,12 +247,15 @@ public final class ShadowPokemonAuraGuiRenderer {
         // nanoTime already supplies the fractional 20 Hz tick. Adding the
         // caller's partial tick here would make GUI material noise run twice.
         float animationTicks = (float) ((System.nanoTime() / 50_000_000.0) % 1200.0);
+        // A config/aspect change drains each already-spawned style with its own material.
+        for (ShadowAuraStyle style : persistentAura ? owner.activeStyles() : java.util.Set.of(owner.style())) {
+        ShadowAuraRenderBatch batch = new ShadowAuraRenderBatch(style, owner.modeTint());
         boolean densityPassStarted = ShadowPokemonAuraFBO.beginDensityPass(
-                style,
+                batch,
                 true,
                 true);
         if (!densityPassStarted) {
-            return;
+            continue;
         }
 
         try {
@@ -268,29 +277,49 @@ public final class ShadowPokemonAuraGuiRenderer {
                         style);
             }
         } finally {
-            ShadowPokemonAuraFBO.endDensityPass(style);
+            ShadowPokemonAuraFBO.endDensityPass(batch);
         }
 
         float minimumU = left / guiWidth;
         float maximumU = right / guiWidth;
         float minimumV = 1.0f - bottom / guiHeight;
         float maximumV = 1.0f - top / guiHeight;
+        int[] viewport = new int[4];
+        GL11.glGetIntegerv(GL11.GL_VIEWPORT, viewport);
+        Matrix4f pixelPose = owner.simulationToGui();
+        Vector3f pixelCenter = pixelPose.transformPosition(0, owner.pixelationModelHeight() * 0.5f, 0,
+                new Vector3f());
+        float modelPixels = previewPixelScale(
+                pixelPose.transformDirection(1, 0, 0, new Vector3f()),
+                pixelPose.transformDirection(0, 1, 0, new Vector3f()),
+                pixelPose.transformDirection(0, 0, 1, new Vector3f())) * owner.pixelationModelSize();
+        if (!persistentAura) {
+            pixelCenter.set(fallbackCenterX, fallbackCenterY, fallbackZ);
+            modelPixels = Math.max(fallbackWidth, fallbackHeight);
+        }
+        var pixelGrid = AuraPixelationScale.grid(ShadowPokemonAuraFBO.pixelationStyle(style),
+                modelPixels * viewport[3] / guiHeight,
+                pixelCenter.x * viewport[2] / guiWidth,
+                viewport[3] - pixelCenter.y * viewport[3] / guiHeight,
+                viewport[2], viewport[3]);
         Matrix4f guiProjection = new Matrix4f(RenderSystem.getProjectionMatrix());
         try {
-            ShadowPokemonAuraFBO.blur(style);
+            ShadowPokemonAuraFBO.blur(batch);
             ShadowPokemonAuraFBO.composite(
-                    style,
+                    batch,
                     minimumU,
                     minimumV,
                     maximumU,
                     maximumV,
-                    animationTicks
+                    animationTicks,
+                    pixelGrid
             );
         } finally {
             // DensityFboPipeline's fullscreen helpers are world-oriented and
             // currently restore DISTANCE_TO_ORIGIN. These entrypoints always
             // run inside an orthographic GUI, so restore that sorting contract.
             RenderSystem.setProjectionMatrix(guiProjection, VertexSorting.ORTHOGRAPHIC_Z);
+        }
         }
     }
 
@@ -424,7 +453,7 @@ public final class ShadowPokemonAuraGuiRenderer {
         Vector3f centerScratch = new Vector3f();
         Vector3f velocityScratch = new Vector3f();
         try {
-            owner.forEachPuff(partial, (
+            owner.forEachPuff(partial, safeStyle, (
                 x, y, z,
                 velocityX, velocityY, velocityZ,
                 size, alpha, rotation, majorScale, minorScale,
@@ -458,12 +487,18 @@ public final class ShadowPokemonAuraGuiRenderer {
                     ? filamentBuffer
                     : buffer;
             float renderedBroad = broadWeight * renderTuning.broadChannelScale();
-            float renderedSpark = sparkWeight * renderTuning.heatChannelScale();
+            float renderedSpark = ShadowPokemonAuraSystem.puffGreenChannel(
+                    safeStyle, sparkWeight, renderTuning.heatChannelScale());
             float renderedWisp = wispWeight * renderTuning.wispChannelScale();
             if (target == filamentBuffer) {
                 renderedBroad = fract(rotation / TAU);
                 renderedSpark = fract((float) (x * 0.17 + y * 0.11 + z * 0.07));
                 renderedWisp = renderTuning.wispChannelScale();
+            }
+            if (safeStyle != ShadowAuraStyle.SIGNATURE) {
+                renderedBroad = Mth.clamp(renderedBroad, 0, 1);
+                renderedSpark = Mth.clamp(renderedSpark, 0, 1);
+                renderedWisp = Mth.clamp(renderedWisp, 0, 1);
             }
             drawPuffQuad(
                     target,
@@ -481,6 +516,9 @@ public final class ShadowPokemonAuraGuiRenderer {
             );
             });
 
+            if (filamentBuffer != null) {
+                owner.drawRibbons(filamentBuffer, partial, safeStyle, simulationToGui, pixelScale);
+            }
             MeshData mesh = buffer.build();
             if (mesh != null) {
                 BufferUploader.drawWithShader(mesh);

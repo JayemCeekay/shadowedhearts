@@ -8,6 +8,8 @@ import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
 import com.jayemceekay.shadowedhearts.client.ball.DarkBallCaptureVfx;
 import com.jayemceekay.shadowedhearts.client.ball.SnagCaptureVfx;
 import com.jayemceekay.shadowedhearts.client.render.DissolveBufferSource;
+import com.jayemceekay.shadowedhearts.client.render.SnagDissolveRenderer;
+import com.jayemceekay.shadowedhearts.client.aura.ShadowPokemonAuraSystem;
 import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.resources.ResourceLocation;
@@ -134,7 +136,12 @@ public abstract class MixinPokemonRenderer {
         ResourceLocation texture = VaryingModelRepository.INSTANCE.getTexture(
                 entity.getPokemon().getSpecies().getResourceIdentifier(), delegate);
 
-        bufferRef.set(new DissolveBufferSource(buffer, texture, progress, vfx.getAge()));
+        if (ShadowPokemonAuraSystem.isIrisShaderPackActive()) {
+            bufferRef.set(SnagDissolveRenderer.wrap(entity.getId(), bufferRef.get(),
+                    texture, progress, vfx.getAge()));
+        } else {
+            bufferRef.set(new DissolveBufferSource(bufferRef.get(), texture, progress, vfx.getAge()));
+        }
     }
 
     @Inject(
@@ -151,6 +158,7 @@ public abstract class MixinPokemonRenderer {
             CallbackInfo ci
     ) {
         DarkBallCaptureVfx.finishTexturedSnapshotCapture(entity);
+        SnagDissolveRenderer.finish(entity.getId());
     }
 
     /**

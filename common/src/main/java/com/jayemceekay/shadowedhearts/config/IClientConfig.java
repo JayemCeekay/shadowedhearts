@@ -1,15 +1,6 @@
 package com.jayemceekay.shadowedhearts.config;
 
-import com.jayemceekay.shadowedhearts.client.aura.ShadowAuraStyle;
-
 public interface IClientConfig extends IModConfig {
-    default float darkBallBodyDepthSpecularStrength() { return 0.09f; }
-    default float darkBallBodyContourSheenStrength() { return 0.045f; }
-    default boolean darkBallVisualizeSpikeIndentAmplitude() { return false; }
-    default boolean darkBallForceExactMaskOnly() { return false; }
-    default int darkBallSurfelBudget() { return 0; }
-    default boolean debugShadowAuraEmitters() { return false; }
-    default ShadowAuraStyle shadowAuraStyle() { return ShadowAuraStyle.DEFAULT; }
     default ClientEffectPolicy.Preset accessibilityPreset() { return ClientEffectPolicy.Preset.DEFAULT; }
     default ClientEffectPolicy.EffectOverride scanPulseEffects() { return ClientEffectPolicy.EffectOverride.INHERIT; }
     default ClientEffectPolicy.EffectOverride darkBallEffects() { return ClientEffectPolicy.EffectOverride.INHERIT; }

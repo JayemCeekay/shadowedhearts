@@ -4,6 +4,7 @@ import com.cobblemon.mod.common.entity.pokeball.EmptyPokeBallEntity;
 import com.jayemceekay.shadowedhearts.client.ModShaders;
 import com.jayemceekay.shadowedhearts.client.render.rendertypes.BallRenderTypes;
 import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.ByteBufferBuilder;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
@@ -35,6 +36,8 @@ import java.util.concurrent.ConcurrentHashMap;
  * {@link SnagTrailDensitySystem} via {@link BallEmitters}.
  */
 public final class SnagThrowVfx {
+    private static final MultiBufferSource.BufferSource VFX_BUFFERS =
+            MultiBufferSource.immediate(new ByteBufferBuilder(65536));
 
     private static final int FULLBRIGHT = 0x00F000F0;
 
@@ -84,7 +87,7 @@ public final class SnagThrowVfx {
         if (mc == null || mc.level == null) return;
 
         Vec3 camPos = camera.getPosition();
-        MultiBufferSource.BufferSource buf = mc.renderBuffers().bufferSource();
+        MultiBufferSource.BufferSource buf = VFX_BUFFERS;
 
         for (SnagThrowVfx vfx : ACTIVE.values()) {
             vfx.render(camera, camPos, partialTick, buf);

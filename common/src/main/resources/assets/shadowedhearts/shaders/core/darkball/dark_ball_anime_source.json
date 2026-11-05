@@ -1,0 +1,205 @@
+{
+  "blend": {
+    "func": "add",
+    "srcrgb": "one",
+    "dstrgb": "zero",
+    "alphafunc": "add",
+    "srcalpha": "one",
+    "dstalpha": "zero"
+  },
+  "vertex": "shadowedhearts:darkball/dark_ball_anime_source",
+  "fragment": "shadowedhearts:darkball/dark_ball_anime_source",
+  "attributes": [
+    "Position",
+    "Color",
+    "UV0",
+    "UV1",
+    "UV2",
+    "Normal"
+  ],
+  "samplers": [
+    {
+      "name": "BodyMaterialSampler"
+    }
+  ],
+  "uniforms": [
+    {
+      "name": "EnergySourceHandoff",
+      "type": "int",
+      "count": 1,
+      "values": [
+        0
+      ]
+    },
+    {
+      "name": "AnimeCenter",
+      "type": "float",
+      "count": 3,
+      "values": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "AnimeDirection",
+      "type": "float",
+      "count": 3,
+      "values": [
+        1,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "AnimeBend",
+      "type": "float",
+      "count": 3,
+      "values": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "AnimeSquash",
+      "type": "float",
+      "count": 1,
+      "values": [
+        0
+      ]
+    },
+    {
+      "name": "AnimeTarget",
+      "type": "float",
+      "count": 3,
+      "values": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "AnimeShape",
+      "type": "float",
+      "count": 4,
+      "values": [
+        1,
+        0,
+        1,
+        0
+      ]
+    },
+    {
+      "name": "AnimeClock",
+      "type": "float",
+      "count": 2,
+      "values": [
+        0,
+        0
+      ]
+    },
+    {
+      "name": "ModelViewMat",
+      "type": "matrix4x4",
+      "count": 16,
+      "values": [
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "ProjMat",
+      "type": "matrix4x4",
+      "count": 16,
+      "values": [
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "VolumeRootCameraRelative",
+      "type": "float",
+      "count": 3,
+      "values": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "VolumeAxis",
+      "type": "float",
+      "count": 3,
+      "values": [
+        1.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "VolumeSide",
+      "type": "float",
+      "count": 3,
+      "values": [
+        0.0,
+        1.0,
+        0.0
+      ]
+    },
+    {
+      "name": "VolumeUp",
+      "type": "float",
+      "count": 3,
+      "values": [
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "CoreCoverage",
+      "type": "float",
+      "count": 1,
+      "values": [
+        1.0
+      ]
+    },
+    {
+      "name": "BodyDepthAvailable",
+      "type": "int",
+      "count": 1,
+      "values": [
+        0
+      ]
+    }
+  ]
+}

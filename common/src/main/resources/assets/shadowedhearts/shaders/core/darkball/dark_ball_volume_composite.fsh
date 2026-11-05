@@ -4,30 +4,24 @@ uniform sampler2D Sampler0;
 uniform sampler2D MaskSampler;
 uniform sampler2D DistanceSampler;
 uniform float DeformationBlend;
-uniform float DepthHighlightBlend;
 uniform float BodyGrayTransitionFraction;
-uniform float BodyContourSheenStrength;
-uniform float BodyDepthSpecularStrength;
+uniform int AnimeEnergyCoverage;
+uniform float AnimeIntakePulse;
+uniform vec2 AnimeFlowDirection;
 uniform float GameTime;
-uniform int DeformationDebugMode;
 uniform int DistanceFieldAvailable;
 uniform vec2 ScreenSize;
 uniform float ProjectedBodyRadiusPixels;
-uniform mat4 InvProjMat;
-uniform int SurfaceDepthAvailable;
-uniform float SurfaceDepthScale;
 
 in vec2 texCoord0;
 out vec4 fragColor;
 
 const float PURPLE_RIM_REACH_OUTPUT_PIXELS = 4.0;
 const float PURPLE_RIM_OUTSIDE_OUTPUT_PIXELS = 1.5;
-const float SIPHON_GRAY_TRANSITION_FRACTION = 0.40;
 const float MIN_GRAY_TRANSITION_OUTPUT_PIXELS = 1.15;
 const float MAX_GRAY_TRANSITION_OUTPUT_PIXELS = 96.0;
 const float THIN_FEATURE_MAX_GRAY_TRANSITION_OUTPUT_PIXELS = 5.0;
 const float THIN_FEATURE_MIN_INSIDE_RIM_OUTPUT_PIXELS = 0.85;
-const float SIPHON_FALLBACK_GRAY_TRANSITION_OUTPUT_PIXELS = 1.05;
 
 float displayedBodyCoverage(vec4 material) {
     // The edge resolve has already produced the exact texture-clipped core and
@@ -36,86 +30,10 @@ float displayedBodyCoverage(vec4 material) {
     return material.r;
 }
 
-float bodyStorageCoverage(float encodedStorage) {
-    // Values above the signed body-storage range carry a siphon-only radius.
-    return encodedStorage > 1.5 ? 0.0 : encodedStorage;
-}
-
 float coverageAt(vec2 uv) {
     vec2 bounded = clamp(uv, vec2(0.0), vec2(1.0));
     vec4 material = texture(Sampler0, bounded);
-    return max(displayedBodyCoverage(material), material.g);
-}
-
-vec3 safeNormalize3(vec3 value, vec3 fallback) {
-    float lengthSquared = dot(value, value);
-    return lengthSquared > 0.00000000000000000001
-            ? value * inversesqrt(lengthSquared) : fallback;
-}
-
-vec3 projectionEyeView() {
-    vec4 eye = InvProjMat * vec4(0.0, 0.0, 1.0, 0.0);
-    return abs(eye.w) > 0.000001 ? eye.xyz / eye.w : vec3(0.0);
-}
-
-vec3 viewRayAt(vec2 uv) {
-    vec4 view = InvProjMat * vec4(uv * 2.0 - 1.0, 1.0, 1.0);
-    view.xyz *= abs(view.w) > 0.000001 ? 1.0 / view.w : 1.0;
-    return safeNormalize3(view.xyz - projectionEyeView(),
-            vec3(0.0, 0.0, -1.0));
-}
-
-vec2 texelCenterUv(ivec2 texelCoord, ivec2 textureExtent) {
-    return (vec2(texelCoord) + vec2(0.5)) / vec2(textureExtent);
-}
-
-float rawSurfaceDepthValidity(vec4 rawMaterial) {
-    float available = SurfaceDepthAvailable != 0 ? 1.0 : 0.0;
-    // A is negative for conservative body coverage without an SDF crossing.
-    // Positive first-hit depth may belong to either the body in R or siphon in
-    // G; B-only storage remains excluded.
-    return available * step(0.002, max(rawMaterial.r, rawMaterial.g))
-            * step(0.0001, rawMaterial.a);
-}
-
-float connectedSurfaceDepthValidity(vec4 rawMaterial,
-        float centerDepth, float continuityLimit) {
-    float depthDelta = abs(rawMaterial.a - centerDepth);
-    float continuity = 1.0 - smoothstep(continuityLimit,
-            continuityLimit * 1.65, depthDelta);
-    return rawSurfaceDepthValidity(rawMaterial) * continuity;
-}
-
-vec4 connectedSurfacePosition(ivec2 texelCoord, ivec2 textureExtent,
-        ivec2 maximumCoord, float centerDepth, float continuityLimit) {
-    ivec2 boundedCoord = clamp(texelCoord, ivec2(0), maximumCoord);
-    vec4 rawMaterial = texelFetch(Sampler0, boundedCoord, 0);
-    float validity = connectedSurfaceDepthValidity(rawMaterial,
-            centerDepth, continuityLimit);
-    if (validity <= 0.0001) {
-        return vec4(0.0);
-    }
-    vec3 viewPosition = projectionEyeView()
-            + viewRayAt(texelCenterUv(boundedCoord,
-                    textureExtent)) * max(rawMaterial.a, 0.0);
-    return vec4(viewPosition * validity, validity);
-}
-
-vec4 connectedBodySurfacePosition(ivec2 texelCoord, ivec2 textureExtent,
-        ivec2 maximumCoord, float centerDepth, float continuityLimit) {
-    ivec2 boundedCoord = clamp(texelCoord, ivec2(0), maximumCoord);
-    vec4 rawMaterial = texelFetch(Sampler0, boundedCoord, 0);
-    float bodyAuthority = smoothstep(0.055, 0.20, rawMaterial.r)
-            * (1.0 - smoothstep(0.02, 0.12, rawMaterial.g));
-    float validity = connectedSurfaceDepthValidity(rawMaterial,
-            centerDepth, continuityLimit) * bodyAuthority;
-    if (validity <= 0.0001) {
-        return vec4(0.0);
-    }
-    vec3 viewPosition = projectionEyeView()
-            + viewRayAt(texelCenterUv(boundedCoord,
-                    textureExtent)) * max(rawMaterial.a, 0.0);
-    return vec4(viewPosition * validity, validity);
+    return displayedBodyCoverage(material);
 }
 
 float silhouetteBoundaryDistanceOutputPixels(vec2 uv,
@@ -208,256 +126,10 @@ float boundaryDistanceAlongDirection(vec2 originUv, vec2 direction,
     return mix(insideDistancePixels, outsideDistancePixels, crossingBlend);
 }
 
-float hash12(vec2 p) {
-    vec3 p3 = fract(vec3(p.xyx) * 0.1031);
-    p3 += dot(p3, p3.yzx + 33.33);
-    return fract((p3.x + p3.y) * p3.z);
-}
-
-float animatedGrain(vec2 seed) {
-    float phase = GameTime * 5.0;
-    float frame = floor(phase);
-    float blend = smoothstep(0.08, 0.92, fract(phase));
-    float first = hash12(seed + vec2(frame * 13.7, frame * 7.9));
-    float second = hash12(seed + vec2((frame + 1.0) * 13.7,
-            (frame + 1.0) * 7.9));
-    return mix(first, second, blend);
-}
-
-vec3 signedDebugRamp(float encoded) {
-    float signedValue = clamp(encoded * 2.0 - 1.0, -1.0, 1.0);
-    vec3 neutral = vec3(0.86);
-    vec3 negative = vec3(0.08, 0.34, 1.0);
-    vec3 positive = vec3(1.0, 0.16, 0.06);
-    return signedValue < 0.0
-            ? mix(neutral, negative, -signedValue)
-            : mix(neutral, positive, signedValue);
-}
-
-vec3 scalarDebugRamp(float value) {
-    value = clamp(value, 0.0, 1.0);
-    vec3 low = vec3(0.015, 0.025, 0.060);
-    vec3 middle = vec3(0.08, 0.78, 0.86);
-    vec3 high = vec3(1.0, 0.86, 0.10);
-    return value < 0.5
-            ? mix(low, middle, value * 2.0)
-            : mix(middle, high, (value - 0.5) * 2.0);
-}
-
-vec3 spikeIndentAmplitudeDebugColor(float encodedAmplitude) {
-    float amplitude = clamp(
-            encodedAmplitude * 2.0 - 1.0,
-            -1.0,
-            1.0);
-    float magnitude = smoothstep(0.015, 1.0, abs(amplitude));
-    vec3 neutral = vec3(0.018, 0.020, 0.026);
-    vec3 indentation = vec3(0.02, 0.68, 1.00);
-    vec3 spike = vec3(1.00, 0.10, 0.015);
-    vec3 polarity = amplitude < 0.0 ? indentation : spike;
-    return mix(neutral, polarity, magnitude);
-}
-
-vec3 fieldOwnershipDebugColor(float encodedOwner) {
-    if (encodedOwner < 0.25) {
-        // Fully warped detailed Pokemon SDF.
-        return vec3(0.00, 0.78, 1.00);
-    }
-    if (encodedOwner < 0.50) {
-        // Exact, unwarped captured-model core SDF.
-        return vec3(1.00, 0.02, 0.52);
-    }
-    if (encodedOwner < 0.75) {
-        // Fully warped depletion/release intersection.
-        return vec3(1.00, 0.82, 0.03);
-    }
-    // No first crossing was resolved; coverage came from proximity fallback.
-    return vec3(0.46, 0.48, 0.52);
-}
-
 void main() {
     vec4 material = texture(Sampler0, texCoord0);
     vec2 texel = 1.0 / vec2(textureSize(Sampler0, 0));
-    if (DeformationDebugMode > 0) {
-        // Mode 12 excludes B: that channel is the undeformed formation-handoff
-        // projection and would be mistaken for one of the current SDF owners.
-        float storedBodyCoverage = bodyStorageCoverage(material.b);
-        float bodyDebugCoverage = (DeformationDebugMode == 12
-                || DeformationDebugMode == 13)
-                ? material.r : max(material.r, storedBodyCoverage);
-        float debugOpacity = max(bodyDebugCoverage, material.g);
-        if (debugOpacity < 0.002) {
-            discard;
-        }
-
-        vec3 debugColor;
-        if (DeformationDebugMode == 1) {
-            debugColor = vec3(storedBodyCoverage);
-        } else if (DeformationDebugMode == 2) {
-            debugColor = vec3(material.r);
-        } else if (DeformationDebugMode == 12) {
-            debugColor = fieldOwnershipDebugColor(material.a);
-        } else if (DeformationDebugMode == 13) {
-            debugColor = spikeIndentAmplitudeDebugColor(material.a);
-        } else if (DeformationDebugMode == 4
-                || DeformationDebugMode == 5
-                || DeformationDebugMode == 10
-                || DeformationDebugMode == 11) {
-            debugColor = scalarDebugRamp(material.a);
-        } else {
-            debugColor = signedDebugRamp(material.a);
-        }
-        float siphonOnly = smoothstep(bodyDebugCoverage,
-                bodyDebugCoverage + 0.08, material.g);
-        debugColor = mix(debugColor, vec3(0.08, 1.0, 0.28), siphonOnly);
-        fragColor = vec4(debugColor, clamp(debugOpacity, 0.0, 0.98));
-        return;
-    }
-
-    // A is a linear camera-ray distance written by a resolved crossing of the
-    // final deformed/depleted body SDF or the siphon surface. Fetch it without
-    // filtering: linear interpolation would blend the negative invalid sentinel
-    // into plausible depths along conservative-fill and silhouette boundaries.
-    ivec2 depthExtent = textureSize(Sampler0, 0);
-    ivec2 maximumDepthCoord = max(depthExtent - ivec2(1), ivec2(0));
-    ivec2 centerDepthCoord = clamp(
-            ivec2(texCoord0 * vec2(depthExtent)), ivec2(0),
-            maximumDepthCoord);
-
-    vec4 centerDepthMaterial = texelFetch(Sampler0, centerDepthCoord, 0);
-    float surfaceDepth = centerDepthMaterial.a;
-    float centerDepthValid = rawSurfaceDepthValidity(centerDepthMaterial);
-    float depthHighlight = 0.0;
-    // Body depth remains authoritative for ordering, but its reconstructed
-    // screen-space normal used to turn broad Pokemon surfaces into moving
-    // specular/Fresnel facets. Evaluate the expensive view-dependent lighting
-    // only for the narrow siphon, whose restrained glint remains readable.
-    if (centerDepthValid > 0.001
-            && centerDepthMaterial.g > centerDepthMaterial.r + 0.02) {
-    bool siphonDominant = centerDepthMaterial.g
-            > centerDepthMaterial.r + 0.02;
-    // A siphon can double back over itself within the body's broad depth
-    // tolerance. Keep its normal neighborhood tighter so separate tube spans
-    // cannot manufacture a false cross-surface highlight.
-    float depthContinuityLimit = siphonDominant
-            ? max(SurfaceDepthScale * 0.05, 0.04)
-            : max(SurfaceDepthScale * 0.18, 0.06);
-    int derivativeOffset = siphonDominant ? 1 : 2;
-    vec3 eyeView = projectionEyeView();
-    vec3 centerViewPosition = eyeView
-            + viewRayAt(texelCenterUv(centerDepthCoord,
-                    depthExtent)) * max(surfaceDepth, 0.0);
-
-    // Estimate each side from a three-sample strip two texels away. This is a
-    // compact bilateral cross filter: invalid depths and discontinuous lobes
-    // contribute no weight, while coherent neighbors are averaged before the
-    // central difference is formed. It avoids the previous pixel-to-pixel
-    // winner flip between left/right or up/down one-sided derivatives. Thin
-    // siphons use a one-texel derivative while the broader body retains the
-    // smoother two-texel stencil.
-    vec4 leftSurface = connectedSurfacePosition(centerDepthCoord
-            + ivec2(-derivativeOffset, -1), depthExtent, maximumDepthCoord,
-            surfaceDepth,
-            depthContinuityLimit)
-            + connectedSurfacePosition(centerDepthCoord
-            + ivec2(-derivativeOffset, 0),
-            depthExtent, maximumDepthCoord, surfaceDepth,
-            depthContinuityLimit)
-            + connectedSurfacePosition(centerDepthCoord
-            + ivec2(-derivativeOffset, 1),
-            depthExtent, maximumDepthCoord, surfaceDepth,
-            depthContinuityLimit);
-    vec4 rightSurface = connectedSurfacePosition(centerDepthCoord
-            + ivec2(derivativeOffset, -1), depthExtent, maximumDepthCoord,
-            surfaceDepth,
-            depthContinuityLimit)
-            + connectedSurfacePosition(centerDepthCoord
-            + ivec2(derivativeOffset, 0),
-            depthExtent, maximumDepthCoord, surfaceDepth,
-            depthContinuityLimit)
-            + connectedSurfacePosition(centerDepthCoord
-            + ivec2(derivativeOffset, 1),
-            depthExtent, maximumDepthCoord, surfaceDepth,
-            depthContinuityLimit);
-    vec4 downSurface = connectedSurfacePosition(centerDepthCoord
-            + ivec2(-1, -derivativeOffset), depthExtent, maximumDepthCoord,
-            surfaceDepth,
-            depthContinuityLimit)
-            + connectedSurfacePosition(centerDepthCoord
-            + ivec2(0, -derivativeOffset),
-            depthExtent, maximumDepthCoord, surfaceDepth,
-            depthContinuityLimit)
-            + connectedSurfacePosition(centerDepthCoord
-            + ivec2(1, -derivativeOffset),
-            depthExtent, maximumDepthCoord, surfaceDepth,
-            depthContinuityLimit);
-    vec4 upSurface = connectedSurfacePosition(centerDepthCoord
-            + ivec2(-1, derivativeOffset), depthExtent, maximumDepthCoord,
-            surfaceDepth,
-            depthContinuityLimit)
-            + connectedSurfacePosition(centerDepthCoord
-            + ivec2(0, derivativeOffset),
-            depthExtent, maximumDepthCoord, surfaceDepth,
-            depthContinuityLimit)
-            + connectedSurfacePosition(centerDepthCoord
-            + ivec2(1, derivativeOffset),
-            depthExtent, maximumDepthCoord, surfaceDepth,
-            depthContinuityLimit);
-
-    vec3 leftViewPosition = leftSurface.xyz / max(leftSurface.w, 0.001);
-    vec3 rightViewPosition = rightSurface.xyz / max(rightSurface.w, 0.001);
-    vec3 downViewPosition = downSurface.xyz / max(downSurface.w, 0.001);
-    vec3 upViewPosition = upSurface.xyz / max(upSurface.w, 0.001);
-    float leftDepthValid = clamp(leftSurface.w / 1.5, 0.0, 1.0);
-    float rightDepthValid = clamp(rightSurface.w / 1.5, 0.0, 1.0);
-    float downDepthValid = clamp(downSurface.w / 1.5, 0.0, 1.0);
-    float upDepthValid = clamp(upSurface.w / 1.5, 0.0, 1.0);
-
-    vec3 tangentX = vec3(0.0);
-    if (leftDepthValid > 0.001 && rightDepthValid > 0.001) {
-        tangentX = rightViewPosition - leftViewPosition;
-    } else if (rightDepthValid > 0.001) {
-        tangentX = rightViewPosition - centerViewPosition;
-    } else if (leftDepthValid > 0.001) {
-        tangentX = centerViewPosition - leftViewPosition;
-    }
-    vec3 tangentY = vec3(0.0);
-    if (downDepthValid > 0.001 && upDepthValid > 0.001) {
-        tangentY = upViewPosition - downViewPosition;
-    } else if (upDepthValid > 0.001) {
-        tangentY = upViewPosition - centerViewPosition;
-    } else if (downDepthValid > 0.001) {
-        tangentY = centerViewPosition - downViewPosition;
-    }
-
-    vec3 rawSurfaceNormal = cross(tangentX, tangentY);
-    float normalAreaValid = step(0.00000000000001,
-            dot(rawSurfaceNormal, rawSurfaceNormal));
-    vec3 viewDirection = safeNormalize3(eyeView - centerViewPosition,
-            vec3(0.0, 0.0, 1.0));
-    vec3 surfaceNormal = safeNormalize3(rawSurfaceNormal, viewDirection);
-    surfaceNormal *= dot(surfaceNormal, viewDirection) < 0.0 ? -1.0 : 1.0;
-    float normalValidity = centerDepthValid
-            * max(leftDepthValid, rightDepthValid)
-            * max(downDepthValid, upDepthValid)
-            * normalAreaValid;
-
-    // A cool view-space key produces restrained interior crescents and
-    // reserves the strongest response for upper-left-facing surfaces.
-    vec3 lightDirection = safeNormalize3(vec3(-0.52, 0.68, 0.56),
-            vec3(0.0, 0.0, 1.0));
-    vec3 halfDirection = safeNormalize3(lightDirection + viewDirection,
-            viewDirection);
-    float normalDotView = clamp(dot(surfaceNormal, viewDirection), 0.0, 1.0);
-    float normalDotHalf = clamp(dot(surfaceNormal, halfDirection), 0.0, 1.0);
-    float keyedSide = smoothstep(-0.12, 0.58,
-            dot(surfaceNormal, lightDirection));
-    float broadSpecular = pow(normalDotHalf, 14.0) * keyedSide;
-    float crescentSpecular = pow(1.0 - normalDotView, 1.85) * keyedSide;
-    depthHighlight = clamp(broadSpecular * 0.70
-            + crescentSpecular * 0.78, 0.0, 1.0) * normalValidity;
-    }
-
-    // Resolve a single body+siphon union. Because the inlet is already merged
+    // Resolve a single body silhouette. Because the inlet is already merged
     // into this mask, no independent purple cap can be drawn over the body.
     float center = coverageAt(texCoord0);
     float nearMaximum = center;
@@ -471,7 +143,7 @@ void main() {
     // Define all fixed contour widths in final display pixels. The density
     // target may run below the main framebuffer resolution on LOW (or a future
     // adaptive profile), so convert them into source-pixel units before using
-    // texture-size-relative UV steps. This keeps the shared body+siphon rim at
+    // texture-size-relative UV steps. This keeps the body rim at
     // four visible pixels instead of accidentally doubling it after upsampling.
     float outputPixelsToSourcePixels =
             float(textureSize(Sampler0, 0).y) / max(ScreenSize.y, 1.0);
@@ -488,54 +160,17 @@ void main() {
     float thinFeatureMaximumGrayTransitionPixels =
             THIN_FEATURE_MAX_GRAY_TRANSITION_OUTPUT_PIXELS
                     * outputPixelsToSourcePixels;
-    float siphonFallbackGrayTransitionPixels =
-            SIPHON_FALLBACK_GRAY_TRANSITION_OUTPUT_PIXELS
-                    * outputPixelsToSourcePixels;
-
     // The body uses an explicit presentation fraction instead of borrowing the
     // collapse envelope. This preserves the failure path's thick black core
-    // from the first exact-mask frame through the surfel handoff. The clamp
-    // protects small details and extreme closeups. Siphon-only pixels retain
-    // the established proportional treatment.
+    // from the first exact-mask frame through the energy handoff. The clamp
+    // protects small details and extreme closeups.
     float bodyGrayTransitionPixels = clamp(
             ProjectedBodyRadiusPixels * BodyGrayTransitionFraction,
             minimumGrayTransitionPixels,
             maximumGrayTransitionPixels);
     float bodyInnerReachPixels = insideRimReachPixels
             + bodyGrayTransitionPixels;
-    float encodedSiphonRadius = centerDepthMaterial.b;
-    float siphonWorldRadius = encodedSiphonRadius > 1.5
-            ? encodedSiphonRadius - 2.0 : 0.0;
-    vec3 siphonViewPosition = projectionEyeView()
-            + viewRayAt(texCoord0) * max(surfaceDepth, 0.0);
-    float verticalProjectionDenominator =
-            max(abs(siphonViewPosition.z)
-                    * max(abs(InvProjMat[1][1]), 0.0001), 0.0001);
-    float projectedSiphonRadiusPixels = siphonWorldRadius
-            * (float(textureSize(Sampler0, 0).y) * 0.5)
-            / verticalProjectionDenominator;
-    float siphonRadiusAvailable = step(0.0001, siphonWorldRadius)
-            * centerDepthValid;
-    float siphonGrayTransitionPixels = clamp(
-            projectedSiphonRadiusPixels * SIPHON_GRAY_TRANSITION_FRACTION,
-            minimumGrayTransitionPixels,
-            maximumGrayTransitionPixels);
-    float proportionalSiphonInnerReachPixels =
-            insideRimReachPixels
-            + siphonGrayTransitionPixels;
-    float siphonFallbackInnerReachPixels =
-            insideRimReachPixels
-            + siphonFallbackGrayTransitionPixels;
-    float siphonInnerReachPixels = mix(
-            siphonFallbackInnerReachPixels,
-            proportionalSiphonInnerReachPixels,
-            siphonRadiusAvailable);
-    float siphonDominance = smoothstep(
-            displayedBodyCoverage(material) + 0.02,
-            displayedBodyCoverage(material) + 0.10,
-            material.g);
-    float innerReachPixels = mix(bodyInnerReachPixels,
-            siphonInnerReachPixels, siphonDominance);
+    float innerReachPixels = bodyInnerReachPixels;
     vec2 nearStep = texel * outsideRimReachPixels;
     vec2 innerStep = texel * innerReachPixels;
     vec2 directions[8] = vec2[8](
@@ -545,7 +180,7 @@ void main() {
         vec2( 0.7071, -0.7071), vec2(-0.7071, -0.7071)
     );
     // Long-range boundary selection needs locally finer angular resolution
-    // than the eight-tap morphology ring. At projected ModelPart corners an
+    // than the eight-tap morphology ring. At projected model-part corners an
     // overlapping quad can block both coarse candidate rays even though a
     // narrow route to the real exterior remains between them. Four entries are
     // initialized after the coarse pass around its two best directions.
@@ -725,26 +360,19 @@ void main() {
             min(insideRimReachPixels, minimumThinInsideRimPixels),
             insideRimReachPixels,
             smoothstep(0.12, 0.78, measuredLocalWidthSupport));
-    float resolvedSiphonGrayTransitionPixels = mix(
-            siphonFallbackGrayTransitionPixels,
-            siphonGrayTransitionPixels,
-            siphonRadiusAvailable);
-    float grayReachPixels = mix(localizedBodyGrayTransitionPixels,
-            resolvedSiphonGrayTransitionPixels, siphonDominance);
-    float resolvedInsideRimReachPixels = mix(
-            localizedBodyInsideRimPixels,
-            insideRimReachPixels, siphonDominance);
+    float grayReachPixels = localizedBodyGrayTransitionPixels;
+    float resolvedInsideRimReachPixels = localizedBodyInsideRimPixels;
     // Search only as far as this pixel's locally permitted presentation band.
     // Thin sheets and appendages deliberately clamp grayReachPixels; probing
     // with the broad body's full radius would jump across their first exterior
-    // and land in another projected ModelPart.
+    // and land in another projected model-part.
     float boundarySearchReachPixels = resolvedInsideRimReachPixels
             + grayReachPixels;
     float boundaryDistancePixels = boundarySearchReachPixels;
     float boundaryFound = 0.0;
     if (DistanceFieldAvailable != 0) {
-        // Style the projected body+siphon union by true Euclidean screen-space
-        // distance. ModelPart normals, face orientation, depth discontinuities,
+        // Style the projected body silhouette by true Euclidean screen-space
+        // distance. model-part normals, face orientation, depth discontinuities,
         // and overlapping quads cannot redirect or cancel this transition.
         boundaryDistancePixels = min(boundarySearchReachPixels,
                 distanceOutputPixels * outputPixelsToSourcePixels);
@@ -804,209 +432,91 @@ void main() {
     float grayBand = grayOuterSupport * grayToBlackFade
             * (1.0 - purpleRim * 0.55);
     // Coverage is the screen projection of one combined implicit body/release
-    // surface plus the siphon union. Deriving the bands from that final mask
+    // surface. Deriving the bands from that final mask
     // makes the purple rim ride every newly exposed depletion edge exactly.
     float core = max(erodedNear, fill * (1.0 - grayBand * 0.70));
 
-    vec2 grainSeed = floor(gl_FragCoord.xy * 0.72);
-    float stableGrain = hash12(grainSeed);
+    vec3 color;
     float edgeActivity = clamp(purpleRim + grayBand, 0.0, 1.0);
-    float grain = mix(stableGrain, animatedGrain(grainSeed),
-            edgeActivity * 0.62);
-    // Keep the noisy transition matte. Large silhouettes made the former
-    // +/-9% screen-space modulation look like a refracting layer sliding over
-    // the body as the camera moved.
-    float grayVariation = mix(0.985, 1.015, grain);
-
-    vec3 coreColor = vec3(0.0035, 0.0010, 0.0070);
-    float grayGradient = smoothstep(0.08, 0.92, grayBand);
-    vec3 grayShadowColor = vec3(0.34, 0.35, 0.38);
-    vec3 grayLightColor = vec3(0.74, 0.75, 0.78);
-    vec3 grayColor = mix(grayShadowColor, grayLightColor, grayGradient)
-            * grayVariation;
-    vec3 rimColor = mix(vec3(0.455, 0.080, 0.665),
-            vec3(0.690, 0.255, 0.930),
-            grain * 0.18 + 0.08);
-    vec3 color = mix(coreColor, grayColor, grayBand * 0.90);
-    color = mix(color, rimColor, purpleRim * 0.97);
-
-    // Do not reconstruct a reflective body normal from proxy/surfel depth.
-    // Overlapping splats can exchange front-depth authority as the camera or
-    // turbulence moves, which made the former Phong/Fresnel response resemble
-    // a sliding prism. Instead, derive one restrained, screen-stable sheen from
-    // the same Euclidean silhouette field that owns the purple/gray bands. It
-    // lives just inside the black core, never alters coverage, and fails closed
-    // when the distance field is unavailable.
     vec2 contourToBoundaryPixels = (nearestBoundarySeedUv - texCoord0)
             * ScreenSize;
     float contourDirectionLength = length(contourToBoundaryPixels);
     vec2 contourOutwardDirection = contourDirectionLength > 0.35
             ? contourToBoundaryPixels / contourDirectionLength
             : strongestEscapeDirection;
-    const vec2 BODY_SHEEN_KEY_DIRECTION = vec2(-0.5793, 0.8151);
-    float contourKeyDot = dot(contourOutwardDirection,
-            BODY_SHEEN_KEY_DIRECTION);
-    float contourBroadLobe = smoothstep(-0.50, 0.65, contourKeyDot);
-    float contourPeakLobe = pow(smoothstep(0.20, 0.96,
-            contourKeyDot), 2.0);
-    float contourKeyLobe = mix(contourBroadLobe,
-            contourPeakLobe, 0.65);
-    float blackInnerEdgeProfile = smoothstep(0.62, 0.84,
-            grayInwardProgress)
-            * (1.0 - smoothstep(0.90, 1.0, grayInwardProgress));
-    float bodyDominance = smoothstep(0.08, 0.42,
-            displayedBodyCoverage(material))
-            * (1.0 - smoothstep(0.08, 0.36, material.g));
-    float graySuppression = 1.0 - smoothstep(0.12, 0.68, grayBand);
-    float bodyContourSheenMask = min(contourKeyLobe
-            * blackInnerEdgeProfile
-            * smoothstep(0.72, 0.96, core)
-            * graySuppression
-            * (1.0 - purpleRim)
-            * bodyDominance
-            * distanceFieldUsable
-            * clamp(BodyContourSheenStrength, 0.0, 0.06), 0.06);
-    // Restore a real body-depth edge response without restoring the old
-    // whole-surface Fresnel layer. Only a narrow black-side shoulder performs
-    // the four extra fetches. Every neighbor must belong to the body, remain
-    // depth-continuous, and support a locally planar central difference; a
-    // surfel winner switch therefore fails closed instead of becoming a bright
-    // sliding prism facet.
-    float bodyDepthSpecularMask = 0.0;
-    float bodyDepthShoulder = smoothstep(0.48, 0.78,
-            grayInwardProgress)
-            * (1.0 - smoothstep(0.95, 1.0, grayInwardProgress))
-            * smoothstep(0.72, 0.96, core)
-            * graySuppression
-            * (1.0 - purpleRim)
-            * bodyDominance
-            * distanceFieldUsable;
-    float bodyDepthPhase = clamp(DepthHighlightBlend, 0.0, 1.0);
-    if (BodyDepthSpecularStrength > 0.0001
-            && bodyDepthShoulder * bodyDepthPhase > 0.001
-            && centerDepthValid > 0.001
-            && centerDepthMaterial.r > centerDepthMaterial.g + 0.02) {
-        float bodyDepthContinuityLimit = max(
-                SurfaceDepthScale * 0.035, 0.025);
-        vec4 bodyLeftSurface = connectedBodySurfacePosition(
-                centerDepthCoord + ivec2(-1, 0), depthExtent,
-                maximumDepthCoord, surfaceDepth,
-                bodyDepthContinuityLimit);
-        vec4 bodyRightSurface = connectedBodySurfacePosition(
-                centerDepthCoord + ivec2(1, 0), depthExtent,
-                maximumDepthCoord, surfaceDepth,
-                bodyDepthContinuityLimit);
-        vec4 bodyDownSurface = connectedBodySurfacePosition(
-                centerDepthCoord + ivec2(0, -1), depthExtent,
-                maximumDepthCoord, surfaceDepth,
-                bodyDepthContinuityLimit);
-        vec4 bodyUpSurface = connectedBodySurfacePosition(
-                centerDepthCoord + ivec2(0, 1), depthExtent,
-                maximumDepthCoord, surfaceDepth,
-                bodyDepthContinuityLimit);
-        float bodyFourSideSupport = min(min(bodyLeftSurface.w,
-                bodyRightSurface.w), min(bodyDownSurface.w,
-                bodyUpSurface.w));
-        float bodyBilateralConfidence = smoothstep(0.72, 0.98,
-                bodyFourSideSupport);
-
-        vec3 bodyEyeView = projectionEyeView();
-        vec3 bodyCenterViewPosition = bodyEyeView
-                + viewRayAt(texelCenterUv(centerDepthCoord,
-                        depthExtent)) * max(surfaceDepth, 0.0);
-        vec3 bodyLeftViewPosition = bodyLeftSurface.xyz
-                / max(bodyLeftSurface.w, 0.001);
-        vec3 bodyRightViewPosition = bodyRightSurface.xyz
-                / max(bodyRightSurface.w, 0.001);
-        vec3 bodyDownViewPosition = bodyDownSurface.xyz
-                / max(bodyDownSurface.w, 0.001);
-        vec3 bodyUpViewPosition = bodyUpSurface.xyz
-                / max(bodyUpSurface.w, 0.001);
-        vec3 bodyTangentX = bodyRightViewPosition
-                - bodyLeftViewPosition;
-        vec3 bodyTangentY = bodyUpViewPosition
-                - bodyDownViewPosition;
-        vec3 bodyRawNormal = cross(bodyTangentX, bodyTangentY);
-        float bodyNormalAreaConfidence = step(0.00000000000001,
-                dot(bodyRawNormal, bodyRawNormal));
-
-        float bodyDepthScale = max(SurfaceDepthScale, 0.05);
-        float bodyLeftDepth = length(bodyLeftViewPosition - bodyEyeView);
-        float bodyRightDepth = length(bodyRightViewPosition - bodyEyeView);
-        float bodyDownDepth = length(bodyDownViewPosition - bodyEyeView);
-        float bodyUpDepth = length(bodyUpViewPosition - bodyEyeView);
-        float bodyDepthCurvature = max(abs(bodyLeftDepth
-                + bodyRightDepth - 2.0 * surfaceDepth),
-                abs(bodyDownDepth + bodyUpDepth
-                - 2.0 * surfaceDepth)) / bodyDepthScale;
-        float bodyPlanarityConfidence = 1.0 - smoothstep(0.010,
-                0.035, bodyDepthCurvature);
-        float bodyTangentAspect = min(length(bodyTangentX),
-                length(bodyTangentY))
-                / max(max(length(bodyTangentX), length(bodyTangentY)),
-                0.00001);
-        float bodyShapeConfidence = smoothstep(0.08, 0.25,
-                bodyTangentAspect);
-
-        vec3 bodyViewDirection = safeNormalize3(bodyEyeView
-                - bodyCenterViewPosition, vec3(0.0, 0.0, 1.0));
-        vec3 bodySurfaceNormal = safeNormalize3(bodyRawNormal,
-                bodyViewDirection);
-        bodySurfaceNormal *= dot(bodySurfaceNormal, bodyViewDirection) < 0.0
-                ? -1.0 : 1.0;
-        vec3 bodyLightDirection = safeNormalize3(
-                vec3(-0.52, 0.68, 0.56), vec3(0.0, 0.0, 1.0));
-        vec3 bodyHalfDirection = safeNormalize3(bodyLightDirection
-                + bodyViewDirection, bodyViewDirection);
-        float bodyKeyedSide = smoothstep(-0.05, 0.48,
-                dot(bodySurfaceNormal, bodyLightDirection));
-        float bodyRoughSpecular = pow(clamp(dot(bodySurfaceNormal,
-                bodyHalfDirection), 0.0, 1.0), 10.0) * bodyKeyedSide;
-        float bodyNormalConfidence = centerDepthValid
-                * bodyBilateralConfidence
-                * bodyNormalAreaConfidence
-                * bodyPlanarityConfidence
-                * bodyShapeConfidence;
-        float largeBodyAttenuation = mix(1.0, 0.62,
-                smoothstep(280.0, 720.0, ProjectedBodyRadiusPixels));
-        float bodySpecularCap = 0.085 * largeBodyAttenuation;
-        bodyDepthSpecularMask = min(bodyRoughSpecular
-                * bodyNormalConfidence
-                * bodyDepthShoulder
-                * bodyDepthPhase
-                * clamp(BodyDepthSpecularStrength, 0.0, 0.12)
-                * largeBodyAttenuation, bodySpecularCap);
+    float animeExteriorOpacityScale = 1.0;
+    // Style the existing silhouette only. Its coverage, thin-feature width
+    // limits, nearest-depth ownership and exact-mask recovery stay upstream.
+    // A coverage normal is stable when moving source triangles exchange depth
+    // authority; it also points outward on both sides of the contour.
+    vec2 animeOutward = contourOutwardDirection;
+    if (distanceFieldUsable > 0.5 && edgeActivity > 0.001) {
+        vec2 directionStep = 2.0 / max(ScreenSize, vec2(1.0));
+        vec2 coverageGradient = vec2(
+                coverageAt(nearestBoundarySeedUv + vec2(directionStep.x, 0.0))
+                        - coverageAt(nearestBoundarySeedUv - vec2(directionStep.x, 0.0)),
+                coverageAt(nearestBoundarySeedUv + vec2(0.0, directionStep.y))
+                        - coverageAt(nearestBoundarySeedUv - vec2(0.0, directionStep.y)));
+        float gradientLength = length(coverageGradient);
+        animeOutward = gradientLength > 0.02
+                ? -coverageGradient / gradientLength
+                : contourOutwardDirection * (center >= 0.5 ? 1.0 : -1.0);
     }
-    float combinedBodyHighlightMask = min(bodyContourSheenMask
-            + bodyDepthSpecularMask, 0.10);
-    vec3 bodySheenColor = vec3(0.54, 0.58, 0.76);
-    color = mix(color, bodySheenColor, combinedBodyHighlightMask);
+    float flowLength = length(AnimeFlowDirection);
+    vec2 animeFlow = flowLength > 0.0001
+            ? AnimeFlowDirection / flowLength : vec2(0.0, 1.0);
+    float upperContour = smoothstep(-0.55, 0.65, animeOutward.y);
+    float leadingContour = smoothstep(-0.55, 0.65,
+            dot(animeOutward, animeFlow));
+    float luminousContour = clamp(upperContour * 0.55
+            + leadingContour * 0.45, 0.0, 1.0);
 
-    // The narrow siphon retains its independent depth-normal highlight. B-only
-    // handoff storage and depthless conservative fill remain excluded.
-    float siphonGate = smoothstep(0.08, 0.42, material.g)
-            * smoothstep(0.02, 0.24, centerDepthMaterial.g);
-    float highlightSignal = clamp(depthHighlight
-            * clamp(DepthHighlightBlend, 0.0, 1.0),
-            0.0, 1.0);
-    float broadHighlight = pow(smoothstep(0.26, 0.78,
-            highlightSignal), 1.35);
-    float peakHighlight = pow(smoothstep(0.60, 0.95,
-            highlightSignal), 0.85);
-    float siphonInteriorHighlight = broadHighlight
-            * smoothstep(0.24, 0.78, core)
-            * (1.0 - grayBand * 0.40)
-            * (1.0 - purpleRim * 0.92) * 0.080;
-    float siphonInnerEdgeHighlight = peakHighlight * grayBand
-            * (1.0 - purpleRim * 0.70) * 0.150;
-    float siphonOuterGlint = peakHighlight * purpleRim * 0.020;
-    float siphonHighlightMask = min((siphonInteriorHighlight
-            + siphonInnerEdgeHighlight + siphonOuterGlint) * siphonGate,
-            0.115);
-    float highlightMask = siphonHighlightMask;
-    vec3 coolWhite = mix(vec3(0.48, 0.63, 0.82),
-            vec3(0.94, 0.98, 1.00), peakHighlight);
-    color = mix(color, coolWhite, highlightMask);
+    // This is a conservative presentation heuristic, not a source-hole
+    // classifier. A small boundary surrounded by coverage in every probe
+    // direction receives less decoration. It can include real tiny texture
+    // cutouts: only RGB is attenuated, never the mask or its transparency.
+    float compactBoundary = 0.0;
+    if (distanceFieldUsable > 0.5 && edgeActivity > 0.001) {
+        float enclosingSupport = 1.0;
+        vec2 enclosingStep = 12.0 / max(ScreenSize, vec2(1.0));
+        for (int i = 0; i < 8; i++) {
+            enclosingSupport = min(enclosingSupport,
+                    coverageAt(nearestBoundarySeedUv
+                            + directions[i] * enclosingStep));
+        }
+        compactBoundary = smoothstep(0.72, 0.96, enclosingSupport);
+    }
+    float contourDecoration = mix(1.0, 0.28, compactBoundary);
+    float animeGrayBand = grayBand * mix(1.0, 0.45, compactBoundary);
+    float smokeValue = smoothstep(0.0, 1.0, animeGrayBand);
+    vec3 animeGray = mix(vec3(0.22, 0.225, 0.25),
+            vec3(0.70, 0.705, 0.75), smokeValue);
+    // Broad, slowly changing value replaces per-pixel animated flecks.
+    animeGray *= 0.985 + 0.015 * sin(GameTime * 0.7
+            + luminousContour * 2.0);
+    vec3 animeRim = mix(vec3(0.49, 0.17, 0.77),
+            vec3(0.77, 0.63, 0.94), luminousContour);
+    animeRim = mix(animeRim, vec3(0.97, 0.95, 1.0),
+            smoothstep(0.48, 0.95, luminousContour));
+    animeRim = mix(animeRim, vec3(0.99, 0.97, 1.0),
+            clamp(AnimeIntakePulse, 0.0, 1.0) * 0.20);
+    color = mix(vec3(0.002, 0.001, 0.004), animeGray,
+            animeGrayBand * 0.90);
+    color = mix(color, animeRim, purpleRim * 0.97
+            * contourDecoration);
+
+    // A soft exterior halo fits inside the existing 1.5 output-pixel reach.
+    // It needs no shader-pack bloom and never expands the carrier/bounds.
+    // Fade only the outside opacity; an intake pulse cannot fill holes or
+    // turn the black interior into a transparent/emissive sheet.
+    if (distanceFieldUsable > 0.5) {
+        float hardContour = 1.0 - smoothstep(0.25, 0.85,
+                distanceOutputPixels);
+        float haloBlend = (1.0 - fill) * (1.0 - hardContour);
+        color = mix(color, vec3(0.64, 0.43, 0.89), haloBlend);
+        animeExteriorOpacityScale = mix(0.22, 1.0, hardContour);
+    }
+
 
     // Gray is a color transition inside the same dense silhouette, not a
     // translucent smoke layer. Preserve only ordinary projected-coverage
@@ -1018,6 +528,24 @@ void main() {
     // is the nearly opaque black core again.
     opacity = mix(opacity, 1.0,
             smoothstep(0.55, 0.85, erodedInner));
+    opacity *= mix(animeExteriorOpacityScale, 1.0, fill);
+
+
+    if (AnimeEnergyCoverage != 0) {
+        // R is the source/energy geometric union; B is its complementary
+        // presentation weight. Keep that weight out of every contour probe.
+        // Dividing by occupancy preserves antialiasing already supplied by
+        // opacity rather than applying the silhouette's edge coverage twice.
+        vec4 alphaMaterial = material;
+        if (alphaMaterial.r <= 0.0001 && distanceFieldUsable > 0.5) {
+            // The exterior halo inherits only its nearest actual boundary's
+            // weight. A fading source elsewhere cannot illuminate this edge.
+            alphaMaterial = texture(Sampler0, nearestBoundarySeedUv);
+        }
+        float presentationAlpha = alphaMaterial.r > 0.0001
+                ? clamp(alphaMaterial.b / alphaMaterial.r, 0.0, 1.0) : 0.0;
+        opacity *= presentationAlpha;
+    }
 
     // The exact mask target retains the frozen hit-frame RGB for diagnostics,
     // but the final composite consumes only its authoritative texture-alpha

@@ -8,7 +8,9 @@ in ivec2 UV2;
 uniform mat4 ModelViewMat;
 uniform mat4 ProjMat;
 
-out vec4 vertexColor;
+// Packed seed, age, material role and coverage belong to one whole puff.
+// Smooth interpolation can perturb even identical vertex seeds by an ULP.
+flat out vec4 vertexColor;
 out vec2 texCoord0;
 
 void main() {

@@ -1,10 +1,10 @@
 #version 150
 
-#moj_import <shadowedhearts:shadow_pokemon_aura_density.glsl>
+#moj_import <shadowedhearts:shadow_pokemon_aura_classic_density.glsl>
 
 uniform sampler2D Sampler0;
 uniform vec4 ColorModulator;
-uniform float GameTime;
+uniform float AuraTime;
 uniform float AuraNoiseScale;
 uniform float AuraMaskFalloff;
 
@@ -18,14 +18,12 @@ void main() {
     vec4 texColor = texture(Sampler0, texCoord0);
     if (texColor.a < 0.01) discard;
 
-    // The Colosseum style starts from the proven Signature density material.
-    // Its isolated wrapper allows independent tuning without changing the
-    // Signature or XD programs.
-    fragColor = shadowPokemonAuraDensity(
+    // Broad smoke, folded haze, and sparse motes use a dedicated density response.
+    fragColor = shadowPokemonAuraColosseumDensity(
             texColor,
             vertexColor * ColorModulator,
             worldPos,
-            GameTime,
+            AuraTime,
             AuraNoiseScale,
             AuraMaskFalloff
     );

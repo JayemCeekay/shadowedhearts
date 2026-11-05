@@ -88,11 +88,9 @@ public final class ModShaders {
     public static ShaderInstance DARK_BALL_SILHOUETTE_DISTANCE_SEED;
     public static ShaderInstance DARK_BALL_SILHOUETTE_DISTANCE_JUMP;
     public static ShaderInstance DARK_BALL_REDUCED_UPSAMPLE;
-    public static ShaderInstance DARK_BALL_SURFACE_SPLAT;
-    public static ShaderInstance DARK_BALL_SURFACE_SPLAT_RESOLVE;
-    public static ShaderInstance DARK_BALL_SIPHON_SURFACE_MESH;
-    public static ShaderInstance DARK_BALL_EDGE_TONGUES;
-    public static ShaderInstance DARK_BALL_FBO_PREVIEW;
+    public static ShaderInstance DARK_BALL_ANIME_SOURCE;
+    public static ShaderInstance DARK_BALL_ANIME_ENERGY;
+    public static ShaderInstance DARK_BALL_MATERIAL_RESOLVE;
 
     // Snag trail orange smoke density pipeline (FBM noise + warm orange composite)
     public static ShaderInstance SNAG_TRAIL_DENSITY;
@@ -107,12 +105,15 @@ public final class ModShaders {
 
     public static ShaderInstance AURA_PULSE;
     public static ShaderInstance LUMINOUS_MOTE;
+    public static ShaderInstance LUMINOUS_MOTE_FABULOUS;
+    public static ShaderInstance LUMINOUS_MOTE_COLOSSEUM;
     public static ShaderInstance PENUMBRA_TRAIL;
     public static ShaderInstance PENUMBRA_TRAIL_RIBBON;
 
     // Penumbra density metaball pipeline
     public static ShaderInstance PENUMBRA_DENSITY_SPLAT;
     public static ShaderInstance PENUMBRA_BLUR;
+    public static ShaderInstance SHADOW_POKEMON_AURA_XD_FAITHFUL_BLUR;
     public static ShaderInstance PENUMBRA_COMPOSITE;
 
     // Shadow Pokemon aura density pipeline
@@ -125,6 +126,8 @@ public final class ModShaders {
     public static ShaderInstance SHADOW_POKEMON_AURA_GUI_PIXEL_COMPOSITE;
     public static ShaderInstance SHADOW_POKEMON_AURA_PRESENT;
     public static ShaderInstance SHADOW_POKEMON_AURA_GUI_PRESENT;
+    public static ShaderInstance SHADOW_AURA_PIXEL_RESOLVE;
+    public static ShaderInstance SHADOW_AURA_PIXEL_PRESENT;
     public static ShaderInstance SHADOW_POKEMON_AURA_DIRECT;
 
     // Colosseum-style Shadow Pokemon aura programs. These are deliberately
@@ -149,14 +152,6 @@ public final class ModShaders {
     public static ShaderInstance SHADOW_POKEMON_AURA_XD_FAITHFUL_GUI_COMPOSITE;
     public static ShaderInstance SHADOW_POKEMON_AURA_XD_FAITHFUL_PIXEL_COMPOSITE;
     public static ShaderInstance SHADOW_POKEMON_AURA_XD_FAITHFUL_GUI_PIXEL_COMPOSITE;
-
-    // Screen-space electromagnetic static overlay for Aura Scanner
-    public static ShaderInstance AURA_STATIC_INTERFERENCE;
-    public static ShaderInstance HEAT_HAZE_INTERFERENCE;
-
-
-    // Screen-space HUD shaders
-    public static ShaderInstance HUD_BARREL_DISTORTION;
 
     private ModShaders() {}
 

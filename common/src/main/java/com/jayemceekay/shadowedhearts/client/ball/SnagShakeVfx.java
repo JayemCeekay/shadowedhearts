@@ -8,6 +8,7 @@ import com.jayemceekay.shadowedhearts.client.ball.vfx.ShakeInstance;
 import com.jayemceekay.shadowedhearts.client.ball.vfx.ShakeSpark;
 import com.jayemceekay.shadowedhearts.client.render.rendertypes.BallRenderTypes;
 import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.ByteBufferBuilder;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
@@ -37,12 +38,24 @@ import java.util.concurrent.ConcurrentHashMap;
  * </ul>
  */
 public final class SnagShakeVfx {
+    private static final MultiBufferSource.BufferSource VFX_BUFFERS =
+            MultiBufferSource.immediate(new ByteBufferBuilder(65536));
+
+    public static boolean hasActive() {
+        return !ACTIVE.isEmpty();
+    }
 
     private SnagShakeVfx() {}
 
     // ── Instance registry ───────────────────────────────────────────────────
     private static final Map<Integer, ShakeInstance> ACTIVE = new ConcurrentHashMap<>();
     private static long lastTickNanos = 0;
+
+    /** Retire disabled effects and release the prior world's entity IDs and particle lists. */
+    public static void clearAll() {
+        ACTIVE.clear();
+        lastTickNanos = 0;
+    }
 
 
     // ── Public API ──────────────────────────────────────────────────────────
@@ -137,7 +150,7 @@ public final class SnagShakeVfx {
         Minecraft mc = Minecraft.getInstance();
         if (mc.level == null) return;
 
-        MultiBufferSource.BufferSource buf = mc.renderBuffers().bufferSource();
+        MultiBufferSource.BufferSource buf = VFX_BUFFERS;
         Vec3 camPos = camera.getPosition();
 
         for (ShakeInstance inst : ACTIVE.values()) {

@@ -20,6 +20,11 @@ public abstract class MixinPokeBallPosableState {
     public ScheduledTask after(float seconds, Function0<Unit> action) {
         float finalSeconds = seconds;
         if (isDarkBallHitCloseStep(seconds) && isDarkBallHitEntity()) {
+            Entity entity = ((PosableState) (Object) this).getEntity();
+            float animeRemaining = DarkBallCaptureVfx.getRemainingAnimeCaptureSeconds(entity.getId());
+            if (Float.isFinite(animeRemaining)) {
+                return scheduleAnimeClose(entity, action, Math.max(0, animeRemaining));
+            }
             finalSeconds = DarkBallCaptureVfx.BALL_ABSORB_END;
         }
 
@@ -36,6 +41,26 @@ public abstract class MixinPokeBallPosableState {
                         1
                 )
         );
+    }
+
+    private ScheduledTask scheduleAnimeClose(Entity entity, Function0<Unit> action, float delay) {
+        SchedulingTracker tracker = ((Schedulable) (Object) this).getSchedulingTracker();
+        return tracker.addTask(new ScheduledTask(task -> {
+            if (!(entity instanceof EmptyPokeBallEntity ball) || !entity.isAlive()
+                    || ball.getCaptureState() == EmptyPokeBallEntity.CaptureState.NOT
+                    || ball.getCaptureState() == EmptyPokeBallEntity.CaptureState.BROKEN_FREE) {
+                return Unit.INSTANCE;
+            }
+            // Recheck presentation progress at the close callback. A paused/late prepared
+            // capture must finish its actual last-tail frame before the lid starts closing.
+            float remaining = DarkBallCaptureVfx.getRemainingAnimeCaptureSeconds(entity.getId());
+            if (Float.isFinite(remaining) && remaining > .001f) {
+                scheduleAnimeClose(entity, action, .05f);
+            } else {
+                action.invoke();
+            }
+            return Unit.INSTANCE;
+        }, null, delay, -1.0F, 1));
     }
 
     private boolean isDarkBallHitCloseStep(float seconds) {

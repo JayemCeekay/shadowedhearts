@@ -97,7 +97,8 @@ float hash31(vec3 p){
     p += dot(p, p.yzx + 33.33);
     return fract((p.x+p.y)*p.z);
 }
-float noise3(vec3 p){
+// GLSL's built-in noise3 returns vec3; keep this scalar helper distinct.
+float shValueNoise3(vec3 p){
     vec3 i = floor(p), f = fract(p);
     vec3 u = f*f*(3.0-2.0*f);
     float n000 = hash31(i+vec3(0, 0, 0));
@@ -119,7 +120,7 @@ float noise3(vec3 p){
 float fbm(vec3 p){
     float a = 0.5, f = 0.0;
     for (int i=0;i<FBM_OCTAVES;++i){
-        f += a * noise3(p);
+        f += a * shValueNoise3(p);
         p = p*2.02 + vec3(31.416, 47.0, 19.19);
         a *= 0.5;
     }
@@ -129,12 +130,12 @@ float fbm(vec3 p){
 // Approximate curl of noise field (normalized)
 vec3 curl(vec3 p){
     float e = 0.10;
-    float nx1 = noise3(p + vec3(e, 0, 0));
-    float nx0 = noise3(p - vec3(e, 0, 0));
-    float ny1 = noise3(p + vec3(0, e, 0));
-    float ny0 = noise3(p - vec3(0, e, 0));
-    float nz1 = noise3(p + vec3(0, 0, e));
-    float nz0 = noise3(p - vec3(0, 0, e));
+    float nx1 = shValueNoise3(p + vec3(e, 0, 0));
+    float nx0 = shValueNoise3(p - vec3(e, 0, 0));
+    float ny1 = shValueNoise3(p + vec3(0, e, 0));
+    float ny0 = shValueNoise3(p - vec3(0, e, 0));
+    float nz1 = shValueNoise3(p + vec3(0, 0, e));
+    float nz0 = shValueNoise3(p - vec3(0, 0, e));
     vec3 g = vec3(nx1 - nx0, ny1 - ny0, nz1 - nz0);
     // Curl from gradient differences, avoid zero vector
     vec3 c = vec3(g.y - g.z, g.z - g.x, g.x - g.y);
@@ -430,7 +431,7 @@ void main(){
         float patchStrength = clamp(uPatchStrengthTop * patchH, 0.0, 1.0);
         float patchThresh = mix(uPatchThreshBase, uPatchThreshTop, patchH);
         vec3 pwPatch = (pPix * uPatchScaleRel) - (advRel + advScrollRel) * uPatchScaleRel + shearRel * uPatchScaleRel;
-        float nPatch = noise3(pwPatch);
+        float nPatch = shValueNoise3(pwPatch);
         float patchMask = smoothstep(patchThresh - uPatchSharpness, patchThresh + uPatchSharpness, nPatch);
         float patchMix = mix(1.0, patchMask, patchStrength);
 

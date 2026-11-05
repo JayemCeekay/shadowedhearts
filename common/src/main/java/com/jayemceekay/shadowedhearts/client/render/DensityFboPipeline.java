@@ -1,5 +1,7 @@
 package com.jayemceekay.shadowedhearts.client.render;
 
+import com.jayemceekay.shadowedhearts.client.ModShaders;
+import com.jayemceekay.shadowedhearts.client.moonwound.MoonwoundPixelationScale;
 import com.jayemceekay.shadowedhearts.mixin.RenderTargetAccessor;
 import com.mojang.blaze3d.pipeline.RenderTarget;
 import com.mojang.blaze3d.pipeline.TextureTarget;
@@ -38,17 +40,13 @@ public final class DensityFboPipeline {
     private int resolutionDivisor = 2;
     private boolean reducedCompositeEnabled;
     private boolean reducedCompositeSupported = true;
-    private boolean splatDiagnosticEnabled;
-    private boolean surfaceSplatFrontDepthEnabled;
     private boolean silhouetteDistanceEnabled;
 
     private RenderTarget densityTarget;
     private RenderTarget blurTempTarget;
     private RenderTarget reducedCompositeTarget;
-    private RenderTarget splatDiagnosticTarget;
     private RenderTarget maskTarget;
     private RenderTarget proxyFrontDepthTarget;
-    private RenderTarget surfaceSplatFrontDepthTarget;
     private RenderTarget silhouetteDistanceTargetA;
     private RenderTarget silhouetteDistanceTargetB;
     private RenderTarget silhouetteDistanceResultTarget;
@@ -62,6 +60,7 @@ public final class DensityFboPipeline {
     };
     private final PixelPresentationTarget guiPixelPresentation =
             new PixelPresentationTarget();
+    private final ContinuousPixelationPass continuousPixelation = new ContinuousPixelationPass();
     private boolean worldFractionalMipSupported = true;
     private int lastWidth = -1;
     private int lastHeight = -1;
@@ -69,7 +68,6 @@ public final class DensityFboPipeline {
     private int reducedCompositeHeight = -1;
     private int silhouetteDistanceWidth = -1;
     private int silhouetteDistanceHeight = -1;
-    private long targetGeneration;
     private int restoreDrawFramebufferId = -1;
     private int restoreReadFramebufferId = -1;
     private boolean renderStateCaptured;
@@ -149,44 +147,9 @@ public final class DensityFboPipeline {
         if (reducedCompositeTarget != null) {
             reducedCompositeTarget.destroyBuffers();
             reducedCompositeTarget = null;
-            targetGeneration++;
         }
         reducedCompositeWidth = -1;
         reducedCompositeHeight = -1;
-    }
-
-    /**
-     * Controls the optional color-only target used to inspect individual
-     * surface-splat footprints before the production accumulation field is
-     * resolved. It is deliberately separate from every presentation target.
-     */
-    public void setSplatDiagnosticEnabled(boolean enabled) {
-        if (splatDiagnosticEnabled == enabled) {
-            return;
-        }
-        splatDiagnosticEnabled = enabled;
-        if (!enabled && splatDiagnosticTarget != null) {
-            splatDiagnosticTarget.destroyBuffers();
-            splatDiagnosticTarget = null;
-            targetGeneration++;
-        }
-    }
-
-    /**
-     * Enables the Dark Ball-only scalar front-depth attachment. The generic
-     * pipeline also backs aura and trail effects, which must not pay for this
-     * target.
-     */
-    public void setSurfaceSplatFrontDepthEnabled(boolean enabled) {
-        if (surfaceSplatFrontDepthEnabled == enabled) {
-            return;
-        }
-        surfaceSplatFrontDepthEnabled = enabled;
-        if (!enabled && surfaceSplatFrontDepthTarget != null) {
-            surfaceSplatFrontDepthTarget.destroyBuffers();
-            surfaceSplatFrontDepthTarget = null;
-            targetGeneration++;
-        }
     }
 
     /**
@@ -211,7 +174,6 @@ public final class DensityFboPipeline {
             silhouetteDistanceResultTarget = null;
             silhouetteDistanceWidth = -1;
             silhouetteDistanceHeight = -1;
-            targetGeneration++;
         }
     }
 
@@ -235,6 +197,8 @@ public final class DensityFboPipeline {
     public boolean beginDensityPass(boolean clearTarget, boolean copyMainDepth) {
         captureCurrentRenderState();
         try {
+            RenderSystem.colorMask(true, true, true, true);
+            GL11.glColorMask(true, true, true, true);
             boolean recreatedTargets = ensureTargets(
                     restoreViewportW, restoreViewportH);
             if (densityTarget == null) {
@@ -353,6 +317,68 @@ public final class DensityFboPipeline {
     }
 
     /**
+     * Snapshots resolved body material before a mesh writes into density.
+     * The temporary target is spare before the final material resolve and is
+     * reused by post-processing only after all material arbitration finishes.
+     * No sampled attachment remains attached to the mesh's draw framebuffer.
+     */
+    public boolean snapshotDensityToTemp() {
+        return snapshotDensityToTemp(0, 0, 1, 1);
+    }
+
+    /**
+     * A known material footprint permits a smaller color copy. Clear the full
+     * scratch image first so old body pixels never become new occluders. Invalid
+     * or empty bounds retain the full-copy behavior.
+     */
+    public boolean snapshotDensityToTemp(float minimumU, float minimumV,
+                                         float maximumU, float maximumV) {
+        if (densityTarget == null || blurTempTarget == null
+                || densityTarget == blurTempTarget
+                || lastWidth <= 0 || lastHeight <= 0) {
+            return false;
+        }
+        int minX = 0, minY = 0, maxX = lastWidth, maxY = lastHeight;
+        if (Float.isFinite(minimumU) && Float.isFinite(minimumV)
+                && Float.isFinite(maximumU) && Float.isFinite(maximumV)
+                && maximumU > minimumU && maximumV > minimumV) {
+            int candidateMinX = (int) Math.floor(Math.clamp(minimumU, 0, 1) * lastWidth);
+            int candidateMinY = (int) Math.floor(Math.clamp(minimumV, 0, 1) * lastHeight);
+            int candidateMaxX = (int) Math.ceil(Math.clamp(maximumU, 0, 1) * lastWidth);
+            int candidateMaxY = (int) Math.ceil(Math.clamp(maximumV, 0, 1) * lastHeight);
+            if (candidateMaxX > candidateMinX && candidateMaxY > candidateMinY) {
+                minX = candidateMinX;
+                minY = candidateMinY;
+                maxX = candidateMaxX;
+                maxY = candidateMaxY;
+            }
+        }
+        try (RenderStateScope ignored = preserveRenderState()) {
+            GL11.glDisable(GL11.GL_SCISSOR_TEST);
+            densityTarget.bindWrite(false);
+            int sourceFramebuffer = GL11.glGetInteger(GL30.GL_DRAW_FRAMEBUFFER_BINDING);
+            blurTempTarget.bindWrite(false);
+            GL30.glBindFramebuffer(GL30.GL_READ_FRAMEBUFFER, sourceFramebuffer);
+            if (GL30.glCheckFramebufferStatus(GL30.GL_READ_FRAMEBUFFER)
+                    != GL30.GL_FRAMEBUFFER_COMPLETE
+                    || GL30.glCheckFramebufferStatus(GL30.GL_DRAW_FRAMEBUFFER)
+                    != GL30.GL_FRAMEBUFFER_COMPLETE) {
+                return false;
+            }
+            clearGlErrors();
+            if (minX > 0 || minY > 0 || maxX < lastWidth || maxY < lastHeight) {
+                RenderSystem.colorMask(true, true, true, true);
+                GL11.glColorMask(true, true, true, true);
+                GL30.glClearBufferfv(GL11.GL_COLOR, 0, new float[4]);
+            }
+            GL30.glBlitFramebuffer(minX, minY, maxX, maxY,
+                    minX, minY, maxX, maxY,
+                    GL11.GL_COLOR_BUFFER_BIT, GL11.GL_NEAREST);
+            return GL11.glGetError() == GL11.GL_NO_ERROR;
+        }
+    }
+
+    /**
      * @return OpenGL color texture id for the optional reduced-resolution
      * styled composite, or {@code 0} if targets have not been created
      */
@@ -393,31 +419,10 @@ public final class DensityFboPipeline {
         return proxyFrontDepthTarget != null ? proxyFrontDepthTarget.getColorTextureId() : 0;
     }
 
-    public int getSurfaceSplatFrontDepthTextureId() {
-        return surfaceSplatFrontDepthTarget != null
-                ? surfaceSplatFrontDepthTarget.getColorTextureId()
-                : 0;
-    }
-
-    public int getSplatDiagnosticTextureId() {
-        return splatDiagnosticTarget != null
-                ? splatDiagnosticTarget.getColorTextureId()
-                : 0;
-    }
-
     public int getSilhouetteDistanceTextureId() {
         return silhouetteDistanceResultTarget != null
                 ? silhouetteDistanceResultTarget.getColorTextureId()
                 : 0;
-    }
-
-    /**
-     * Changes whenever framebuffer-backed texture ids can have been replaced.
-     * Debug consumers use this to reject snapshots cached across a resize,
-     * quality change, or explicit destroy.
-     */
-    public long getTargetGeneration() {
-        return targetGeneration;
     }
 
     public boolean beginMaskPass(boolean clearTarget, boolean copyMainDepth) {
@@ -426,37 +431,6 @@ public final class DensityFboPipeline {
 
     public boolean beginProxyDepthPass(boolean clearTarget, boolean copyMainDepth) {
         return beginAuxiliaryPass(proxyFrontDepthTarget, clearTarget, copyMainDepth);
-    }
-
-    /**
-     * Binds the single-channel frontmost-surface target with a pristine copy of
-     * scene depth. The splat renderer enables depth writes for this pass, so
-     * fused coverage and surface ordering can remain independent authorities.
-     */
-    public boolean beginSurfaceSplatFrontDepthPass(
-            boolean clearTarget,
-            boolean copyMainDepth) {
-        return beginAuxiliaryPass(
-                surfaceSplatFrontDepthTarget,
-                clearTarget,
-                copyMainDepth);
-    }
-
-    /**
-     * Binds the color-only pre-merge splat inspection target. No scene depth is
-     * copied: splats must remain mutually visible so footprint overlap can be
-     * diagnosed instead of self-occluding.
-     */
-    public boolean beginSplatDiagnosticPass(boolean clearTarget) {
-        if (splatDiagnosticTarget == null) {
-            return false;
-        }
-        if (clearTarget) {
-            clearTargetUnscissored(splatDiagnosticTarget);
-        }
-        splatDiagnosticTarget.bindWrite(false);
-        RenderSystem.viewport(0, 0, lastWidth, lastHeight);
-        return true;
     }
 
     public void resumeDensityPass() {
@@ -598,6 +572,7 @@ public final class DensityFboPipeline {
         }
 
         FullscreenPassState savedState = FullscreenPassState.capture();
+        VertexSorting savedVertexSorting = RenderSystem.getVertexSorting();
         Matrix4f savedMV = new Matrix4f(RenderSystem.getModelViewMatrix());
         Matrix4f savedProj = new Matrix4f(RenderSystem.getProjectionMatrix());
         boolean drawSubmitted = false;
@@ -646,86 +621,7 @@ public final class DensityFboPipeline {
                 RenderSystem.getModelViewMatrix().set(savedMV);
                 RenderSystem.setProjectionMatrix(
                         savedProj,
-                        VertexSorting.DISTANCE_TO_ORIGIN);
-                savedState.restore();
-            }
-        }
-
-        return drawSubmitted;
-    }
-
-    /**
-     * Resolves the reusable temporary texture back into the density color
-     * attachment without clearing or modifying its scene-depth attachment.
-     *
-     * <p>This is the second half of topology-independent splat-field
-     * reconstruction: the first bounded pass filters accumulation into the
-     * temporary target; this pass filters the other axis and decodes final
-     * material/depth channels. Keeping it here avoids sampling from and
-     * rendering to the same texture.</p>
-     */
-    public boolean processTempToDensity(
-            ShaderInstance shader,
-            Consumer<ShaderInstance> uniformSetup,
-            float minimumU, float minimumV,
-            float maximumU, float maximumV) {
-        if (densityTarget == null || blurTempTarget == null || shader == null) {
-            return false;
-        }
-
-        FullscreenPassState savedState = FullscreenPassState.capture();
-        Matrix4f savedMV = new Matrix4f(RenderSystem.getModelViewMatrix());
-        Matrix4f savedProj = new Matrix4f(RenderSystem.getProjectionMatrix());
-        boolean drawSubmitted = false;
-
-        try {
-            densityTarget.bindWrite(false);
-            RenderSystem.viewport(0, 0, lastWidth, lastHeight);
-            clearColorAttachmentUnscissored();
-
-            RenderSystem.setShaderTexture(
-                    0,
-                    blurTempTarget.getColorTextureId());
-            Uniform uScreenSize = shader.getUniform("ScreenSize");
-            if (uScreenSize != null) {
-                uScreenSize.set((float) lastWidth, (float) lastHeight);
-            }
-            if (uniformSetup != null) {
-                uniformSetup.accept(shader);
-            }
-
-            RenderSystem.getModelViewMatrix().identity();
-            RenderSystem.setProjectionMatrix(
-                    new Matrix4f(),
-                    VertexSorting.ORTHOGRAPHIC_Z);
-
-            RenderSystem.setShader(() -> shader);
-            RenderSystem.enableBlend();
-            RenderSystem.blendFunc(
-                    GlStateManager.SourceFactor.ONE,
-                    GlStateManager.DestFactor.ZERO);
-            GL20.glBlendEquationSeparate(
-                    GL14.GL_FUNC_ADD,
-                    GL14.GL_FUNC_ADD);
-            RenderSystem.disableDepthTest();
-            RenderSystem.depthMask(false);
-            RenderSystem.disableCull();
-            GL11.glDisable(GL11.GL_SCISSOR_TEST);
-
-            drawScreenQuad(
-                    minimumU,
-                    minimumV,
-                    maximumU,
-                    maximumV);
-            drawSubmitted = true;
-        } finally {
-            try {
-                shader.clear();
-            } finally {
-                RenderSystem.getModelViewMatrix().set(savedMV);
-                RenderSystem.setProjectionMatrix(
-                        savedProj,
-                        VertexSorting.DISTANCE_TO_ORIGIN);
+                        savedVertexSorting);
                 savedState.restore();
             }
         }
@@ -761,6 +657,7 @@ public final class DensityFboPipeline {
         }
 
         FullscreenPassState savedState = FullscreenPassState.capture();
+        VertexSorting savedVertexSorting = RenderSystem.getVertexSorting();
         Matrix4f savedMV = new Matrix4f(RenderSystem.getModelViewMatrix());
         Matrix4f savedProj = new Matrix4f(RenderSystem.getProjectionMatrix());
         boolean completed = false;
@@ -844,7 +741,7 @@ public final class DensityFboPipeline {
             }
             RenderSystem.getModelViewMatrix().set(savedMV);
             RenderSystem.setProjectionMatrix(
-                    savedProj, VertexSorting.DISTANCE_TO_ORIGIN);
+                    savedProj, savedVertexSorting);
             savedState.restore();
         }
 
@@ -873,6 +770,7 @@ public final class DensityFboPipeline {
         }
 
         FullscreenPassState savedState = FullscreenPassState.capture();
+        VertexSorting savedVertexSorting = RenderSystem.getVertexSorting();
         Matrix4f savedMV =
                 new Matrix4f(RenderSystem.getModelViewMatrix());
         Matrix4f savedProj =
@@ -923,12 +821,77 @@ public final class DensityFboPipeline {
             } finally {
                 RenderSystem.getModelViewMatrix().set(savedMV);
                 RenderSystem.setProjectionMatrix(
-                        savedProj, VertexSorting.DISTANCE_TO_ORIGIN);
+                        savedProj, savedVertexSorting);
                 savedState.restore();
             }
         }
 
         return drawSubmitted;
+    }
+
+    /** Styles at full resolution, then applies Moonwound's exact fractional coverage filter. */
+    public boolean compositeContinuousPixels(ShaderInstance materialShader, Consumer<ShaderInstance> uniformSetup,
+                                              MoonwoundPixelationScale.Grid grid, boolean gui,
+                                              float minimumU, float minimumV, float maximumU, float maximumV) {
+        return compositeContinuousPixels(materialShader, uniformSetup, grid, gui,
+                minimumU, minimumV, maximumU, maximumV, null, true);
+    }
+
+    /** The optional late draw supports additive motes; disabling material captures only that draw. */
+    public boolean compositeContinuousPixels(ShaderInstance materialShader, Consumer<ShaderInstance> uniformSetup,
+                                              MoonwoundPixelationScale.Grid grid, boolean gui,
+                                              float minimumU, float minimumV, float maximumU, float maximumV,
+                                              Runnable additionalDraw, boolean materialEnabled) {
+        if (densityTarget == null || grid == null || (materialEnabled && materialShader == null)
+                || (!materialEnabled && additionalDraw == null)) return false;
+        var source = (RenderTargetAccessor) (Object) densityTarget;
+        int[] viewport = new int[4];
+        GL11.glGetIntegerv(GL11.GL_VIEWPORT, viewport);
+        // Scaled Iris targets retain normalized alignment. Reject changed/cropped
+        // aspect ratios while allowing rounding by two source texels. The caller
+        // owns frame freshness; this is pristine density depth, not Fabulous main depth.
+        if (viewport[2] <= 0 || viewport[3] <= 0 || source.getFrameBufferId() <= 0
+                || source.getWidth() != lastWidth || source.getHeight() != lastHeight
+                || !compatibleContinuousDepthSize(lastWidth, lastHeight, viewport[2], viewport[3])) return false;
+        return continuousPixelation.render(ModShaders.SHADOW_AURA_PIXEL_RESOLVE, ModShaders.SHADOW_AURA_PIXEL_PRESENT,
+                grid, gui, source.getFrameBufferId(), lastWidth, lastHeight, () -> {
+                    RenderSystem.disableDepthTest();
+                    GL11.glDisable(GL11.GL_DEPTH_TEST);
+                    RenderSystem.depthMask(false);
+                    GL11.glDepthMask(false);
+                    RenderSystem.disableCull();
+                    GL11.glDisable(GL11.GL_CULL_FACE);
+                    GL11.glDisable(GL11.GL_SCISSOR_TEST);
+                    RenderSystem.colorMask(true, true, true, true);
+                    RenderSystem.setShaderColor(1, 1, 1, 1);
+                    RenderSystem.enableBlend();
+                    GL11.glEnable(GL11.GL_BLEND);
+                    // Store RGB premultiplied while retaining unmodified alpha.
+                    RenderSystem.blendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA,
+                            GL11.GL_ONE, GL11.GL_ONE_MINUS_SRC_ALPHA);
+                    GL14.glBlendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA,
+                            GL11.GL_ONE, GL11.GL_ONE_MINUS_SRC_ALPHA);
+                    GL20.glBlendEquationSeparate(GL14.GL_FUNC_ADD, GL14.GL_FUNC_ADD);
+                    if (materialEnabled) {
+                        RenderSystem.setShaderTexture(0, densityTarget.getColorTextureId());
+                        materialShader.setSampler("Sampler0", densityTarget.getColorTextureId());
+                        setCompositeSizeUniforms(materialShader, viewport[2], viewport[3], viewport[2], viewport[3]);
+                        if (uniformSetup != null) uniformSetup.accept(materialShader);
+                        RenderSystem.getModelViewMatrix().identity();
+                        RenderSystem.setProjectionMatrix(new Matrix4f(), VertexSorting.ORTHOGRAPHIC_Z);
+                        RenderSystem.setShader(() -> materialShader);
+                        drawScreenQuad(minimumU, minimumV, maximumU, maximumV);
+                        materialShader.clear();
+                    }
+                    if (additionalDraw != null) additionalDraw.run();
+                }, minimumU, minimumV, maximumU, maximumV);
+    }
+
+    public static boolean compatibleContinuousDepthSize(int depthWidth, int depthHeight,
+                                                        int outputWidth, int outputHeight) {
+        if (depthWidth <= 0 || depthHeight <= 0 || outputWidth <= 0 || outputHeight <= 0) return false;
+        return Math.abs(depthWidth / (double) depthHeight - outputWidth / (double) outputHeight)
+                <= 2.0 / depthHeight;
     }
 
     /**
@@ -1503,10 +1466,6 @@ public final class DensityFboPipeline {
             reducedCompositeTarget.destroyBuffers();
             reducedCompositeTarget = null;
         }
-        if (splatDiagnosticTarget != null) {
-            splatDiagnosticTarget.destroyBuffers();
-            splatDiagnosticTarget = null;
-        }
         if (maskTarget != null) {
             maskTarget.destroyBuffers();
             maskTarget = null;
@@ -1514,10 +1473,6 @@ public final class DensityFboPipeline {
         if (proxyFrontDepthTarget != null) {
             proxyFrontDepthTarget.destroyBuffers();
             proxyFrontDepthTarget = null;
-        }
-        if (surfaceSplatFrontDepthTarget != null) {
-            surfaceSplatFrontDepthTarget.destroyBuffers();
-            surfaceSplatFrontDepthTarget = null;
         }
         if (silhouetteDistanceTargetA != null) {
             silhouetteDistanceTargetA.destroyBuffers();
@@ -1534,6 +1489,7 @@ public final class DensityFboPipeline {
             worldFractionalMipPresentations[level].destroy();
         }
         guiPixelPresentation.destroy();
+        continuousPixelation.destroy();
         silhouetteDistanceResultTarget = null;
         lastWidth = -1;
         lastHeight = -1;
@@ -1543,15 +1499,12 @@ public final class DensityFboPipeline {
         silhouetteDistanceHeight = -1;
         reducedCompositeEnabled = false;
         reducedCompositeSupported = true;
-        splatDiagnosticEnabled = false;
         worldFractionalMipSupported = true;
-        surfaceSplatFrontDepthEnabled = false;
         silhouetteDistanceEnabled = false;
         restoreDrawFramebufferId = -1;
         restoreReadFramebufferId = -1;
         renderStateCaptured = false;
         restoreRenderState = null;
-        targetGeneration++;
     }
 
     private static final class PixelPresentationTarget {
@@ -1597,12 +1550,8 @@ public final class DensityFboPipeline {
                 && (reducedCompositeTarget == null
                 || reducedCompositeWidth != reducedWidth
                 || reducedCompositeHeight != reducedHeight))
-                || (splatDiagnosticEnabled
-                && splatDiagnosticTarget == null)
                 || maskTarget == null
                 || proxyFrontDepthTarget == null
-                || (surfaceSplatFrontDepthEnabled
-                && surfaceSplatFrontDepthTarget == null)
                 || (silhouetteDistanceEnabled
                 && (silhouetteDistanceTargetA == null
                 || silhouetteDistanceTargetB == null
@@ -1615,101 +1564,52 @@ public final class DensityFboPipeline {
             if (reducedCompositeTarget != null) {
                 reducedCompositeTarget.destroyBuffers();
             }
-            if (splatDiagnosticTarget != null) {
-                splatDiagnosticTarget.destroyBuffers();
-            }
             if (maskTarget != null) maskTarget.destroyBuffers();
             if (proxyFrontDepthTarget != null) proxyFrontDepthTarget.destroyBuffers();
-            if (surfaceSplatFrontDepthTarget != null) {
-                surfaceSplatFrontDepthTarget.destroyBuffers();
-            }
-            if (silhouetteDistanceTargetA != null) {
-                silhouetteDistanceTargetA.destroyBuffers();
-            }
-            if (silhouetteDistanceTargetB != null) {
-                silhouetteDistanceTargetB.destroyBuffers();
-            }
+            if (silhouetteDistanceTargetA != null) silhouetteDistanceTargetA.destroyBuffers();
+            if (silhouetteDistanceTargetB != null) silhouetteDistanceTargetB.destroyBuffers();
             silhouetteDistanceResultTarget = null;
 
             densityTarget = createFloatColorTarget(hw, hh, true, GL11.GL_LINEAR);
             blurTempTarget = createFloatColorTarget(hw, hh, false, GL11.GL_LINEAR);
             reducedCompositeTarget = reducedCompositeEnabled
                     ? createValidatedCompactColorTarget(
-                    reducedWidth, reducedHeight, GL11.GL_LINEAR)
-                    : null;
-            splatDiagnosticTarget = splatDiagnosticEnabled
-                    ? createValidatedCompactColorTarget(
-                    hw, hh, GL11.GL_NEAREST)
-                    : null;
-            if (reducedCompositeEnabled
-                    && reducedCompositeTarget == null) {
+                    reducedWidth, reducedHeight, GL11.GL_LINEAR) : null;
+            if (reducedCompositeEnabled && reducedCompositeTarget == null) {
                 reducedCompositeSupported = false;
                 reducedCompositeEnabled = false;
             }
-            reducedCompositeWidth = reducedCompositeTarget != null
-                    ? reducedWidth : -1;
-            reducedCompositeHeight = reducedCompositeTarget != null
-                    ? reducedHeight : -1;
+            reducedCompositeWidth = reducedCompositeTarget != null ? reducedWidth : -1;
+            reducedCompositeHeight = reducedCompositeTarget != null ? reducedHeight : -1;
             maskTarget = createFloatColorTarget(hw, hh, true, GL11.GL_LINEAR);
-            proxyFrontDepthTarget = createFloatColorTarget(hw, hh, true, GL11.GL_NEAREST);
+            proxyFrontDepthTarget = createProxyDepthCoverageTarget(hw, hh);
             proxyFrontDepthTarget.setClearColor(1f, 0f, 0f, 0f);
-            surfaceSplatFrontDepthTarget =
-                    surfaceSplatFrontDepthEnabled
-                            ? createSingleChannelFloatTarget(
-                            hw, hh, true, GL11.GL_NEAREST)
-                            : null;
             silhouetteDistanceTargetA = silhouetteDistanceEnabled
-                    ? createTwoChannelCoordinateTarget(
-                    distanceWidth, distanceHeight)
-                    : null;
+                    ? createTwoChannelCoordinateTarget(distanceWidth, distanceHeight) : null;
             silhouetteDistanceTargetB = silhouetteDistanceEnabled
-                    ? createTwoChannelCoordinateTarget(
-                    distanceWidth, distanceHeight)
-                    : null;
+                    ? createTwoChannelCoordinateTarget(distanceWidth, distanceHeight) : null;
             silhouetteDistanceWidth = silhouetteDistanceTargetA != null
-                    && silhouetteDistanceTargetB != null
-                    ? distanceWidth : -1;
+                    && silhouetteDistanceTargetB != null ? distanceWidth : -1;
             silhouetteDistanceHeight = silhouetteDistanceTargetA != null
-                    && silhouetteDistanceTargetB != null
-                    ? distanceHeight : -1;
-            targetGeneration++;
-
+                    && silhouetteDistanceTargetB != null ? distanceHeight : -1;
             lastWidth = hw;
             lastHeight = hh;
 
-            // Preserve the active framebuffer and viewport around the validation
-            // binds below; beginPass() will bind the density target explicitly.
-            int prevDrawFbo =
-                    GL11.glGetInteger(GL30.GL_DRAW_FRAMEBUFFER_BINDING);
-            int prevReadFbo =
-                    GL11.glGetInteger(GL30.GL_READ_FRAMEBUFFER_BINDING);
+            // Preserve the caller's Iris/vanilla framebuffer and viewport while
+            // validating attachments. The density pass binds its target later.
+            int prevDrawFbo = GL11.glGetInteger(GL30.GL_DRAW_FRAMEBUFFER_BINDING);
+            int prevReadFbo = GL11.glGetInteger(GL30.GL_READ_FRAMEBUFFER_BINDING);
             IntBuffer prevViewport = BufferUtils.createIntBuffer(4);
             GL11.glGetIntegerv(GL11.GL_VIEWPORT, prevViewport);
-
             densityTarget.bindWrite(false);
             blurTempTarget.bindWrite(false);
-            if (reducedCompositeTarget != null) {
-                reducedCompositeTarget.bindWrite(false);
-            }
-            if (splatDiagnosticTarget != null) {
-                splatDiagnosticTarget.bindWrite(false);
-            }
+            if (reducedCompositeTarget != null) reducedCompositeTarget.bindWrite(false);
             maskTarget.bindWrite(false);
             proxyFrontDepthTarget.bindWrite(false);
-            if (surfaceSplatFrontDepthTarget != null) {
-                surfaceSplatFrontDepthTarget.bindWrite(false);
-            }
-            if (silhouetteDistanceTargetA != null) {
-                silhouetteDistanceTargetA.bindWrite(false);
-            }
-            if (silhouetteDistanceTargetB != null) {
-                silhouetteDistanceTargetB.bindWrite(false);
-            }
-
-            GL30.glBindFramebuffer(
-                    GL30.GL_DRAW_FRAMEBUFFER, prevDrawFbo);
-            GL30.glBindFramebuffer(
-                    GL30.GL_READ_FRAMEBUFFER, prevReadFbo);
+            if (silhouetteDistanceTargetA != null) silhouetteDistanceTargetA.bindWrite(false);
+            if (silhouetteDistanceTargetB != null) silhouetteDistanceTargetB.bindWrite(false);
+            GL30.glBindFramebuffer(GL30.GL_DRAW_FRAMEBUFFER, prevDrawFbo);
+            GL30.glBindFramebuffer(GL30.GL_READ_FRAMEBUFFER, prevReadFbo);
             RenderSystem.viewport(prevViewport.get(0), prevViewport.get(1),
                     prevViewport.get(2), prevViewport.get(3));
             return true;
@@ -1728,39 +1628,6 @@ public final class DensityFboPipeline {
                 targetHeight,
                 0,
                 GL11.GL_RGBA,
-                GL11.GL_FLOAT,
-                (ByteBuffer) null
-        );
-        target.setClearColor(0f, 0f, 0f, 0f);
-        target.setFilterMode(filterMode);
-        return target;
-    }
-
-    /**
-     * Creates an R16F attachment for scalar linear surface distance. This keeps
-     * the front-depth pass at one quarter of the color bandwidth of the RGBA16F
-     * material targets while retaining a hardware depth attachment for
-     * frontmost-splat selection.
-     */
-    private static TextureTarget createSingleChannelFloatTarget(
-            int targetWidth,
-            int targetHeight,
-            boolean useDepth,
-            int filterMode) {
-        TextureTarget target = new TextureTarget(
-                targetWidth,
-                targetHeight,
-                useDepth,
-                Minecraft.ON_OSX);
-        RenderSystem.bindTexture(target.getColorTextureId());
-        GL11.glTexImage2D(
-                GL11.GL_TEXTURE_2D,
-                0,
-                GL30.GL_R16F,
-                targetWidth,
-                targetHeight,
-                0,
-                GL11.GL_RED,
                 GL11.GL_FLOAT,
                 (ByteBuffer) null
         );
@@ -1790,6 +1657,25 @@ public final class DensityFboPipeline {
                 (ByteBuffer) null);
         // Negative coordinates are the invalid/unreached sentinel.
         target.setClearColor(-1.0f, -1.0f, 0.0f, 0.0f);
+        target.setFilterMode(GL11.GL_NEAREST);
+        return target;
+    }
+
+    /**
+     * Nonlinear device depth needs a full float mantissa before inverse
+     * projection. RG32F holds depth in R and alpha coverage in G using the
+     * same eight color bytes per pixel as the former RGBA16F attachment.
+     */
+    private static TextureTarget createProxyDepthCoverageTarget(
+            int targetWidth, int targetHeight) {
+        TextureTarget target = new TextureTarget(
+                targetWidth, targetHeight, true, Minecraft.ON_OSX);
+        RenderSystem.bindTexture(target.getColorTextureId());
+        GL11.glTexImage2D(
+                GL11.GL_TEXTURE_2D, 0, GL30.GL_RG32F,
+                targetWidth, targetHeight, 0,
+                GL30.GL_RG, GL11.GL_FLOAT, (ByteBuffer) null);
+        target.setClearColor(1.0f, 0.0f, 0.0f, 0.0f);
         target.setFilterMode(GL11.GL_NEAREST);
         return target;
     }
@@ -1855,10 +1741,15 @@ public final class DensityFboPipeline {
      */
     private static void clearTargetUnscissored(RenderTarget target) {
         boolean scissorEnabled = GL11.glIsEnabled(GL11.GL_SCISSOR_TEST);
+        boolean depthMask = GL11.glGetBoolean(GL11.GL_DEPTH_WRITEMASK);
         GL11.glDisable(GL11.GL_SCISSOR_TEST);
+        RenderSystem.depthMask(true);
+        GL11.glDepthMask(true);
         try {
             target.clear(Minecraft.ON_OSX);
         } finally {
+            RenderSystem.depthMask(depthMask);
+            GL11.glDepthMask(depthMask);
             if (scissorEnabled) {
                 GL11.glEnable(GL11.GL_SCISSOR_TEST);
             }
@@ -1929,6 +1820,14 @@ public final class DensityFboPipeline {
             sourceHeight = ((RenderTargetAccessor) (Object) main).getHeight();
         }
         if (sourceWidth <= 0 || sourceHeight <= 0) {
+            return false;
+        }
+
+        // Iris and stencil-enabled loader targets can use a different depth
+        // internal format than TextureTarget's default. Depth blits require
+        // matching formats; keep our scratch attachment compatible on reload.
+        if (!DepthCopyFormat.prepareDepthTexture(sourceFbo,
+                target.getDepthTextureId(), lastWidth, lastHeight)) {
             return false;
         }
 

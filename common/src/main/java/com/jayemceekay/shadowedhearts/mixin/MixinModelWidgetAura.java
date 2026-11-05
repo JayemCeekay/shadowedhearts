@@ -8,12 +8,16 @@ import com.cobblemon.mod.common.client.render.models.blockbench.FloatingState;
 import com.jayemceekay.shadowedhearts.client.aura.ShadowAuraEmitters;
 import com.jayemceekay.shadowedhearts.client.aura.ShadowPokemonAuraGuiRenderer;
 import com.jayemceekay.shadowedhearts.client.aura.ShadowPokemonAuraSystem;
+import com.jayemceekay.shadowedhearts.client.gui.GuiPoseScissor;
+import com.jayemceekay.shadowedhearts.client.gui.PurificationChamberGUI;
+import com.jayemceekay.shadowedhearts.client.gui.UmbraInfuserScreen;
 import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs;
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.llamalad7.mixinextras.sugar.Local;
 import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
-import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
@@ -28,7 +32,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(value = ModelWidget.class, remap = false)
 public abstract class MixinModelWidgetAura {
 
-    @Shadow @Final
+    @Shadow
     private float baseScale;
     @Shadow
     private RenderablePokemon pokemon;
@@ -37,6 +41,19 @@ public abstract class MixinModelWidgetAura {
 
     @Unique
     private ShadowPokemonAuraSystem.PreviewInstance shadowedhearts$previewAura;
+
+    /** These machine screens fit their whole panel, including Cobblemon's nested portrait clip. */
+    @WrapOperation(method = "renderPKM", at = @At(value = "INVOKE",
+            target = "Lnet/minecraft/client/gui/GuiGraphics;enableScissor(IIII)V", remap = true))
+    private void shadowedhearts$fitMachinePortraitClip(GuiGraphics graphics, int left, int top, int right, int bottom,
+                                                      Operation<Void> original) {
+        var screen = Minecraft.getInstance().screen;
+        if (screen instanceof PurificationChamberGUI || screen instanceof UmbraInfuserScreen) {
+            GuiPoseScissor.enable(graphics, left, top, right, bottom);
+        } else {
+            original.call(graphics, left, top, right, bottom);
+        }
+    }
 
     @Unique
     private ShadowPokemonAuraSystem.PreviewInstance shadowedhearts$previewAura() {
@@ -73,7 +90,7 @@ public abstract class MixinModelWidgetAura {
                                                      int mouseY,
                                                      CallbackInfo ci) {
         if (this.pokemon == null) return;
-        if (!ShadowedHeartsConfigs.getInstance().getClientConfig().enableShadowAura()
+        if (!com.jayemceekay.shadowedhearts.client.ClientEffects.auraVisible()
                 || !shadowedhearts$shouldHaveAura(this.pokemon)) {
             if (shadowedhearts$previewAura != null) {
                 ShadowPokemonAuraGuiRenderer.deactivate(shadowedhearts$previewAura);
@@ -95,7 +112,7 @@ public abstract class MixinModelWidgetAura {
     @Inject(method = "renderPKM", at = @At(value = "INVOKE", target = "Lcom/mojang/blaze3d/vertex/PoseStack;popPose()V", ordinal = 0, shift = At.Shift.AFTER))
     private void shadowedhearts$renderAuraAndAxes(GuiGraphics context, float partialTicks, int mouseX, int mouseY, CallbackInfo ci, @Local(name = "matrices") PoseStack matrices) {
         if (this.pokemon == null) return;
-        if (!ShadowedHeartsConfigs.getInstance().getClientConfig().enableShadowAura()) return;
+        if (!com.jayemceekay.shadowedhearts.client.ClientEffects.auraVisible()) return;
 
         // Render the Shadow aura for Shadow Pokémon or those with a Shadow Shard.
         if (!shadowedhearts$shouldHaveAura(this.pokemon)) return;

@@ -2,6 +2,8 @@ package com.jayemceekay.shadowedhearts.client.render;
 
 import com.jayemceekay.shadowedhearts.client.aura.AuraReaderPulseRenderer;
 import com.jayemceekay.shadowedhearts.client.aura.ShadowPokemonAuraSystem;
+import com.jayemceekay.shadowedhearts.client.ball.BallEmitters;
+import com.jayemceekay.shadowedhearts.client.particle.LuminousMoteFabulousRenderer;
 import com.jayemceekay.shadowedhearts.client.moonwound.MoonwoundPortalRenderer;
 import com.jayemceekay.shadowedhearts.mixin.RenderTargetAccessor;
 import com.mojang.blaze3d.systems.RenderSystem;
@@ -24,6 +26,7 @@ public final class VanillaWorldShaderFrame {
     public static void beginFrame() {
         pending = null;
         TARGET.invalidate();
+        LuminousMoteFabulousRenderer.clear();
     }
 
     public static void onClientTick(Minecraft minecraft) {
@@ -40,7 +43,8 @@ public final class VanillaWorldShaderFrame {
         onClientTick(mc);
         if (ShadowPokemonAuraSystem.isIrisShaderPackActive() || mc.level == null || camera == null
                 || projection == null || modelView == null || !projection.isFinite() || !modelView.isFinite()
-                || (!AuraReaderPulseRenderer.hasActivePulses()
+                || (!BallEmitters.hasWorldEffects() && !HeldBallSnagGlowRenderer.hasWorldHands()
+                && !AuraReaderPulseRenderer.hasActivePulses() && !LuminousMoteFabulousRenderer.hasQueued()
                 && !MoonwoundPortalRenderer.hasActivePortals())) return;
         var main = mc.getMainRenderTarget();
         var target = (RenderTargetAccessor) (Object) main;
@@ -66,6 +70,9 @@ public final class VanillaWorldShaderFrame {
                 if (output == null) return;
                 RenderSystem.setProjectionMatrix(frame.projection, VertexSorting.DISTANCE_TO_ORIGIN);
                 RenderSystem.getModelViewMatrix().set(frame.modelView);
+                BallEmitters.onRenderFBO(frame.camera, frame.partialTicks, frame.projection, frame.modelView);
+                HeldBallSnagGlowRenderer.renderWorldHands(frame.camera, frame.partialTicks);
+                LuminousMoteFabulousRenderer.render(frame.camera, frame.partialTicks);
                 MoonwoundPortalRenderer.render(frame.camera, frame.partialTicks);
             }
             // The pulse samples saved depth. Keep that texture detached from its
@@ -77,11 +84,13 @@ public final class VanillaWorldShaderFrame {
             }
         } finally {
             TARGET.invalidate();
+            LuminousMoteFabulousRenderer.clear();
         }
     }
 
     public static void clear() {
         pending = null;
+        LuminousMoteFabulousRenderer.clear();
         TARGET.close();
         ColorOnlyShaderTarget.destroy();
     }

@@ -2,6 +2,9 @@ package com.jayemceekay.shadowedhearts.client.aura;
 
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
 import com.cobblemon.mod.common.pokemon.RenderablePokemon;
+import com.jayemceekay.shadowedhearts.common.aura.AuraStyleDefault;
+import com.jayemceekay.shadowedhearts.common.aura.AuraStyleRoll;
+import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs;
 
 import java.util.HashSet;
 import java.util.List;
@@ -9,13 +12,13 @@ import java.util.Locale;
 import java.util.Optional;
 import java.util.Set;
 
-/** Resolves per-Pokemon Shadow aura aspects over the global client default. */
+/** Resolves synchronized sh_aura_style render aspects over the server's configured default. */
 public final class ShadowAuraStyleResolver {
     /**
      * Canonical conflict priority, from highest to lowest.
      *
-     * <p>A Pokemon should normally carry at most one style aspect. If malformed
-     * or migrated data contains several, the more specific faithful variants
+     * <p>The property provider emits at most one style aspect. If a legacy
+     * client snapshot contains several, the more specific faithful variants
      * win deterministically: XD, then Colosseum, then Signature. This does not
      * depend on the iteration order of the aspect collection.
      */
@@ -26,6 +29,24 @@ public final class ShadowAuraStyleResolver {
     );
 
     private ShadowAuraStyleResolver() {}
+
+    public static ShadowAuraStyle resolve(PokemonEntity entity) {
+        // Entity aspects are synchronized independently of the backing Pokemon.
+        return resolve(entity == null ? null : entity.getAspects());
+    }
+
+    public static ShadowAuraStyle resolve(RenderablePokemon pokemon) {
+        return resolve(pokemon == null ? null : pokemon.getAspects());
+    }
+
+    public static ShadowAuraStyle resolve(Iterable<String> aspects) {
+        return explicitStyle(aspects).orElseGet(() -> inheritedStyle(aspects, configuredDefault()));
+    }
+
+    /** Resolves a delivered server policy without requiring a client runtime or loaded config. */
+    public static ShadowAuraStyle resolve(Iterable<String> aspects, AuraStyleDefault serverDefault) {
+        return explicitStyle(aspects).orElseGet(() -> inheritedStyle(aspects, serverDefault));
+    }
 
     public static ShadowAuraStyle resolve(PokemonEntity entity,
                                           ShadowAuraStyle configDefault) {
@@ -70,5 +91,15 @@ public final class ShadowAuraStyleResolver {
 
     private static ShadowAuraStyle defaultStyle(ShadowAuraStyle configDefault) {
         return configDefault == null ? ShadowAuraStyle.DEFAULT : configDefault;
+    }
+
+    private static ShadowAuraStyle inheritedStyle(Iterable<String> aspects, AuraStyleDefault serverDefault) {
+        AuraStyleDefault policy = serverDefault == null ? AuraStyleDefault.SIGNATURE : serverDefault;
+        return ShadowAuraStyle.fromSelection(policy.resolve(AuraStyleRoll.fromAspects(aspects).orElse(null)));
+    }
+
+    private static AuraStyleDefault configuredDefault() {
+        return AuraStyleClientState.INSTANCE.currentDefault(
+                () -> ShadowedHeartsConfigs.getInstance().getShadowConfig().shadowAuraStyle());
     }
 }

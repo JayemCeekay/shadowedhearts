@@ -1,6 +1,6 @@
 package com.jayemceekay.shadowedhearts.client.aura;
 
-import com.jayemceekay.shadowedhearts.common.shadow.SHAspects;
+import com.jayemceekay.shadowedhearts.common.aura.AuraStyleSelection;
 
 import java.util.Locale;
 import java.util.Optional;
@@ -8,23 +8,23 @@ import java.util.Optional;
 /**
  * Stable identities for the client-side Shadow aura presentations.
  *
- * <p>The serialized names are deliberately independent of enum names so that
- * config files remain compatible if the Java names are ever reorganized. An
- * explicit Pokemon aspect may select the same identity for that Pokemon only.
+ * <p>The serialized property names are deliberately independent of enum names;
+ * the server config maps its presentation choices to these stable identities. An
+ * explicit sh_aura_style property derives the matching render aspect for that Pokemon.
  */
 public enum ShadowAuraStyle {
-    SIGNATURE("signature", SHAspects.AURA_STYLE_SIGNATURE),
-    COLOSSEUM("colosseum", SHAspects.AURA_STYLE_COLOSSEUM),
-    XD_FAITHFUL("xd_faithful", SHAspects.AURA_STYLE_XD);
+    SIGNATURE(AuraStyleSelection.SIGNATURE),
+    COLOSSEUM(AuraStyleSelection.COLOSSEUM),
+    XD_FAITHFUL(AuraStyleSelection.XD_FAITHFUL);
 
     public static final ShadowAuraStyle DEFAULT = SIGNATURE;
 
     private final String serializedName;
     private final String aspectId;
 
-    ShadowAuraStyle(String serializedName, String aspectId) {
-        this.serializedName = serializedName;
-        this.aspectId = aspectId;
+    ShadowAuraStyle(AuraStyleSelection selection) {
+        this.serializedName = selection.serializedName();
+        this.aspectId = selection.aspectId().orElseThrow();
     }
 
     public String serializedName() {
@@ -35,8 +35,18 @@ public enum ShadowAuraStyle {
         return aspectId;
     }
 
+    /** Maps common, server-owned style identities without exposing rendering classes to the config. */
+    public static ShadowAuraStyle fromSelection(AuraStyleSelection selection) {
+        if (selection == null) return DEFAULT;
+        return switch (selection) {
+            case DEFAULT, SIGNATURE -> SIGNATURE;
+            case COLOSSEUM -> COLOSSEUM;
+            case XD_FAITHFUL -> XD_FAITHFUL;
+        };
+    }
+
     /**
-     * Parses a config value. Null, blank, and unknown values safely retain the
+     * Parses a serialized style identity. Null, blank, and unknown values safely retain the
      * signature style.
      */
     public static ShadowAuraStyle fromSerializedName(String value) {
@@ -52,7 +62,7 @@ public enum ShadowAuraStyle {
         return DEFAULT;
     }
 
-    /** Alias for callers that treat the serialized config value as a style name. */
+    /** Alias for callers that treat the serialized identity as a style name. */
     public static ShadowAuraStyle parse(String value) {
         return fromSerializedName(value);
     }

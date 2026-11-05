@@ -5,7 +5,12 @@ import java.util.Map;
 
 import static com.jayemceekay.shadowedhearts.client.aura.ShadowAuraStyleProfile.*;
 
-/** Authored immutable starting profiles for every supported Shadow aura style. */
+/**
+ * Authored immutable style profiles. Classic regional emission uses broad/mote
+ * density scales and the filament enable flag; local geometry, budgets and
+ * lifetimes are authored in ShadowPokemonAuraSystem. The remaining burst/puff
+ * tuning is retained for the legacy helpers, not as controls for the new curves.
+ */
 public final class ShadowAuraStyleProfiles {
     static final PuffTuning IDENTITY_PUFF =
             new PuffTuning(1.0f, 1.0f, 1.0f, 1.0f, 1.0f);
@@ -25,7 +30,7 @@ public final class ShadowAuraStyleProfiles {
                             1.0f, 1.0f, 1.0f)
             );
 
-    /** Large, slow black-violet clouds punctuated by a restrained mote field. */
+    /** Soft violet plumes with pale motes; regional emission uses local posed dimensions. */
     public static final ShadowAuraStyleProfile COLOSSEUM =
             new ShadowAuraStyleProfile(
                     ShadowAuraStyle.COLOSSEUM,
@@ -41,7 +46,7 @@ public final class ShadowAuraStyleProfiles {
                             0.90f, 1.22f, 1.00f)
             );
 
-    /** Sparse isolated bursts with persistent bright plasma filaments. */
+    /** Continuous curling ribbons over a light regional haze. Legacy burst tuning is retained for compatibility. */
     public static final ShadowAuraStyleProfile XD_FAITHFUL =
             new ShadowAuraStyleProfile(
                     ShadowAuraStyle.XD_FAITHFUL,

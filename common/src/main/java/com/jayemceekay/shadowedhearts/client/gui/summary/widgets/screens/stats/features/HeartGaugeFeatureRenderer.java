@@ -27,7 +27,7 @@ public class HeartGaugeFeatureRenderer extends BarSummarySpeciesFeatureRenderer 
     public HeartGaugeFeatureRenderer(Pokemon selectedPokemon) {
         super(
                 "heart_gauge",
-                Component.translatable("shadowedhearts.ui.stats.heart_gauge"),
+                Component.translatable("gui.shadowedhearts.stats.heart_gauge"),
                 BAR_TEXTURE,
                 OVERLAY_TEXTURE,
                 selectedPokemon,
@@ -42,7 +42,7 @@ public class HeartGaugeFeatureRenderer extends BarSummarySpeciesFeatureRenderer 
     @Override
     public boolean render(GuiGraphics guiGraphics, float x, float y, Pokemon pokemon) {
         // Recompute the current heart gauge value every frame so the bar updates live
-        // when server-side events (e.g., /shadow partysteps) modify the meter.
+        // when server-side events (e.g., /sh debug partysteps) modify the meter.
         int current = Math.max(0, ShadowAspectUtil.getHeartGaugeValue(pokemon));
         super.renderElement(guiGraphics, x, y, pokemon, current);
         return true;

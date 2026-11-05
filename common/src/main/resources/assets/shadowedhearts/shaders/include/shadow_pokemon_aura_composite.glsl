@@ -1,4 +1,5 @@
 // Shared composite material used by the world and GUI Shadow Pokemon aura programs.
+#moj_import <shadowedhearts:shadow_pokemon_aura_palette.glsl>
 
 float shadowAuraCompositeHash(vec2 p) {
     return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
@@ -74,15 +75,15 @@ bool shadowPokemonAuraComposite(
 
     float densityNorm = smoothstep(0.05, 0.58, min(combinedDensity, 0.66));
     vec2 noiseUV = textureCoordinate * screenSize / 62.0 + gameTime * vec2(240.0, -165.0);
-    float patch = shadowAuraCompositeFbm(noiseUV);
-    float patchMask = smoothstep(0.28, 0.78, patch);
+    float patchNoise = shadowAuraCompositeFbm(noiseUV);
+    float patchMask = smoothstep(0.28, 0.78, patchNoise);
 
-    vec3 blackViolet = vec3(0.015, 0.003, 0.028);
-    vec3 deepPurple = vec3(0.065, 0.014, 0.115);
-    vec3 smokePurple = vec3(0.18, 0.055, 0.28);
-    vec3 colosseumPurple = vec3(0.48, 0.16, 0.72);
-    vec3 magentaHot = vec3(0.92, 0.38, 1.00);
-    vec3 whiteHot = vec3(1.00, 0.92, 1.00);
+    vec3 blackViolet = shadowPokemonAuraModeColor(vec3(0.015, 0.003, 0.028));
+    vec3 deepPurple = shadowPokemonAuraModeColor(vec3(0.065, 0.014, 0.115));
+    vec3 smokePurple = shadowPokemonAuraModeColor(vec3(0.18, 0.055, 0.28));
+    vec3 colosseumPurple = shadowPokemonAuraModeColor(vec3(0.48, 0.16, 0.72));
+    vec3 magentaHot = shadowPokemonAuraModeColor(vec3(0.92, 0.38, 1.00));
+    vec3 whiteHot = shadowPokemonAuraModeColor(vec3(1.00, 0.92, 1.00));
 
     vec3 broadColor = mix(blackViolet, deepPurple, smoothstep(0.0, 0.48, densityNorm));
     broadColor = mix(broadColor, smokePurple, smoothstep(0.18, 0.68, broadFog) * 0.42);

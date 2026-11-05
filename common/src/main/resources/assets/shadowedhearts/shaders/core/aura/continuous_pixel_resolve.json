@@ -1,0 +1,13 @@
+{
+  "vertex": "shadowedhearts:moonwound/pixel",
+  "fragment": "shadowedhearts:moonwound/pixel_resolve",
+  "attributes": ["Position"],
+  "samplers": [{"name": "Sampler0"}, {"name": "Sampler1"}],
+  "uniforms": [
+    {"name": "ResolvePass", "type": "int", "count": 1, "values": [0]},
+    {"name": "EnergyCoverage", "type": "int", "count": 1, "values": [1]},
+    {"name": "PixelSize", "type": "float", "count": 1, "values": [4]},
+    {"name": "SourceSize", "type": "float", "count": 2, "values": [1, 1]},
+    {"name": "GridOrigin", "type": "float", "count": 2, "values": [0, 0]}
+  ]
+}

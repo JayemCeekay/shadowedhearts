@@ -4,8 +4,12 @@ import com.cobblemon.mod.common.api.net.ClientNetworkPacketHandler
 import com.jayemceekay.shadowedhearts.client.sound.RelicStoneSoundManager
 import com.jayemceekay.shadowedhearts.registry.util.ModParticleTypes
 import net.minecraft.client.Minecraft
+import net.minecraft.util.RandomSource
 
 object RelicStoneMoteHandler : ClientNetworkPacketHandler<RelicStoneMotePacket> {
+    // Renderers can reseed level.random for block models. Keep births independent of the view.
+    private val random = RandomSource.create()
+
     override fun handle(packet: RelicStoneMotePacket, client: Minecraft) {
         val level = client.level ?: return
         val pos = packet.pos
@@ -14,8 +18,6 @@ object RelicStoneMoteHandler : ClientNetworkPacketHandler<RelicStoneMotePacket> 
             RelicStoneSoundManager.stopSound(pos)
             return
         }
-
-        val random = level.random
 
         RelicStoneSoundManager.updateSound(pos)
 

@@ -3,7 +3,10 @@ package com.jayemceekay.shadowedhearts.mixin;
 import com.jayemceekay.shadowedhearts.client.aura.AuraReaderPulseRenderer;
 import com.jayemceekay.shadowedhearts.client.aura.ShadowPokemonAuraSystem;
 import com.jayemceekay.shadowedhearts.client.ball.BallEmitters;
+import com.jayemceekay.shadowedhearts.client.render.SnagDissolveRenderer;
+import com.jayemceekay.shadowedhearts.client.particle.PenumbraTrailSystem;
 import com.jayemceekay.shadowedhearts.client.render.IrisWorldColorScope;
+import com.jayemceekay.shadowedhearts.client.render.HeldBallSnagGlowRenderer;
 import com.jayemceekay.shadowedhearts.client.voidshadow.VoidShadowIrisRenderer;
 import com.jayemceekay.shadowedhearts.client.render.block.UmbraLiquidIrisRenderer;
 import com.jayemceekay.shadowedhearts.client.render.block.UmbrafallCoreSeepIrisRenderer;
@@ -21,6 +24,8 @@ public class MixinIrisRenderingPipeline {
         VoidShadowIrisRenderer.beginFrame();
         UmbraLiquidIrisRenderer.beginFrame();
         UmbrafallCoreSeepIrisRenderer.beginFrame();
+        SnagDissolveRenderer.beginFrame();
+        HeldBallSnagGlowRenderer.beginFrame();
     }
 
     @Inject(method = "beginTranslucents", at = @At(value = "HEAD"))
@@ -62,19 +67,22 @@ public class MixinIrisRenderingPipeline {
             pipeline.setIsMainBound(false);
             if (VoidShadowIrisRenderer.hasQueuedMeshes() || UmbraLiquidIrisRenderer.hasQueuedMeshes()
                     || UmbrafallCoreSeepIrisRenderer.hasQueuedMeshes()
-                    || MoonwoundPortalRenderer.hasActivePortals()) {
+                    || MoonwoundPortalRenderer.hasActivePortals()
+                    || BallEmitters.hasSnagEffects()) {
                 try (var color = IrisWorldColorScope.open()) {
                     if (color != null) {
                         VoidShadowIrisRenderer.renderIris();
                         UmbraLiquidIrisRenderer.renderIris();
                         UmbrafallCoreSeepIrisRenderer.renderIris();
                         MoonwoundPortalRenderer.renderIris();
+                        BallEmitters.renderSnagIris();
                     } else {
                         UmbraLiquidIrisRenderer.rejectFrame();
                         UmbrafallCoreSeepIrisRenderer.rejectFrame();
                     }
                 }
             }
+            PenumbraTrailSystem.renderIris();
         } finally {
             pipeline.setIsMainBound(wasMainBound);
         }
