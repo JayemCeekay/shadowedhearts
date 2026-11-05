@@ -1,44 +1,61 @@
 package com.jayemceekay.shadowedhearts.common.event.battle
 
+import com.cobblemon.mod.common.api.battles.model.PokemonBattle
+import com.cobblemon.mod.common.api.battles.model.actor.ActorType
 import com.cobblemon.mod.common.api.events.CobblemonEvents
-import com.cobblemon.mod.common.api.events.battles.BattleFledEvent
-import com.cobblemon.mod.common.api.events.battles.BattleVictoryEvent
+import com.cobblemon.mod.common.api.events.battles.BattleEndedEvent
 import com.cobblemon.mod.common.api.events.pokemon.PokemonSentEvent
+import com.cobblemon.mod.common.battles.ActiveBattlePokemon
+import com.cobblemon.mod.common.battles.BattleRegistry
+import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
 import com.jayemceekay.shadowedhearts.common.heart.HeartGaugeEvents
-import java.util.*
+import com.jayemceekay.shadowedhearts.common.shadow.ShadowAspectUtil
+import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
 /**
- * Ensures `onBattleSentOut` applies only once per Pokémon per battle.
- * Tracks which Pokémon UUIDs have already triggered within a given battleId
- * and suppresses further triggers from switches.
- *
- * Context: Minecraft Cobblemon mod; all shadow/purity/corruption terms are gameplay mechanics.
+ * Awards battle Heart Gauge progress once per player-owned Shadow Pokémon per battle,
+ * including active Pokémon that were already sent out before the battle began.
  */
 object BattleSentOnceListener {
     // battleId -> set of pokemon UUIDs that already fired
     private val seenByBattle: MutableMap<UUID, MutableSet<UUID>> = ConcurrentHashMap()
 
     fun init() {
-        // When a Pokémon is sent out (party send), fire once per battle
         CobblemonEvents.POKEMON_SENT_POST.subscribe { ev: PokemonSentEvent.Post ->
             val entity = ev.pokemonEntity
             val battleId = entity.battleId ?: return@subscribe
-            val pokemonUUID = ev.pokemon.uuid
-
-            val set = seenByBattle.computeIfAbsent(battleId) { ConcurrentHashMap.newKeySet() }
-            val firstTime = set.add(pokemonUUID)
-            if (firstTime) {
-                HeartGaugeEvents.onBattleSentOut(entity)
-            }
+            val battle = BattleRegistry.getBattle(battleId) ?: return@subscribe
+            applyOnce(battle, entity)
         }
 
-        // Cleanup when battles end (victory or flee)
-        CobblemonEvents.BATTLE_VICTORY.subscribe { ev: BattleVictoryEvent ->
+        // Includes captures, forfeits and stopped battles as well as victory/flee.
+        CobblemonEvents.BATTLE_ENDED.subscribe { ev: BattleEndedEvent ->
             seenByBattle.remove(ev.battle.battleId)
         }
-        CobblemonEvents.BATTLE_FLED.subscribe { ev: BattleFledEvent ->
-            seenByBattle.remove(ev.battle.battleId)
+    }
+
+    /** Existing entities emit no send event when assigned to an initial or switched-in slot. */
+    @JvmStatic
+    fun onBattlePokemonActivated(active: ActiveBattlePokemon) {
+        val entity = active.battlePokemon?.entity ?: return
+        applyOnce(active.battle, entity)
+    }
+
+    private fun applyOnce(battle: PokemonBattle, entity: PokemonEntity) {
+        if (battle.ended || entity.battleId != battle.battleId) return
+        val pokemon = entity.pokemon
+        if (!pokemon.isPlayerOwned() || !ShadowAspectUtil.hasShadowAspect(pokemon)) return
+        // A pre-battle send animation can finish after battle IDs were assigned to the
+        // whole party. Its POST event must not award progress to a benched Pokémon.
+        if (battle.activePokemon.none {
+            it.actor.type == ActorType.PLAYER && it.isAlive() && !it.isGone()
+                    && it.battlePokemon?.effectedPokemon === pokemon
+        }) return
+
+        val seen = seenByBattle.computeIfAbsent(battle.battleId) { ConcurrentHashMap.newKeySet() }
+        if (seen.add(pokemon.uuid)) {
+            HeartGaugeEvents.onBattleSentOut(entity)
         }
     }
 }

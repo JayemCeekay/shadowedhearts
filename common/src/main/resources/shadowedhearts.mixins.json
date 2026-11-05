@@ -42,6 +42,7 @@
     "megashowdown.MixinUltraGimmick",
     "MixinAuraReaderEquip",
     "MixinBattleCaptureAction",
+    "MixinBattleHeartGaugeActivation",
     "MixinBattleRegistry",
     "MixinBenchedMoves",
     "MixinBenchMoveHandler",
