@@ -35,11 +35,7 @@ public final class ShowdownRuntimePatcher {
             } catch (Exception e) {
                 Shadowedhearts.LOGGER.info("Failed to patch dex-conditions.js in Showdown directory: " + showdown);
             }
-            try {
-                patchBattleCapture(showdown.resolve("sim").resolve("battle.js"));
-            } catch (Exception e) {
-                Shadowedhearts.LOGGER.info("Failed to patch battle.js in Showdown directory: " + showdown);
-            }
+            applyLiteralPatch(ShowdownCapturePatches.CAPTURE, showdown.resolve("sim").resolve("battle.js"));
             try {
                 patchTeams(showdown.resolve("sim").resolve("teams.js"));
             } catch (Exception e) {
@@ -70,16 +66,8 @@ public final class ShowdownRuntimePatcher {
             } catch (Exception e) {
                 Shadowedhearts.LOGGER.info("Failed to patch battle.js in Showdown directory: " + showdown);
             }
-            try {
-                patchBattlePossibleSwitches(showdown.resolve("sim").resolve("battle.js"));
-            } catch (Exception e) {
-                Shadowedhearts.LOGGER.info("Failed to patch battle.js in Showdown directory: " + showdown);
-            }
-            try {
-                patchPokemonAddCapturedFlag(showdown.resolve("sim").resolve("pokemon.js"));
-            } catch (Exception e) {
-                Shadowedhearts.LOGGER.info("Failed to patch pokemon.js in Showdown directory: " + showdown);
-            }
+            applyLiteralPatch(ShowdownCapturePatches.POSSIBLE_SWITCHES, showdown.resolve("sim").resolve("battle.js"));
+            applyLiteralPatch(ShowdownCapturePatches.CAPTURED_FLAG, showdown.resolve("sim").resolve("pokemon.js"));
         }
     }
 
@@ -425,61 +413,6 @@ public final class ShowdownRuntimePatcher {
         return raw;
     }
 
-
-    private static void patchBattleCapture(Path battlePath) throws IOException {
-        if (!Files.isRegularFile(battlePath)) return;
-        String content = Files.readString(battlePath, StandardCharsets.UTF_8);
-
-        if (content.contains("pokemon.captured = true;")) {
-            Shadowedhearts.LOGGER.info("Battle already patched for team removal on capture, skipping patch");
-            return;
-        }
-
-        final String needle =
-                "    if (!pokemon.fainted) {\n" +
-                        "      this.add(\"capture\", pokemon);\n" +
-                        "      if (pokemon.side.pokemonLeft)\n" +
-                        "        pokemon.side.pokemonLeft--;\n" +
-                        "      this.singleEvent(\"End\", pokemon.getAbility(), pokemon.abilityState, pokemon);\n" +
-                        "      pokemon.clearVolatile(false);\n" +
-                        "      pokemon.fainted = true;\n" +
-                        "      pokemon.illusion = null;\n" +
-                        "      pokemon.isActive = false;\n" +
-                        "      pokemon.isStarted = false;\n" +
-                        "      pokemon.side.faintedThisTurn = pokemon;\n" +
-                        "      if (this.checkWin())\n" +
-                        "        return true;\n" +
-                        "    }";
-
-        final String replacement =
-                "    if (!pokemon.fainted) {\n" +
-                        "      this.add(\"capture\", pokemon);\n" +
-                        "      if (pokemon.side.pokemonLeft) pokemon.side.pokemonLeft--;\n" +
-                        "      this.singleEvent(\"End\", pokemon.getAbility(), pokemon.abilityState, pokemon);\n" +
-                        "      pokemon.clearVolatile(false);\n" +
-                        "      pokemon.fainted = true;\n" +
-                        "      pokemon.captured = true;\n" +
-                        "      pokemon.status = \"fnt\";\n" +
-                        "      pokemon.illusion = null;\n" +
-                        "      pokemon.isActive = false;\n" +
-                        "      pokemon.isStarted = false;\n" +
-                        "      pokemon.side.faintedThisTurn = pokemon;\n" +
-                        "      if (this.checkWin()) return true;\n" +
-                        "      this.checkFainted();\n" +
-                        "    }";
-
-        if (content.contains(needle)) {
-            String patched = content.replace(needle, replacement);
-            Files.writeString(battlePath, patched, StandardCharsets.UTF_8);
-            Shadowedhearts.LOGGER.info("Patched battle.js for advanced capture handling");
-        } else {
-            // Fallback for cases where it might have been partially patched already with single quotes or different formatting
-            String alternateNeedle = "this.add('capture', pokemon);";
-            if (content.contains(alternateNeedle) && !content.contains("pokemon.side.pokemon.splice")) {
-                Shadowedhearts.LOGGER.info("Detected old-style capture patch, manual intervention might be needed or we could try a broader replacement.");
-            }
-        }
-    }
 
     private static void patchTeams(Path teamsPath) throws IOException {
         if (!Files.isRegularFile(teamsPath)) return;
@@ -996,60 +929,22 @@ public final class ShowdownRuntimePatcher {
         }
     }
 
-    private static void patchBattlePossibleSwitches(Path battlePath) throws IOException {
-        if (!Files.isRegularFile(battlePath)) return;
-        String content = Files.readString(battlePath, StandardCharsets.UTF_8);
-
-        if (content.contains("!pokemon.fainted && !pokemon.captured")) {
-            Shadowedhearts.LOGGER.info("Battle already patched for possible switches, skipping patch");
-            return;
-        }
-
-        String needle = "possibleSwitches(side) {\n" +
-                "    if (!side.pokemonLeft)\n" +
-                "      return [];\n" +
-                "    const canSwitchIn = [];\n" +
-                "    for (let i = side.active.length; i < side.pokemon.length; i++) {\n" +
-                "      const pokemon = side.pokemon[i];\n" +
-                "      if (!pokemon.fainted) {\n" +
-                "        canSwitchIn.push(pokemon);\n" +
-                "      }\n" +
-                "    }";
-
-        String replacement = "possibleSwitches(side) {\n" +
-                "    if (!side.pokemonLeft)\n" +
-                "      return [];\n" +
-                "    const canSwitchIn = [];\n" +
-                "    for (let i = side.active.length; i < side.pokemon.length; i++) {\n" +
-                "      const pokemon = side.pokemon[i];\n" +
-                "      if (!pokemon.fainted && !pokemon.captured) {\n" +
-                "        canSwitchIn.push(pokemon);\n" +
-                "      }\n" +
-                "    }";
-
-        if (content.contains(needle)) {
-            String patched = content.replace(needle, replacement);
-            Files.writeString(battlePath, patched, StandardCharsets.UTF_8);
-            Shadowedhearts.LOGGER.info("Patched battle.js for possible switches");
+    private static void applyLiteralPatch(LiteralShowdownPatch patch, Path path) {
+        try {
+            reportPatch(patch.id(), path, patch.apply(path));
+        } catch (Exception e) {
+            Shadowedhearts.LOGGER.error("Failed Showdown patch {} in {}", patch.id(), path.toAbsolutePath(), e);
         }
     }
 
-    private static void patchPokemonAddCapturedFlag(Path pokemonPath) throws IOException {
-        if (!Files.isRegularFile(pokemonPath)) return;
-        String content = Files.readString(pokemonPath, StandardCharsets.UTF_8);
-
-        if (content.contains("this.captured =")) {
-            Shadowedhearts.LOGGER.info("Pokemon already patched with captured flag, skipping patch");
-            return;
-        }
-
-        String needle = "this.m = {};";
-        String replacement = "this.m = {};\n    this.captured = false;";
-
-        if (content.contains(needle)) {
-            String patched = content.replace(needle, replacement);
-            Files.writeString(pokemonPath, patched, StandardCharsets.UTF_8);
-            Shadowedhearts.LOGGER.info("Patched pokemon.js to add captured flag");
+    private static void reportPatch(String id, Path path, LiteralShowdownPatch.Result result) {
+        if (result.status() == LiteralShowdownPatch.Status.APPLIED
+                || result.status() == LiteralShowdownPatch.Status.ALREADY_APPLIED) {
+            Shadowedhearts.LOGGER.info("Showdown patch {}: {} ({})", id, result.status(), path.toAbsolutePath());
+        } else {
+            Shadowedhearts.LOGGER.error("Showdown patch {}: {} ({}; targets={}, original blocks={}, patched blocks={})",
+                    id, result.status(), path.toAbsolutePath(),
+                    result.targets(), result.originals(), result.replacements());
         }
     }
 }
