@@ -168,6 +168,7 @@ public final class ShadowService {
      * Convenience: fully purified (0) and not shadow.
      */
     public static void fullyPurify(Pokemon pokemon, @Nullable PokemonEntity live) {
+        com.jayemceekay.shadowedhearts.common.event.player.PokemonPurificationWalking.clear(pokemon);
         // 1. Restore all moves (replace all shadow moves)
         restoreAllMoves(pokemon);
 

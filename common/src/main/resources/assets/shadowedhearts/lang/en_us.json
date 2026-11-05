@@ -364,5 +364,8 @@
   "shadowedhearts.configuration.gameplayTuning.progression.partyStepInterval": "Party Walking Step Interval",
   "shadowedhearts.configuration.gameplayTuning.progression.partyStepInterval.tooltip": "Horizontal blocks per party walking reduction. Default: 256. Changing this preserves the fraction of the current cycle. Teleports still do not count.",
   "message.shadowedhearts.relic_stone.disabled": "Relic Stone purification is disabled on this server.",
-  "message.shadowedhearts.chamber.disabled": "Purification Chambers are disabled on this server. Stored Pokémon can still be returned to an empty PC slot."
+  "message.shadowedhearts.chamber.disabled": "Purification Chambers are disabled on this server. Stored Pokémon can still be returned to an empty PC slot.",
+  "shadowedhearts.configuration.orreProgression": "Orre progression rules",
+  "shadowedhearts.configuration.orreProgression.walkingAccounting": "Party walking accounting",
+  "shadowedhearts.configuration.orreProgression.walkingAccounting.tooltip": "Use the existing shared player-session cadence, or save each Shadow Pokemon's partial walking cycle across party changes, storage and relogs."
 }

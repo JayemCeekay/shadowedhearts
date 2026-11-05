@@ -8,6 +8,7 @@ import com.cobblemon.mod.common.platform.events.ServerPlayerTickEvent
 import com.jayemceekay.shadowedhearts.common.heart.HeartGaugeEvents
 import com.jayemceekay.shadowedhearts.common.shadow.ShadowAspectUtil
 import com.jayemceekay.shadowedhearts.config.GameplayTuningConfig
+import com.jayemceekay.shadowedhearts.config.OrreProgressionConfig
 import com.jayemceekay.shadowedhearts.storage.purification.PurificationChamberStore
 import net.minecraft.server.level.ServerPlayer
 import java.util.*
@@ -47,13 +48,19 @@ object PurificationStepTracker {
             val store = Cobblemon.storage.getCustomStore(PurificationChamberStore::class.java, player.uuid, reg)
             store?.advanceSteps(credit.chamberSteps)
 
-            if (credit.partyIntervals > 0) {
+            // The original games keep each Pokemon's partial cycle when its party slot changes.
+            val individual = OrreProgressionConfig.INSTANCE.walkingAccounting() ==
+                OrreProgressionConfig.WalkingAccounting.POKEMON_PERSISTENT
+            if (individual || credit.partyIntervals > 0) {
                 val party = Cobblemon.storage.getParty(player)
                 // Snapshot before callbacks, which can mutate the party.
                 val snapshot = party.toList()
                 for (mon in snapshot) {
                     if (ShadowAspectUtil.hasShadowAspect(mon)) {
-                        repeat(credit.partyIntervals) {
+                        val intervals = if (individual) PokemonPurificationWalking.advance(
+                            mon, credit.chamberSteps, GameplayTuningConfig.INSTANCE.partyStepInterval())
+                        else credit.partyIntervals
+                        repeat(intervals) {
                             HeartGaugeEvents.onPartyStep(mon, null)
                         }
                     }

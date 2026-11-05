@@ -51,6 +51,9 @@ public final class ShadowAspectUtil {
     }
 
     public static void setShadowAspect(Pokemon pokemon, boolean isShadow, boolean sync) {
+        if (hasShadowAspect(pokemon) != isShadow) {
+            com.jayemceekay.shadowedhearts.common.event.player.PokemonPurificationWalking.clear(pokemon);
+        }
         // Work on a defensive copy to avoid mutating the live Set while it may be iterated elsewhere
         Set<String> aspectsCopy = new HashSet<>(pokemon.getAspects());
         if (isShadow) {
