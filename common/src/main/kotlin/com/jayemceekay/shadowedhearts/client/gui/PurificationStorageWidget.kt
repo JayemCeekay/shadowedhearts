@@ -29,6 +29,8 @@ import com.mojang.blaze3d.vertex.VertexFormat
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.client.gui.components.Button
+import net.minecraft.client.gui.narration.NarratedElementType
+import net.minecraft.client.gui.narration.NarrationElementOutput
 import net.minecraft.network.chat.Component
 import net.minecraft.resources.ResourceLocation
 import org.joml.Quaternionf
@@ -51,7 +53,7 @@ class PurificationStorageWidget(
     pY,
     WIDTH,
     HEIGHT,
-    Component.literal("PurificationStorageWidget")
+    Component.translatable("gui.shadowedhearts.purification_chamber.title")
 ) {
 
     private val centerAuraPreview = ShadowPokemonAuraSystem.PreviewInstance()
@@ -283,6 +285,17 @@ class PurificationStorageWidget(
         arrayListOf<PurificationStorageSlot>()
     private var selectedIndex: Int? = null
 
+    override fun updateWidgetNarration(output: NarrationElementOutput) {
+        output.add(NarratedElementType.TITLE, Component.translatable("gui.shadowedhearts.purification_chamber.set_name", storage.currentSetIndex + 1))
+        val slots = Component.empty()
+        purificationChamberPurificationStorageSlots.forEachIndexed { index, slot ->
+            if (index > 0) slots.append(". ")
+            slots.append(slot.narrationLabel())
+        }
+        output.add(NarratedElementType.HINT, slots)
+        output.add(NarratedElementType.USAGE, Component.translatable("gui.shadowedhearts.purification_chamber.slot.usage"))
+    }
+
     private var actionButton: PurificationActionButton? = null
 
     // State used for rendering the center Pokémon model (slot 0)
@@ -347,12 +360,12 @@ class PurificationStorageWidget(
             y = btnY,
             labelSupplier = {
                 val idx = selectedIndex
-                if (idx == null) Component.literal("Add")
+                if (idx == null) Component.translatable("gui.shadowedhearts.purification_chamber.add")
                 else {
                     val occupied = storage.get(
                         ClientPurificationStorage.PurificationPosition(idx)
                     ) != null
-                    Component.literal(if (occupied) "Remove" else "Add")
+                    Component.translatable(if (occupied) "gui.shadowedhearts.purification_chamber.remove" else "gui.shadowedhearts.purification_chamber.add")
                 }
             },
             visibleSupplier = { selectedIndex != null }
@@ -389,6 +402,10 @@ class PurificationStorageWidget(
         partialTick: Float
     ) {
         val matrices = guiGraphics.pose()
+        // Aura clipping is expressed in physical GUI coordinates, before local model transforms.
+        val auraBounds = GuiPoseScissor.bounds(
+            matrices.last().pose(), x, y, x + SCREEN_WIDTH, y + SCREEN_HEIGHT
+        )
 
 
         // Render the purificationChamberBackground shader in a 174 x 155 quad
@@ -455,29 +472,13 @@ class PurificationStorageWidget(
             height = RIGHT_PANEL_HEIGHT
         )
 
-        drawScaledText(
-            context = guiGraphics,
-            font = CobblemonResources.DEFAULT_LARGE,
-            text = Component.translatable("shadowedhearts.gui.purification_chamber.tempo")
-                .bold(),
-            x = x + 192,
-            y = y - 15.5,
-            scale = 0.8f,
-            centered = true,
-            shadow = true
-        )
-
-        drawScaledText(
-            context = guiGraphics,
-            font = CobblemonResources.DEFAULT_LARGE,
-            text = Component.translatable("shadowedhearts.gui.purification_chamber.flow")
-                .bold(),
-            x = x + 253,
-            y = y - 15.5,
-            scale = 0.8f,
-            centered = true,
-            shadow = true
-        )
+        // Align the captions with the top pockets in party_panel.png.
+        gui.drawBoundedText(guiGraphics, Component.translatable("gui.shadowedhearts.purification_chamber.tempo").bold(),
+            x + 182.5, y - 15.5, 19, mouseX, mouseY, scale = 0.8F, centered = true,
+            fontResource = CobblemonResources.DEFAULT_LARGE)
+        gui.drawBoundedText(guiGraphics, Component.translatable("gui.shadowedhearts.purification_chamber.flow").bold(),
+            x + 244, y - 15.5, 19, mouseX, mouseY, scale = 0.8F, centered = true,
+            fontResource = CobblemonResources.DEFAULT_LARGE)
 
 
         // --- Tempo/Flow vertical bars (8 x 137), positioned on either side of the purification storage slots ---
@@ -1165,10 +1166,10 @@ class PurificationStorageWidget(
                             partialTick,
                             centerRenderablePokemon,
                             centerModelState,
-                            x.toFloat(),
-                            y.toFloat(),
-                            SCREEN_WIDTH.toFloat(),
-                            SCREEN_HEIGHT.toFloat(),
+                            auraBounds.left().toFloat(),
+                            auraBounds.top().toFloat(),
+                            (auraBounds.right() - auraBounds.left()).toFloat(),
+                            (auraBounds.bottom() - auraBounds.top()).toFloat(),
                             centerAuraPreview
                         )
                     }
@@ -1264,24 +1265,18 @@ class PurificationStorageWidget(
                                     )
                                 )
                                 when {
-                                    value >= 100 -> "The door to its heart is tightly shut."
-                                    value >= 80 -> "The door to its heart is starting to open."
-                                    value >= 60 -> "The door to its heart is opening up."
-                                    value >= 40 -> "The door to its heart is opening wider."
-                                    value >= 20 -> "The door to its heart is nearly open."
-                                    value >= 1 -> "The door to its heart is almost fully open."
-                                    else -> "The door to its heart is about to open. Undo the final lock!"
+                                    value >= 100 -> Component.translatable("gui.shadowedhearts.purification_chamber.heart.closed")
+                                    value >= 80 -> Component.translatable("gui.shadowedhearts.purification_chamber.heart.starting")
+                                    value >= 60 -> Component.translatable("gui.shadowedhearts.purification_chamber.heart.opening")
+                                    value >= 40 -> Component.translatable("gui.shadowedhearts.purification_chamber.heart.wider")
+                                    value >= 20 -> Component.translatable("gui.shadowedhearts.purification_chamber.heart.nearly")
+                                    value >= 1 -> Component.translatable("gui.shadowedhearts.purification_chamber.heart.almost")
+                                    else -> Component.translatable("gui.shadowedhearts.purification_chamber.heart.ready")
                                 }
                             } else {
-                                "This Pokemon has been purified!"
+                                Component.translatable("gui.shadowedhearts.purification_chamber.purified")
                             }
-                            com.cobblemon.mod.common.client.gui.pokedex.renderTooltip(
-                                guiGraphics,
-                                Component.literal(message),
-                                mouseX,
-                                mouseY,
-                                partialTick
-                            )
+                            gui.deferTooltip(message)
                         }
                     }
                 }

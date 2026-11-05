@@ -43,12 +43,16 @@ import com.jayemceekay.shadowedhearts.network.purification.PurifyPokemonPacket
 import com.mojang.blaze3d.platform.InputConstants
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphics
+import net.minecraft.client.gui.narration.NarrationElementOutput
+import net.minecraft.client.gui.navigation.ScreenRectangle
 import net.minecraft.client.gui.screens.Screen
 import net.minecraft.client.resources.sounds.SimpleSoundInstance
 import net.minecraft.network.chat.Component
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.sounds.SoundEvent
 import kotlin.math.max
+import kotlin.math.ceil
+import kotlin.math.floor
 
 /**
  * Purification Chamber GUI (minimal scaffolding).
@@ -59,7 +63,7 @@ import kotlin.math.max
  */
 class PurificationChamberGUI(
     val purificationStorage: ClientPurificationStorage
-) : Screen(Component.translatable("shadowedhearts.ui.purification_chamber.title")),
+) : Screen(Component.translatable("gui.shadowedhearts.purification_chamber.title")),
     CobblemonRenderable {
 
     companion object {
@@ -141,7 +145,12 @@ class PurificationChamberGUI(
     private lateinit var setNameWidget: SetNameWidget
 
     /** Tutorial overlay that renders step-by-step popups over the GUI. */
-    private val tutorialOverlay = PurificationTutorialOverlay()
+    private val tutorialOverlay = PurificationTutorialOverlay().also {
+        it.navigationHint = Component.translatable("gui.shadowedhearts.purification_chamber.tutorial.navigation")
+    }
+    private val viewportFit get() = PurificationScreenLayout.fit(width, height)
+
+    private var deferredTooltip: ((GuiGraphics, Int, Int, Float) -> Unit)? = null
 
     var ticksElapsed = 0
 
@@ -291,7 +300,7 @@ class PurificationChamberGUI(
         this.purifyButton = PurificationActionButton(
             x = x + (BASE_WIDTH / 2) - 27, // WIDTH is 54, so -27 centers it
             y = y + BASE_HEIGHT - 21,
-            labelSupplier = { Component.literal("Purify") },
+            labelSupplier = { Component.translatable("gui.shadowedhearts.purification_chamber.purify") },
             visibleSupplier = {
                 val centerPokemon =
                     purificationStorage.get(PurificationPosition(0))
@@ -318,7 +327,7 @@ class PurificationChamberGUI(
                 playSound(CobblemonSounds.PC_OFF)
                 Minecraft.getInstance().setScreen(null)
 
-            }
+            }.apply { message = Component.translatable("gui.shadowedhearts.exit") }
         )
 
         // Tutorial "?" button — opens the step-by-step tutorial overlay
@@ -326,7 +335,7 @@ class PurificationChamberGUI(
             PurificationActionButton(
                 x = x + 14,
                 y = y + 203,
-                labelSupplier = { Component.literal("Tutorial") },
+                labelSupplier = { Component.translatable("gui.shadowedhearts.purification_chamber.tutorial") },
                 visibleSupplier = { !tutorialOverlay.isActive }
             ) {
                 playClick()
@@ -339,7 +348,9 @@ class PurificationChamberGUI(
                 pX = x + 220,
                 pY = y + 16,
                 forward = true
-            ) { nextSet() }
+            ) { nextSet() }.apply {
+                message = Component.translatable("gui.shadowedhearts.purification_chamber.next_set")
+            }
         )
 
         this.addRenderableWidget(
@@ -347,7 +358,9 @@ class PurificationChamberGUI(
                 pX = x + 117,
                 pY = y + 16,
                 forward = false
-            ) { prevSet() }
+            ) { prevSet() }.apply {
+                message = Component.translatable("gui.shadowedhearts.purification_chamber.previous_set")
+            }
         )
 
         this.markingsWidget = MarkingsWidget(x + 29, y + 96.5, null, false)
@@ -366,8 +379,9 @@ class PurificationChamberGUI(
                 clickAction = {
                     showCosmeticItem = !showCosmeticItem
                     (it as SummaryButton).buttonActive = showCosmeticItem
+                    it.message = lang(if (showCosmeticItem) "held_item" else "cosmetic_item")
                 }
-            )
+            ).apply { message = lang("cosmetic_item") }
         )
 
         addRenderableWidget(
@@ -377,15 +391,38 @@ class PurificationChamberGUI(
                 buttonWidth = 10,
                 buttonHeight = 16,
                 resource = buttonInfoArrow,
-                label = "switch"
+                label = ""
             ) {
                 currentStatIndex = (currentStatIndex + 1) % 3
-            }
+                it.message = lang(when (currentStatIndex) {
+                    0 -> "ui.stats.ivs"
+                    1 -> "ui.stats.evs"
+                    else -> "ui.info"
+                })
+            }.apply { message = lang("ui.stats.ivs") }
         )
 
         this.setPreviewPokemon(null)
 
+        updateTutorialSteps()
+        refreshActionButtons()
         super.init()
+    }
+
+    private fun refreshActionButtons() {
+        children().filterIsInstance<PurificationActionButton>().forEach { it.refreshState() }
+        val focusedAction = focused as? PurificationActionButton
+        if (focusedAction != null && !focusedAction.isActive) setFocused(null)
+    }
+
+    override fun updateNarrationState(output: NarrationElementOutput) {
+        if (tutorialOverlay.isActive) tutorialOverlay.narrate(output,
+            Component.translatable("gui.shadowedhearts.purification_chamber.tutorial.navigation"))
+        else super.updateNarrationState(output)
+    }
+
+    override fun updateNarratedWidget(output: NarrationElementOutput) {
+        if (!narrateSummaryButton(this, output)) super.updateNarratedWidget(output)
     }
 
     override fun render(
@@ -394,6 +431,67 @@ class PurificationChamberGUI(
         mouseY: Int,
         partialTick: Float
     ) {
+        val fit = viewportFit
+        deferredTooltip = null
+        val pose = context.pose()
+        pose.pushPose()
+        try {
+            pose.translate(fit.offsetX(), fit.offsetY(), 0.0)
+            pose.scale(fit.scale().toFloat(), fit.scale().toFloat(), 1F)
+            renderContent(context, fit.mouseX(mouseX), fit.mouseY(mouseY), partialTick)
+        } finally {
+            try {
+                context.flush()
+            } finally {
+                pose.popPose()
+            }
+        }
+        if (tutorialOverlay.isActive) {
+            tutorialOverlay.renderFitted(context, partialTick, fit, width, height)
+        } else {
+            deferredTooltip?.invoke(context, mouseX, mouseY, partialTick)
+        }
+    }
+
+    internal fun deferTooltip(text: Component) {
+        deferredTooltip = { graphics, mouseX, mouseY, partialTick ->
+            UmbraInfuserTooltip.render(graphics, text, mouseX, mouseY, partialTick)
+        }
+    }
+
+    /** Keep fixed PC fields inside their frame; the complete text stays available on hover. */
+    internal fun drawBoundedText(
+        graphics: GuiGraphics, text: Component, left: Number, top: Number, fieldWidth: Int,
+        mouseX: Int, mouseY: Int, scale: Float = SCALE, centered: Boolean = false,
+        fontResource: ResourceLocation? = null, shadow: Boolean = true
+    ) {
+        val leftX = left.toDouble()
+        val font = Minecraft.getInstance().font
+        val full = text.copy()
+        if (fontResource != null) full.withStyle(full.style.withFont(fontResource))
+        val limit = (fieldWidth / scale).toInt()
+        val clipped = font.width(full) > limit
+        val shown = BoundedGuiText.fit(full, limit, font)
+        drawScaledText(context = graphics, font = fontResource, text = shown,
+            x = if (centered) leftX + fieldWidth / 2.0 else leftX, y = top,
+            scale = scale, centered = centered, shadow = shadow)
+        if (mouseX >= leftX && mouseX < leftX + fieldWidth && mouseY >= top.toDouble()
+            && mouseY < top.toDouble() + font.lineHeight * scale) {
+            if (clipped) deferTooltip(full)
+            else if (full.style.hoverEvent != null) deferredTooltip = { context, screenX, screenY, delta ->
+                UmbraInfuserTooltip.renderHover(context, full.style, screenX, screenY, delta)
+                Unit
+            }
+        }
+    }
+
+    private fun renderContent(
+        context: GuiGraphics,
+        mouseX: Int,
+        mouseY: Int,
+        partialTick: Float
+    ) {
+        refreshActionButtons()
         val matrices = context.pose()
         renderBackground(context, mouseX, mouseY, partialTick)
         // Minimal placeholder background similar sizing to PCGUI
@@ -553,14 +651,9 @@ class PurificationChamberGUI(
                 scale = SCALE
             )
 
-            drawScaledText(
-                context = context,
-                font = CobblemonResources.DEFAULT_LARGE,
-                text = pokemon.getDisplayName().bold(),
-                x = x + 12,
-                y = y + 11.5,
-                shadow = true
-            )
+            drawBoundedText(context, pokemon.getDisplayName().bold(), x + 12, y + 11.5,
+                if (pokemon.gender == Gender.GENDERLESS) 61 else 54, mouseX, mouseY,
+                scale = 1F, fontResource = CobblemonResources.DEFAULT_LARGE)
 
             if (pokemon.gender != Gender.GENDERLESS) {
                 val isMale = pokemon.gender == Gender.MALE
@@ -644,28 +737,12 @@ class PurificationChamberGUI(
                         ) {
                             "????".text()
                         } else reformatNatureTextIfMinted(pokemon)
-                    drawScaledText(
-                        context = context,
-                        text = natureText,
-                        x = labelX,
-                        y = y + 137,
-                        centered = true,
-                        shadow = true,
-                        scale = SCALE,
-                        pMouseX = mouseX,
-                        pMouseY = mouseY
-                    )
+                    drawBoundedText(context, natureText, x + 10, y + 137, 60,
+                        mouseX, mouseY, centered = true)
 
                     // Ability
-                    drawScaledText(
-                        context = context,
-                        text = pokemon.ability.displayName.asTranslated(),
-                        x = labelX,
-                        y = y + 154,
-                        centered = true,
-                        shadow = true,
-                        scale = SCALE
-                    )
+                    drawBoundedText(context, pokemon.ability.displayName.asTranslated(), x + 10, y + 154,
+                        60, mouseX, mouseY, centered = true)
 
                     // Moves (mask non-Shadow moves progressively by heart gauge)
                     val moves = pokemon.moveSet.getMoves().take(4)
@@ -685,15 +762,8 @@ class PurificationChamberGUI(
                     }.plus(List(4 - moves.size) { "—".text() })
 
                     for (i in moveList.indices) {
-                        drawScaledText(
-                            context = context,
-                            text = moveList[i],
-                            x = labelX,
-                            y = y + 170.5 + (7 * i),
-                            centered = true,
-                            shadow = true,
-                            scale = SCALE
-                        )
+                        drawBoundedText(context, moveList[i], x + 10, y + 170.5 + (7 * i),
+                            60, mouseX, mouseY, centered = true)
                     }
                 }
 
@@ -827,24 +897,18 @@ class PurificationChamberGUI(
         )
 
         super.render(context, mouseX, mouseY, partialTick)
-
-        // Render tutorial overlay on top of everything else
-        tutorialOverlay.render(context, mouseX, mouseY, partialTick)
+        setNameWidget.overflowTooltip?.let(::deferTooltip)
+        children().filterIsInstance<PurificationActionButton>().filter { it.visible }.forEach { button ->
+            button.overflowTooltip?.let(::deferTooltip)
+        }
 
         val centerPokemon = purificationStorage.get(PurificationPosition(0))
         if (centerPokemon != null && !ShadowAspectUtil.hasShadowAspect(
                 centerPokemon
             )
         ) {
-            drawScaledText(
-                context = context,
-                text = Component.literal("This Pokemon has been purified!"),
-                x = x + (BASE_WIDTH / 2),
-                y = y + BASE_HEIGHT - 18,
-                centered = true,
-                shadow = true,
-                scale = 0.6F
-            )
+            drawBoundedText(context, Component.translatable("gui.shadowedhearts.purification_chamber.purified"),
+                x + 87, y + BASE_HEIGHT - 18, 174, mouseX, mouseY, scale = 0.6F, centered = true)
         }
 
         if (pokemon != null) {
@@ -857,12 +921,9 @@ class PurificationChamberGUI(
             if (!displayedItem.isEmpty) {
                 val itemHovered =
                     mouseX.toFloat() in (itemX.toFloat()..(itemX.toFloat() + 16)) && mouseY.toFloat() in (itemY.toFloat()..(itemY.toFloat() + 16))
-                if (itemHovered) context.renderTooltip(
-                    Minecraft.getInstance().font,
-                    displayedItem,
-                    mouseX,
-                    mouseY
-                )
+                if (itemHovered) deferredTooltip = { graphics, screenX, screenY, _ ->
+                    UmbraInfuserTooltip.renderItem(graphics, displayedItem, screenX, screenY)
+                }
             }
         }
 
@@ -889,24 +950,18 @@ class PurificationChamberGUI(
                                 )
                             )
                             when {
-                                value >= 100 -> "The door to its heart is tightly shut."
-                                value >= 80 -> "The door to its heart is starting to open."
-                                value >= 60 -> "The door to its heart is opening up."
-                                value >= 40 -> "The door to its heart is opening wider."
-                                value >= 20 -> "The door to its heart is nearly open."
-                                value >= 1 -> "The door to its heart is almost fully open."
-                                else -> "The door to its heart is about to open. Undo the final lock!"
+                                value >= 100 -> Component.translatable("gui.shadowedhearts.purification_chamber.heart.closed")
+                                value >= 80 -> Component.translatable("gui.shadowedhearts.purification_chamber.heart.starting")
+                                value >= 60 -> Component.translatable("gui.shadowedhearts.purification_chamber.heart.opening")
+                                value >= 40 -> Component.translatable("gui.shadowedhearts.purification_chamber.heart.wider")
+                                value >= 20 -> Component.translatable("gui.shadowedhearts.purification_chamber.heart.nearly")
+                                value >= 1 -> Component.translatable("gui.shadowedhearts.purification_chamber.heart.almost")
+                                else -> Component.translatable("gui.shadowedhearts.purification_chamber.heart.ready")
                             }
                         } else {
-                            "This Pokemon has been purified!"
+                            Component.translatable("gui.shadowedhearts.purification_chamber.purified")
                         }
-                    com.cobblemon.mod.common.client.gui.pokedex.renderTooltip(
-                        context,
-                        Component.literal(message),
-                        mouseX,
-                        mouseY,
-                        partialTick
-                    )
+                    deferTooltip(message)
                 }
             }
         }
@@ -917,9 +972,45 @@ class PurificationChamberGUI(
         mouseY: Double,
         button: Int
     ): Boolean {
-        // Let the tutorial overlay consume clicks when active
-        if (tutorialOverlay.handleClick(mouseX, mouseY, button)) return true
-        return super.mouseClicked(mouseX, mouseY, button)
+        refreshActionButtons()
+        try {
+            // Let the tutorial overlay consume clicks when active
+            if (tutorialOverlay.handleClick(mouseX, mouseY, button)) return true
+            val fit = viewportFit
+            return super.mouseClicked(fit.toContentX(mouseX), fit.toContentY(mouseY), button)
+        } finally {
+            // Selection or tutorial state can change during the click itself.
+            refreshActionButtons()
+        }
+    }
+
+    override fun mouseReleased(mouseX: Double, mouseY: Double, button: Int): Boolean {
+        val fit = viewportFit
+        return super.mouseReleased(fit.toContentX(mouseX), fit.toContentY(mouseY), button)
+    }
+
+    override fun mouseDragged(mouseX: Double, mouseY: Double, button: Int, dragX: Double, dragY: Double): Boolean {
+        val fit = viewportFit
+        return super.mouseDragged(fit.toContentX(mouseX), fit.toContentY(mouseY), button, fit.dragDelta(dragX), fit.dragDelta(dragY))
+    }
+
+    override fun mouseScrolled(mouseX: Double, mouseY: Double, horizontal: Double, vertical: Double): Boolean {
+        val fit = viewportFit
+        return super.mouseScrolled(fit.toContentX(mouseX), fit.toContentY(mouseY), horizontal, vertical)
+    }
+
+    override fun mouseMoved(mouseX: Double, mouseY: Double) {
+        val fit = viewportFit
+        super.mouseMoved(fit.toContentX(mouseX), fit.toContentY(mouseY))
+    }
+
+    override fun getRectangle(): ScreenRectangle {
+        val fit = viewportFit
+        val left = floor(fit.toContentX(0.0)).toInt()
+        val top = floor(fit.toContentY(0.0)).toInt()
+        val right = ceil(fit.toContentX(width.toDouble())).toInt()
+        val bottom = ceil(fit.toContentY(height.toDouble())).toInt()
+        return ScreenRectangle(left, top, right - left, bottom - top)
     }
 
     override fun keyPressed(
@@ -927,29 +1018,35 @@ class PurificationChamberGUI(
         scanCode: Int,
         modifiers: Int
     ): Boolean {
-        // Let the tutorial overlay consume key presses when active
-        if (tutorialOverlay.handleKeyPress(keyCode)) return true
-        when (keyCode) {
-            InputConstants.KEY_ESCAPE -> {
-                playSound(CobblemonSounds.PC_OFF)
-                onClose()
-                return true
-            }
+        refreshActionButtons()
+        try {
+            // Let the tutorial overlay consume key presses when active
+            if (tutorialOverlay.handleKeyPress(keyCode)) return true
+            when (keyCode) {
+                InputConstants.KEY_ESCAPE -> {
+                    playSound(CobblemonSounds.PC_OFF)
+                    onClose()
+                    return true
+                }
 
-            InputConstants.KEY_RIGHT -> {
-                playSound(CobblemonSounds.PC_CLICK)
-                nextSet(); return true
-            }
+                InputConstants.KEY_RIGHT -> {
+                    playSound(CobblemonSounds.PC_CLICK)
+                    nextSet(); return true
+                }
 
-            InputConstants.KEY_LEFT -> {
-                playSound(CobblemonSounds.PC_CLICK)
-                prevSet(); return true
+                InputConstants.KEY_LEFT -> {
+                    playSound(CobblemonSounds.PC_CLICK)
+                    prevSet(); return true
+                }
             }
+            return super.keyPressed(keyCode, scanCode, modifiers)
+        } finally {
+            refreshActionButtons()
         }
-        return super.keyPressed(keyCode, scanCode, modifiers)
     }
 
     override fun tick() {
+        refreshActionButtons()
         ticksElapsed++
 
         val center = getPokemonAt(0)
@@ -1083,24 +1180,30 @@ class PurificationChamberGUI(
      * right-click goes back, and Escape dismisses.
      */
     private fun startTutorial() {
+        updateTutorialSteps()
+        tutorialOverlay.start()
+    }
+
+    private fun updateTutorialSteps() {
         val x = (width - BASE_WIDTH) / 2
         val y = (height - BASE_HEIGHT) / 2
+        val popupWidth = PurificationScreenLayout.tutorialWidth(width)
 
         tutorialOverlay.steps = listOf(
             // Step 1 — Placeholder: introduce the chamber
             TutorialStep(
-                text = Component.literal("Welcome to the Purification Chamber! Here you can purify shadow Pokemon with the help of your other Pokemon."),
+                text = Component.translatable("gui.shadowedhearts.purification_chamber.tutorial.welcome"),
                 posX = x + BASE_WIDTH / 2,
                 posY = y + 40,
                 0,
-                width = width / 4
+                width = popupWidth
             ),
             // Step 2 — Placeholder: explain the center slot
             TutorialStep(
-                text = Component.literal("Place a Shadow Pokemon in the top slot to begin purifying it. Click the slot and then click add and select a Shadow Pokemon from your PC!"),
+                text = Component.translatable("gui.shadowedhearts.purification_chamber.tutorial.center"),
                 posX = x + BASE_WIDTH / 2,
                 posY = y + 40,
-                width = width / 4,
+                width = popupWidth,
                 arrowSide = ArrowSide.RIGHT,
                 arrowTargetX = x + BASE_WIDTH / 2 + 133,
                 arrowTargetY = y + 42,
@@ -1111,10 +1214,10 @@ class PurificationChamberGUI(
             ),
             // Step 3 — Placeholder: explain support slots
             TutorialStep(
-                text = Component.literal("Add support Pokemon in the surrounding slots to accelerate the purification process."),
+                text = Component.translatable("gui.shadowedhearts.purification_chamber.tutorial.supports"),
                 posX = x + BASE_WIDTH / 2,
                 posY = y + 40,
-                width = width / 4,
+                width = popupWidth,
                 arrowSide = ArrowSide.RIGHT,
                 arrowTargetX = x + BASE_WIDTH / 2 + 120,
                 arrowTargetY = y + 82,
@@ -1125,20 +1228,19 @@ class PurificationChamberGUI(
             ),
             // Step 4 — Placeholder: explain tempo & flow
             TutorialStep(
-                text = Component.literal("Tempo and Flow affect purification speed. It changes depending on the type effectiveness of the supporting Pokemon with each other. Green arrows are good, Red arrows are bad."),
+                text = Component.translatable("gui.shadowedhearts.purification_chamber.tutorial.flow"),
                 posX = x + BASE_WIDTH / 2,
                 posY = y + 40,
-                width = width / 4,
+                width = popupWidth,
             ),
             // Step 5 — Placeholder: explain purify button
             TutorialStep(
-                text = Component.literal("Walk around for a while to lower the Heart Gauge. Press Purify when the Heart Gauge reaches zero!"),
+                text = Component.translatable("gui.shadowedhearts.purification_chamber.tutorial.walking"),
                 posX = x + BASE_WIDTH / 2,
                 posY = y + 40,
-                width = width / 4,
+                width = popupWidth,
             )
         )
-        tutorialOverlay.start()
     }
 
     override fun isPauseScreen() = false

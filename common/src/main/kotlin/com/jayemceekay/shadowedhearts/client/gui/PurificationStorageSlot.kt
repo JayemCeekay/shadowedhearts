@@ -9,6 +9,7 @@ import com.cobblemon.mod.common.util.cobblemonResource
 import com.jayemceekay.shadowedhearts.client.storage.ClientPurificationStorage
 import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.client.gui.components.Button
+import net.minecraft.client.gui.narration.NarrationElementOutput
 import net.minecraft.client.sounds.SoundManager
 import net.minecraft.network.chat.Component
 import org.joml.Quaternionf
@@ -19,7 +20,7 @@ class PurificationStorageSlot(
     private val storage: ClientPurificationStorage,
     val position: ClientPurificationStorage.PurificationPosition,
     onPress: Button.OnPress
-) : Button(x, y, SIZE, SIZE, Component.literal("PurificationStorageSlot"), onPress, DEFAULT_NARRATION), CobblemonRenderable {
+) : Button(x, y, SIZE, SIZE, Component.empty(), onPress, DEFAULT_NARRATION), CobblemonRenderable {
 
     companion object {
         const val SIZE = 25
@@ -28,6 +29,19 @@ class PurificationStorageSlot(
 
     private val state = FloatingState()
     private var isSlotSelected = false
+
+    fun narrationLabel(): Component {
+        val occupant = getPokemon()?.getDisplayName()
+            ?: Component.translatable("gui.shadowedhearts.purification_chamber.slot.empty")
+        return if (position.index == 0)
+            Component.translatable("gui.shadowedhearts.purification_chamber.slot.center", occupant)
+        else Component.translatable("gui.shadowedhearts.purification_chamber.slot.support", position.index, occupant)
+    }
+
+    override fun updateWidgetNarration(output: NarrationElementOutput) {
+        message = narrationLabel()
+        super.updateWidgetNarration(output)
+    }
 
     fun setSelected(selected: Boolean) {
         isSlotSelected = selected
@@ -46,7 +60,8 @@ class PurificationStorageSlot(
         val matrices = context.pose()
 
         // Render the Pokémon similar to StorageSlot but scaled down for 19x19
-        context.enableScissor(
+        GuiPoseScissor.enable(
+            context,
             posX - 2,
             posY + 2,
             posX + SIZE + 4,

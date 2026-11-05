@@ -2,11 +2,17 @@ package com.jayemceekay.shadowedhearts.client.gui
 
 import com.cobblemon.mod.common.api.text.font
 import com.cobblemon.mod.common.client.CobblemonResources
-import com.cobblemon.mod.common.client.render.drawScaledText
+import com.jayemceekay.shadowedhearts.client.aura.AuraReaderTutorialLayout
+import com.jayemceekay.shadowedhearts.client.aura.AuraReaderHudRect
 import net.minecraft.client.Minecraft
+import net.minecraft.client.gui.Font
 import net.minecraft.client.gui.GuiGraphics
+import net.minecraft.client.gui.narration.NarratedElementType
+import net.minecraft.client.gui.narration.NarrationElementOutput
 import net.minecraft.network.chat.Component
 import net.minecraft.network.chat.MutableComponent
+import kotlin.math.ceil
+import kotlin.math.roundToInt
 
 /**
  * Which side of the tooltip the arrow originates from.
@@ -69,10 +75,24 @@ class PurificationTutorialOverlay {
         private const val EDGE_COLOR: Int = 0xFF84FEFF.toInt()
         /** Background fill color: #4F9297 */
         private const val BG_COLOR: Int = 0xFF4F9297.toInt()
+
+        /** Use the same font, wrap width and counter spacing as the renderer. */
+        @JvmStatic fun measureHeight(font: Font, text: Component, width: Int, stepCount: Int): Int {
+            val available = (width - 6).coerceAtLeast(1)
+            val bodyLines = font.split(text.copy().font(CobblemonResources.DEFAULT_LARGE), available).size
+            val counterLines = if (stepCount <= 1) 0 else (1..stepCount).maxOf { step ->
+                font.split(Component.translatable("gui.shadowedhearts.tutorial.counter", step, stepCount)
+                    .font(CobblemonResources.DEFAULT_LARGE), available).size
+            }
+            return bodyLines * 10 + 1 + if (counterLines == 0) 0 else counterLines * 10 + 2
+        }
     }
 
     /** The ordered list of tutorial steps. Populate before calling [start]. */
     var steps: List<TutorialStep> = emptyList()
+
+    /** Optional inline controls for screens that do not already draw a navigation footer. */
+    var navigationHint: Component? = null
 
     /** Index of the currently displayed step, or -1 when inactive. */
     var currentIndex: Int = -1
@@ -80,6 +100,14 @@ class PurificationTutorialOverlay {
 
     /** Whether the tutorial overlay is currently being shown. */
     val isActive: Boolean get() = currentIndex in steps.indices
+
+    fun narrate(output: NarrationElementOutput, navigation: Component) {
+        val step = steps.getOrNull(currentIndex) ?: return
+        output.add(NarratedElementType.TITLE, step.text)
+        output.add(NarratedElementType.POSITION,
+            Component.translatable("gui.shadowedhearts.tutorial.step", currentIndex + 1, steps.size))
+        output.add(NarratedElementType.USAGE, navigation)
+    }
 
     /** Begin the tutorial from the first step. */
     fun start() {
@@ -114,95 +142,141 @@ class PurificationTutorialOverlay {
     fun render(context: GuiGraphics, mouseX: Int, mouseY: Int, partialTick: Float) {
         if (!isActive) return
         val step = steps.getOrNull(currentIndex) ?: return
+        renderStep(context, step, partialTick)
+    }
+
+    /** Use a measured placement without changing other tutorials' coordinate systems. */
+    fun renderPlaced(context: GuiGraphics, partialTick: Float, placement: AuraReaderTutorialLayout.Placement) {
+        if (!isActive) return
+        renderStep(context, steps[currentIndex], partialTick, placement = placement)
+    }
+
+    /** Render at screen resolution while keeping arrows attached to the fitted panel. */
+    fun renderFitted(context: GuiGraphics, partialTick: Float, fit: GuiViewportFit, viewportWidth: Int, viewportHeight: Int) {
+        if (!isActive) return
+        val step = steps.getOrNull(currentIndex) ?: return
+        val mappedStep = step.copy(
+            posX = fit.toScreenX(step.posX.toDouble()).roundToInt(),
+            posY = fit.toScreenY((step.posY + step.offsetY).toDouble()).roundToInt(),
+            offsetY = 0,
+            arrowTargetX = fit.toScreenX(step.arrowTargetX.toDouble()).roundToInt(),
+            arrowTargetY = fit.toScreenY(step.arrowTargetY.toDouble()).roundToInt(),
+            highlightX = step.highlightX?.let { fit.toScreenX(it.toDouble()).roundToInt() },
+            highlightY = fit.toScreenY(step.highlightY.toDouble()).roundToInt(),
+            highlightWidth = (step.highlightWidth * fit.scale()).roundToInt(),
+            highlightHeight = (step.highlightHeight * fit.scale()).roundToInt()
+        )
+        renderStep(context, mappedStep, partialTick, viewportWidth, viewportHeight)
+    }
+
+    private fun renderStep(context: GuiGraphics, step: TutorialStep, partialTick: Float,
+                           viewportWidth: Int? = null, viewportHeight: Int? = null,
+                           placement: AuraReaderTutorialLayout.Placement? = null) {
 
         val poseStack = context.pose()
         val font = Minecraft.getInstance().font
         val lineHeight = 10
         val padding = 6
 
-        // Word-wrap text if a width is specified, otherwise single line
-        val wrappedLines: List<MutableComponent> = if (step.width != null) {
-            wrapText(step.text.string, step.width - padding, font)
-        } else {
-            listOf(step.text)
-        }
-
-        val maxLineWidth = wrappedLines.maxOf { font.width(it.font(CobblemonResources.DEFAULT_LARGE)) }
-        val tooltipWidth = step.width ?: (maxLineWidth + padding)
+        val displayedText = step.text.copy().also { text -> navigationHint?.let { text.append("\n\n").append(it) } }
+        val requestedWidth = placement?.contentWidth() ?: step.width ?: (font.width(displayedText.copy().font(CobblemonResources.DEFAULT_LARGE)) + padding)
+        val tooltipWidth = if (viewportWidth == null) requestedWidth else
+            requestedWidth.coerceIn(padding + 1, (viewportWidth - 8).coerceAtLeast(padding + 1))
+        val wrappedLines = font.split(displayedText.font(CobblemonResources.DEFAULT_LARGE), (tooltipWidth - padding).coerceAtLeast(1))
         val contentHeight = wrappedLines.size * lineHeight + 1
-        val tooltipHeight = step.height ?: contentHeight
-        val tooltipTop = step.posY + step.offsetY
-
-        val leftX = step.posX - (tooltipWidth / 2)
+        val indicatorLines = if (steps.size > 1) font.split(
+            Component.translatable("gui.shadowedhearts.tutorial.counter", currentIndex + 1, steps.size)
+                .font(CobblemonResources.DEFAULT_LARGE), (tooltipWidth - padding).coerceAtLeast(1)) else emptyList()
+        val indicatorHeight = if (indicatorLines.isEmpty()) 0 else indicatorLines.size * lineHeight + 2
+        val tooltipHeight = maxOf(placement?.let { it.contentHeight() - indicatorHeight } ?: step.height ?: contentHeight, contentHeight)
+        val popupScale = placement?.scale() ?: if (viewportHeight == null || viewportWidth == null) 1.0 else minOf(
+            1.0,
+            (viewportWidth - 8).coerceAtLeast(1).toDouble() / tooltipWidth,
+            (viewportHeight - 8).coerceAtLeast(1).toDouble() / (tooltipHeight + indicatorHeight)
+        )
+        val displayWidth = ceil(tooltipWidth * popupScale).toInt()
+        val totalHeight = ceil((tooltipHeight + indicatorHeight) * popupScale).toInt()
+        val preferredLeft = step.posX - displayWidth / 2
+        val preferredTop = step.posY + step.offsetY
+        val leftX = placement?.bounds()?.left() ?: if (viewportWidth == null) preferredLeft else preferredLeft.coerceIn(3, maxOf(3, viewportWidth - displayWidth - 3))
+        val tooltipTop = placement?.bounds()?.top() ?: if (viewportHeight == null) preferredTop else preferredTop.coerceIn(3, maxOf(3, viewportHeight - totalHeight - 3))
 
         poseStack.pushPose()
-        poseStack.translate(0.0, 0.0, 1000.0)
+        try {
+            poseStack.translate(0.0, 0.0, 1000.0)
+            poseStack.pushPose()
+            try {
+                poseStack.translate(leftX.toDouble(), tooltipTop.toDouble(), 0.0)
+                poseStack.scale(popupScale.toFloat(), popupScale.toFloat(), 1F)
 
-        // Apply the same blur backdrop as the Pokédex tooltip
-        Minecraft.getInstance().let {
-            it.mainRenderTarget.bindWrite(false)
-            context.enableScissor(
-                leftX,
-                tooltipTop + 1,
-                leftX + tooltipWidth,
-                tooltipTop + tooltipHeight - 1
-            )
-            it.gameRenderer.processBlurEffect(partialTick)
-            context.disableScissor()
-            it.mainRenderTarget.bindWrite(true)
+                // Apply the same blur backdrop as the Pokédex tooltip
+                Minecraft.getInstance().let {
+                    context.flush()
+                    it.mainRenderTarget.bindWrite(false)
+                    try {
+                        GuiPoseScissor.enable(context, 0, 1, tooltipWidth, tooltipHeight - 1)
+                        try {
+                            it.gameRenderer.processBlurEffect(partialTick)
+                        } finally {
+                            context.disableScissor()
+                        }
+                    } finally {
+                        it.mainRenderTarget.bindWrite(true)
+                    }
+                }
+
+                // Dynamically drawn tooltip box — edges (#84FEFF) and background (#4F9297)
+                // Background fill
+                context.fill(-1, -1, tooltipWidth + 1, tooltipHeight + 1, BG_COLOR)
+                // Left edge (1px)
+                context.fill(-1, 0, 0, tooltipHeight, EDGE_COLOR)
+                // Right edge (1px)
+                context.fill(tooltipWidth, 0, tooltipWidth + 1, tooltipHeight, EDGE_COLOR)
+                // Top edge (1px)
+                context.fill(0, -1, tooltipWidth, 0, EDGE_COLOR)
+                // Bottom edge (1px)
+                context.fill(0, tooltipHeight, tooltipWidth, tooltipHeight + 1, EDGE_COLOR)
+
+                // Draw each wrapped line, centered
+                for ((i, line) in wrappedLines.withIndex()) {
+                    context.drawString(font, line, (tooltipWidth - font.width(line)) / 2, 1 + i * lineHeight, -1, true)
+                }
+
+                // Step indicator (e.g., "1 / 5") rendered just below the tooltip
+                for ((index, line) in indicatorLines.withIndex()) {
+                    context.drawString(font, line, (tooltipWidth - font.width(line)) / 2,
+                        tooltipHeight + 2 + index * lineHeight, -1, true)
+                }
+                context.flush()
+            } finally {
+                poseStack.popPose()
+            }
+
+            // Clamping may put the popup over its original cue. Never draw a cue through
+            // readable text, and keep its border inside the viewport after panel fitting.
+            val screenWidth = viewportWidth ?: context.guiWidth()
+            val screenHeight = viewportHeight ?: context.guiHeight()
+            val popupBounds = AuraReaderHudRect(leftX - 1, tooltipTop - 1,
+                leftX + displayWidth + 1, tooltipTop + totalHeight + 1)
+            val target = step.highlightX?.let { x ->
+                AuraReaderHudRect(x, step.highlightY, x + step.highlightWidth,
+                    step.highlightY + step.highlightHeight)
+            }
+            val cue = TutorialCueLayout.resolve(screenWidth, screenHeight, popupBounds, target,
+                step.arrowTargetX, step.arrowTargetY)
+            if (step.arrowSide != null && cue.side() != null) {
+                // Pick the exit side after clamping, rather than using a side that now
+                // points back through the popup or its wrapped step counter.
+                drawManhattanArrow(context, ArrowSide.valueOf(cue.side().name), leftX, tooltipTop,
+                    displayWidth, totalHeight, cue.targetX(), cue.targetY())
+            }
+            cue.highlight()?.let { visible ->
+                drawHighlightBox(context, visible.left(), visible.top(), visible.width(), visible.height())
+            }
+
+        } finally {
+            poseStack.popPose()
         }
-
-        // Dynamically drawn tooltip box — edges (#84FEFF) and background (#4F9297)
-        // Background fill
-        context.fill(leftX - 1, tooltipTop - 1, leftX + tooltipWidth + 1, tooltipTop + tooltipHeight + 1, BG_COLOR)
-        // Left edge (1px)
-        context.fill(leftX - 1, tooltipTop, leftX, tooltipTop + tooltipHeight, EDGE_COLOR)
-        // Right edge (1px)
-        context.fill(leftX + tooltipWidth, tooltipTop, leftX + tooltipWidth + 1, tooltipTop + tooltipHeight, EDGE_COLOR)
-        // Top edge (1px)
-        context.fill(leftX, tooltipTop - 1, leftX + tooltipWidth, tooltipTop, EDGE_COLOR)
-        // Bottom edge (1px)
-        context.fill(leftX, tooltipTop + tooltipHeight, leftX + tooltipWidth, tooltipTop + tooltipHeight + 1, EDGE_COLOR)
-
-        // Draw each wrapped line, centered
-        for ((i, line) in wrappedLines.withIndex()) {
-            drawScaledText(
-                context = context,
-                font = CobblemonResources.DEFAULT_LARGE,
-                text = line,
-                x = step.posX,
-                y = tooltipTop + 1 + (i * lineHeight),
-                shadow = true,
-                centered = true
-            )
-        }
-
-        // Step indicator (e.g., "1 / 5") rendered just below the tooltip
-        if (steps.size > 1) {
-            val indicator = Component.literal("${currentIndex + 1} / ${steps.size}")
-            drawScaledText(
-                context = context,
-                font = CobblemonResources.DEFAULT_LARGE,
-                text = indicator,
-                x = step.posX,
-                y = tooltipTop + tooltipHeight + 2,
-                shadow = true,
-                centered = true,
-                scale = 1.0F
-            )
-        }
-
-        // Draw Manhattan-distance arrow if configured
-        if (step.arrowSide != null) {
-            drawManhattanArrow(context, step.arrowSide, leftX, tooltipTop, tooltipWidth, tooltipHeight, step.arrowTargetX, step.arrowTargetY)
-        }
-
-        // Draw highlight box around a UI element if configured
-        if (step.highlightX != null) {
-            drawHighlightBox(context, step.highlightX, step.highlightY, step.highlightWidth, step.highlightHeight)
-        }
-
-        poseStack.popPose()
     }
 
     /**
@@ -291,31 +365,6 @@ class PurificationTutorialOverlay {
         context.fill(x, y - 1, x + boxWidth, y, EDGE_COLOR)
         // Bottom edge
         context.fill(x, y + boxHeight, x + boxWidth, y + boxHeight + 1, EDGE_COLOR)
-    }
-
-    /**
-     * Splits [text] into multiple [MutableComponent] lines that each fit within [maxWidth] pixels.
-     * Wraps on word boundaries (spaces).
-     */
-    private fun wrapText(text: String, maxWidth: Int, font: net.minecraft.client.gui.Font): List<MutableComponent> {
-        val words = text.split(" ")
-        val lines = mutableListOf<MutableComponent>()
-        var currentLine = StringBuilder()
-
-        for (word in words) {
-            val candidate = if (currentLine.isEmpty()) word else "${currentLine} $word"
-            val candidateWidth = font.width(Component.literal(candidate).font(CobblemonResources.DEFAULT_LARGE))
-            if (candidateWidth > maxWidth && currentLine.isNotEmpty()) {
-                lines.add(Component.literal(currentLine.toString()))
-                currentLine = StringBuilder(word)
-            } else {
-                currentLine = StringBuilder(candidate)
-            }
-        }
-        if (currentLine.isNotEmpty()) {
-            lines.add(Component.literal(currentLine.toString()))
-        }
-        return lines.ifEmpty { listOf(Component.literal("")) }
     }
 
     /**
