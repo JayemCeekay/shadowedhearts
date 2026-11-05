@@ -5,7 +5,9 @@ import com.cobblemon.mod.common.pokemon.Pokemon;
 import com.jayemceekay.shadowedhearts.common.shadow.ShadowAspectUtil;
 import com.jayemceekay.shadowedhearts.common.shadow.ShadowService;
 import com.jayemceekay.shadowedhearts.config.GameplayTuningConfig;
+import com.jayemceekay.shadowedhearts.config.PresetCompatibilityConfig;
 import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs;
+import com.jayemceekay.shadowedhearts.registry.ModItems;
 
 /**
  * Helper to apply Heart Gauge changes for various events.
@@ -51,6 +53,11 @@ public final class HeartGaugeEvents {
 
     public static void onPartyStep(Pokemon pokemon, PokemonEntity live, boolean sync) {
         int d = HeartGaugeDeltas.getDelta(pokemon, HeartGaugeDeltas.EventType.PARTY);
+        if (d < 0 && PresetCompatibilityConfig.INSTANCE.effectEnabled("heartSootheBell")
+                && pokemon.heldItem().is(ModItems.HEART_SOOTHE_BELL.get())) {
+            // Apply only to earned party walking, not scents, Call, or chamber progress.
+            d = -Math.round(-d * 1.25f);
+        }
         apply(pokemon, live, HeartGaugeProgressionMath.scaleReduction(d, GameplayTuningConfig.INSTANCE.walkingMultiplier()), sync);
     }
 

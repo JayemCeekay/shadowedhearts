@@ -2,6 +2,7 @@ package com.jayemceekay.shadowedhearts.showdown;
 
 import com.jayemceekay.shadowedhearts.Shadowedhearts;
 import com.jayemceekay.shadowedhearts.config.IShadowConfig;
+import com.jayemceekay.shadowedhearts.config.PresetCompatibilityConfig;
 import com.jayemceekay.shadowedhearts.config.ShadowBattleRulesConfig;
 import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs;
 import dev.architectury.platform.Platform;
@@ -99,7 +100,17 @@ public final class ShowdownRuntimePatcher {
         }
 
         private static void injectHeldItems(ShowdownContextAccess access) {
+            injectResource(access, "receiveHeldItemData", "shadowgem", "held_items/shadowgem.js", null);
+            injectResource(access, "receiveHeldItemData", "nullcharm", "held_items/nullcharm.js", null);
             injectResource(access, "receiveHeldItemData", "shadowiumz", "held_items/shadowiumz.js", null);
+            injectResource(access, "receiveHeldItemData", "rivenorb", "held_items/rivenorb.js", null);
+            injectResource(access, "receiveHeldItemData", "shadowcollar", "held_items/shadowcollar.js", null);
+            injectResource(access, "receiveHeldItemData", "emwaveamplifier", "held_items/emwaveamplifier.js", null);
+            injectResource(access, "receiveHeldItemData", "dissonanceband", "held_items/dissonanceband.js", null);
+            injectResource(access, "receiveHeldItemData", "breachlens", "held_items/breachlens.js", null);
+            injectResource(access, "receiveHeldItemData", "calmingsachet", "held_items/calmingsachet.js", null);
+            injectResource(access, "receiveHeldItemData", "heartsoothebell", "held_items/heartsoothebell.js", null);
+            injectResource(access, "receiveHeldItemData", "ruinpolicy", "held_items/ruinpolicy.js", null);
         }
 
         public static void injectConfig(Object context) {
@@ -108,21 +119,25 @@ public final class ShowdownRuntimePatcher {
                 String config = String.format(
                         "\"Config\": { " +
                                 "\"modeRules\": " + ShadowBattleRulesConfig.INSTANCE.modeRulesJson() + ", " +
+                                "\"itemEffects\": " + PresetCompatibilityConfig.INSTANCE.battleItemEffectsJson() + ", " +
+                                "\"nullCharm\": {\"wardEnabled\":" + PresetCompatibilityConfig.INSTANCE.nullCharmWardEnabled() + ",\"damageGuardEnabled\":" + PresetCompatibilityConfig.INSTANCE.nullCharmDamageGuardEnabled() + "}, " +
                                 "\"callButton\": { \"accuracyBoost\": %b, \"removeSleep\": %b }, " +
                                 "\"hyperMode\": { \"enabled\": %b}, " +
                                 "\"reverseMode\": { \"enabled\": %b}, " +
-                                "\"GOdamageModifier\": { \"enabled\": %b, \"scaleWithHeartGauge\": %b}, " +
+                                "\"GOdamageModifier\": { \"enabled\": %b, \"scaleWithHeartGauge\": %b, \"nullCharmCancelsGoBonus\": %b}, " +
                                 "\"shadowMoves\": { \"superEffectiveEnabled\": %b }, " +
                                 "\"shadowBattleRules\": { \"shadowRushVariant\": \"%s\", \"unlimitedShadowPP\": %b, \"hyperShadowRushCrit\": %b } },",
                         cfg.callButtonAccuracyBoost(), cfg.callButtonRemoveSleep(),
                         cfg.hyperModeEnabled(), cfg.reverseModeEnabled(), cfg.goDamageModifierEnabled(),
                         cfg.goDamageModifierScaleWithHeartGauge(),
+                        PresetCompatibilityConfig.INSTANCE.nullCharmCancelsGoBonus(),
                         cfg.superEffectiveShadowMovesEnabled(),
                         ShadowBattleRulesConfig.INSTANCE.shadowRushVariant().name(),
                         ShadowBattleRulesConfig.INSTANCE.unlimitedShadowPP(),
                         ShadowBattleRulesConfig.INSTANCE.hyperShadowRushCrit());
                 injectResource(contextAccess(context), "receiveScriptData", "shadowedhearts",
                         "scripts/shadowedhearts.js", config);
+                injectHeldItems(contextAccess(context));
             } catch (Exception e) {
                 Shadowedhearts.LOGGER.error("Failed to prepare Showdown config injection", e);
             }
@@ -145,6 +160,7 @@ public final class ShowdownRuntimePatcher {
             String resourcePath = "/data/shadowedhearts/showdown/" + relativePath;
             try {
                 String expression = ShowdownInjectionSupport.resourceExpression(resourcePath);
+                if ("receiveHeldItemData".equals(functionName)) expression = ShowdownItemEffectRules.filterExpression(id, expression);
                 if (config != null) {
                     int objectStart = expression.indexOf('{');
                     if (objectStart < 0) throw new IOException("Script has no configuration object: " + resourcePath);

@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    {
+      "item": "cobblemon:clear_amulet"
+    },
+    {
+      "item": "shadowedhearts:null_glass"
+    },
+    {
+      "item": "shadowedhearts:purified_gem"
+    }
+  ],
+  "result": {
+    "id": "shadowedhearts:null_charm",
+    "count": 1
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "moveName": "shadowpanic",
+  "obtainMethods": [
+    {
+      "variant": "cobblemon:unlockable"
+    }
+  ],
+  "type": "shadow",
+  "recipe": [
+    {
+      "item": "shadowedhearts:shadow_gem",
+      "count": 3
+    },
+    {
+      "item": "cobblemon:figy_berry",
+      "count": 4
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "moveName": "shadowshed",
+  "obtainMethods": [
+    {
+      "variant": "cobblemon:unlockable"
+    }
+  ],
+  "type": "shadow",
+  "recipe": [
+    {
+      "item": "shadowedhearts:shadow_gem",
+      "count": 4
+    },
+    {
+      "item": "cobblemon:light_clay",
+      "count": 1
+    }
+  ]
+}

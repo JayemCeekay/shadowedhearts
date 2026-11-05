@@ -1,0 +1,23 @@
+{
+  "moveName": "shadowsky",
+  "obtainMethods": [
+    {
+      "variant": "cobblemon:unlockable"
+    }
+  ],
+  "type": "shadow",
+  "recipe": [
+    {
+      "item": "shadowedhearts:shadow_gem",
+      "count": 6
+    },
+    {
+      "item": "cobblemon:spell_tag",
+      "count": 1
+    },
+    {
+      "item": "shadowedhearts:condensed_shadow",
+      "count": 1
+    }
+  ]
+}

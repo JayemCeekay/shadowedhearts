@@ -29,6 +29,8 @@ import com.jayemceekay.shadowedhearts.integration.mega_showdown.MegaShowdownBrid
 import com.jayemceekay.shadowedhearts.integration.rctmod.RCTBridgeHolder;
 import com.jayemceekay.shadowedhearts.network.AuraBroadcastQueue;
 import com.jayemceekay.shadowedhearts.network.AuraServerSync;
+import com.jayemceekay.shadowedhearts.network.NullCharmEffectSync;
+import com.jayemceekay.shadowedhearts.network.DarkBallSettingsSync;
 import com.jayemceekay.shadowedhearts.network.ShadowRestrictionSettingsSync;
 import com.jayemceekay.shadowedhearts.network.HeartGaugeSettingsSync;
 import com.jayemceekay.shadowedhearts.pokemon.properties.PropertyRegistration;
@@ -91,6 +93,8 @@ public final class Shadowedhearts {
         ModPoiTypes.init();
         ModCriteriaTriggers.init();
         AuraServerSync.init();
+        NullCharmEffectSync.init();
+        DarkBallSettingsSync.init();
         ShadowRestrictionSettingsSync.init();
         HeartGaugeSettingsSync.init();
         com.jayemceekay.shadowedhearts.network.MoveLifecycleSettingsSync.init();

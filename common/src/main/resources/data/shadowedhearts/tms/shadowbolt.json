@@ -1,0 +1,19 @@
+{
+  "moveName": "shadowbolt",
+  "obtainMethods": [
+    {
+      "variant": "cobblemon:unlockable"
+    }
+  ],
+  "type": "shadow",
+  "recipe": [
+    {
+      "item": "shadowedhearts:shadow_gem",
+      "count": 5
+    },
+    {
+      "item": "cobblemon:magnet",
+      "count": 1
+    }
+  ]
+}

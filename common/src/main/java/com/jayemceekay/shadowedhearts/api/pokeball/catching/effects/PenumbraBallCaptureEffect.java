@@ -6,30 +6,25 @@ import com.jayemceekay.shadowedhearts.common.shadow.SHAspects;
 import com.jayemceekay.shadowedhearts.common.shadow.ShadowAspectUtil;
 import com.jayemceekay.shadowedhearts.common.shadow.ShadowService;
 import com.jayemceekay.shadowedhearts.config.HeartGaugeConfig;
+import com.jayemceekay.shadowedhearts.config.IShadowConfig;
+import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs;
 import net.minecraft.world.entity.LivingEntity;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.concurrent.ThreadLocalRandom;
 
 public class PenumbraBallCaptureEffect implements CaptureEffect {
-    private static final double SHADOW_CONVERSION_CHANCE = 0.10;
-    private static final double HEART_GAUGE_MAX_BONUS = 0.05;
-
     @Override
-    public void apply(@NotNull LivingEntity livingEntity, @NotNull Pokemon pokemon) {
-        boolean isShadow = pokemon.getAspects().contains(SHAspects.SHADOW);
-
-        if (isShadow) {
-            // Shadow pokemon caught with penumbra ball get 5% higher heart gauge maximum
-            int baseMax = HeartGaugeConfig.getMax(pokemon);
-            int boostedMax = (int) Math.ceil(baseMax * (1.0 + HEART_GAUGE_MAX_BONUS));
+    public void apply(@NotNull LivingEntity thrower, @NotNull Pokemon pokemon) {
+        IShadowConfig config = ShadowedHeartsConfigs.getInstance().getShadowConfig();
+        if (ShadowAspectUtil.hasShadowAspect(pokemon)) {
+            // Preserve partial purification, as with Penumbra: raise the maximum only.
+            int max = HeartGaugeConfig.getMax(pokemon);
+            int boostedMax = (int) Math.min(Integer.MAX_VALUE,
+                    Math.ceil(max * (1.0 + config.penumbraBallHeartGaugeMaxBonus())));
             ShadowAspectUtil.setHeartGaugeMaxProperty(pokemon, boostedMax);
-        } else {
-            // 10% chance to turn non-shadow pokemon into shadow pokemon upon capture
-            if (ThreadLocalRandom.current().nextDouble() < SHADOW_CONVERSION_CHANCE) {
-                int heartGaugeMax = HeartGaugeConfig.getMax(pokemon);
-                ShadowService.corrupt(pokemon, null, heartGaugeMax);
-            }
+        } else if (thrower.getRandom().nextDouble() < config.penumbraBallShadowConversionChance()) {
+            ShadowService.corrupt(pokemon, null, HeartGaugeConfig.getMax(pokemon));
         }
     }
 }

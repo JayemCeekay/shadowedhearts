@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    {
+      "item": "cobblemon:soothe_bell"
+    },
+    {
+      "item": "shadowedhearts:purified_gem"
+    },
+    {
+      "item": "shadowedhearts:null_glass"
+    }
+  ],
+  "result": {
+    "id": "shadowedhearts:heart_soothe_bell",
+    "count": 1
+  }
+}

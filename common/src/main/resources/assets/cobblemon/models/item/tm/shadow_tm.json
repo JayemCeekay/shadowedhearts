@@ -1,0 +1,6 @@
+{
+  "parent": "cobblemon:item/tm/tm",
+  "textures": {
+    "layer0": "cobblemon:item/tms/shadow_tm"
+  }
+}

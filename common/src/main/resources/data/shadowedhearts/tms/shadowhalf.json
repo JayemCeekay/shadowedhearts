@@ -1,0 +1,23 @@
+{
+  "moveName": "shadowhalf",
+  "obtainMethods": [
+    {
+      "variant": "cobblemon:unlockable"
+    }
+  ],
+  "type": "shadow",
+  "recipe": [
+    {
+      "item": "shadowedhearts:shadow_gem",
+      "count": 5
+    },
+    {
+      "item": "cobblemon:razor_fang",
+      "count": 1
+    },
+    {
+      "item": "shadowedhearts:condensed_shadow",
+      "count": 1
+    }
+  ]
+}

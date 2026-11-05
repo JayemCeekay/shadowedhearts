@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    {
+      "item": "cobblemon:weakness_policy"
+    },
+    {
+      "item": "shadowedhearts:core_sample"
+    }
+  ],
+  "result": {
+    "id": "shadowedhearts:ruin_policy",
+    "count": 1
+  }
+}

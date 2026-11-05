@@ -1,0 +1,13 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    {
+      "item": "shadowedhearts:shadow_shard"
+    }
+  ],
+  "result": {
+    "id": "shadowedhearts:shadow_dust",
+    "count": 8
+  }
+}

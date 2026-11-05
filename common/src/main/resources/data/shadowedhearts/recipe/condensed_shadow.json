@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "DDD",
+    "DDD",
+    "DDD"
+  ],
+  "key": {
+    "D": {
+      "item": "shadowedhearts:shadow_dust"
+    }
+  },
+  "result": {
+    "id": "shadowedhearts:condensed_shadow",
+    "count": 1
+  }
+}

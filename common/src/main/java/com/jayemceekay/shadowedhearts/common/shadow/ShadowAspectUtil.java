@@ -9,6 +9,7 @@ import com.cobblemon.mod.common.net.messages.client.pokemon.update.MoveSetUpdate
 import com.cobblemon.mod.common.pokemon.Pokemon;
 import com.cobblemon.mod.common.pokemon.RenderablePokemon;
 import com.jayemceekay.shadowedhearts.Shadowedhearts;
+import com.jayemceekay.shadowedhearts.common.capture.DarkBallCaptureRules;
 import com.jayemceekay.shadowedhearts.common.heart.HeartGaugeBattleSync;
 import com.jayemceekay.shadowedhearts.common.shadow.restrictions.HeartGaugeUnlockRules;
 import com.jayemceekay.shadowedhearts.common.shadow.restrictions.ShadowRestrictionSettings;
@@ -744,7 +745,9 @@ public final class ShadowAspectUtil {
         if (mode.equalsIgnoreCase("FIXED")) {
             perfectIVs = config.shadowFixedPerfectIVs();
         } else if (mode.equalsIgnoreCase("SCALED")) {
-            int maxHeartGauge = HeartGaugeConfig.getMax(pokemon);
+            // Dark Ball's larger gauge is a purification cost, not an extra IV reward.
+            int maxHeartGauge = pokemon.getPersistentData().getBoolean(DarkBallCaptureRules.NBT_CORRUPTED)
+                    ? HeartGaugeConfig.getMax(pokemon.getSpecies()) : HeartGaugeConfig.getMax(pokemon);
             float normalized = Math.min(1.0f, (float) maxHeartGauge / (float) HeartGaugeConfig.getGlobalMax(pokemon));
             perfectIVs = Math.round((float) Mth.lerp(normalized, 1.0, config.shadowMaxPerfectIVs()));
         }

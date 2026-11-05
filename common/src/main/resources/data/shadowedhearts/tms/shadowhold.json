@@ -1,0 +1,19 @@
+{
+  "moveName": "shadowhold",
+  "obtainMethods": [
+    {
+      "variant": "cobblemon:unlockable"
+    }
+  ],
+  "type": "shadow",
+  "recipe": [
+    {
+      "item": "shadowedhearts:shadow_gem",
+      "count": 4
+    },
+    {
+      "item": "cobblemon:binding_band",
+      "count": 1
+    }
+  ]
+}

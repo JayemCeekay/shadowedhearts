@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    {
+      "tag": "shadowedhearts:shadow_gem_bases"
+    },
+    {
+      "item": "shadowedhearts:shadow_shard"
+    }
+  ],
+  "result": {
+    "id": "shadowedhearts:shadow_gem",
+    "count": 1
+  }
+}

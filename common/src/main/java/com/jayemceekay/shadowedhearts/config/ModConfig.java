@@ -155,6 +155,90 @@ public final class ModConfig implements IShadowConfig {
     }
 
     @Override
+    public double penumbraBallCatchMultiplier() {
+        if (!isLoaded()) return IShadowConfig.super.penumbraBallCatchMultiplier();
+        return DATA.shadowBall.penumbraBallCatchMultiplier.get();
+    }
+
+    @Override
+    public double penumbraBallShadowCatchMultiplier() {
+        if (!isLoaded()) return IShadowConfig.super.penumbraBallShadowCatchMultiplier();
+        return DATA.shadowBall.penumbraBallShadowCatchMultiplier.get();
+    }
+
+    @Override
+    public double penumbraBallShadowConversionChance() {
+        if (!isLoaded()) return IShadowConfig.super.penumbraBallShadowConversionChance();
+        return DATA.shadowBall.penumbraBallShadowConversionChance.get();
+    }
+
+    @Override
+    public double penumbraBallHeartGaugeMaxBonus() {
+        if (!isLoaded()) return IShadowConfig.super.penumbraBallHeartGaugeMaxBonus();
+        return DATA.shadowBall.penumbraBallHeartGaugeMaxBonus.get();
+    }
+
+    @Override
+    public double antumbraBallCatchMultiplier() {
+        if (!isLoaded()) return IShadowConfig.super.antumbraBallCatchMultiplier();
+        return DATA.shadowBall.antumbraBallCatchMultiplier.get();
+    }
+
+    @Override
+    public double antumbraBallShadowCatchMultiplier() {
+        if (!isLoaded()) return IShadowConfig.super.antumbraBallShadowCatchMultiplier();
+        return DATA.shadowBall.antumbraBallShadowCatchMultiplier.get();
+    }
+
+    @Override
+    public double antumbraBallShadowConversionChance() {
+        if (!isLoaded()) return IShadowConfig.super.antumbraBallShadowConversionChance();
+        return DATA.shadowBall.antumbraBallShadowConversionChance.get();
+    }
+
+    @Override
+    public double antumbraBallHeartGaugeMaxBonus() {
+        if (!isLoaded()) return IShadowConfig.super.antumbraBallHeartGaugeMaxBonus();
+        return DATA.shadowBall.antumbraBallHeartGaugeMaxBonus.get();
+    }
+
+    @Override
+    public double umbraBallCatchMultiplier() {
+        if (!isLoaded()) return IShadowConfig.super.umbraBallCatchMultiplier();
+        return DATA.shadowBall.umbraBallCatchMultiplier.get();
+    }
+
+    @Override
+    public double umbraBallShadowCatchMultiplier() {
+        if (!isLoaded()) return IShadowConfig.super.umbraBallShadowCatchMultiplier();
+        return DATA.shadowBall.umbraBallShadowCatchMultiplier.get();
+    }
+
+    @Override
+    public double umbraBallShadowConversionChance() {
+        if (!isLoaded()) return IShadowConfig.super.umbraBallShadowConversionChance();
+        return DATA.shadowBall.umbraBallShadowConversionChance.get();
+    }
+
+    @Override
+    public double umbraBallHeartGaugeMaxBonus() {
+        if (!isLoaded()) return IShadowConfig.super.umbraBallHeartGaugeMaxBonus();
+        return DATA.shadowBall.umbraBallHeartGaugeMaxBonus.get();
+    }
+
+    @Override
+    public int darkBallLevelBoost() {
+        if (!isLoaded()) return IShadowConfig.super.darkBallLevelBoost();
+        return DATA.darkBall.levelBoost.get();
+    }
+
+    @Override
+    public double darkBallHeartGaugeMultiplier() {
+        if (!isLoaded()) return IShadowConfig.super.darkBallHeartGaugeMultiplier();
+        return DATA.darkBall.heartGaugeMultiplier.get();
+    }
+
+    @Override
     public boolean rctIntegrationEnabled() {
         if (!isLoaded()) return IShadowConfig.super.rctIntegrationEnabled();
         return DATA.rctIntegration.enabled.get();
@@ -442,6 +526,8 @@ public final class ModConfig implements IShadowConfig {
         public final ScentConfig scent = new ScentConfig();
         public final ShadowMovesConfig shadowMoves = new ShadowMovesConfig();
         public final ShadowStatConfig shadowStatChanges = new ShadowStatConfig();
+        public final ShadowBallConfig shadowBall = new ShadowBallConfig();
+        public final DarkBallConfig darkBall = new DarkBallConfig();
         public final AuraScannerConfig auraScanner = new AuraScannerConfig();
         public final HeartGaugeConfig heartGauge = new HeartGaugeConfig();
         public final RelicStoneConfig relicStone = new RelicStoneConfig();
@@ -477,6 +563,14 @@ public final class ModConfig implements IShadowConfig {
 
             builder.push("shadowStatChanges");
             shadowStatChanges.build(builder);
+            builder.pop();
+
+            builder.translation("shadowedhearts.configuration.umbraBall").push("umbraBall");
+            shadowBall.build(builder);
+            builder.pop();
+
+            builder.translation("shadowedhearts.configuration.darkBall").push("darkBall");
+            darkBall.build(builder);
             builder.pop();
 
             builder.push("auraScanner");
@@ -742,6 +836,103 @@ public final class ModConfig implements IShadowConfig {
             catchRateExponent = builder
                     .comment("The exponent for the catch rate scaling curve.")
                     .defineInRange("catchRateExponent", 1.4, 0.0, 10.0);
+        }
+    }
+
+    public static final class ShadowBallConfig {
+        public ModConfigSpec.DoubleValue penumbraBallCatchMultiplier;
+        public ModConfigSpec.DoubleValue penumbraBallShadowCatchMultiplier;
+        public ModConfigSpec.DoubleValue penumbraBallShadowConversionChance;
+        public ModConfigSpec.DoubleValue penumbraBallHeartGaugeMaxBonus;
+
+        public ModConfigSpec.DoubleValue antumbraBallCatchMultiplier;
+        public ModConfigSpec.DoubleValue antumbraBallShadowCatchMultiplier;
+        public ModConfigSpec.DoubleValue antumbraBallShadowConversionChance;
+        public ModConfigSpec.DoubleValue antumbraBallHeartGaugeMaxBonus;
+
+        public ModConfigSpec.DoubleValue umbraBallCatchMultiplier;
+        public ModConfigSpec.DoubleValue umbraBallShadowCatchMultiplier;
+        public ModConfigSpec.DoubleValue umbraBallShadowConversionChance;
+        public ModConfigSpec.DoubleValue umbraBallHeartGaugeMaxBonus;
+
+        private void build(ModConfigSpec.Builder builder) {
+            penumbraBallCatchMultiplier = builder
+                    .comment("Penumbra Ball catch multiplier for ordinary Pokemon, relative to a basic Poke Ball (default: 1x).")
+                    .translation("shadowedhearts.configuration.umbraBall.catchMultiplier")
+                    .defineInRange("catchMultiplier", 1.0, 0.1, 100.0);
+
+            penumbraBallShadowCatchMultiplier = builder
+                    .comment("Penumbra Ball total catch multiplier for existing Shadow Pokemon, relative to a basic Poke Ball. This replaces the ordinary catch multiplier rather than multiplying it.")
+                    .translation("shadowedhearts.configuration.umbraBall.shadowCatchMultiplier")
+                    .defineInRange("shadowCatchMultiplier", 1.5, 0.1, 100.0);
+
+            penumbraBallShadowConversionChance = builder
+                    .comment("Chance (0.0-1.0) to convert an ordinary Pokemon into a Shadow Pokemon after a successful Penumbra Ball capture.")
+                    .translation("shadowedhearts.configuration.umbraBall.shadowConversionChance")
+                    .defineInRange("shadowConversionChance", 0.10, 0.0, 1.0);
+
+            penumbraBallHeartGaugeMaxBonus = builder
+                    .comment("Fractional maximum Heart Gauge bonus when a Penumbra Ball captures an existing Shadow Pokemon (0.05 means 5%). Current purification progress is preserved.")
+                    .translation("shadowedhearts.configuration.umbraBall.heartGaugeMaxBonus")
+                    .defineInRange("heartGaugeMaxBonus", 0.05, 0.0, 10.0);
+
+            antumbraBallCatchMultiplier = builder
+                    .comment("Antumbra Ball catch multiplier for ordinary Pokemon, relative to a basic Poke Ball (default: 1.5x).")
+                    .translation("shadowedhearts.configuration.umbraBall.antumbraCatchMultiplier")
+                    .defineInRange("antumbraCatchMultiplier", 1.5, 0.1, 100.0);
+
+            antumbraBallShadowCatchMultiplier = builder
+                    .comment("Antumbra Ball total catch multiplier for existing Shadow Pokemon, relative to a basic Poke Ball. This replaces the ordinary catch multiplier rather than multiplying it.")
+                    .translation("shadowedhearts.configuration.umbraBall.antumbraShadowCatchMultiplier")
+                    .defineInRange("antumbraShadowCatchMultiplier", 2.0, 0.1, 100.0);
+
+            antumbraBallShadowConversionChance = builder
+                    .comment("Chance (0.0-1.0) to convert an ordinary Pokemon into a Shadow Pokemon after a successful Antumbra Ball capture.")
+                    .translation("shadowedhearts.configuration.umbraBall.antumbraShadowConversionChance")
+                    .defineInRange("antumbraShadowConversionChance", 0.20, 0.0, 1.0);
+
+            antumbraBallHeartGaugeMaxBonus = builder
+                    .comment("Fractional maximum Heart Gauge bonus when an Antumbra Ball captures an existing Shadow Pokemon (0.10 means 10%). Current purification progress is preserved.")
+                    .translation("shadowedhearts.configuration.umbraBall.antumbraHeartGaugeMaxBonus")
+                    .defineInRange("antumbraHeartGaugeMaxBonus", 0.10, 0.0, 10.0);
+
+            umbraBallCatchMultiplier = builder
+                    .comment("Umbra Ball catch multiplier for ordinary Pokemon, relative to a basic Poke Ball (default: 2x).")
+                    .translation("shadowedhearts.configuration.umbraBall.umbraCatchMultiplier")
+                    .defineInRange("umbraCatchMultiplier", 2.0, 0.1, 100.0);
+
+            umbraBallShadowCatchMultiplier = builder
+                    .comment("Umbra Ball total catch multiplier for existing Shadow Pokemon, relative to a basic Poke Ball. This replaces the ordinary catch multiplier rather than multiplying it.")
+                    .translation("shadowedhearts.configuration.umbraBall.umbraShadowCatchMultiplier")
+                    .defineInRange("umbraShadowCatchMultiplier", 2.5, 0.1, 100.0);
+
+            umbraBallShadowConversionChance = builder
+                    .comment("Chance (0.0-1.0) to convert an ordinary Pokemon into a Shadow Pokemon after a successful Umbra Ball capture.")
+                    .translation("shadowedhearts.configuration.umbraBall.umbraShadowConversionChance")
+                    .defineInRange("umbraShadowConversionChance", 0.35, 0.0, 1.0);
+
+            umbraBallHeartGaugeMaxBonus = builder
+                    .comment("Fractional maximum Heart Gauge bonus when an Umbra Ball captures an existing Shadow Pokemon (0.15 means 15%). Current purification progress is preserved.")
+                    .translation("shadowedhearts.configuration.umbraBall.umbraHeartGaugeMaxBonus")
+                    .defineInRange("umbraHeartGaugeMaxBonus", 0.15, 0.0, 10.0);
+        }
+    }
+
+    public static final class DarkBallConfig {
+        public ModConfigSpec.IntValue levelBoost;
+        public ModConfigSpec.DoubleValue heartGaugeMultiplier;
+
+        private void build(ModConfigSpec.Builder builder) {
+            levelBoost = builder
+                    .comment("Levels gained after a successful Dark Ball capture, subject to the active level cap. Set to 0 to disable the level bonus.")
+                    .translation("shadowedhearts.configuration.darkBall.levelBoost")
+                    .defineInRange("levelBoost", 5, 0, 100);
+
+            heartGaugeMultiplier = builder
+                    .comment("Maximum Heart Gauge after a Dark Ball capture, as a multiplier of the species' normal maximum (including server species overrides).",
+                            "The gauge starts full. This does not multiply an existing Pokemon-specific maximum. Set to 1.0 for the normal species maximum.")
+                    .translation("shadowedhearts.configuration.darkBall.heartGaugeMultiplier")
+                    .defineInRange("heartGaugeMultiplier", 2.0, 1.0, 100.0);
         }
     }
 

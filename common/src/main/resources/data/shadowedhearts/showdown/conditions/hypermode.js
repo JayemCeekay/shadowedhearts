@@ -15,6 +15,9 @@
         if (this.turn && this.turn >= 1) {
             this.add('hyper', 'start', pokemon.getSlot());
         }
+        if (pokemon.hasItem('calmingsachet')) {
+            this.singleEvent('Update', pokemon.getItem(), pokemon.itemState, pokemon);
+        }
     },
     onEnd(pokemon) {
         pokemon.set.isHyper = false;

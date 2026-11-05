@@ -1,0 +1,19 @@
+{
+  "moveName": "shadowmist",
+  "obtainMethods": [
+    {
+      "variant": "cobblemon:unlockable"
+    }
+  ],
+  "type": "shadow",
+  "recipe": [
+    {
+      "item": "shadowedhearts:shadow_gem",
+      "count": 2
+    },
+    {
+      "item": "cobblemon:wide_lens",
+      "count": 1
+    }
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    {
+      "item": "cobblemon:assault_vest"
+    },
+    {
+      "item": "shadowedhearts:meteoric_alloy"
+    },
+    {
+      "item": "shadowedhearts:refined_shadow_shard"
+    },
+    {
+      "item": "minecraft:redstone"
+    },
+    {
+      "item": "minecraft:redstone"
+    }
+  ],
+  "result": {
+    "id": "shadowedhearts:em_wave_amplifier",
+    "count": 1
+  }
+}

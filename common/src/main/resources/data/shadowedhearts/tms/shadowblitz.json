@@ -1,0 +1,19 @@
+{
+  "moveName": "shadowblitz",
+  "obtainMethods": [
+    {
+      "variant": "cobblemon:unlockable"
+    }
+  ],
+  "type": "shadow",
+  "recipe": [
+    {
+      "item": "shadowedhearts:shadow_gem",
+      "count": 2
+    },
+    {
+      "item": "cobblemon:muscle_feather",
+      "count": 1
+    }
+  ]
+}

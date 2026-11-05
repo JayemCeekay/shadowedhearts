@@ -40,6 +40,30 @@ public interface IShadowConfig extends IModConfig {
     default double shadowCatchRateMinMultiplier() { return 0.25; }
     default double shadowCatchRateExponent() { return 1.4; }
 
+    // Penumbra Ball: total catch multipliers relative to a basic Poke Ball.
+    default double penumbraBallCatchMultiplier() { return 1.0; }
+    default double penumbraBallShadowCatchMultiplier() { return 1.5; }
+    default double penumbraBallShadowConversionChance() { return 0.10; }
+    default double penumbraBallHeartGaugeMaxBonus() { return 0.05; }
+
+    // Antumbra Ball: total catch multipliers relative to a basic Poke Ball.
+    default double antumbraBallCatchMultiplier() { return 1.5; }
+    default double antumbraBallShadowCatchMultiplier() { return 2.0; }
+    default double antumbraBallShadowConversionChance() { return 0.20; }
+    default double antumbraBallHeartGaugeMaxBonus() { return 0.10; }
+
+    // Umbra Ball: total catch multipliers relative to a basic Poke Ball.
+    default double umbraBallCatchMultiplier() { return 2.0; }
+    default double umbraBallShadowCatchMultiplier() { return 2.5; }
+    // Chance to convert an ordinary Pokemon after a successful capture.
+    default double umbraBallShadowConversionChance() { return 0.35; }
+    // Fractional maximum Heart Gauge bonus when capturing an existing Shadow Pokemon.
+    default double umbraBallHeartGaugeMaxBonus() { return 0.15; }
+
+    // Dark Ball: successful capture rewards and corruption cost.
+    default int darkBallLevelBoost() { return 5; }
+    default double darkBallHeartGaugeMultiplier() { return 2.0; }
+
     // RCT Integration
     default boolean rctIntegrationEnabled() { return false; }
     default boolean limitExpToRCTCap() { return false; }

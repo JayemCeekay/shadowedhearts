@@ -1,0 +1,108 @@
+{
+  "variants": {
+    "stage=0,facing=down": {
+      "model": "shadowedhearts:block/type_gems/type_gem_bud_small_shadow",
+      "x": 180
+    },
+    "stage=0,facing=up": {
+      "model": "shadowedhearts:block/type_gems/type_gem_bud_small_shadow"
+    },
+    "stage=0,facing=north": {
+      "model": "shadowedhearts:block/type_gems/type_gem_bud_small_shadow",
+      "x": 90
+    },
+    "stage=0,facing=south": {
+      "model": "shadowedhearts:block/type_gems/type_gem_bud_small_shadow",
+      "x": 90,
+      "y": 180
+    },
+    "stage=0,facing=west": {
+      "model": "shadowedhearts:block/type_gems/type_gem_bud_small_shadow",
+      "x": 90,
+      "y": 270
+    },
+    "stage=0,facing=east": {
+      "model": "shadowedhearts:block/type_gems/type_gem_bud_small_shadow",
+      "x": 90,
+      "y": 90
+    },
+    "stage=1,facing=down": {
+      "model": "shadowedhearts:block/type_gems/type_gem_bud_medium_shadow",
+      "x": 180
+    },
+    "stage=1,facing=up": {
+      "model": "shadowedhearts:block/type_gems/type_gem_bud_medium_shadow"
+    },
+    "stage=1,facing=north": {
+      "model": "shadowedhearts:block/type_gems/type_gem_bud_medium_shadow",
+      "x": 90
+    },
+    "stage=1,facing=south": {
+      "model": "shadowedhearts:block/type_gems/type_gem_bud_medium_shadow",
+      "x": 90,
+      "y": 180
+    },
+    "stage=1,facing=west": {
+      "model": "shadowedhearts:block/type_gems/type_gem_bud_medium_shadow",
+      "x": 90,
+      "y": 270
+    },
+    "stage=1,facing=east": {
+      "model": "shadowedhearts:block/type_gems/type_gem_bud_medium_shadow",
+      "x": 90,
+      "y": 90
+    },
+    "stage=2,facing=down": {
+      "model": "shadowedhearts:block/type_gems/type_gem_bud_large_shadow",
+      "x": 180
+    },
+    "stage=2,facing=up": {
+      "model": "shadowedhearts:block/type_gems/type_gem_bud_large_shadow"
+    },
+    "stage=2,facing=north": {
+      "model": "shadowedhearts:block/type_gems/type_gem_bud_large_shadow",
+      "x": 90
+    },
+    "stage=2,facing=south": {
+      "model": "shadowedhearts:block/type_gems/type_gem_bud_large_shadow",
+      "x": 90,
+      "y": 180
+    },
+    "stage=2,facing=west": {
+      "model": "shadowedhearts:block/type_gems/type_gem_bud_large_shadow",
+      "x": 90,
+      "y": 270
+    },
+    "stage=2,facing=east": {
+      "model": "shadowedhearts:block/type_gems/type_gem_bud_large_shadow",
+      "x": 90,
+      "y": 90
+    },
+    "stage=3,facing=down": {
+      "model": "shadowedhearts:block/type_gems/shadow_gem_cluster",
+      "x": 180
+    },
+    "stage=3,facing=up": {
+      "model": "shadowedhearts:block/type_gems/shadow_gem_cluster"
+    },
+    "stage=3,facing=north": {
+      "model": "shadowedhearts:block/type_gems/shadow_gem_cluster",
+      "x": 90
+    },
+    "stage=3,facing=south": {
+      "model": "shadowedhearts:block/type_gems/shadow_gem_cluster",
+      "x": 90,
+      "y": 180
+    },
+    "stage=3,facing=west": {
+      "model": "shadowedhearts:block/type_gems/shadow_gem_cluster",
+      "x": 90,
+      "y": 270
+    },
+    "stage=3,facing=east": {
+      "model": "shadowedhearts:block/type_gems/shadow_gem_cluster",
+      "x": 90,
+      "y": 90
+    }
+  }
+}

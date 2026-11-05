@@ -1,0 +1,22 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    {
+      "item": "cobblemon:choice_band"
+    },
+    {
+      "item": "shadowedhearts:meteoric_alloy"
+    },
+    {
+      "item": "shadowedhearts:shadow_shard"
+    },
+    {
+      "item": "shadowedhearts:shadow_shard"
+    }
+  ],
+  "result": {
+    "id": "shadowedhearts:shadow_collar",
+    "count": 1
+  }
+}

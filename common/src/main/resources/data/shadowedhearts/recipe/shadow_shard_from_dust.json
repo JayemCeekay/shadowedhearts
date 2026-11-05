@@ -1,0 +1,34 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    {
+      "item": "shadowedhearts:shadow_dust"
+    },
+    {
+      "item": "shadowedhearts:shadow_dust"
+    },
+    {
+      "item": "shadowedhearts:shadow_dust"
+    },
+    {
+      "item": "shadowedhearts:shadow_dust"
+    },
+    {
+      "item": "shadowedhearts:shadow_dust"
+    },
+    {
+      "item": "shadowedhearts:shadow_dust"
+    },
+    {
+      "item": "shadowedhearts:shadow_dust"
+    },
+    {
+      "item": "shadowedhearts:shadow_dust"
+    }
+  ],
+  "result": {
+    "id": "shadowedhearts:shadow_shard",
+    "count": 1
+  }
+}

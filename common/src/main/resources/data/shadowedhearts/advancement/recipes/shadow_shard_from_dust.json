@@ -1,0 +1,32 @@
+{
+  "parent": "shadowedhearts:recipes/root",
+  "criteria": {
+    "has_the_recipe": {
+      "trigger": "minecraft:recipe_unlocked",
+      "conditions": {
+        "recipe": "shadowedhearts:shadow_shard_from_dust"
+      }
+    },
+    "has_shadow_dust": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "shadowedhearts:shadow_dust"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "has_the_recipe",
+      "has_shadow_dust"
+    ]
+  ],
+  "rewards": {
+    "recipes": [
+      "shadowedhearts:shadow_shard_from_dust"
+    ]
+  }
+}

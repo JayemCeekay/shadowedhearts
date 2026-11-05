@@ -1,0 +1,19 @@
+{
+  "moveName": "shadowfire",
+  "obtainMethods": [
+    {
+      "variant": "cobblemon:unlockable"
+    }
+  ],
+  "type": "shadow",
+  "recipe": [
+    {
+      "item": "shadowedhearts:shadow_gem",
+      "count": 5
+    },
+    {
+      "item": "cobblemon:charcoal_stick",
+      "count": 1
+    }
+  ]
+}

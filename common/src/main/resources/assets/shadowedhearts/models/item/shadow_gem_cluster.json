@@ -1,0 +1,41 @@
+{
+  "parent": "minecraft:item/generated",
+  "textures": {
+    "layer0": "shadowedhearts:block/type_gems/shadow_gem_cluster"
+  },
+  "display": {
+    "head": {
+      "translation": [
+        0,
+        14,
+        -5
+      ]
+    }
+  },
+  "overrides": [
+    {
+      "predicate": {
+        "custom_model_data": 0
+      },
+      "model": "shadowedhearts:item/small_shadow_gem_bud"
+    },
+    {
+      "predicate": {
+        "custom_model_data": 1
+      },
+      "model": "shadowedhearts:item/medium_shadow_gem_bud"
+    },
+    {
+      "predicate": {
+        "custom_model_data": 2
+      },
+      "model": "shadowedhearts:item/large_shadow_gem_bud"
+    },
+    {
+      "predicate": {
+        "custom_model_data": 3
+      },
+      "model": "shadowedhearts:item/shadow_gem_cluster"
+    }
+  ]
+}

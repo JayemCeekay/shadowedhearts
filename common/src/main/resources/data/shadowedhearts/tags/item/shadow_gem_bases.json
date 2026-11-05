@@ -1,0 +1,23 @@
+{
+  "replace": false,
+  "values": [
+    "cobblemon:normal_gem",
+    "cobblemon:fire_gem",
+    "cobblemon:water_gem",
+    "cobblemon:grass_gem",
+    "cobblemon:electric_gem",
+    "cobblemon:rock_gem",
+    "cobblemon:ground_gem",
+    "cobblemon:bug_gem",
+    "cobblemon:poison_gem",
+    "cobblemon:ghost_gem",
+    "cobblemon:psychic_gem",
+    "cobblemon:dark_gem",
+    "cobblemon:fairy_gem",
+    "cobblemon:dragon_gem",
+    "cobblemon:ice_gem",
+    "cobblemon:fighting_gem",
+    "cobblemon:flying_gem",
+    "cobblemon:steel_gem"
+  ]
+}

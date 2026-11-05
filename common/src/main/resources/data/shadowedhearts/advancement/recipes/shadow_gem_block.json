@@ -1,0 +1,32 @@
+{
+  "parent": "shadowedhearts:recipes/root",
+  "criteria": {
+    "has_the_recipe": {
+      "trigger": "minecraft:recipe_unlocked",
+      "conditions": {
+        "recipe": "shadowedhearts:shadow_gem_block"
+      }
+    },
+    "has_shadow_gem": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "shadowedhearts:shadow_gem"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "has_the_recipe",
+      "has_shadow_gem"
+    ]
+  ],
+  "rewards": {
+    "recipes": [
+      "shadowedhearts:shadow_gem_block"
+    ]
+  }
+}

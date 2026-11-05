@@ -14,6 +14,9 @@
         if (this.turn && this.turn >= 1) {
             this.add('reverse', 'start', pokemon.getSlot());
         }
+        if (pokemon.hasItem('calmingsachet') || pokemon.hasItem('ruinpolicy')) {
+            this.singleEvent('Update', pokemon.getItem(), pokemon.itemState, pokemon);
+        }
     },
     onEnd(pokemon) {
         pokemon.set.isReverse = false;

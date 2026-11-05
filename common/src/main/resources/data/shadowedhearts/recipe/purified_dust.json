@@ -1,0 +1,13 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    {
+      "item": "shadowedhearts:purified_gem"
+    }
+  ],
+  "result": {
+    "id": "shadowedhearts:purified_dust",
+    "count": 8
+  }
+}

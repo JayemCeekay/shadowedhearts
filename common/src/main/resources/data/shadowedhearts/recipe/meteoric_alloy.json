@@ -1,0 +1,25 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    {
+      "item": "shadowedhearts:shadow_shard"
+    },
+    {
+      "item": "shadowedhearts:shadow_shard"
+    },
+    {
+      "item": "shadowedhearts:shadow_shard"
+    },
+    {
+      "item": "shadowedhearts:shadow_shard"
+    },
+    {
+      "item": "minecraft:iron_ingot"
+    }
+  ],
+  "result": {
+    "id": "shadowedhearts:meteoric_alloy",
+    "count": 1
+  }
+}

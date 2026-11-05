@@ -1,0 +1,154 @@
+{
+  "type": "minecraft:block",
+  "pools": [
+    {
+      "bonus_rolls": 0,
+      "entries": [
+        {
+          "type": "minecraft:alternatives",
+          "children": [
+            {
+              "type": "minecraft:item",
+              "conditions": [
+                {
+                  "condition": "minecraft:match_tool",
+                  "predicate": {
+                    "predicates": {
+                      "minecraft:enchantments": [
+                        {
+                          "enchantments": "minecraft:silk_touch",
+                          "levels": {
+                            "min": 1
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              ],
+              "name": "shadowedhearts:shadow_gem_cluster"
+            },
+            {
+              "type": "minecraft:item",
+              "conditions": [
+                {
+                  "block": "shadowedhearts:shadow_gem_cluster",
+                  "condition": "minecraft:block_state_property",
+                  "properties": {
+                    "stage": "3"
+                  }
+                }
+              ],
+              "functions": [
+                {
+                  "add": false,
+                  "count": {
+                    "type": "minecraft:uniform",
+                    "max": 4,
+                    "min": 2
+                  },
+                  "function": "minecraft:set_count"
+                },
+                {
+                  "function": "minecraft:set_count",
+                  "count": {
+                    "type": "minecraft:constant",
+                    "value": 1
+                  },
+                  "add": true,
+                  "conditions": [
+                    {
+                      "condition": "minecraft:table_bonus",
+                      "enchantment": "minecraft:fortune",
+                      "chances": [
+                        0,
+                        0.33333333,
+                        0.66666666,
+                        1
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "function": "minecraft:explosion_decay"
+                }
+              ],
+              "name": "shadowedhearts:shadow_gem"
+            },
+            {
+              "type": "minecraft:item",
+              "conditions": [
+                {
+                  "block": "shadowedhearts:shadow_gem_cluster",
+                  "condition": "minecraft:block_state_property",
+                  "properties": {
+                    "stage": "2"
+                  }
+                }
+              ],
+              "functions": [
+                {
+                  "add": false,
+                  "count": {
+                    "type": "minecraft:uniform",
+                    "max": 2,
+                    "min": 1
+                  },
+                  "function": "minecraft:set_count"
+                },
+                {
+                  "function": "minecraft:set_count",
+                  "count": {
+                    "type": "minecraft:constant",
+                    "value": 1
+                  },
+                  "add": true,
+                  "conditions": [
+                    {
+                      "condition": "minecraft:table_bonus",
+                      "enchantment": "minecraft:fortune",
+                      "chances": [
+                        0,
+                        0.33333333,
+                        0.66666666,
+                        1
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "function": "minecraft:explosion_decay"
+                }
+              ],
+              "name": "shadowedhearts:shadow_gem"
+            },
+            {
+              "type": "minecraft:item",
+              "conditions": [
+                {
+                  "block": "shadowedhearts:shadow_gem_cluster",
+                  "condition": "minecraft:block_state_property",
+                  "properties": {
+                    "stage": "1"
+                  }
+                }
+              ],
+              "functions": [
+                {
+                  "add": false,
+                  "count": 1,
+                  "function": "minecraft:set_count"
+                },
+                {
+                  "function": "minecraft:explosion_decay"
+                }
+              ],
+              "name": "shadowedhearts:shadow_gem"
+            }
+          ]
+        }
+      ],
+      "rolls": 1
+    }
+  ]
+}

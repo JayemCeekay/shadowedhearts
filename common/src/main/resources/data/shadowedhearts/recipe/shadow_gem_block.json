@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "building",
+  "pattern": [
+    "##",
+    "##"
+  ],
+  "key": {
+    "#": {
+      "item": "shadowedhearts:shadow_gem"
+    }
+  },
+  "result": {
+    "id": "shadowedhearts:shadow_gem_block",
+    "count": 1
+  }
+}

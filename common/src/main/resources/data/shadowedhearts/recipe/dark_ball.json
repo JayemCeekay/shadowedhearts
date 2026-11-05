@@ -1,0 +1,25 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    {
+      "item": "cobblemon:ultra_ball"
+    },
+    {
+      "item": "shadowedhearts:core_sample"
+    },
+    {
+      "item": "shadowedhearts:meteoric_alloy"
+    },
+    {
+      "item": "shadowedhearts:condensed_shadow"
+    },
+    {
+      "item": "shadowedhearts:condensed_shadow"
+    }
+  ],
+  "result": {
+    "id": "shadowedhearts:dark_ball",
+    "count": 1
+  }
+}

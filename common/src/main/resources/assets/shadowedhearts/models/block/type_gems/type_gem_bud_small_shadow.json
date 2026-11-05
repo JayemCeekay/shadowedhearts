@@ -1,0 +1,9 @@
+{
+  "parent": "minecraft:block/cross",
+  "render_type": "minecraft:cutout",
+  "ambientocclusion": false,
+  "gui_light": "front",
+  "textures": {
+    "cross": "shadowedhearts:block/type_gems/small_shadow_gem_bud"
+  }
+}

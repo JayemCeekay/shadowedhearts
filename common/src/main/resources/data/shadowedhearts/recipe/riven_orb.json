@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    {
+      "item": "cobblemon:life_orb"
+    },
+    {
+      "item": "shadowedhearts:core_sample"
+    },
+    {
+      "item": "shadowedhearts:condensed_shadow"
+    }
+  ],
+  "result": {
+    "id": "shadowedhearts:riven_orb",
+    "count": 1
+  }
+}

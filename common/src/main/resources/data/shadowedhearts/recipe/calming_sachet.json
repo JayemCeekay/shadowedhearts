@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    {
+      "item": "cobblemon:mental_herb"
+    },
+    {
+      "item": "shadowedhearts:purified_dust"
+    }
+  ],
+  "result": {
+    "id": "shadowedhearts:calming_sachet",
+    "count": 1
+  }
+}

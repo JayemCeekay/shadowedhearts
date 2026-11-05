@@ -162,7 +162,10 @@
             const remaining = Number.isFinite(fraction) ? Math.max(0, Math.min(1, fraction)) : 1;
             return 1 + 0.2 * remaining;
         };
-        const mod = modifierFor(source) * modifierFor(target);
+        // Null Charm cancels only the incoming attacker's GO bonus, independently
+        // of its effectiveness ward. hasItem retains native suppression rules.
+        const nullCharmBlocksBonus = config.nullCharmCancelsGoBonus !== false && source !== target && target?.hasItem('nullcharm');
+        const mod = (nullCharmBlocksBonus ? 1 : modifierFor(source)) * modifierFor(target);
         if (mod !== 1) return this.chainModify(mod);
     },
     onEffectiveness(typeMod, target, type, move) {

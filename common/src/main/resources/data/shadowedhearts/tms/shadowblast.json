@@ -1,0 +1,19 @@
+{
+  "moveName": "shadowblast",
+  "obtainMethods": [
+    {
+      "variant": "cobblemon:unlockable"
+    }
+  ],
+  "type": "shadow",
+  "recipe": [
+    {
+      "item": "shadowedhearts:shadow_gem",
+      "count": 5
+    },
+    {
+      "item": "cobblemon:sharp_beak",
+      "count": 1
+    }
+  ]
+}
