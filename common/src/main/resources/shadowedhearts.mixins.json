@@ -85,8 +85,6 @@
     "MixinLivingEntity",
     "MixinMoveActionResponse",
     "MixinMoveSet",
-    "MixinMoveToOwnerTask",
-    "MixinMoveToOwnerTaskConfig",
     "MixinNPCEntity",
     "MixinPokeballHitReserved",
     "MixinPokeBallItem",

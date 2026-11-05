@@ -1,0 +1,9 @@
+{
+    "replace":false,
+    "values":[
+        "shadowedhearts:penumbra_ball",
+        "shadowedhearts:antumbra_ball",
+        "shadowedhearts:umbra_ball",
+        "shadowedhearts:dark_ball"
+    ]
+}

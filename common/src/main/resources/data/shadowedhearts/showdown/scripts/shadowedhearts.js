@@ -28,9 +28,20 @@ module.exports = `
         if (pokemon.volatiles['hypermode']) {
             pokemon.removeVolatile('hypermode');
             success = true;
+        } else if (pokemon.set.isHyper) {
+            // Disabled modes retain their saved flag without restoring a battle volatile.
+            pokemon.set.isHyper = false;
+            this.add('-end', pokemon, 'Hyper Mode');
+            this.add('hyper', 'end', pokemon.getSlot());
+            success = true;
         }
         if (pokemon.volatiles['reversemode']) {
             pokemon.removeVolatile('reversemode');
+            success = true;
+        } else if (pokemon.set.isReverse) {
+            pokemon.set.isReverse = false;
+            this.add('-end', pokemon, 'Reverse Mode');
+            this.add('reverse', 'end', pokemon.getSlot());
             success = true;
         }
         if (config.callButton.removeSleep && pokemon.status === 'slp') {
