@@ -1,8 +1,12 @@
 package com.jayemceekay.shadowedhearts.config;
 
+import com.jayemceekay.shadowedhearts.common.aura.AuraStyleDefault;
+
 import java.util.List;
 
 public interface IShadowConfig extends IModConfig {
+    default AuraStyleDefault shadowAuraStyle() { return AuraStyleDefault.SIGNATURE; }
+
     default double shadowSpawnChancePercent() { return 0.78125; }
     default List<? extends String> shadowSpawnBlacklist() { return List.of("#shadowedhearts:legendaries", "#shadowedhearts:mythical"); }
 
@@ -29,6 +33,7 @@ public interface IShadowConfig extends IModConfig {
     default boolean superEffectiveShadowMovesEnabled() { return true; }
     default String shadowMovesReplaceCount() { return "1"; }
     default boolean shadowMovesOnlyShadowRush() { return false; }
+    default boolean preferLostLoreShadowMoves() { return false; }
 
     // Shadow Stat Changes
     default String shadowIVMode() { return "FIXED"; }
@@ -76,17 +81,12 @@ public interface IShadowConfig extends IModConfig {
 
     // Aura Scanner
     default int auraScannerShadowRange() { return 128; }
-    default int auraScannerMeteoroidRange() { return 256; }
     default int auraReaderPulseCooldownTicks() { return 40; }
-    default int trailMinNodeDistance() { return 32; }
-    default int trailMaxNodeDistance() { return 64; }
     default boolean auraReaderRequiredForAura() { return true; }
-    default boolean expandedAuraReaderEnabled() { return true; }
 
     // Aura Lock (scanner lock to prevent despawn)
     default int auraLockMaxSeconds() { return 60; }
     default int auraLockRange() { return 128; }
-    default boolean auraLockPersistsWhenAFK() { return false; }
 
     // Heart Gauge
     default List<? extends String> heartGaugeMaxOverrides() { return List.of(); }

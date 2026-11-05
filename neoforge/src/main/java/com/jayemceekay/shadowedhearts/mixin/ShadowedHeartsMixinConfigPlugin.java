@@ -13,6 +13,15 @@ public class ShadowedHeartsMixinConfigPlugin implements IMixinConfigPlugin {
 
     @Override
     public boolean shouldApplyMixin(String targetClassName, String mixinClassName) {
+        if (mixinClassName.startsWith("com.jayemceekay.shadowedhearts.mixin.emi.")) {
+            return FMLLoader.getLoadingModList().getModFileById("emi") != null;
+        }
+        if (mixinClassName.startsWith("com.jayemceekay.shadowedhearts.mixin.raiddens.")) {
+            return FMLLoader.getLoadingModList().getMods().stream()
+                    .anyMatch(mod -> mod.getModId().equals("cobblemonraiddens")
+                            && com.jayemceekay.shadowedhearts.common.moonwound.raid.MoonwoundRaidCompatibility
+                            .supportsVersion(mod.getVersion().toString()));
+        }
 
         if (mixinClassName.equals("com.jayemceekay.shadowedhearts.mixin.MixinCancelThrownPokeballInBattleHelper") ||
                 mixinClassName.equals("com.jayemceekay.shadowedhearts.mixin.MixinPokeballHitReserved")) {
@@ -23,8 +32,6 @@ public class ShadowedHeartsMixinConfigPlugin implements IMixinConfigPlugin {
             case "com.jayemceekay.shadowedhearts.mixin.simpletms.MixinPokemonSelectingItemNonBattle",
                  "com.jayemceekay.shadowedhearts.mixin.simpletms.MixinMoveLearnItem" ->
                     FMLLoader.getLoadingModList().getModFileById("simpletms") != null;
-            case "com.jayemceekay.shadowedhearts.mixin.rctmod.MixinRCTModMakeBattle" ->
-                    FMLLoader.getLoadingModList().getModFileById("rctmod") != null;
             case "com.jayemceekay.shadowedhearts.mixin.MixinIrisRenderingPipeline",
                  "com.jayemceekay.shadowedhearts.mixin.IrisRenderingPipelineAccessor" ->
                     FMLLoader.getLoadingModList().getModFileById("iris") != null;

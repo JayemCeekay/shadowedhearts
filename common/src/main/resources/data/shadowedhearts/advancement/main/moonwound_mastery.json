@@ -1,0 +1,49 @@
+{
+  "parent": "shadowedhearts:main/moonwound_overload",
+  "display": {
+    "icon": {
+      "id": "shadowedhearts:umbrafall_prism"
+    },
+    "title": {
+      "translate": "advancements.shadowedhearts.moonwound_mastery.title"
+    },
+    "description": {
+      "translate": "advancements.shadowedhearts.moonwound_mastery.description"
+    },
+    "frame": "challenge",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "harvest": {
+      "trigger": "shadowedhearts:progression",
+      "conditions": {
+        "milestone": "moonwound_harvest"
+      }
+    },
+    "seal": {
+      "trigger": "shadowedhearts:progression",
+      "conditions": {
+        "milestone": "moonwound_seal"
+      }
+    },
+    "overload": {
+      "trigger": "shadowedhearts:progression",
+      "conditions": {
+        "milestone": "moonwound_overload"
+      }
+    }
+  },
+  "requirements": [
+    [
+      "harvest"
+    ],
+    [
+      "seal"
+    ],
+    [
+      "overload"
+    ]
+  ]
+}

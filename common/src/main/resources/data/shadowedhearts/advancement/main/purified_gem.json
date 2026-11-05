@@ -1,5 +1,5 @@
 {
-  "parent": "shadowedhearts:main/shadow_purified",
+  "parent": "shadowedhearts:main/relic_stone_interact",
   "display": {
     "icon": {
       "id": "shadowedhearts:purified_gem"
@@ -10,7 +10,7 @@
     "description": {
       "translate": "advancements.shadowedhearts.purified_gem.description"
     },
-    "frame": "task",
+    "frame": "goal",
     "show_toast": true,
     "announce_to_chat": true,
     "hidden": false

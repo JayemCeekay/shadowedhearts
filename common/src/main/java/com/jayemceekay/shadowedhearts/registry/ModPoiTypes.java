@@ -22,6 +22,11 @@ public final class ModPoiTypes {
             () -> new PoiType(getBlockStates(ModBlocks.SHADOWFALL_METEOROID.get()), 0, 1)
     );
 
+    public static final RegistrySupplier<PoiType> UMBRAFALL_CORE = POI_TYPES.register(
+            "umbrafall_core",
+            () -> new PoiType(getBlockStates(ModBlocks.UMBRAFALL_CORE.get()), 0, 1)
+    );
+
     private static Set<BlockState> getBlockStates(Block block) {
         return ImmutableSet.copyOf(block.getStateDefinition().getPossibleStates());
     }

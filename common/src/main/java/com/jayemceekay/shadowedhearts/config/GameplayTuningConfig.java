@@ -6,6 +6,7 @@ import net.neoforged.neoforge.common.ModConfigSpec;
 public final class GameplayTuningConfig {
     public static final GameplayTuningConfig INSTANCE = new GameplayTuningConfig();
 
+    private ModConfigSpec.BooleanValue snaggingEnabled;
     private ModConfigSpec.BooleanValue relicStonePurificationEnabled;
     private ModConfigSpec.BooleanValue chamberPurificationEnabled;
     private ModConfigSpec.DoubleValue battleMultiplier, callMultiplier, walkingMultiplier, scentMultiplier, chamberMultiplier;
@@ -17,6 +18,9 @@ public final class GameplayTuningConfig {
     void build(ModConfigSpec.Builder builder) {
         builder.translation("shadowedhearts.configuration.gameplayTuning").push("gameplayTuning");
         builder.translation("shadowedhearts.configuration.gameplayTuning.features").push("features");
+        snaggingEnabled = builder.comment("Allow new NPC Shadow snag attempts. Does not affect ordinary wild captures.")
+                .translation("shadowedhearts.configuration.gameplayTuning.features.snaggingEnabled")
+                .define("snaggingEnabled", true);
         relicStonePurificationEnabled = builder.comment("Allow Relic Stones to purify ready Pokemon. Shard-to-gem exchanges remain available.")
                 .translation("shadowedhearts.configuration.gameplayTuning.features.relicStonePurificationEnabled")
                 .define("relicStonePurificationEnabled", true);
@@ -46,6 +50,7 @@ public final class GameplayTuningConfig {
 
     private boolean loaded() { return ownerSpec != null && ownerSpec.isLoaded(); }
 
+    public boolean snaggingEnabled() { return !loaded() || snaggingEnabled.get(); }
     public boolean relicStonePurificationEnabled() { return !loaded() || relicStonePurificationEnabled.get(); }
     public boolean chamberPurificationEnabled() { return !loaded() || chamberPurificationEnabled.get(); }
     public double battleMultiplier() { return loaded() ? battleMultiplier.get() : 1.0; }

@@ -2,12 +2,14 @@ package com.jayemceekay.shadowedhearts.common.heart;
 
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
 import com.cobblemon.mod.common.pokemon.Pokemon;
+import com.jayemceekay.shadowedhearts.advancements.ModCriteriaTriggers;
 import com.jayemceekay.shadowedhearts.common.shadow.ShadowAspectUtil;
 import com.jayemceekay.shadowedhearts.common.shadow.ShadowService;
 import com.jayemceekay.shadowedhearts.config.GameplayTuningConfig;
 import com.jayemceekay.shadowedhearts.config.PresetCompatibilityConfig;
 import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs;
 import com.jayemceekay.shadowedhearts.registry.ModItems;
+import net.minecraft.server.level.ServerPlayer;
 
 /**
  * Helper to apply Heart Gauge changes for various events.
@@ -27,8 +29,22 @@ public final class HeartGaugeEvents {
         int cur = ShadowAspectUtil.getHeartGaugeMeter(pokemon);
         int next = cur + delta; // delta negative reduces meter
         ShadowService.setHeartGauge(pokemon, live, next, sync);
+        if (pokemon.getOwnerPlayer() instanceof ServerPlayer owner) {
+            recordCareProgress(owner, pokemon, cur);
+        }
         // Post-application validation (idempotent) to keep aspects consistent
         ShadowAspectUtil.ensureRequiredShadowAspects(pokemon);
+    }
+
+    /** Records a real care action for its server-resolved owner, including custom chamber stores. */
+    public static void recordCareProgress(ServerPlayer owner, Pokemon pokemon, int previousMeter) {
+        if (!ShadowAspectUtil.hasShadowAspect(pokemon) || previousMeter <= 0) return;
+        int remaining = ShadowAspectUtil.getHeartGaugeMeter(pokemon);
+        if (remaining >= previousMeter) return;
+        ModCriteriaTriggers.triggerProgression(owner, "heart_opened");
+        if (remaining == 0) {
+            ModCriteriaTriggers.triggerProgression(owner, "heart_ready");
+        }
     }
 
     public static void onBattleSentOut(PokemonEntity live) {

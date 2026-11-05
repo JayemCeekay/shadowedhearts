@@ -14,7 +14,9 @@ data class AuraLockC2SPacket(val action: Action) : NetworkPacket<AuraLockC2SPack
 
     enum class Action {
         LOCK_FOCUSED,
-        CLEAR
+        CLEAR,
+        PIN_SELECTED,
+        CLEAR_PIN
     }
 
     companion object {

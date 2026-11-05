@@ -1,0 +1,37 @@
+{
+  "parent": "shadowedhearts:main/shadow_materials",
+  "display": {
+    "icon": {
+      "id": "shadowedhearts:umbra_infuser"
+    },
+    "title": {
+      "translate": "advancements.shadowedhearts.umbra_infuser.title"
+    },
+    "description": {
+      "translate": "advancements.shadowedhearts.umbra_infuser.description"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": false,
+    "hidden": false
+  },
+  "criteria": {
+    "has_infuser": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": [
+              "shadowedhearts:umbra_infuser"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "has_infuser"
+    ]
+  ]
+}

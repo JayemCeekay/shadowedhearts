@@ -1,0 +1,31 @@
+{
+  "parent": "shadowedhearts:main/signal_data",
+  "display": {
+    "icon": {
+      "id": "shadowedhearts:aura_reader"
+    },
+    "title": {
+      "translate": "advancements.shadowedhearts.signal_received.title"
+    },
+    "description": {
+      "translate": "advancements.shadowedhearts.signal_received.description"
+    },
+    "frame": "goal",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "signal_received": {
+      "trigger": "shadowedhearts:progression",
+      "conditions": {
+        "milestone": "signal_received"
+      }
+    }
+  },
+  "requirements": [
+    [
+      "signal_received"
+    ]
+  ]
+}

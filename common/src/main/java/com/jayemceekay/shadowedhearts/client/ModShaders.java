@@ -51,6 +51,9 @@ public final class ModShaders {
     public static ShaderInstance SHADOW_POOL;
     public static ShaderInstance WHISTLE_GROUND_OVERLAY;
     public static ShaderInstance PURIFICATION_CHAMBER_BACKGROUND;
+    public static ShaderInstance UMBRA_INFUSER_BACKGROUND;
+    public static ShaderInstance UMBRA_LIQUID;
+    public static ShaderInstance UMBRAFALL_CORE_SEEP;
 
     // Poké Ball glow overlay shader — texture-based glow only (additive + fullbright)
     public static ShaderInstance BALL_GLOW;

@@ -2,6 +2,10 @@ package com.jayemceekay.shadowedhearts.client.neoforge;
 
 
 import com.cobblemon.mod.common.entity.pokeball.EmptyPokeBallEntity;
+import net.minecraft.world.phys.Vec3;
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.jayemceekay.shadowedhearts.util.HeldItemAnchorCache;
+import com.jayemceekay.shadowedhearts.client.render.HeldBallSnagGlowRenderer;
 import com.jayemceekay.shadowedhearts.Shadowedhearts;
 import com.jayemceekay.shadowedhearts.client.ModKeybinds;
 import com.jayemceekay.shadowedhearts.client.ShadowedHeartsClient;
@@ -14,17 +18,16 @@ import com.jayemceekay.shadowedhearts.client.particle.LuminousMoteParticle;
 import com.jayemceekay.shadowedhearts.client.particle.PenumbraTrailSystem;
 import com.jayemceekay.shadowedhearts.client.particle.PenumbraTrailParticle;
 import com.jayemceekay.shadowedhearts.client.particle.RelicStoneMoteParticle;
-import com.jayemceekay.shadowedhearts.client.render.HeldBallSnagGlowRenderer;
+import com.jayemceekay.shadowedhearts.client.render.VanillaWorldShaderFrame;
 import com.jayemceekay.shadowedhearts.config.ClientConfig;
 import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs;
 import com.jayemceekay.shadowedhearts.content.items.ScentItem;
 import com.jayemceekay.shadowedhearts.registry.ModItems;
+import com.jayemceekay.shadowedhearts.registry.ModMenus;
+import com.jayemceekay.shadowedhearts.client.gui.UmbraInfuserScreen;
 import com.jayemceekay.shadowedhearts.registry.util.ModParticleTypes;
-import com.jayemceekay.shadowedhearts.util.HeldItemAnchorCache;
-import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.Minecraft;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.phys.Vec3;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -33,6 +36,8 @@ import net.neoforged.fml.config.ModConfig;
 import net.neoforged.fml.event.config.ModConfigEvent;
 import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
 import net.neoforged.neoforge.client.event.*;
+import net.neoforged.neoforge.client.gui.ConfigurationScreen;
+import net.neoforged.neoforge.client.gui.IConfigScreenFactory;
 import net.neoforged.neoforge.client.model.obj.ObjLoader;
 import net.neoforged.neoforge.event.entity.EntityLeaveLevelEvent;
 
@@ -41,27 +46,23 @@ import net.neoforged.neoforge.event.entity.EntityLeaveLevelEvent;
 public final class ShadowedheartsNeoForgeClient {
 
 
-    @SubscribeEvent
-    public static void onClientSetup(final FMLClientSetupEvent event) {
-        // Client-side common init
-        ClientSetupSubscriber.onClientSetup(event);
-    }
-
     public ShadowedheartsNeoForgeClient(ModContainer modContainer) {
         modContainer.getEventBus().addListener(ShadowedheartsNeoForgeClient::registerKeybinds);
-        modContainer.getEventBus().addListener(ShadowedheartsNeoForgeClient::onClientSetup);
         modContainer.getEventBus().addListener(ShadowedheartsNeoForgeClient::registerItemColors);
         modContainer.getEventBus().addListener(ShadowedheartsNeoForgeClient::onAddLayers);
         modContainer.getEventBus().addListener(ShadowedheartsNeoForgeClient::registerParticles);
        // ShadowedHeartsConfigs.getInstance().getClientConfig().load();
         modContainer.registerConfig(ModConfig.Type.CLIENT, ShadowedHeartsConfigs.getInstance().getClientConfig().getSpec(), "shadowedhearts/client.toml");
+        modContainer.registerExtensionPoint(IConfigScreenFactory.class, (container, parent) ->
+                new com.jayemceekay.shadowedhearts.client.gui.ShadowedHeartsConfigScreen(parent,
+                        previous -> new ConfigurationScreen(container, previous)));
         ShadowedHeartsClient.init();
     }
 
     public static void registerKeybinds(RegisterKeyMappingsEvent event) {
         ModKeybinds.init();
         event.register(ModKeybinds.AURA_SCANNER);
-        event.register(ModKeybinds.AURA_MODE_SELECTOR);
+        event.register(ModKeybinds.AURA_READER_HELP);
         event.register(ModKeybinds.AURA_PULSE);
         event.register(ModKeybinds.AURA_LOCK);
         event.register(ModKeybinds.AURA_NEXT_SIGNAL);
@@ -82,10 +83,15 @@ public final class ShadowedheartsNeoForgeClient {
                 ModParticleTypes.PENUMBRA_TRAIL.get(),
                 PenumbraTrailParticle.Provider::new
         );
+        evt.registerSpriteSet(
+                ModParticleTypes.VOID_SHADOW_CLOUD.get(),
+                com.jayemceekay.shadowedhearts.client.particle.VoidShadowCloudParticle.Provider::new
+        );
     }
 
     @SubscribeEvent
     public static void registerScreens(RegisterMenuScreensEvent event) {
+        event.register(ModMenus.UMBRA_INFUSER.get(), UmbraInfuserScreen::new);
     }
 
     public static void onAddLayers(net.neoforged.neoforge.client.event.EntityRenderersEvent.AddLayers event) {
@@ -106,6 +112,7 @@ public final class ShadowedheartsNeoForgeClient {
     @SubscribeEvent
     public static void onConfigLoading(ModConfigEvent.Loading event) {
         if (event.getConfig().getSpec() == ClientConfig.SPEC) {
+                com.jayemceekay.shadowedhearts.config.preset.ConfigSnapshotService.loaded(event.getConfig().getSpec(), event.getConfig()::getFullPath);
             ShadowedHeartsConfigs.getInstance().getClientConfig().load();
         }
     }
@@ -113,20 +120,23 @@ public final class ShadowedheartsNeoForgeClient {
     @SubscribeEvent
     public static void onConfigReloading(ModConfigEvent.Reloading event) {
         if (event.getConfig().getSpec() == ClientConfig.SPEC) {
+                com.jayemceekay.shadowedhearts.config.preset.ConfigSnapshotService.loaded(event.getConfig().getSpec(), event.getConfig()::getFullPath);
             ShadowedHeartsConfigs.getInstance().getClientConfig().load();
         }
     }
 
     @SubscribeEvent
     public static void onRenderLevel(RenderLevelStageEvent e) {
+        if (e.getStage() == RenderLevelStageEvent.Stage.AFTER_SKY) {
+            VanillaWorldShaderFrame.beginFrame();
+        }
         if (e.getStage() == RenderLevelStageEvent.Stage.AFTER_TRANSLUCENT_BLOCKS) {
             var cam = e.getCamera();
             ShadowAuraEmitters.onRender(cam, cam.getPartialTickTime());
             BallEmitters.onRender(cam, cam.getPartialTickTime());
 
         } else if (e.getStage() == RenderLevelStageEvent.Stage.AFTER_LEVEL && (AuraReaderPulseRenderer.IRIS_HANDLER == null || !AuraReaderPulseRenderer.IRIS_HANDLER.isShaderPackInUse())) {
-            var cam = e.getCamera();
-            AuraReaderPulseRenderer.onRenderWorld(cam, e.getProjectionMatrix(), e.getModelViewMatrix(), cam.getPartialTickTime());
+            VanillaWorldShaderFrame.render();
         }
 
         if (e.getStage() == RenderLevelStageEvent.Stage.AFTER_PARTICLES) {
@@ -138,6 +148,7 @@ public final class ShadowedheartsNeoForgeClient {
 
         if (e.getStage() == RenderLevelStageEvent.Stage.AFTER_WEATHER) {
             float pt = e.getPartialTick().getGameTimeDeltaPartialTick(true);
+            VanillaWorldShaderFrame.capture(e.getCamera(), pt, e.getProjectionMatrix(), e.getModelViewMatrix());
             if (!ShadowPokemonAuraSystem.isIrisShaderPackActive()) {
                 ShadowPokemonAuraSystem.renderDensityPipeline(e.getCamera(), pt, e.getProjectionMatrix());
             }

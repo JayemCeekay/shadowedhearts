@@ -8,6 +8,7 @@ import com.cobblemon.mod.common.api.moves.MovesetBuilder;
 import com.cobblemon.mod.common.api.pokemon.moves.LearnsetQuery;
 import com.cobblemon.mod.common.pokemon.FormData;
 import com.cobblemon.mod.common.pokemon.Pokemon;
+import com.jayemceekay.shadowedhearts.common.aura.AuraStyleProperties;
 import com.jayemceekay.shadowedhearts.common.shadow.SHAspects;
 import com.jayemceekay.shadowedhearts.common.shadow.ShadowAspectUtil;
 import com.jayemceekay.shadowedhearts.common.shadow.ShadowMoveUtil;
@@ -26,15 +27,36 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 @Mixin(value = Pokemon.class, remap = false, priority = 1001)
-public abstract class MixinPokemon {
+public abstract class MixinPokemon implements AuraStyleProperties.ForcedAspectAccess {
 
     @Shadow
     public abstract boolean isPlayerOwned();
 
     @Shadow
     private boolean isClient;
+
+    @Shadow
+    private Set<String> forcedAspects;
+
+    /** Clear legacy style flags without recursively invoking the native setter. */
+    @Override
+    public void shadowedhearts$setAuraForcedAspects(Set<String> aspects) {
+        forcedAspects = aspects;
+    }
+
+    /** Covers native loading/copying and live aspect changes, including wild Pokemon. */
+    @WrapMethod(method = "updateAspects")
+    private void shadowedhearts$normalizeAuraStyle(Operation<Void> original) {
+        Pokemon pokemon = (Pokemon) (Object) this;
+        boolean changed = !isClient && AuraStyleProperties.normalize(pokemon);
+        original.call();
+        if (changed) {
+            ShadowAspectUtil.syncProperties(pokemon);
+        }
+    }
 
     @WrapMethod(method = "isWild")
     private boolean shadowedhearts$isWild(Operation<Boolean> original) {

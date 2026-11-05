@@ -1,0 +1,19 @@
+{
+	"format_version": "1.9.0",
+	"credit": "Made with Blockbench",
+	"render_type": "minecraft:cutout",
+	"textures": {
+		"0": "shadowedhearts:block/shadow_residue",
+		"particle": "#0"
+	},
+	"elements": [
+		{
+			"from": [0, 0.01, 0],
+			"to": [16, 0.01, 16],
+			"faces": {
+				"up": {"uv": [0, 0, 16, 16], "texture": "#0"},
+				"down": {"uv": [0, 16, 16, 0], "texture": "#0"}
+			}
+		}
+	]
+}

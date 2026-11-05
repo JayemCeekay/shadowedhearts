@@ -1,0 +1,108 @@
+{
+  "type": "minecraft:block",
+  "pools": [
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "shadowedhearts:umbrafall_debris",
+          "functions": [
+            {
+              "function": "minecraft:set_count",
+              "count": 2,
+              "conditions": [
+                {
+                  "condition": "minecraft:block_state_property",
+                  "block": "shadowedhearts:umbrafall_debris",
+                  "properties": { "stones": "2" }
+                }
+              ]
+            },
+            {
+              "function": "minecraft:set_count",
+              "count": 3,
+              "conditions": [
+                {
+                  "condition": "minecraft:block_state_property",
+                  "block": "shadowedhearts:umbrafall_debris",
+                  "properties": { "stones": "3" }
+                }
+              ]
+            },
+            {
+              "function": "minecraft:set_count",
+              "count": 4,
+              "conditions": [
+                {
+                  "condition": "minecraft:block_state_property",
+                  "block": "shadowedhearts:umbrafall_debris",
+                  "properties": { "stones": "4" }
+                }
+              ]
+            },
+            {
+              "function": "minecraft:explosion_decay"
+            }
+          ]
+        }
+      ],
+      "conditions": [
+        {
+          "condition": "minecraft:match_tool",
+          "predicate": {
+            "predicates": {
+              "minecraft:enchantments": [
+                {
+                  "enchantments": "minecraft:silk_touch",
+                  "levels": {
+                    "min": 1
+                  }
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "shadowedhearts:shadow_dust",
+          "functions": [
+            {
+              "function": "minecraft:explosion_decay"
+            }
+          ]
+        }
+      ],
+      "conditions": [
+        {
+          "condition": "minecraft:random_chance",
+          "chance": 0.1
+        },
+        {
+          "condition": "minecraft:inverted",
+          "term": {
+            "condition": "minecraft:match_tool",
+            "predicate": {
+              "predicates": {
+                "minecraft:enchantments": [
+                  {
+                    "enchantments": "minecraft:silk_touch",
+                    "levels": {
+                      "min": 1
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "random_sequence": "shadowedhearts:blocks/umbrafall_debris"
+}

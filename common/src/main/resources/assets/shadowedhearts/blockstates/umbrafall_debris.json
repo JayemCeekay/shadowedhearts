@@ -1,0 +1,64 @@
+{
+  "variants": {
+    "facing=north,stones=1": {
+      "model": "shadowedhearts:block/umbrafall_debris_1"
+    },
+    "facing=east,stones=1": {
+      "model": "shadowedhearts:block/umbrafall_debris_1",
+      "y": 90
+    },
+    "facing=south,stones=1": {
+      "model": "shadowedhearts:block/umbrafall_debris_1",
+      "y": 180
+    },
+    "facing=west,stones=1": {
+      "model": "shadowedhearts:block/umbrafall_debris_1",
+      "y": 270
+    },
+    "facing=north,stones=2": {
+      "model": "shadowedhearts:block/umbrafall_debris_2"
+    },
+    "facing=east,stones=2": {
+      "model": "shadowedhearts:block/umbrafall_debris_2",
+      "y": 90
+    },
+    "facing=south,stones=2": {
+      "model": "shadowedhearts:block/umbrafall_debris_2",
+      "y": 180
+    },
+    "facing=west,stones=2": {
+      "model": "shadowedhearts:block/umbrafall_debris_2",
+      "y": 270
+    },
+    "facing=north,stones=3": {
+      "model": "shadowedhearts:block/umbrafall_debris_3"
+    },
+    "facing=east,stones=3": {
+      "model": "shadowedhearts:block/umbrafall_debris_3",
+      "y": 90
+    },
+    "facing=south,stones=3": {
+      "model": "shadowedhearts:block/umbrafall_debris_3",
+      "y": 180
+    },
+    "facing=west,stones=3": {
+      "model": "shadowedhearts:block/umbrafall_debris_3",
+      "y": 270
+    },
+    "facing=north,stones=4": {
+      "model": "shadowedhearts:block/umbrafall_debris_4"
+    },
+    "facing=east,stones=4": {
+      "model": "shadowedhearts:block/umbrafall_debris_4",
+      "y": 90
+    },
+    "facing=south,stones=4": {
+      "model": "shadowedhearts:block/umbrafall_debris_4",
+      "y": 180
+    },
+    "facing=west,stones=4": {
+      "model": "shadowedhearts:block/umbrafall_debris_4",
+      "y": 270
+    }
+  }
+}

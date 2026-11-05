@@ -9,7 +9,46 @@ public final class ModShadersPlatformImpl {
 
     public static void registerShaders() {
         CoreShaderRegistrationCallback.EVENT.register((registrationContext) -> {
+            com.jayemceekay.shadowedhearts.client.voidshadow.VoidShadowShaders.LIQUID = null;
+            ModShaders.UMBRA_LIQUID = null;
+            ModShaders.UMBRAFALL_CORE_SEEP = null;
+            com.jayemceekay.shadowedhearts.client.moonwound.MoonwoundPortalRenderer.resetShader();
+            com.jayemceekay.shadowedhearts.client.render.block.UmbrafallCoreSeepIrisRenderer.clear();
+            ModShaders.UMBRA_INFUSER_BACKGROUND = null;
+            com.jayemceekay.shadowedhearts.client.voidshadow.VoidShadowTransitions.clear();
             try {
+                registrationContext.register(
+                        ResourceLocation.parse("shadowedhearts:moonwound/portal"),
+                        com.jayemceekay.shadowedhearts.client.moonwound.MoonwoundPortalRenderer.FORMAT,
+                        program -> com.jayemceekay.shadowedhearts.client.moonwound.MoonwoundPortalRenderer.SHADER = program);
+            } catch (java.io.IOException failure) {
+                com.jayemceekay.shadowedhearts.Shadowedhearts.LOGGER.warn("[Moonwound] Portal shader unavailable", failure);
+            }
+            try {
+                registrationContext.register(ResourceLocation.parse("shadowedhearts:moonwound/pixel_resolve"),
+                        com.jayemceekay.shadowedhearts.client.moonwound.MoonwoundPortalRenderer.PIXEL_FORMAT,
+                        shader -> com.jayemceekay.shadowedhearts.client.moonwound.MoonwoundPortalRenderer.PIXEL_RESOLVE = shader);
+                registrationContext.register(ResourceLocation.parse("shadowedhearts:moonwound/pixel_present"),
+                        com.jayemceekay.shadowedhearts.client.moonwound.MoonwoundPortalRenderer.PIXEL_FORMAT,
+                        shader -> com.jayemceekay.shadowedhearts.client.moonwound.MoonwoundPortalRenderer.PIXEL_PRESENT = shader);
+            } catch (java.io.IOException failure) {
+                com.jayemceekay.shadowedhearts.Shadowedhearts.LOGGER.warn("[Moonwound] Pixelation shaders unavailable; using smooth rendering", failure);
+            }
+            try {
+                registrationContext.register(
+                        ResourceLocation.parse("shadowedhearts:umbrafall/umbrafall_core_seep"),
+                        com.jayemceekay.shadowedhearts.client.render.block.UmbrafallCoreSeepRenderTypes.FORMAT,
+                        program -> ModShaders.UMBRAFALL_CORE_SEEP = program);
+            } catch (java.io.IOException failure) {
+                com.jayemceekay.shadowedhearts.Shadowedhearts.LOGGER.warn(
+                        "[Umbrafall] Core seep shader unavailable; retaining baked texture", failure);
+            }
+            try {
+                registrationContext.register(
+                        ResourceLocation.parse("shadowedhearts:infusion/umbra_liquid"),
+                        com.jayemceekay.shadowedhearts.client.render.block.UmbraLiquidRenderTypes.FORMAT,
+                        program -> ModShaders.UMBRA_LIQUID = program
+                );
                 // Register base and variant aura fog shaders; trail reuses the same program per-mode
                 /*registrationContext.register(
                         ResourceLocation.parse("shadowedhearts:shadow_aura_fog"),
@@ -34,6 +73,18 @@ public final class ModShadersPlatformImpl {
                         ResourceLocation.parse("shadowedhearts:purification/purification_chamber_background"),
                         DefaultVertexFormat.POSITION_TEX,
                         program -> ModShaders.PURIFICATION_CHAMBER_BACKGROUND = program
+                );
+
+                registrationContext.register(
+                        ResourceLocation.parse("shadowedhearts:infusion/umbra_infuser_background"),
+                        DefaultVertexFormat.POSITION_TEX,
+                        program -> ModShaders.UMBRA_INFUSER_BACKGROUND = program
+                );
+
+                registrationContext.register(
+                        ResourceLocation.parse("shadowedhearts:voidshadow/void_shadow_liquid"),
+                        DefaultVertexFormat.NEW_ENTITY,
+                        program -> com.jayemceekay.shadowedhearts.client.voidshadow.VoidShadowShaders.LIQUID = program
                 );
 
                 // Poké Ball glow overlay — texture-based (additive + fullbright)
@@ -373,22 +424,10 @@ public final class ModShadersPlatformImpl {
                 );
 
                 // Screen-space electromagnetic static overlay
-                registrationContext.register(
-                        ResourceLocation.parse("shadowedhearts:interference/aura_static_interference"),
-                        DefaultVertexFormat.POSITION_TEX,
-                        program -> ModShaders.AURA_STATIC_INTERFERENCE = program
-                );
-                registrationContext.register(
-                        ResourceLocation.parse("shadowedhearts:interference/heat_haze_interference"),
-                        DefaultVertexFormat.POSITION_TEX,
-                        program -> ModShaders.HEAT_HAZE_INTERFERENCE = program
-                );
 
-                registrationContext.register(
-                        ResourceLocation.parse("shadowedhearts:hud/barrel_distortion"),
-                        DefaultVertexFormat.POSITION_COLOR,
-                        program -> ModShaders.HUD_BARREL_DISTORTION = program
-                );
+
+
+
 
             } catch (Exception e) {
                 throw new RuntimeException("Failed to load shaders (Fabric)", e);

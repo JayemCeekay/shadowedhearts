@@ -24,6 +24,9 @@ public final class ModParticleTypes {
     public static final RegistrySupplier<SimpleParticleType> PENUMBRA_TRAIL =
             PARTICLE_TYPES.register("penumbra_trail", () -> new SimpleParticleType(false) {});
 
+    public static final RegistrySupplier<SimpleParticleType> VOID_SHADOW_CLOUD =
+            PARTICLE_TYPES.register("void_shadow_cloud", () -> new SimpleParticleType(false) {});
+
     public static void register() {
         PARTICLE_TYPES.register();
     }

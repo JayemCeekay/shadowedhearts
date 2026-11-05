@@ -2,7 +2,6 @@ package com.jayemceekay.shadowedhearts.common.command;
 
 import com.cobblemon.mod.common.Cobblemon;
 import com.cobblemon.mod.common.command.argument.PokemonPropertiesArgumentType;
-import com.cobblemon.mod.common.entity.npc.NPCEntity;
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
 import com.cobblemon.mod.common.pokemon.Pokemon;
 import com.jayemceekay.shadowedhearts.common.heart.HeartGaugeEvents;
@@ -10,22 +9,19 @@ import com.jayemceekay.shadowedhearts.common.shadow.ShadowAspectUtil;
 import com.jayemceekay.shadowedhearts.common.shadow.ShadowMoveUtil;
 import com.jayemceekay.shadowedhearts.common.shadow.ShadowService;
 import com.jayemceekay.shadowedhearts.config.HeartGaugeConfig;
-import com.jayemceekay.shadowedhearts.data.ShadowAspectPresets;
-import com.jayemceekay.shadowedhearts.data.ShadowPools;
 import com.jayemceekay.shadowedhearts.network.AuraBroadcastQueue;
 import com.jayemceekay.shadowedhearts.storage.purification.PurificationChamberStore;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
-import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
+import com.mojang.brigadier.context.CommandContext;
+import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.EntityArgument;
-import net.minecraft.commands.arguments.ResourceLocationArgument;
 import net.minecraft.commands.arguments.UuidArgument;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
@@ -39,13 +35,20 @@ public class ShadowedHeartsCommands {
         LiteralArgumentBuilder<CommandSourceStack> root = Commands.literal("shadowedhearts")
                 .requires(src -> src.hasPermission(2));
 
+        root.then(com.jayemceekay.shadowedhearts.content.umbrafall.UmbrafallSites.command());
+        root.then(com.jayemceekay.shadowedhearts.config.preset.RulesPresetCommands.command());
+        LiteralArgumentBuilder<CommandSourceStack> debug = Commands.literal("debug")
+                .requires(src -> src.hasPermission(2))
+                .then(VoidShadowCommands.command());
+        registerDebugSubcommands(debug);
+        root.then(debug);
         registerSubcommands(root);
 
-        d.register(root);
-        d.register(Commands.literal("sh").requires(src -> src.hasPermission(2)).redirect(d.register(root)));
+        var registeredRoot = d.register(root);
+        d.register(Commands.literal("sh").requires(src -> src.hasPermission(2)).redirect(registeredRoot));
     }
 
-    private static void registerSubcommands(LiteralArgumentBuilder<CommandSourceStack> root) {
+    private static void registerDebugSubcommands(LiteralArgumentBuilder<CommandSourceStack> root) {
         root.then(Commands.literal("steps")
                         .requires(src -> src.hasPermission(2))
                         .then(Commands.argument("count", IntegerArgumentType.integer(1))
@@ -54,7 +57,7 @@ public class ShadowedHeartsCommands {
                                     try {
                                         player = ctx.getSource().getPlayerOrException();
                                     } catch (Exception ex) {
-                                        ctx.getSource().sendFailure(Component.literal("Must be a player to use this command"));
+                                        ctx.getSource().sendFailure(Component.translatable("message.shadowedhearts.command.player_required"));
                                         return 0;
                                     }
 
@@ -62,15 +65,15 @@ public class ShadowedHeartsCommands {
                                     var reg = player.registryAccess();
                                     PurificationChamberStore store = Cobblemon.INSTANCE.getStorage().getCustomStore(PurificationChamberStore.class, player.getUUID(), reg);
                                     if (store == null) {
-                                        ctx.getSource().sendFailure(Component.literal("Purification Chamber store not available for this player"));
+                                        ctx.getSource().sendFailure(Component.translatable("message.shadowedhearts.command.chamber.unavailable"));
                                         return 0;
                                     }
                                     store.advanceSteps(count);
-                                    ctx.getSource().sendSuccess(() -> Component.literal("Purification Chamber advanced by " + count + " step(s)"), true);
+                                    ctx.getSource().sendSuccess(() -> Component.translatable("message.shadowedhearts.command.chamber.advanced", count), true);
                                     return 1;
                                 })))
                 // Debug: simulate overworld walking steps that affect party Pokémon
-                // Usage: /shadow partysteps <count>
+                // Usage: /sh debug partysteps <count>
                 .then(Commands.literal("partysteps")
                         .requires(src -> src.hasPermission(2))
                         .then(Commands.argument("count", IntegerArgumentType.integer(1))
@@ -79,14 +82,14 @@ public class ShadowedHeartsCommands {
                                     try {
                                         player = ctx.getSource().getPlayerOrException();
                                     } catch (Exception ex) {
-                                        ctx.getSource().sendFailure(Component.literal("Must be a player to use this command"));
+                                        ctx.getSource().sendFailure(Component.translatable("message.shadowedhearts.command.player_required"));
                                         return 0;
                                     }
 
                                     int count = IntegerArgumentType.getInteger(ctx, "count");
                                     int intervals = Math.max(0, count / 256);
                                     if (intervals <= 0) {
-                                        ctx.getSource().sendSuccess(() -> Component.literal("No party ticks from " + count + " step(s); need at least 256 for 1 tick."), false);
+                                        ctx.getSource().sendSuccess(() -> Component.translatable("message.shadowedhearts.command.party.no_ticks", count), false);
                                         return 1;
                                     }
 
@@ -114,382 +117,17 @@ public class ShadowedHeartsCommands {
                                     final int affectedFinal = affected;
                                     final int intervalsFinal = intervals;
                                     ctx.getSource().sendSuccess(
-                                            () -> Component.literal("Applied " + intervalsFinal + " party step tick(s) (" + affectedFinal + " applications across shadow Pokémon)."),
+                                            () -> Component.translatable("message.shadowedhearts.command.party.advanced", intervalsFinal, affectedFinal),
                                             true
                                     );
                                     return 1;
-                                })))
-                // Convenience: manage NPC tags for Shadow injector
-                .then(Commands.literal("npc")
-                        .requires(src -> src.hasPermission(2))
-                        .then(Commands.literal("tag")
-                                .then(Commands.literal("add")
-                                        .then(Commands.argument("targets", EntityArgument.entities())
-                                                .then(Commands.argument("tag", StringArgumentType.string())
-                                                        .executes(ctx -> {
-                                                            var entities = EntityArgument.getEntities(ctx, "targets");
-                                                            String tag = StringArgumentType.getString(ctx, "tag");
-                                                            int applied = 0;
-                                                            for (Entity e : entities) {
-                                                                if (e instanceof NPCEntity npc) {
-                                                                    if (npc.addTag(tag))
-                                                                        applied++;
-                                                                }
-                                                            }
-                                                            final int appliedFinal = applied;
-                                                            final String tagFinal = tag;
-                                                            ctx.getSource().sendSuccess(() -> Component.literal("Added tag '" + tagFinal + "' to " + appliedFinal + " NPC(s)."), true);
-                                                            return appliedFinal;
-                                                        }))
-                                        )
-                                )
-                                .then(Commands.literal("remove")
-                                        .then(Commands.argument("targets", EntityArgument.entities())
-                                                .then(Commands.argument("tag", StringArgumentType.string())
-                                                        .executes(ctx -> {
-                                                            var entities = EntityArgument.getEntities(ctx, "targets");
-                                                            String tag = StringArgumentType.getString(ctx, "tag");
-                                                            int removed = 0;
-                                                            for (Entity e : entities) {
-                                                                if (e instanceof NPCEntity npc) {
-                                                                    if (npc.removeTag(tag))
-                                                                        removed++;
-                                                                }
-                                                            }
-                                                            final int removedFinal = removed;
-                                                            final String tagFinal = tag;
-                                                            ctx.getSource().sendSuccess(() -> Component.literal("Removed tag '" + tagFinal + "' from " + removedFinal + " NPC(s)."), true);
-                                                            return removedFinal;
-                                                        }))
-                                        )
-                                )
-                                .then(Commands.literal("preset")
-                                        .then(Commands.literal("define")
-                                                .then(Commands.argument("presetId", ResourceLocationArgument.id())
-                                                        .then(Commands.argument("aspects", StringArgumentType.greedyString())
-                                                                .executes(ctx -> {
-                                                                    ResourceLocation presetId = ResourceLocationArgument.getId(ctx, "presetId");
-                                                                    String aspectsStr = StringArgumentType.getString(ctx, "aspects");
-                                                                    List<String> aspects = Arrays.stream(aspectsStr.split(" "))
-                                                                            .filter(s -> !s.isBlank())
-                                                                            .toList();
-                                                                    if (aspects.isEmpty()) {
-                                                                        ctx.getSource().sendFailure(Component.literal("At least one aspect must be provided."));
-                                                                        return 0;
-                                                                    }
-                                                                    ShadowAspectPresets.savePreset(ctx.getSource().getServer(), presetId, aspects);
-                                                                    ctx.getSource().sendSuccess(() -> Component.literal("Defined and saved preset: " + presetId + " with " + aspects.size() + " aspects."), true);
-                                                                    return 1;
-                                                                })
-                                                        )
-                                                )
-                                        )
-                                        .then(Commands.literal("delete")
-                                                .then(Commands.argument("presetId", ResourceLocationArgument.id())
-                                                        .executes(ctx -> {
-                                                            ResourceLocation presetId = ResourceLocationArgument.getId(ctx, "presetId");
-                                                            ShadowAspectPresets.deletePreset(ctx.getSource().getServer(), presetId);
-                                                            ctx.getSource().sendSuccess(() -> Component.literal("Deleted preset: " + presetId), true);
-                                                            return 1;
-                                                        })
-                                                )
-                                        )
-                                        .then(Commands.literal("list")
-                                                .executes(ctx -> {
-                                                    var presets = ShadowAspectPresets.getRuntimePresets();
-                                                    if (presets.isEmpty()) {
-                                                        ctx.getSource().sendSuccess(() -> Component.literal("No runtime presets defined."), false);
-                                                    } else {
-                                                        ctx.getSource().sendSuccess(() -> Component.literal("Runtime presets: " + String.join(", ", presets.keySet().stream().map(ResourceLocation::toString).toList())), false);
-                                                    }
-                                                    return presets.size();
-                                                })
-                                        )
-                                        .then(Commands.literal("show")
-                                                .then(Commands.argument("presetId", ResourceLocationArgument.id())
-                                                        .executes(ctx -> {
-                                                            ResourceLocation presetId = ResourceLocationArgument.getId(ctx, "presetId");
-                                                            List<String> aspects = ShadowAspectPresets.get(ctx.getSource().getServer(), presetId);
-                                                            if (aspects.isEmpty()) {
-                                                                ctx.getSource().sendFailure(Component.literal("Preset not found or empty: " + presetId));
-                                                                return 0;
-                                                            }
-                                                            ctx.getSource().sendSuccess(() -> Component.literal("Preset " + presetId + " aspects: " + String.join(", ", aspects)), false);
-                                                            return 1;
-                                                        })
-                                                )
-                                        )
-                                        .then(Commands.literal("add")
-                                                .then(Commands.argument("presetId", ResourceLocationArgument.id())
-                                                        .then(Commands.argument("aspects", StringArgumentType.greedyString())
-                                                                .executes(ctx -> {
-                                                                    ResourceLocation presetId = ResourceLocationArgument.getId(ctx, "presetId");
-                                                                    List<String> existing = new ArrayList<>(ShadowAspectPresets.get(ctx.getSource().getServer(), presetId));
-                                                                    String aspectsStr = StringArgumentType.getString(ctx, "aspects");
-                                                                    List<String> toAdd = Arrays.stream(aspectsStr.split(" "))
-                                                                            .filter(s -> !s.isBlank())
-                                                                            .toList();
-                                                                    if (toAdd.isEmpty()) {
-                                                                        ctx.getSource().sendFailure(Component.literal("At least one aspect must be provided."));
-                                                                        return 0;
-                                                                    }
-                                                                    int addedCount = 0;
-                                                                    for (String aspect : toAdd) {
-                                                                        if (!existing.contains(aspect)) {
-                                                                            existing.add(aspect);
-                                                                            addedCount++;
-                                                                        }
-                                                                    }
-                                                                    if (addedCount == 0) {
-                                                                        ctx.getSource().sendFailure(Component.literal("No new aspects were added (already present)."));
-                                                                        return 0;
-                                                                    }
-                                                                    ShadowAspectPresets.savePreset(ctx.getSource().getServer(), presetId, existing);
-                                                                    final int finalAdded = addedCount;
-                                                                    ctx.getSource().sendSuccess(() -> Component.literal("Added " + finalAdded + " aspect(s) to preset: " + presetId), true);
-                                                                    return 1;
-                                                                })
-                                                        )
-                                                )
-                                        )
-                                        .then(Commands.literal("remove")
-                                                .then(Commands.argument("presetId", ResourceLocationArgument.id())
-                                                        .then(Commands.argument("aspects", StringArgumentType.greedyString())
-                                                                .executes(ctx -> {
-                                                                    ResourceLocation presetId = ResourceLocationArgument.getId(ctx, "presetId");
-                                                                    List<String> existing = new ArrayList<>(ShadowAspectPresets.get(ctx.getSource().getServer(), presetId));
-                                                                    if (existing.isEmpty()) {
-                                                                        ctx.getSource().sendFailure(Component.literal("Preset not found or empty: " + presetId));
-                                                                        return 0;
-                                                                    }
-                                                                    String aspectsStr = StringArgumentType.getString(ctx, "aspects");
-                                                                    List<String> toRemove = Arrays.stream(aspectsStr.split(" "))
-                                                                            .filter(s -> !s.isBlank())
-                                                                            .toList();
-                                                                    if (toRemove.isEmpty()) {
-                                                                        ctx.getSource().sendFailure(Component.literal("At least one aspect must be provided."));
-                                                                        return 0;
-                                                                    }
-                                                                    int removedCount = 0;
-                                                                    for (String aspect : toRemove) {
-                                                                        if (existing.remove(aspect)) {
-                                                                            removedCount++;
-                                                                        }
-                                                                    }
-                                                                    if (removedCount == 0) {
-                                                                        ctx.getSource().sendFailure(Component.literal("No matching aspects were found to remove."));
-                                                                        return 0;
-                                                                    }
-                                                                    ShadowAspectPresets.savePreset(ctx.getSource().getServer(), presetId, existing);
-                                                                    final int finalRemoved = removedCount;
-                                                                    ctx.getSource().sendSuccess(() -> Component.literal("Removed " + finalRemoved + " aspect(s) from preset: " + presetId), true);
-                                                                    return 1;
-                                                                })
-                                                        )
-                                                )
-                                        )
-                                        .then(Commands.literal("apply")
-                                                .then(Commands.argument("targets", EntityArgument.entities())
-                                                        .then(Commands.argument("presetId", ResourceLocationArgument.id())
-                                                                .executes(ctx -> {
-                                                                    var entities = EntityArgument.getEntities(ctx, "targets");
-                                                                    ResourceLocation presetId = ResourceLocationArgument.getId(ctx, "presetId");
-                                                                    String fullTag = "sh_shadow_presets/" + presetId.getNamespace() + "/" + presetId.getPath();
-                                                                    int applied = 0;
-                                                                    for (Entity e : entities) {
-                                                                        if (e instanceof NPCEntity npc) {
-                                                                            if (npc.addTag(fullTag))
-                                                                                applied++;
-                                                                        }
-                                                                    }
-                                                                    final int appliedFinal = applied;
-                                                                    ctx.getSource().sendSuccess(() -> Component.literal("Applied preset tag to " + appliedFinal + " NPC(s)."), true);
-                                                                    return appliedFinal;
-                                                                })
-                                                        )
-                                                )
-                                        )
-                                )
-                        )
-                )
-                .then(Commands.literal("shadowpool")
-                        .requires(src -> src.hasPermission(2))
-                        .then(Commands.literal("define")
-                                .then(Commands.argument("poolId", ResourceLocationArgument.id())
-                                        .then(Commands.argument("entries", StringArgumentType.greedyString())
-                                                .executes(ctx -> {
-                                                    ResourceLocation poolId = ResourceLocationArgument.getId(ctx, "poolId");
-                                                    String entriesStr = StringArgumentType.getString(ctx, "entries");
-                                                    String[] entryParts = entriesStr.split(",");
-                                                    List<ShadowPools.WeightedEntry> entries = new ArrayList<>();
-                                                    for (String part : entryParts) {
-                                                        part = part.trim();
-                                                        if (part.isEmpty()) continue;
-                                                        int weight = 1;
-                                                        String propsStr = part;
-                                                        if (part.contains("|")) {
-                                                            String[] split = part.split("\\|");
-                                                            propsStr = split[0].trim();
-                                                            try {
-                                                                weight = Integer.parseInt(split[1].trim());
-                                                            } catch (NumberFormatException e) {
-                                                                ctx.getSource().sendFailure(Component.literal("Invalid weight for entry: " + part));
-                                                                return 0;
-                                                            }
-                                                        }
-                                                        try {
-                                                            var props = com.cobblemon.mod.common.api.pokemon.PokemonProperties.Companion.parse(propsStr);
-                                                            entries.add(new ShadowPools.WeightedEntry(props, weight));
-                                                        } catch (Exception e) {
-                                                            ctx.getSource().sendFailure(Component.literal("Invalid Pokémon properties: " + propsStr));
-                                                            return 0;
-                                                        }
-                                                    }
-                                                    if (entries.isEmpty()) {
-                                                        ctx.getSource().sendFailure(Component.literal("At least one entry must be provided. Format: 'prop1|weight, prop2|weight'"));
-                                                        return 0;
-                                                    }
-                                                    ShadowPools.savePool(ctx.getSource().getServer(), poolId, entries);
-                                                    ctx.getSource().sendSuccess(() -> Component.literal("Defined and saved shadow pool: " + poolId + " with " + entries.size() + " entries."), true);
-                                                    return 1;
-                                                })
-                                        )
-                                )
-                        )
-                        .then(Commands.literal("delete")
-                                .then(Commands.argument("poolId", ResourceLocationArgument.id())
-                                        .executes(ctx -> {
-                                            ResourceLocation poolId = ResourceLocationArgument.getId(ctx, "poolId");
-                                            ShadowPools.deletePool(ctx.getSource().getServer(), poolId);
-                                            ctx.getSource().sendSuccess(() -> Component.literal("Deleted shadow pool: " + poolId), true);
-                                            return 1;
-                                        })
-                                )
-                        )
-                        .then(Commands.literal("list")
-                                .executes(ctx -> {
-                                    var pools = ShadowPools.getRuntimePools();
-                                    if (pools.isEmpty()) {
-                                        ctx.getSource().sendSuccess(() -> Component.literal("No runtime shadow pools defined."), false);
-                                    } else {
-                                        ctx.getSource().sendSuccess(() -> Component.literal("Runtime shadow pools: " + String.join(", ", pools.keySet().stream().map(ResourceLocation::toString).toList())), false);
-                                    }
-                                    return pools.size();
-                                })
-                        )
-                        .then(Commands.literal("show")
-                                .then(Commands.argument("poolId", ResourceLocationArgument.id())
-                                        .executes(ctx -> {
-                                            ResourceLocation poolId = ResourceLocationArgument.getId(ctx, "poolId");
-                                            List<ShadowPools.WeightedEntry> entries = ShadowPools.get(ctx.getSource().getServer(), poolId);
-                                            if (entries.isEmpty()) {
-                                                ctx.getSource().sendFailure(Component.literal("Pool not found or empty: " + poolId));
-                                                return 0;
-                                            }
-                                            ctx.getSource().sendSuccess(() -> Component.literal("Shadow Pool " + poolId + " entries:"), false);
-                                            for (ShadowPools.WeightedEntry entry : entries) {
-                                                ctx.getSource().sendSuccess(() -> Component.literal("- " + entry.props.toString() + " (weight: " + entry.weight + ")"), false);
-                                            }
-                                            return 1;
-                                        })
-                                )
-                        )
-                )
-                .then(Commands.literal("shadowify")
-                        .requires(src -> src.hasPermission(2))
-                        .then(Commands.argument("target", EntityArgument.entity())
-                                .executes(ctx -> {
-                                    Entity e = EntityArgument.getEntity(ctx, "target");
-                                    if (e instanceof PokemonEntity pe) {
-                                        Pokemon pk = pe.getPokemon();
-                                        ShadowService.fullyCorrupt(pk, pe);
-                                        ctx.getSource().sendSuccess(() -> Component.literal("Shadowified " + pk.getSpecies().getName()), true);
-                                        return 1;
-                                    } else if (e instanceof ServerPlayer player) {
-                                        var party = Cobblemon.INSTANCE.getStorage().getParty(player);
-                                        int count = 0;
-                                        for (Pokemon pk : party) {
-                                            ShadowService.fullyCorrupt(pk, null);
-                                            count++;
-                                        }
-                                        final int countFinal = count;
-                                        ctx.getSource().sendSuccess(() -> Component.literal("Shadowified " + countFinal + " Pokémon in " + player.getScoreboardName() + "'s party"), true);
-                                        return count;
-                                    }
-                                    ctx.getSource().sendFailure(Component.literal("Target must be a Pokemon entity or a player"));
-                                    return 0;
-                                })
-                                .then(Commands.argument("slot", IntegerArgumentType.integer(1, 6))
-                                        .executes(ctx -> {
-                                            Entity e = EntityArgument.getEntity(ctx, "target");
-                                            int val = IntegerArgumentType.getInteger(ctx, "slot");
-                                            if (e instanceof PokemonEntity pe) {
-                                                Pokemon pk = pe.getPokemon();
-                                                ShadowService.corrupt(pk, pe, val);
-                                                ShadowAspectUtil.ensureRequiredShadowAspects(pk);
-                                                ctx.getSource().sendSuccess(() -> Component.literal("Shadowified " + pk.getSpecies().getName() + " with heart gauge " + val), true);
-                                                return 1;
-                                            } else if (e instanceof ServerPlayer player) {
-                                                int slot = val - 1;
-                                                var party = Cobblemon.INSTANCE.getStorage().getParty(player);
-                                                Pokemon pk = party.get(slot);
-                                                if (pk == null) {
-                                                    ctx.getSource().sendFailure(Component.literal("No Pokemon in slot " + (slot + 1)));
-                                                    return 0;
-                                                }
-                                                ShadowService.fullyCorrupt(pk, null);
-                                                ctx.getSource().sendSuccess(() -> Component.literal("Shadowified " + pk.getSpecies().getName() + " in " + player.getScoreboardName() + "'s party"), true);
-                                                return 1;
-                                            }
-                                            return 0;
-                                        })
-                                        .then(Commands.argument("value", IntegerArgumentType.integer(0))
-                                                .executes(ctx -> {
-                                                    Entity e = EntityArgument.getEntity(ctx, "target");
-                                                    if (!(e instanceof ServerPlayer player)) {
-                                                        ctx.getSource().sendFailure(Component.literal("Slot argument only applicable when targeting a player"));
-                                                        return 0;
-                                                    }
-                                                    int slot = IntegerArgumentType.getInteger(ctx, "slot") - 1;
-                                                    int value = IntegerArgumentType.getInteger(ctx, "value");
-                                                    var party = Cobblemon.INSTANCE.getStorage().getParty(player);
-                                                    Pokemon pk = party.get(slot);
-                                                    if (pk == null) {
-                                                        ctx.getSource().sendFailure(Component.literal("No Pokemon in slot " + (slot + 1)));
-                                                        return 0;
-                                                    }
-                                                    ShadowService.corrupt(pk, null, value);
-                                                    ShadowAspectUtil.ensureRequiredShadowAspects(pk);
-                                                    ctx.getSource().sendSuccess(() -> Component.literal("Shadowified " + pk.getSpecies().getName() + " in " + player.getScoreboardName() + "'s party with heart gauge " + value), true);
-                                                    return 1;
-                                                })))
-                                .then(Commands.argument("value", IntegerArgumentType.integer(0))
-                                        .executes(ctx -> {
-                                            Entity e = EntityArgument.getEntity(ctx, "target");
-                                            int value = IntegerArgumentType.getInteger(ctx, "value");
-                                            if (e instanceof PokemonEntity pe) {
-                                                Pokemon pk = pe.getPokemon();
-                                                ShadowService.corrupt(pk, pe, value);
-                                                ShadowAspectUtil.ensureRequiredShadowAspects(pk);
-                                                ctx.getSource().sendSuccess(() -> Component.literal("Shadowified " + pk.getSpecies().getName() + " with heart gauge " + value), true);
-                                                return 1;
-                                            } else if (e instanceof ServerPlayer player) {
-                                                var party = Cobblemon.INSTANCE.getStorage().getParty(player);
-                                                int count = 0;
-                                                for (Pokemon pk : party) {
-                                                    ShadowService.corrupt(pk, null, value);
-                                                    ShadowAspectUtil.ensureRequiredShadowAspects(pk);
-                                                    count++;
-                                                }
-                                                final int countFinal = count;
-                                                final int valFinal = value;
-                                                ctx.getSource().sendSuccess(() -> Component.literal("Shadowified " + countFinal + " Pokémon in " + player.getScoreboardName() + "'s party with heart gauge " + valFinal), true);
-                                                return count;
-                                            }
-                                            ctx.getSource().sendFailure(Component.literal("Target must be a Pokemon entity or a player"));
-                                            return 0;
-                                        }))
-                        ))
+                                })));
+    }
+
+    private static void registerSubcommands(LiteralArgumentBuilder<CommandSourceStack> root) {
+        root.then(NPCShadowCommands.npc())
+                .then(NPCShadowCommands.shadowPool())
+                .then(shadowify())
                 .then(Commands.literal("purify")
                         .requires(src -> src.hasPermission(2))
                         .then(Commands.argument("target", EntityArgument.entity())
@@ -498,7 +136,7 @@ public class ShadowedHeartsCommands {
                                     if (e instanceof PokemonEntity pe) {
                                         Pokemon pk = pe.getPokemon();
                                         ShadowService.fullyPurify(pk, pe);
-                                        ctx.getSource().sendSuccess(() -> Component.literal("Purified " + pk.getSpecies().getName()), true);
+                                        ctx.getSource().sendSuccess(() -> Component.translatable("message.shadowedhearts.command.purify.entity", pk.getSpecies().getTranslatedName()), true);
                                         return 1;
                                     } else if (e instanceof ServerPlayer player) {
                                         var party = Cobblemon.INSTANCE.getStorage().getParty(player);
@@ -508,28 +146,28 @@ public class ShadowedHeartsCommands {
                                             count++;
                                         }
                                         final int countFinalPurify = count;
-                                        ctx.getSource().sendSuccess(() -> Component.literal("Purified " + countFinalPurify + " Pokémon in " + player.getScoreboardName() + "'s party"), true);
+                                        ctx.getSource().sendSuccess(() -> Component.translatable("message.shadowedhearts.command.purify.party", countFinalPurify, player.getDisplayName()), true);
                                         return count;
                                     }
-                                    ctx.getSource().sendFailure(Component.literal("Target must be a Pokemon entity or a player"));
+                                    ctx.getSource().sendFailure(Component.translatable("message.shadowedhearts.command.pokemon_or_player_required"));
                                     return 0;
                                 })
                                 .then(Commands.argument("slot", IntegerArgumentType.integer(1, 6))
                                         .executes(ctx -> {
                                             Entity e = EntityArgument.getEntity(ctx, "target");
                                             if (!(e instanceof ServerPlayer player)) {
-                                                ctx.getSource().sendFailure(Component.literal("Slot argument only applicable when targeting a player"));
+                                                ctx.getSource().sendFailure(Component.translatable("message.shadowedhearts.command.slot_requires_player"));
                                                 return 0;
                                             }
                                             int slot = IntegerArgumentType.getInteger(ctx, "slot") - 1;
                                             var party = Cobblemon.INSTANCE.getStorage().getParty(player);
                                             Pokemon pk = party.get(slot);
                                             if (pk == null) {
-                                                ctx.getSource().sendFailure(Component.literal("No Pokemon in slot " + (slot + 1)));
+                                                ctx.getSource().sendFailure(Component.translatable("message.shadowedhearts.command.slot_empty", slot + 1));
                                                 return 0;
                                             }
                                             ShadowService.fullyPurify(pk, null);
-                                            ctx.getSource().sendSuccess(() -> Component.literal("Purified " + pk.getSpecies().getName() + " in " + player.getScoreboardName() + "'s party"), true);
+                                            ctx.getSource().sendSuccess(() -> Component.translatable("message.shadowedhearts.command.purify.party_member", pk.getSpecies().getTranslatedName(), player.getDisplayName()), true);
                                             return 1;
                                         }))))
                 .then(Commands.literal("spawn")
@@ -540,12 +178,12 @@ public class ShadowedHeartsCommands {
                                     var world = ctx.getSource().getLevel();
                                     var blockPos = net.minecraft.core.BlockPos.containing(pos);
                                     if (!Level.isInSpawnableBounds(blockPos)) {
-                                        ctx.getSource().sendFailure(Component.literal("Invalid position"));
+                                        ctx.getSource().sendFailure(Component.translatable("message.shadowedhearts.command.spawn.invalid_position"));
                                         return 0;
                                     }
                                     var properties = PokemonPropertiesArgumentType.Companion.getPokemonProperties(ctx, "properties");
                                     if (!properties.hasSpecies()) {
-                                        ctx.getSource().sendFailure(Component.literal("No species specified"));
+                                        ctx.getSource().sendFailure(Component.translatable("message.shadowedhearts.command.spawn.missing_species"));
                                         return 0;
                                     }
                                     try {
@@ -561,14 +199,14 @@ public class ShadowedHeartsCommands {
                                             ShadowMoveUtil.assignShadowMoves(pokemon);
                                             AuraBroadcastQueue.queueBroadcast(pokemonEntity, 2.5f, 200);
 
-                                            ctx.getSource().sendSuccess(() -> Component.literal("Spawned Shadow " + pokemon.getSpecies().getName()), true);
+                                            ctx.getSource().sendSuccess(() -> Component.translatable("message.shadowedhearts.command.spawn.success", pokemon.getSpecies().getTranslatedName()), true);
                                             return 1;
                                         }
-                                        ctx.getSource().sendFailure(Component.literal("Unable to spawn at the given position"));
+                                        ctx.getSource().sendFailure(Component.translatable("message.shadowedhearts.command.spawn.unavailable"));
                                         return 0;
                                     } catch (Exception e) {
                                         e.printStackTrace();
-                                        ctx.getSource().sendFailure(Component.literal("Failed to spawn: " + e.getMessage()));
+                                        ctx.getSource().sendFailure(Component.translatable("message.shadowedhearts.command.spawn.failed", com.jayemceekay.shadowedhearts.common.editor.TrainerEditorMessageException.component(e)));
                                         return 0;
                                     }
                                 })))
@@ -581,7 +219,7 @@ public class ShadowedHeartsCommands {
                                     Entity entity = level.getEntity(uuid);
 
                                     if (entity == null) {
-                                        ctx.getSource().sendFailure(Component.literal("No entity found with UUID: " + uuid));
+                                        ctx.getSource().sendFailure(Component.translatable("message.shadowedhearts.command.inspect.entity_missing", uuid.toString()));
                                         return 0;
                                     }
 
@@ -597,7 +235,7 @@ public class ShadowedHeartsCommands {
                                             Pokemon pokemon = party.get(slot);
 
                                             if (pokemon == null) {
-                                                ctx.getSource().sendFailure(Component.literal("No Pokemon found in slot " + (slot + 1) + " of " + player.getScoreboardName() + "'s party."));
+                                                ctx.getSource().sendFailure(Component.translatable("message.shadowedhearts.command.inspect.slot_empty", slot + 1, player.getDisplayName()));
                                                 return 0;
                                             }
 
@@ -606,10 +244,82 @@ public class ShadowedHeartsCommands {
                                         }))));
     }
 
+    private static LiteralArgumentBuilder<CommandSourceStack> shadowify() {
+        return Commands.literal("shadowify")
+                .requires(source -> source.hasPermission(2))
+                .then(Commands.literal("entity")
+                        .then(Commands.argument("target", EntityArgument.entity())
+                                .executes(ctx -> shadowifyEntity(ctx, null))
+                                .then(Commands.literal("gauge")
+                                        .then(Commands.argument("value", IntegerArgumentType.integer(0))
+                                                .executes(ctx -> shadowifyEntity(ctx, IntegerArgumentType.getInteger(ctx, "value")))))))
+                .then(Commands.literal("party")
+                        .then(Commands.argument("player", EntityArgument.player())
+                                .executes(ctx -> shadowifyParty(ctx, null))
+                                .then(Commands.literal("gauge")
+                                        .then(Commands.argument("value", IntegerArgumentType.integer(0))
+                                                .executes(ctx -> shadowifyParty(ctx, IntegerArgumentType.getInteger(ctx, "value")))))))
+                .then(Commands.literal("slot")
+                        .then(Commands.argument("player", EntityArgument.player())
+                                .then(Commands.argument("slot", IntegerArgumentType.integer(1, 6))
+                                        .executes(ctx -> shadowifySlot(ctx, null))
+                                        .then(Commands.literal("gauge")
+                                                .then(Commands.argument("value", IntegerArgumentType.integer(0))
+                                                        .executes(ctx -> shadowifySlot(ctx, IntegerArgumentType.getInteger(ctx, "value"))))))));
+    }
+
+    private static int shadowifyEntity(CommandContext<CommandSourceStack> ctx, Integer gauge) throws CommandSyntaxException {
+        Entity target = EntityArgument.getEntity(ctx, "target");
+        if (!(target instanceof PokemonEntity entity)) {
+            ctx.getSource().sendFailure(Component.translatable("message.shadowedhearts.command.pokemon_required"));
+            return 0;
+        }
+        Pokemon pokemon = entity.getPokemon();
+        corrupt(pokemon, entity, gauge);
+        ctx.getSource().sendSuccess(() -> gauge == null
+                ? Component.translatable("message.shadowedhearts.command.shadow.entity", pokemon.getSpecies().getTranslatedName())
+                : Component.translatable("message.shadowedhearts.command.shadow.entity_gauge", pokemon.getSpecies().getTranslatedName(), ShadowAspectUtil.getHeartGaugeMeter(pokemon)), true);
+        return 1;
+    }
+
+    private static int shadowifyParty(CommandContext<CommandSourceStack> ctx, Integer gauge) throws CommandSyntaxException {
+        ServerPlayer player = EntityArgument.getPlayer(ctx, "player");
+        var party = Cobblemon.INSTANCE.getStorage().getParty(player);
+        // Corruption synchronizes the store, so iterate a snapshot as the step command does.
+        List<Pokemon> snapshot = new ArrayList<>();
+        for (Pokemon pokemon : party) snapshot.add(pokemon);
+        for (Pokemon pokemon : snapshot) corrupt(pokemon, null, gauge);
+        ctx.getSource().sendSuccess(() -> gauge == null
+                ? Component.translatable("message.shadowedhearts.command.shadow.party", snapshot.size(), player.getDisplayName())
+                : Component.translatable("message.shadowedhearts.command.shadow.party_gauge", snapshot.size(), player.getDisplayName(), gauge), true);
+        return snapshot.size();
+    }
+
+    private static int shadowifySlot(CommandContext<CommandSourceStack> ctx, Integer gauge) throws CommandSyntaxException {
+        ServerPlayer player = EntityArgument.getPlayer(ctx, "player");
+        int slot = IntegerArgumentType.getInteger(ctx, "slot");
+        Pokemon pokemon = Cobblemon.INSTANCE.getStorage().getParty(player).get(slot - 1);
+        if (pokemon == null) {
+            ctx.getSource().sendFailure(Component.translatable("message.shadowedhearts.command.slot_empty", slot));
+            return 0;
+        }
+        corrupt(pokemon, null, gauge);
+        ctx.getSource().sendSuccess(() -> gauge == null
+                ? Component.translatable("message.shadowedhearts.command.shadow.party_member", pokemon.getSpecies().getTranslatedName(), player.getDisplayName())
+                : Component.translatable("message.shadowedhearts.command.shadow.party_member_gauge", pokemon.getSpecies().getTranslatedName(), player.getDisplayName(), ShadowAspectUtil.getHeartGaugeMeter(pokemon)), true);
+        return 1;
+    }
+
+    /** An omitted gauge means full corruption; explicit values use the species-specific clamp. */
+    private static void corrupt(Pokemon pokemon, PokemonEntity entity, Integer gauge) {
+        if (gauge == null) ShadowService.fullyCorrupt(pokemon, entity);
+        else ShadowService.corrupt(pokemon, entity, gauge);
+    }
+
     private static void inspectEntity(CommandSourceStack source, Entity entity) {
-        source.sendSuccess(() -> Component.literal("--- Entity Inspection: " + entity.getName().getString() + " ---"), false);
-        source.sendSuccess(() -> Component.literal("UUID: " + entity.getUUID()), false);
-        source.sendSuccess(() -> Component.literal("Type: " + entity.getType().getDescription().getString()), false);
+        source.sendSuccess(() -> Component.translatable("message.shadowedhearts.command.inspect.entity", entity.getName()), false);
+        source.sendSuccess(() -> Component.translatable("message.shadowedhearts.command.inspect.uuid", entity.getUUID().toString()), false);
+        source.sendSuccess(() -> Component.translatable("message.shadowedhearts.command.inspect.type", entity.getType().getDescription()), false);
 
         if (entity instanceof PokemonEntity pe) {
             Pokemon pk = pe.getPokemon();
@@ -617,27 +327,27 @@ public class ShadowedHeartsCommands {
         }
 
         CompoundTag nbt = entity.saveWithoutId(new CompoundTag());
-        source.sendSuccess(() -> Component.literal("--- NBT Data ---"), false);
+        source.sendSuccess(() -> Component.translatable("message.shadowedhearts.command.inspect.nbt"), false);
         source.sendSuccess(() -> Component.literal(nbt.toString()), false);
     }
 
     private static void inspectPokemon(CommandSourceStack source, Pokemon pokemon) {
-        source.sendSuccess(() -> Component.literal("--- Pokemon Inspection: " + pokemon.getDisplayName(false).getString() + " ---"), false);
-        source.sendSuccess(() -> Component.literal("UUID: " + pokemon.getUuid()), false);
+        source.sendSuccess(() -> Component.translatable("message.shadowedhearts.command.inspect.pokemon", pokemon.getDisplayName(false)), false);
+        source.sendSuccess(() -> Component.translatable("message.shadowedhearts.command.inspect.uuid", pokemon.getUuid().toString()), false);
 
         outputPokemonData(source, pokemon);
 
         CompoundTag nbt = pokemon.saveToNBT(source.registryAccess(), new CompoundTag());
-        source.sendSuccess(() -> Component.literal("--- NBT Data ---"), false);
+        source.sendSuccess(() -> Component.translatable("message.shadowedhearts.command.inspect.nbt"), false);
         source.sendSuccess(() -> Component.literal(nbt.toString()), false);
     }
 
     private static void outputPokemonData(CommandSourceStack source, Pokemon pk) {
-        source.sendSuccess(() -> Component.literal("--- Pokemon Data ---"), false);
-        source.sendSuccess(() -> Component.literal("Species: " + pk.getSpecies().getName()), false);
-        source.sendSuccess(() -> Component.literal("Aspects: " + pk.getAspects()), false);
-        source.sendSuccess(() -> Component.literal("Heart Gauge: " + ShadowAspectUtil.getHeartGaugePercent(pk) + "% (" + ShadowAspectUtil.getHeartGaugeMeter(pk) + "/" + HeartGaugeConfig.getMax(pk) + ")"), false);
-        source.sendSuccess(() -> Component.literal("Buffered EXP: " + ShadowAspectUtil.getBufferedExp(pk)), false);
-        source.sendSuccess(() -> Component.literal("Buffered EVs: " + Arrays.toString(ShadowAspectUtil.getBufferedEvs(pk))), false);
+        source.sendSuccess(() -> Component.translatable("message.shadowedhearts.command.inspect.data"), false);
+        source.sendSuccess(() -> Component.translatable("message.shadowedhearts.command.inspect.species", pk.getSpecies().getTranslatedName()), false);
+        source.sendSuccess(() -> Component.translatable("message.shadowedhearts.command.inspect.aspects", pk.getAspects().toString()), false);
+        source.sendSuccess(() -> Component.translatable("message.shadowedhearts.command.inspect.gauge", ShadowAspectUtil.getHeartGaugePercent(pk), ShadowAspectUtil.getHeartGaugeMeter(pk), HeartGaugeConfig.getMax(pk)), false);
+        source.sendSuccess(() -> Component.translatable("message.shadowedhearts.command.inspect.experience", ShadowAspectUtil.getBufferedExp(pk)), false);
+        source.sendSuccess(() -> Component.translatable("message.shadowedhearts.command.inspect.evs", Arrays.toString(ShadowAspectUtil.getBufferedEvs(pk))), false);
     }
 }

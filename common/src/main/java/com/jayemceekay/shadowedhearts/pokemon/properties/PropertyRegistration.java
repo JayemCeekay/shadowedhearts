@@ -1,12 +1,15 @@
 package com.jayemceekay.shadowedhearts.pokemon.properties;
 
+import com.cobblemon.mod.common.api.pokemon.aspect.AspectProvider;
 import com.cobblemon.mod.common.api.properties.CustomPokemonProperty;
+import com.jayemceekay.shadowedhearts.common.aura.AuraStyleAspectProvider;
+import com.jayemceekay.shadowedhearts.pokemon.properties.type.AuraStylePropertyType;
 import com.jayemceekay.shadowedhearts.pokemon.properties.type.ShadowChancePropertyType;
 
 import java.util.List;
 
 /**
- * Registers the ShadowChanceProperty parser with Cobblemon using the public API (no reflection).
+ * Registers Shadowed Hearts property parsers and derived aura rendering aspects with Cobblemon.
  */
 public final class PropertyRegistration {
     private PropertyRegistration() {
@@ -16,6 +19,8 @@ public final class PropertyRegistration {
         try {
             CustomPokemonProperty.Companion.register("sh_move_lifecycle", true, MoveLifecycleProperty::parse,
                     () -> List.of("go_shadow:frustration", "go_purified:return"));
+            CustomPokemonProperty.Companion.register(new AuraStylePropertyType());
+            AspectProvider.Companion.register(AuraStyleAspectProvider.INSTANCE);
 
             // Directly register our type implementation
             CustomPokemonProperty.Companion.register(new ShadowChancePropertyType());

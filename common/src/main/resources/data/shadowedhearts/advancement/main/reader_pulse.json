@@ -1,0 +1,31 @@
+{
+  "parent": "shadowedhearts:main/aura_reader",
+  "display": {
+    "icon": {
+      "id": "shadowedhearts:aura_reader"
+    },
+    "title": {
+      "translate": "advancements.shadowedhearts.reader_pulse.title"
+    },
+    "description": {
+      "translate": "advancements.shadowedhearts.reader_pulse.description"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": false,
+    "hidden": false
+  },
+  "criteria": {
+    "reader_pulse": {
+      "trigger": "shadowedhearts:progression",
+      "conditions": {
+        "milestone": "reader_pulse"
+      }
+    }
+  },
+  "requirements": [
+    [
+      "reader_pulse"
+    ]
+  ]
+}

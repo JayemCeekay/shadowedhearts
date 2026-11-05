@@ -3,9 +3,14 @@ package com.jayemceekay.shadowedhearts.config;
 import java.util.List;
 
 public interface IWorldAlterationConfig {
-    default int minCraterRadius() { return 4; }
-    default int maxCraterRadius() { return 12; }
     default boolean meteoroidWorldGenEnabled() { return true; }
+    default boolean umbrafallSignalsEnabled() { return true; }
+    default UmbrafallSignalMode umbrafallSignalMode() { return UmbrafallSignalMode.LOCATE_OR_GENERATE; }
+    default int umbrafallSignalLocateMinDistance() { return 64; }
+    default int umbrafallSignalLocateMaxDistance() { return 640; }
+    default int umbrafallSignalLifetimeSeconds() { return 3600; }
+    default List<? extends String> umbrafallSignalAllowedTiers() { return List.of("faint", "weak", "moderate", "strong", "resonant"); }
+    default int umbrafallWorkPerTick() { return 4096; }
     default int meteoroidSpacing() { return 16; }
     default int meteoroidSeparation() { return 8; }
     default java.util.List<? extends String> meteoroidBiomeBlacklist() { return List.of("#minecraft:is_river", "#minecraft:is_beach"); }

@@ -47,6 +47,8 @@ public class ClientPurificationStorage extends ClientStorage<ClientPurificationS
 
     @Override
     public void set(PurificationPosition position, Pokemon pokemon) {
+        // Full NBT snapshots default to server Pokemon; these copies must use synced client rules.
+        if (pokemon != null) pokemon.setClient$common(true);
         Map<PurificationPosition, Pokemon> map = sets.computeIfAbsent(currentSetIndex, k -> new HashMap<>());
         if (pokemon == null) map.remove(position); else map.put(position, pokemon);
     }
@@ -84,6 +86,8 @@ public class ClientPurificationStorage extends ClientStorage<ClientPurificationS
     /** Sets a pokemon at the given set index and position, without changing the current page. */
     public void setAt(int setIndex, PurificationPosition position, Pokemon pokemon) {
         if (setIndex < 0 || setIndex >= TOTAL_SETS) return;
+        // Full NBT snapshots default to server Pokemon; these copies must use synced client rules.
+        if (pokemon != null) pokemon.setClient$common(true);
         Map<PurificationPosition, Pokemon> map = sets.computeIfAbsent(setIndex, k -> new HashMap<>());
         if (pokemon == null) map.remove(position); else map.put(position, pokemon);
     }

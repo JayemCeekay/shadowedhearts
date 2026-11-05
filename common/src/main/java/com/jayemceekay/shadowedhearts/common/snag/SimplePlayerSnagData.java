@@ -1,6 +1,5 @@
 package com.jayemceekay.shadowedhearts.common.snag;
 
-import com.jayemceekay.shadowedhearts.content.items.SnagMachineItem;
 import com.jayemceekay.shadowedhearts.integration.accessories.SnagAccessoryBridgeHolder;
 import com.jayemceekay.shadowedhearts.registry.ModItems;
 import com.jayemceekay.shadowedhearts.registry.util.ModItemComponents;
@@ -33,14 +32,6 @@ public class SimplePlayerSnagData implements PlayerSnagData {
         } catch (Throwable ignored) {}
         return ItemStack.EMPTY;
     }
-    private int machineCapacity(ItemStack stack) {
-        if (stack == null || stack.isEmpty()) return 0;
-        var item = stack.getItem();
-        if (item instanceof SnagMachineItem sm) {
-            return Math.max(0, sm.capacity());
-        }
-        return 1000;
-    }
     @Override
     public boolean hasSnagMachine() {
         return !findMachine().isEmpty();
@@ -56,12 +47,6 @@ public class SimplePlayerSnagData implements PlayerSnagData {
         return armed != null && armed;
     }
     @Override
-    public int energy() {
-        ItemStack machine = findMachine();
-        if (machine.isEmpty()) return 0;
-        return SnagEnergy.get(machine);
-    }
-    @Override
     public int cooldown() {
         ItemStack machine = findMachine();
         if (machine.isEmpty()) return 0;
@@ -74,22 +59,6 @@ public class SimplePlayerSnagData implements PlayerSnagData {
         ItemStack machine = findMachine();
         if (machine.isEmpty()) return;
         machine.set(ModItemComponents.SNAG_ARMED.get(), v);
-    }
-    @Override
-    public void consumeEnergy(int amt) {
-        if (player != null && player.level().isClientSide) return;
-        ItemStack machine = findMachine();
-        if (machine.isEmpty()) return;
-        SnagEnergy.consume(machine, amt, machineCapacity(machine));
-    }
-    @Override
-    public void addEnergy(int amt) {
-        if (player != null && player.level().isClientSide) return;
-        ItemStack machine = findMachine();
-        if (machine.isEmpty()) return;
-        int capacity = machineCapacity(machine);
-        int cur = SnagEnergy.get(machine);
-        SnagEnergy.set(machine, cur + amt, capacity);
     }
     @Override
     public void setCooldown(int ticks) {

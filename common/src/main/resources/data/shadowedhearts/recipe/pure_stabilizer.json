@@ -1,0 +1,12 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    { "item": "shadowedhearts:meteoric_alloy" },
+    { "item": "shadowedhearts:meteoric_alloy" },
+    { "item": "shadowedhearts:purified_gem" },
+    { "item": "shadowedhearts:null_glass" },
+    { "item": "minecraft:redstone" }
+  ],
+  "result": { "id": "shadowedhearts:pure_stabilizer", "count": 1 }
+}

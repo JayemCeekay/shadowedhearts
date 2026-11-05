@@ -2,13 +2,15 @@ package com.jayemceekay.shadowedhearts.world.gen;
 
 import com.jayemceekay.shadowedhearts.config.IWorldAlterationConfig;
 import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs;
+import com.jayemceekay.shadowedhearts.world.umbrafall.UmbrafallGeometry;
+import com.jayemceekay.shadowedhearts.world.umbrafall.UmbrafallShapeBuilder;
+import com.jayemceekay.shadowedhearts.world.umbrafall.UmbrafallTier;
 import com.mojang.serialization.MapCodec;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.structure.Structure;
 import net.minecraft.world.level.levelgen.structure.StructureType;
-import net.minecraft.world.level.levelgen.structure.pieces.StructurePiecesBuilder;
 
 import java.util.Optional;
 
@@ -37,15 +39,38 @@ public class MeteoroidStructure extends Structure {
 
         int y = context.chunkGenerator().getFirstOccupiedHeight(x, z, Heightmap.Types.OCEAN_FLOOR_WG, context.heightAccessor(), context.randomState());
 
+        // These excavation sites need dry, sufficiently deep terrain. Their generated
+        // bounds must fit vertically, rather than truncating a buried core at world limits.
+        if (y < context.chunkGenerator().getSeaLevel()) return Optional.empty();
+
+        int roll = context.random().nextInt(100);
+        UmbrafallTier tier = roll < 15 ? UmbrafallTier.FAINT : roll < 75 ? UmbrafallTier.WEAK
+                : roll < 95 ? UmbrafallTier.MODERATE : roll < 99 ? UmbrafallTier.STRONG : UmbrafallTier.RESONANT;
+        long seed = context.random().nextLong();
+        UmbrafallGeometry geometry = UmbrafallGeometry.CURRENT;
+        UmbrafallShapeBuilder shape = new UmbrafallShapeBuilder(tier, seed, geometry);
+        if (y + shape.bounds().minY() <= context.heightAccessor().getMinBuildHeight()
+                || y + shape.bounds().maxY() >= context.heightAccessor().getMaxBuildHeight()) {
+            return Optional.empty();
+        }
+
+        // Check every chunk-width strip through the footprint before choosing a site.
+        // A conservative height spread prevents rims suspended over ravines or mountains.
+        for (int dx = -shape.radius(); dx <= shape.radius(); dx += 8) {
+            for (int dz = -shape.radius(); dz <= shape.radius(); dz += 8) {
+                int terrainY = context.chunkGenerator().getFirstOccupiedHeight(x + dx, z + dz,
+                        Heightmap.Types.OCEAN_FLOOR_WG, context.heightAccessor(), context.randomState());
+                if (terrainY < context.chunkGenerator().getSeaLevel() || Math.abs(terrainY - y) > 2) {
+                    return Optional.empty();
+                }
+            }
+        }
+
         BlockPos pos = new BlockPos(x, y, z);
 
         return Optional.of(new Structure.GenerationStub(pos, (builder) -> {
-            generatePieces(builder, context, pos);
+            builder.addPiece(new MeteoroidStructurePiece(pos, tier, seed, geometry));
         }));
-    }
-
-    private void generatePieces(StructurePiecesBuilder builder, Structure.GenerationContext context, BlockPos pos) {
-        builder.addPiece(new MeteoroidStructurePiece(pos));
     }
 
     @Override

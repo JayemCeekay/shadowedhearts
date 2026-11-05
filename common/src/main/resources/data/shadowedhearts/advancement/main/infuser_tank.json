@@ -1,0 +1,37 @@
+{
+  "parent": "shadowedhearts:main/umbra_infuser",
+  "display": {
+    "icon": {
+      "id": "shadowedhearts:umbra_infuser_tank"
+    },
+    "title": {
+      "translate": "advancements.shadowedhearts.infuser_tank.title"
+    },
+    "description": {
+      "translate": "advancements.shadowedhearts.infuser_tank.description"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": false,
+    "hidden": false
+  },
+  "criteria": {
+    "has_tank": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": [
+              "shadowedhearts:umbra_infuser_tank"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "has_tank"
+    ]
+  ]
+}

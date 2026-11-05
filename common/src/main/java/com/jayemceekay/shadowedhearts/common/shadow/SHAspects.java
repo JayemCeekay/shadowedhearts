@@ -17,5 +17,10 @@ public final class SHAspects {
     public static final String AURA_STYLE_COLOSSEUM = "shadowedhearts:aura_style_colosseum";
     /** Explicitly selects the Pokemon XD-inspired Shadow aura presentation. */
     public static final String AURA_STYLE_XD = "shadowedhearts:aura_style_xd";
+
+    /** Derived UUID roll for RANDOM inheritance, never an explicit style selection. */
+    public static final String AURA_ROLL_SIGNATURE = "shadowedhearts:aura_roll_signature";
+    public static final String AURA_ROLL_COLOSSEUM = "shadowedhearts:aura_roll_colosseum";
+    public static final String AURA_ROLL_XD = "shadowedhearts:aura_roll_xd";
     // If you want a family: "sh_shadow_minor", etc.
 }

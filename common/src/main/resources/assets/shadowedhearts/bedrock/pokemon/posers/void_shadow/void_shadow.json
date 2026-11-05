@@ -1,0 +1,41 @@
+{
+  "portraitScale": 1.4,
+  "portraitTranslation": [
+    0,
+    -0.8,
+    0
+  ],
+  "profileScale": 0.7,
+  "profileTranslation": [
+    0,
+    0.4,
+    0
+  ],
+  "rootBone": "void_shadow",
+  "poses": {
+    "standing": {
+      "poseTypes": [
+        "STAND",
+        "NONE",
+        "FLOAT",
+        "HOVER",
+        "PORTRAIT",
+        "PROFILE",
+        "SLEEP"
+      ],
+      "animations": [
+        "q.bedrock('void_shadow', 'ground_idle')"
+      ]
+    },
+    "walking": {
+      "poseTypes": [
+        "WALK",
+        "SWIM",
+        "FLY"
+      ],
+      "animations": [
+        "q.bedrock('void_shadow', 'ground_walk')"
+      ]
+    }
+  }
+}

@@ -19,10 +19,12 @@ public final class ShadowedHeartsNeoForgeNetworkRegistrar {
                 .registrar(Shadowedhearts.MOD_ID)
                 .versioned(PROTOCOL_VERSION);
 
-        var netRegistrar = event
+        // C2S handlers read and mutate world, inventory, battle and Pokemon storage state.
+        // Cobblemon's wrapper invokes them directly; let NeoForge enqueue them on the server thread.
+        var serverRegistrar = event
                 .registrar(Shadowedhearts.MOD_ID)
                 .versioned(PROTOCOL_VERSION)
-                .executesOn(HandlerThread.NETWORK);
+                .executesOn(HandlerThread.MAIN);
 
         // Register S2C payloads to client
         for (var info : ShadowedHeartsNetwork.getS2cPayloads()) {
@@ -33,7 +35,7 @@ public final class ShadowedHeartsNeoForgeNetworkRegistrar {
         // Register C2S payloads to server
         for (var info : ShadowedHeartsNetwork.getC2sPayloads()) {
             var neoInfo = new NeoForgePacketInfo<>(info);
-            neoInfo.registerToServer(netRegistrar);
+            neoInfo.registerToServer(serverRegistrar);
         }
     }
 }

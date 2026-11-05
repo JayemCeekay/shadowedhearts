@@ -36,11 +36,10 @@ object PurifyPokemonHandler : ServerNetworkPacketHandler<PurifyPokemonPacket> {
 
 
         // Verify it's actually ready for purification (heart gauge 0)
-        if (ShadowAspectUtil.getHeartGauge(pokemon) == 0F) {
-            ShadowService.fullyPurify(pokemon, null)
-            if (pokemon.getOwnerPlayer() is ServerPlayer) {
-                ModCriteriaTriggers.triggerShadowPurified(player)
-            }
+        if (ShadowAspectUtil.isReadyForPurification(pokemon)) {
+            ShadowService.fullyPurify(pokemon, null, player)
+            // Cobblemon's getOwnerPlayer only recognizes party/PC stores, not our custom chamber.
+            ModCriteriaTriggers.triggerShadowPurified(player)
             Marks.getByIdentifier(ResourceLocation.fromNamespaceAndPath("cobblemon", "ribbon_event_national"))
                 ?.let { pokemon.exchangeMark(it, true) };
             PokemonPurifiedPacket(

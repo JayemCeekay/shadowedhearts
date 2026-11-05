@@ -1,0 +1,10 @@
+{
+  "variants": {
+    "half=lower": {
+      "model": "shadowedhearts:block/umbra_infuser_tank_lower"
+    },
+    "half=upper": {
+      "model": "shadowedhearts:block/umbra_infuser_tank_upper"
+    }
+  }
+}

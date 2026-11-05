@@ -1,6 +1,11 @@
 package com.jayemceekay.shadowedhearts.client.fabric;
 
 import com.cobblemon.mod.common.entity.pokeball.EmptyPokeBallEntity;
+import net.minecraft.world.phys.Vec3;
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.jayemceekay.shadowedhearts.util.HeldItemAnchorCache;
+import com.jayemceekay.shadowedhearts.client.render.HeldBallSnagGlowRenderer;
+import com.jayemceekay.shadowedhearts.client.ball.DarkBallFboDebugPreview;
 import com.jayemceekay.shadowedhearts.Shadowedhearts;
 import com.jayemceekay.shadowedhearts.client.ModKeybinds;
 import com.jayemceekay.shadowedhearts.client.ModShaders;
@@ -10,14 +15,13 @@ import com.jayemceekay.shadowedhearts.client.aura.AuraReaderHud;
 import com.jayemceekay.shadowedhearts.client.aura.AuraReaderPulseRenderer;
 import com.jayemceekay.shadowedhearts.client.aura.ShadowPokemonAuraSystem;
 import com.jayemceekay.shadowedhearts.client.ball.BallEmitters;
-import com.jayemceekay.shadowedhearts.client.ball.DarkBallFboDebugPreview;
 import com.jayemceekay.shadowedhearts.client.particle.LuminousMoteEmitters;
 import com.jayemceekay.shadowedhearts.client.particle.LuminousMoteParticle;
 import com.jayemceekay.shadowedhearts.client.particle.PenumbraTrailSystem;
 import com.jayemceekay.shadowedhearts.client.particle.PenumbraTrailParticle;
 import com.jayemceekay.shadowedhearts.client.particle.RelicStoneMoteParticle;
 import com.jayemceekay.shadowedhearts.client.render.DepthCapture;
-import com.jayemceekay.shadowedhearts.client.render.HeldBallSnagGlowRenderer;
+import com.jayemceekay.shadowedhearts.client.render.VanillaWorldShaderFrame;
 import com.jayemceekay.shadowedhearts.client.sound.RelicStoneSoundManager;
 import com.jayemceekay.shadowedhearts.config.ClientConfig;
 import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs;
@@ -26,11 +30,10 @@ import com.jayemceekay.shadowedhearts.fabric.net.ShadowedHeartsFabricNetworkMana
 import com.jayemceekay.shadowedhearts.registry.ModBlocks;
 import com.jayemceekay.shadowedhearts.registry.ModItems;
 import com.jayemceekay.shadowedhearts.registry.util.ModParticleTypes;
-import com.jayemceekay.shadowedhearts.util.HeldItemAnchorCache;
-import com.mojang.blaze3d.vertex.PoseStack;
 import dev.felnull.specialmodelloader.api.event.SpecialModelLoaderEvents;
 import fuzs.forgeconfigapiport.fabric.api.neoforge.v4.NeoForgeConfigRegistry;
 import fuzs.forgeconfigapiport.fabric.api.neoforge.v4.NeoForgeModConfigEvents;
+import fuzs.forgeconfigapiport.fabric.api.neoforge.v4.client.ConfigScreenFactoryRegistry;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.blockrenderlayer.v1.BlockRenderLayerMap;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientEntityEvents;
@@ -41,24 +44,30 @@ import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.RenderType;
-import net.minecraft.world.phys.Vec3;
 import net.neoforged.fml.config.ModConfig.Type;
+import net.neoforged.neoforge.client.gui.ConfigurationScreen;
 
 public final class ShadowedheartsFabricClient implements ClientModInitializer {
 
     @Override
     public void onInitializeClient() {
-        NeoForgeConfigRegistry.INSTANCE.register(Shadowedhearts.MOD_ID, Type.CLIENT, ClientConfig.SPEC, "shadowedhearts/client.toml");
         NeoForgeModConfigEvents.loading(Shadowedhearts.MOD_ID).register(config -> {
             if (config.getSpec() == ClientConfig.SPEC) {
+                com.jayemceekay.shadowedhearts.config.preset.ConfigSnapshotService.loaded(config.getSpec(), config::getFullPath);
                 ShadowedHeartsConfigs.getInstance().getClientConfig().load();
             }
         });
         NeoForgeModConfigEvents.reloading(Shadowedhearts.MOD_ID).register(config -> {
             if (config.getSpec() == ClientConfig.SPEC) {
+                com.jayemceekay.shadowedhearts.config.preset.ConfigSnapshotService.loaded(config.getSpec(), config::getFullPath);
                 ShadowedHeartsConfigs.getInstance().getClientConfig().load();
             }
         });
+        // FCAP loads client configs synchronously during registration, so listeners must exist first.
+        NeoForgeConfigRegistry.INSTANCE.register(Shadowedhearts.MOD_ID, Type.CLIENT, ClientConfig.SPEC, "shadowedhearts/client.toml");
+        ConfigScreenFactoryRegistry.INSTANCE.register(Shadowedhearts.MOD_ID, (modId, parent) ->
+                new com.jayemceekay.shadowedhearts.client.gui.ShadowedHeartsConfigScreen(parent,
+                        previous -> new ConfigurationScreen(modId, previous)));
         // Register client-side handlers for our Cobblemon-style packets
         ShadowedHeartsFabricNetworkManager.registerClientHandlers();
         // Client-side common init
@@ -70,7 +79,7 @@ public final class ShadowedheartsFabricClient implements ClientModInitializer {
         // Register keybinds
         ModKeybinds.init();
         ModKeybindsPlatformImpl.register(ModKeybinds.AURA_SCANNER);
-        ModKeybindsPlatformImpl.register(ModKeybinds.AURA_MODE_SELECTOR);
+        ModKeybindsPlatformImpl.register(ModKeybinds.AURA_READER_HELP);
         ModKeybindsPlatformImpl.register(ModKeybinds.AURA_PULSE);
         ModKeybindsPlatformImpl.register(ModKeybinds.AURA_LOCK);
         ModKeybindsPlatformImpl.register(ModKeybinds.AURA_NEXT_SIGNAL);
@@ -79,24 +88,32 @@ public final class ShadowedheartsFabricClient implements ClientModInitializer {
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             BallEmitters.onClientTick(client);
+            com.jayemceekay.shadowedhearts.client.voidshadow.VoidShadowTransitions.tick(client);
             AuraReaderInputHandler.tick(client);
             AuraReaderPulseRenderer.tick();
             RelicStoneSoundManager.tick();
         });
         HudRenderCallback.EVENT.register((graphics, tickCounter) -> {
-            AuraReaderHud.render(graphics);
+            AuraReaderHud.render(graphics, tickCounter);
             ShadowPokemonAuraSystem.renderDebugHud(graphics);
             DarkBallFboDebugPreview.renderHud(graphics);
         });
+        HudRenderCallback.EVENT.register((graphics, delta) ->
+                com.jayemceekay.shadowedhearts.client.moonwound.MoonwoundClient.renderHud(graphics));
         // Screens
 
         // Special Model Loader registration
         SpecialModelLoaderEvents.LOAD_SCOPE.register(() -> (resourceManager, location) -> Shadowedhearts.MOD_ID.equals(location.getNamespace()));
 
-        // Set RenderType for Relic Stone
+        // Blocks with transparent texture cutouts.
         BlockRenderLayerMap.INSTANCE.putBlock(ModBlocks.RELIC_STONE.get(), RenderType.cutout());
+        BlockRenderLayerMap.INSTANCE.putBlock(ModBlocks.SHADOW_RESIDUE.get(), RenderType.cutout());
+        BlockRenderLayerMap.INSTANCE.putBlock(ModBlocks.SHADOW_GEM_CLUSTER.get(), RenderType.cutout());
 
         com.jayemceekay.shadowedhearts.client.ShadowedHeartsClient.init();
+        com.jayemceekay.shadowedhearts.client.UmbraInfuserClient.registerScreen();
+        com.jayemceekay.shadowedhearts.client.UmbraInfuserClient.registerRenderer();
+        com.jayemceekay.shadowedhearts.client.UmbrafallCoreClient.registerRenderer();
 
         net.fabricmc.fabric.api.client.rendering.v1.LivingEntityFeatureRendererRegistrationCallback.EVENT.register(
             (entityType, renderer, helper, context) -> {
@@ -136,14 +153,22 @@ public final class ShadowedheartsFabricClient implements ClientModInitializer {
                 ModParticleTypes.PENUMBRA_TRAIL.get(),
                 PenumbraTrailParticle.Provider::new
         );
+        ParticleFactoryRegistry.getInstance().register(
+                ModParticleTypes.VOID_SHADOW_CLOUD.get(),
+                com.jayemceekay.shadowedhearts.client.particle.VoidShadowCloudParticle.Provider::new
+        );
 
         // Subscribe luminous mote emitters to Cobblemon events
         LuminousMoteEmitters.init();
 
+        WorldRenderEvents.START.register(context -> VanillaWorldShaderFrame.beginFrame());
+
         WorldRenderEvents.AFTER_TRANSLUCENT.register(context -> {
             ShadowAuraEmitters.onRender(context.camera(), context.camera().getPartialTickTime());
             BallEmitters.onRender(context.camera(), context.camera().getPartialTickTime());
-
+            // Capture scene depth before Fabulous' transparency combine overwrites it.
+            VanillaWorldShaderFrame.capture(context.camera(), context.camera().getPartialTickTime(),
+                    context.projectionMatrix(), context.positionMatrix());
         });
 
         WorldRenderEvents.END.register(worldRenderContext -> {
@@ -162,9 +187,7 @@ public final class ShadowedheartsFabricClient implements ClientModInitializer {
                     worldRenderContext.camera(),
                     worldRenderContext.camera().getPartialTickTime()
             );
-            if ((AuraReaderPulseRenderer.IRIS_HANDLER == null || !AuraReaderPulseRenderer.IRIS_HANDLER.isShaderPackInUse())) {
-                AuraReaderPulseRenderer.onRenderWorld(worldRenderContext.camera(), worldRenderContext.projectionMatrix(), worldRenderContext.positionMatrix(), worldRenderContext.camera().getPartialTickTime());
-            }
+            VanillaWorldShaderFrame.render();
         });
 
         WorldRenderEvents.AFTER_ENTITIES.register(context -> {

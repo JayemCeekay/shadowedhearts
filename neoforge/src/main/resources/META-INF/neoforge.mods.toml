@@ -8,29 +8,30 @@ modId = "shadowedhearts"
 version = "${version}"
 displayName = "Cobblemon: Shadowed Hearts"
 authors = "JayemCeekay"
-description = '''
-
-'''
+description = '''Adds Shadow Pokemon, snagging, purification, Shadow moves and equipment, and Moonwound events to Cobblemon.'''
 logoFile = "assets/shadowedhearts/icon.png"
+
+[features.shadowedhearts]
+javaVersion = "[21,22)"
 
 [[dependencies.shadowedhearts]]
 modId = "neoforge"
 type = "required"
-versionRange = "[21,)"
+versionRange = "[21.1.259,21.2)"
 ordering = "NONE"
 side = "BOTH"
 
 [[dependencies.shadowedhearts]]
 modId = "minecraft"
 type = "required"
-versionRange = "[1.21.1,)"
+versionRange = "[1.21.1]"
 ordering = "NONE"
 side = "BOTH"
 
 [[dependencies.shadowedhearts]]
 modId = "architectury"
 type = "required"
-versionRange = "[13.0.8,)"
+versionRange = "[13.0.11,)"
 ordering = "AFTER"
 side = "BOTH"
 
@@ -42,16 +43,116 @@ ordering = "AFTER"
 side = "BOTH"
 
 [[dependencies.shadowedhearts]]
+modId = "kotlinforforge"
+type = "required"
+versionRange = "[5.12.0,)"
+ordering = "AFTER"
+side = "BOTH"
+reason = "Provides the Kotlin runtime used by Shadowed Hearts and Cobblemon."
+
+# Gameplay integrations are optional. Their own dependencies remain their responsibility.
+[[dependencies.shadowedhearts]]
 modId = "accessories"
 type = "optional"
-versionRange = "[1.1.0-beta.52+1.21.1,)"
+versionRange = "[1.1.0-beta.54+1.21.1,)"
+ordering = "AFTER"
 side = "BOTH"
+reason = "Enables accessory slots for Snag Machines."
 
 [[dependencies.shadowedhearts]]
 modId = "rctapi"
 type = "optional"
-versionRange = "[0.14.4-beta,)"
+versionRange = "[0.16.2-beta,)"
+ordering = "AFTER"
 side = "BOTH"
+
+[[dependencies.shadowedhearts]]
+modId = "rctmod"
+type = "optional"
+versionRange = "*"
+ordering = "AFTER"
+side = "BOTH"
+reason = "Enables Radical Cobblemon Trainers integration."
+
+[[dependencies.shadowedhearts]]
+modId = "mega_showdown"
+type = "optional"
+versionRange = "*"
+ordering = "AFTER"
+side = "BOTH"
+reason = "Enables Mega Showdown battle mechanics and Shadowium Z."
+
+# The raid adapter checks its supported version at runtime and otherwise uses fallback bosses.
+# Keep the launcher permissive so an unsupported Raid Dens version does not prevent startup.
+[[dependencies.shadowedhearts]]
+modId = "cobblemonraiddens"
+type = "optional"
+versionRange = "*"
+ordering = "AFTER"
+side = "BOTH"
+reason = "Enables supported Raid Dens bosses during Moonwound events."
+
+[[dependencies.shadowedhearts]]
+modId = "lost_lore"
+type = "optional"
+versionRange = "*"
+ordering = "AFTER"
+side = "BOTH"
+reason = "Enables Lost Lore infusion and Shadow move integration."
+
+[[dependencies.shadowedhearts]]
+modId = "ftbchunks"
+type = "optional"
+versionRange = "*"
+ordering = "AFTER"
+side = "BOTH"
+reason = "Respects FTB Chunks claims for protected interactions and world changes."
+
+[[dependencies.shadowedhearts]]
+modId = "simpletms"
+type = "optional"
+versionRange = "*"
+ordering = "AFTER"
+side = "BOTH"
+reason = "Applies Shadow move restrictions to SimpleTMs."
+
+[[dependencies.shadowedhearts]]
+modId = "tim_core"
+type = "optional"
+versionRange = "*"
+ordering = "AFTER"
+side = "BOTH"
+reason = "Applies Shadow move restrictions to TIM Core move teaching."
+
+[[dependencies.shadowedhearts]]
+modId = "iris"
+type = "optional"
+versionRange = "*"
+ordering = "NONE"
+side = "CLIENT"
+reason = "Enables Iris shader integration for aura and capture effects."
+
+# Client recipe viewers are optional; these versions provide the APIs used by the adapters.
+[[dependencies.shadowedhearts]]
+modId = "jei"
+type = "optional"
+versionRange = "[19.21.0.247,)"
+ordering = "NONE"
+side = "CLIENT"
+
+[[dependencies.shadowedhearts]]
+modId = "roughlyenoughitems"
+type = "optional"
+versionRange = "[16.0.799,)"
+ordering = "NONE"
+side = "CLIENT"
+
+[[dependencies.shadowedhearts]]
+modId = "emi"
+type = "optional"
+versionRange = "[1.1.24+1.21.1,)"
+ordering = "NONE"
+side = "CLIENT"
 
 [[mixins]]
 config = "shadowedhearts.mixins.json"

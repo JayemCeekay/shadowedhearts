@@ -1,0 +1,7 @@
+{
+  "type": "shadowedhearts:umbra_infusing",
+  "ingredient": { "item": "cobblemon:muscle_band" },
+  "result": { "id": "shadowedhearts:dissonance_band", "count": 1 },
+  "charge": 32,
+  "processing_ticks": 600
+}

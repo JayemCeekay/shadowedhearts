@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    {
+      "item": "shadowedhearts:shadow_dust"
+    },
+    {
+      "item": "minecraft:coal"
+    }
+  ],
+  "result": {
+    "id": "shadowedhearts:colosseum_ember",
+    "count": 1
+  }
+}

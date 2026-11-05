@@ -14,6 +14,7 @@ import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
 import org.lwjgl.opengl.GL14;
+import org.lwjgl.opengl.GL15;
 import org.lwjgl.opengl.GL20;
 import org.lwjgl.opengl.GL30;
 import org.lwjgl.system.MemoryStack;
@@ -85,6 +86,32 @@ public final class DensityFboPipeline {
     public DensityFboPipeline(int blurIterations, float blurRadius) {
         this.blurIterations = blurIterations;
         this.blurRadius = blurRadius;
+    }
+
+    /**
+     * Preserves the caller across a sequence of auxiliary and presentation
+     * passes, including early returns and failed shader setup. This scope is
+     * independent of the density pass's saved output framebuffer.
+     */
+    public static RenderStateScope preserveRenderState() {
+        return new RenderStateScope(RenderTransactionState.capture());
+    }
+
+    public static final class RenderStateScope implements AutoCloseable {
+        private RenderTransactionState savedState;
+
+        private RenderStateScope(RenderTransactionState savedState) {
+            this.savedState = savedState;
+        }
+
+        @Override
+        public void close() {
+            RenderTransactionState state = savedState;
+            savedState = null;
+            if (state != null) {
+                state.restore();
+            }
+        }
     }
 
     /**
@@ -2052,10 +2079,19 @@ public final class DensityFboPipeline {
             boolean colorMaskBlue,
             boolean colorMaskAlpha,
             int activeTexture,
+            int activeTextureBinding,
             int[] shaderTextures,
             int[] textureBindings,
             int currentProgram,
+            int vertexArray,
+            int arrayBuffer,
             ShaderInstance shader,
+            Matrix4f modelView,
+            Matrix4f projection,
+            Matrix4f textureMatrix,
+            VertexSorting vertexSorting,
+            float[] clearColor,
+            double clearDepth,
             float shaderRed,
             float shaderGreen,
             float shaderBlue,
@@ -2066,6 +2102,7 @@ public final class DensityFboPipeline {
             ByteBuffer colorMask = BufferUtils.createByteBuffer(4);
             GL11.glGetBooleanv(GL11.GL_COLOR_WRITEMASK, colorMask);
             int activeTexture = GL11.glGetInteger(GL13.GL_ACTIVE_TEXTURE);
+            int activeTextureBinding = GL11.glGetInteger(GL11.GL_TEXTURE_BINDING_2D);
             int[] shaderTextures = new int[PRESERVED_TEXTURE_UNITS];
             int[] textureBindings = new int[PRESERVED_TEXTURE_UNITS];
             for (int unit = 0; unit < textureBindings.length; unit++) {
@@ -2076,6 +2113,8 @@ public final class DensityFboPipeline {
             }
             GL13.glActiveTexture(activeTexture);
             float[] shaderColor = RenderSystem.getShaderColor();
+            float[] clearColor = new float[4];
+            GL11.glGetFloatv(GL11.GL_COLOR_CLEAR_VALUE, clearColor);
             return new RenderTransactionState(
                     FullscreenPassState.capture(),
                     colorMask.get(0) != 0,
@@ -2083,10 +2122,19 @@ public final class DensityFboPipeline {
                     colorMask.get(2) != 0,
                     colorMask.get(3) != 0,
                     activeTexture,
+                    activeTextureBinding,
                     shaderTextures,
                     textureBindings,
                     GL11.glGetInteger(GL20.GL_CURRENT_PROGRAM),
+                    GL11.glGetInteger(GL30.GL_VERTEX_ARRAY_BINDING),
+                    GL11.glGetInteger(GL15.GL_ARRAY_BUFFER_BINDING),
                     RenderSystem.getShader(),
+                    new Matrix4f(RenderSystem.getModelViewMatrix()),
+                    new Matrix4f(RenderSystem.getProjectionMatrix()),
+                    new Matrix4f(RenderSystem.getTextureMatrix()),
+                    RenderSystem.getVertexSorting(),
+                    clearColor,
+                    GL11.glGetDouble(GL11.GL_DEPTH_CLEAR_VALUE),
                     shaderColor[0], shaderColor[1],
                     shaderColor[2], shaderColor[3]);
         }
@@ -2096,6 +2144,8 @@ public final class DensityFboPipeline {
             RenderSystem.colorMask(
                     colorMaskRed, colorMaskGreen,
                     colorMaskBlue, colorMaskAlpha);
+            GL11.glColorMask(colorMaskRed, colorMaskGreen,
+                    colorMaskBlue, colorMaskAlpha);
             for (int unit = 0; unit < textureBindings.length; unit++) {
                 // Restore both RenderSystem's logical sampler cache and the
                 // raw binding Iris left on the unit. Restoring only one lets
@@ -2103,11 +2153,28 @@ public final class DensityFboPipeline {
                 // scratch attachment.
                 RenderSystem.setShaderTexture(unit, shaderTextures[unit]);
                 RenderSystem.activeTexture(GL13.GL_TEXTURE0 + unit);
+                GL13.glActiveTexture(GL13.GL_TEXTURE0 + unit);
                 RenderSystem.bindTexture(textureBindings[unit]);
                 GL11.glBindTexture(
                         GL11.GL_TEXTURE_2D, textureBindings[unit]);
             }
             RenderSystem.activeTexture(activeTexture);
+            GL13.glActiveTexture(activeTexture);
+            // Target creation can bind its textures on an arbitrary entry
+            // unit, including one outside the five shader samplers above.
+            RenderSystem.bindTexture(activeTextureBinding);
+            GL11.glBindTexture(GL11.GL_TEXTURE_2D, activeTextureBinding);
+            RenderSystem.getModelViewMatrix().set(modelView);
+            RenderSystem.setProjectionMatrix(projection, vertexSorting);
+            RenderSystem.setTextureMatrix(textureMatrix);
+            RenderSystem.clearColor(
+                    clearColor[0], clearColor[1], clearColor[2], clearColor[3]);
+            RenderSystem.clearDepth(clearDepth);
+            // BufferUploader's last-buffer shortcut must not survive a raw
+            // VAO restore, or its next draw could reuse the caller's VAO.
+            BufferUploader.invalidate();
+            GL30.glBindVertexArray(vertexArray);
+            GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, arrayBuffer);
             RenderSystem.setShaderColor(
                     shaderRed, shaderGreen, shaderBlue, shaderAlpha);
             RenderSystem.setShader(() -> shader);
@@ -2119,14 +2186,19 @@ public final class DensityFboPipeline {
                                        int viewportX, int viewportY,
                                        int viewportWidth, int viewportHeight,
                                        boolean blendEnabled, boolean depthTestEnabled,
-                                       boolean cullEnabled, boolean scissorEnabled,
+                                       boolean cullEnabled, boolean scissorEnabled, boolean stencilEnabled,
                                        boolean depthMask,
+                                       int depthFunction,
+                                       int scissorX, int scissorY,
+                                       int scissorWidth, int scissorHeight,
                                        int blendSourceRgb, int blendDestinationRgb,
                                        int blendSourceAlpha, int blendDestinationAlpha,
                                        int blendEquationRgb, int blendEquationAlpha) {
         static FullscreenPassState capture() {
             IntBuffer viewport = BufferUtils.createIntBuffer(4);
             GL11.glGetIntegerv(GL11.GL_VIEWPORT, viewport);
+            IntBuffer scissor = BufferUtils.createIntBuffer(4);
+            GL11.glGetIntegerv(GL11.GL_SCISSOR_BOX, scissor);
             return new FullscreenPassState(
                     GL11.glGetInteger(GL30.GL_DRAW_FRAMEBUFFER_BINDING),
                     GL11.glGetInteger(GL30.GL_READ_FRAMEBUFFER_BINDING),
@@ -2135,7 +2207,10 @@ public final class DensityFboPipeline {
                     GL11.glIsEnabled(GL11.GL_DEPTH_TEST),
                     GL11.glIsEnabled(GL11.GL_CULL_FACE),
                     GL11.glIsEnabled(GL11.GL_SCISSOR_TEST),
+                    GL11.glIsEnabled(GL11.GL_STENCIL_TEST),
                     GL11.glGetBoolean(GL11.GL_DEPTH_WRITEMASK),
+                    GL11.glGetInteger(GL11.GL_DEPTH_FUNC),
+                    scissor.get(0), scissor.get(1), scissor.get(2), scissor.get(3),
                     GL11.glGetInteger(GL14.GL_BLEND_SRC_RGB),
                     GL11.glGetInteger(GL14.GL_BLEND_DST_RGB),
                     GL11.glGetInteger(GL14.GL_BLEND_SRC_ALPHA),
@@ -2151,6 +2226,9 @@ public final class DensityFboPipeline {
             RenderSystem.viewport(viewportX, viewportY, viewportWidth, viewportHeight);
 
             GlStateManager._blendFuncSeparate(
+                    blendSourceRgb, blendDestinationRgb,
+                    blendSourceAlpha, blendDestinationAlpha);
+            GL14.glBlendFuncSeparate(
                     blendSourceRgb, blendDestinationRgb,
                     blendSourceAlpha, blendDestinationAlpha);
             GL20.glBlendEquationSeparate(blendEquationRgb, blendEquationAlpha);
@@ -2174,7 +2252,25 @@ public final class DensityFboPipeline {
             } else {
                 GL11.glDisable(GL11.GL_SCISSOR_TEST);
             }
+            // Iris may have changed raw GL without updating the vanilla
+            // caches. Repair both so cached no-ops cannot skip restoration.
+            setEnabled(GL11.GL_BLEND, blendEnabled);
+            setEnabled(GL11.GL_DEPTH_TEST, depthTestEnabled);
+            setEnabled(GL11.GL_CULL_FACE, cullEnabled);
+            setEnabled(GL11.GL_STENCIL_TEST, stencilEnabled);
+            GL11.glScissor(scissorX, scissorY, scissorWidth, scissorHeight);
             RenderSystem.depthMask(depthMask);
+            GL11.glDepthMask(depthMask);
+            RenderSystem.depthFunc(depthFunction);
+            GL11.glDepthFunc(depthFunction);
+        }
+
+        private static void setEnabled(int capability, boolean enabled) {
+            if (enabled) {
+                GL11.glEnable(capability);
+            } else {
+                GL11.glDisable(capability);
+            }
         }
     }
 }

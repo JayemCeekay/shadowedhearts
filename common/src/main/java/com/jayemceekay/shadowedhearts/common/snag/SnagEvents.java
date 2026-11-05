@@ -11,17 +11,18 @@ import com.cobblemon.mod.common.battles.BattleRegistry;
 import com.cobblemon.mod.common.battles.actor.PlayerBattleActor;
 import com.jayemceekay.shadowedhearts.advancements.ModCriteriaTriggers;
 import com.jayemceekay.shadowedhearts.common.shadow.SHAspects;
-import com.jayemceekay.shadowedhearts.config.ISnagConfig;
-import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs;
 import com.jayemceekay.shadowedhearts.network.ShadowedHeartsNetwork;
 import com.jayemceekay.shadowedhearts.network.snag.SnagArmedPacket;
 import com.jayemceekay.shadowedhearts.network.snag.SnagEligibilityPacket;
 import dev.architectury.event.events.common.TickEvent;
-import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
 
+import java.util.Map;
+import java.util.WeakHashMap;
+
 public final class SnagEvents {
+    private static final Map<Player, EligibilityState> LAST_SYNCED_ELIGIBILITY = new WeakHashMap<>();
     private SnagEvents() {}
 
     /** Call once during common init on both loaders. */
@@ -29,43 +30,17 @@ public final class SnagEvents {
         // Runs after each player's tick on both client and server.
         TickEvent.PLAYER_POST.register(SnagEvents::onPlayerPostTick);
 
-        // Recharge Snag Machines on battle victory, scaled by defeated opponents' difficulty
+        // Defeating a wild Shadow remains progression even without a Snag Machine.
         CobblemonEvents.BATTLE_VICTORY.subscribe(Priority.NORMAL, (BattleVictoryEvent e) -> {
-            ISnagConfig cfg = ShadowedHeartsConfigs.getInstance().getSnagConfig();
-            if (!cfg.rechargeOnVictory()) return kotlin.Unit.INSTANCE;
-            var battle = e.getBattle();
-            if (battle == null) return kotlin.Unit.INSTANCE;
-            if (battle.isPvP() && !cfg.rechargeInPvp()) return kotlin.Unit.INSTANCE;
-
-            // Compute difficulty from non-player losers
-            int nonPlayerActorCount = 0;
-            int levelSum = 0;
-            int levelCount = 0;
             boolean wildShadowDefeated = false;
             for (BattleActor loser : e.getLosers()) {
-                if (loser == null) continue;
-                if (loser.getType() == ActorType.PLAYER) continue;
-                nonPlayerActorCount++;
-                var list = loser.getPokemonList();
-                if (list == null) continue;
-                for (var bp : list) {
-                    if (bp == null) continue;
-                    try {
-                        int lvl = bp.getEffectedPokemon().getLevel();
-                        if (lvl > 0) {
-                            levelSum += lvl;
-                            levelCount++;
-                        }
-                        if (loser.getType() == ActorType.WILD && bp.getEffectedPokemon().getAspects().contains(SHAspects.SHADOW)) {
-                            wildShadowDefeated = true;
-                        }
-                    } catch (Throwable ignored) {}
+                if (loser == null || loser.getType() != ActorType.WILD) continue;
+                for (var pokemon : loser.getPokemonList()) {
+                    if (pokemon.getEffectedPokemon().getAspects().contains(SHAspects.SHADOW)) {
+                        wildShadowDefeated = true;
+                        break;
+                    }
                 }
-            }
-
-            if (nonPlayerActorCount <= 0 && !battle.isPvP()) {
-                // Nothing meaningful to scale against (e.g., empty losers); skip non-PvP edge cases
-                return kotlin.Unit.INSTANCE;
             }
 
             if (wildShadowDefeated) {
@@ -75,40 +50,18 @@ public final class SnagEvents {
                     }
                 }
             }
-
-            double avgLevel = levelCount > 0 ? (double) levelSum / (double) levelCount : 1.0;
-            double raw = cfg.rechargeBase()
-                    + (avgLevel * cfg.rechargePerLevel())
-                    + (nonPlayerActorCount * cfg.rechargePerNpc());
-            int award = (int) Math.round(raw);
-            award = Math.max(cfg.rechargeMin(), Math.min(award, cfg.rechargeMax()));
-            if (award <= 0) return kotlin.Unit.INSTANCE;
-
-            // Award to each winning player with a Snag Machine
-            for (BattleActor winner : e.getWinners()) {
-                if (winner == null || winner.getType() != ActorType.PLAYER) continue;
-                if (!(winner instanceof PlayerBattleActor pba)) continue;
-                ServerPlayer sp = pba.getEntity();
-                if (sp == null) continue;
-                var cap = SnagCaps.get(sp);
-                if (!cap.hasSnagMachine()) continue;
-                int before = cap.energy();
-                cap.addEnergy(award);
-                int after = cap.energy();
-                int gained = Math.max(0, after - before);
-                if (gained > 0) {
-                    sp.sendSystemMessage(Component.translatable(
-                            "message.shadowedhearts.snag_machine.recharged",
-                            gained, after
-                    ));
-                }
-            }
             return kotlin.Unit.INSTANCE;
         });
 
         CobblemonEvents.POKEMON_CAPTURED.subscribe(Priority.NORMAL, (PokemonCapturedEvent e) -> {
-            if (e.getPokemon().getAspects().contains(SHAspects.SHADOW)) {
+            if (SnagCaptureProvenance.consumeSuccessfulNpcSnag(e)) {
                 ModCriteriaTriggers.triggerSnagFromNpc(e.getPlayer());
+            }
+            if (e.getPokemon().getAspects().contains(SHAspects.SHADOW)) {
+                if (!e.getPokeBallEntity().getCaptureFuture().isCompletedExceptionally()
+                        && Boolean.TRUE.equals(e.getPokeBallEntity().getCaptureFuture().getNow(false))) {
+                    ModCriteriaTriggers.triggerProgression(e.getPlayer(), "shadow_captured");
+                }
                 // Remove battleClone and uncatchable properties so the Pokemon is functional for the player
                 e.getPokemon().getCustomProperties().removeIf(p -> p.asString().equals("battleClone") || p.asString().equals("uncatchable"));
             }
@@ -125,14 +78,17 @@ public final class SnagEvents {
         // Sync snag eligibility to client
         if (player instanceof ServerPlayer sp) {
             boolean eligible = SnagBattleUtil.canShowSnagButton(sp);
-            if (eligible != cap.lastSyncedEligibility()) {
+            int rechargeTurns = SnagMachineBenefits.rechargeTurnsRemaining(sp);
+            EligibilityState next = new EligibilityState(eligible, rechargeTurns);
+            if (!next.equals(LAST_SYNCED_ELIGIBILITY.get(sp))) {
                 cap.setLastSyncedEligibility(eligible);
-                ShadowedHeartsNetwork.sendToPlayer(sp, new SnagEligibilityPacket(eligible));
+                LAST_SYNCED_ELIGIBILITY.put(sp, next);
+                ShadowedHeartsNetwork.sendToPlayer(sp, new SnagEligibilityPacket(eligible, rechargeTurns));
             }
         }
 
         // Disarm when leaving battle
-        if (cap.isArmed() && !SnagBattleUtil.isInTrainerBattle(player)) {
+        if (cap.isArmed() && (!SnagBattleUtil.isInTrainerBattle(player) || !SnagMachineBenefits.canAttempt(player))) {
             cap.setArmed(false);
             if (player instanceof ServerPlayer sp) {
                 ShadowedHeartsNetwork.sendToPlayer(sp, new SnagArmedPacket(false));
@@ -157,4 +113,6 @@ public final class SnagEvents {
             }
         }
     }
+
+    private record EligibilityState(boolean eligible, int rechargeTurns) {}
 }

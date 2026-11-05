@@ -1,0 +1,21 @@
+{
+  "replace": false,
+  "values": [
+    "cobblemon:potion",
+    "cobblemon:super_potion",
+    "cobblemon:antidote",
+    "cobblemon:awakening",
+    "cobblemon:burn_heal",
+    "cobblemon:ice_heal",
+    "cobblemon:paralyze_heal",
+    "cobblemon:full_heal",
+    "cobblemon:revive",
+    "cobblemon:ether",
+    "cobblemon:moomoo_milk",
+    "cobblemon:berry_juice",
+    "cobblemon:remedy",
+    "cobblemon:fine_remedy",
+    "cobblemon:heal_powder",
+    "#cobblemon:regional_delicacies"
+  ]
+}

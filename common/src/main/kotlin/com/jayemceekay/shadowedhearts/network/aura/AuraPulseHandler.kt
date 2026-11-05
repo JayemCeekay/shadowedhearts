@@ -4,6 +4,7 @@ import com.cobblemon.mod.common.api.net.ServerNetworkPacketHandler
 import com.jayemceekay.shadowedhearts.Shadowedhearts
 import com.jayemceekay.shadowedhearts.content.items.AuraReaderItem
 import com.jayemceekay.shadowedhearts.common.aura.AuraReaderService
+import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs
 import com.jayemceekay.shadowedhearts.integration.accessories.SnagAccessoryBridgeHolder
 import com.jayemceekay.shadowedhearts.network.ShadowedHeartsNetwork
 import net.minecraft.server.MinecraftServer
@@ -19,7 +20,10 @@ object AuraPulseHandler : ServerNetworkPacketHandler<AuraPulsePacket> {
 
         if (!auraReader.isEmpty && auraReader.item is AuraReaderItem) {
             val result = AuraReaderService.pulse(player, auraReader)
-            ShadowedHeartsNetwork.sendToPlayer(player, AuraReaderPulseResultS2CPacket.fromReadings(result.readings, true, result.accepted))
+            ShadowedHeartsNetwork.sendToPlayer(player, AuraReaderPulseResultS2CPacket.fromReadings(
+                result.readings, true, result.accepted,
+                ShadowedHeartsConfigs.getInstance().shadowConfig.auraScannerShadowRange().coerceAtLeast(1)
+            ))
         }
     }
 
@@ -30,9 +34,6 @@ object AuraPulseHandler : ServerNetworkPacketHandler<AuraPulsePacket> {
 
         val isActive = auraReader.get(ModItemComponents.AURA_SCANNER_ACTIVE.get()) ?: false
         if (!isActive) return false
-
-        // Pulse costs some charge, say 200 ticks worth (10 seconds)
-        AuraReaderCharge.consume(auraReader, 200, AuraReaderItem.MAX_CHARGE)
 
         val tier = ShadowSignalDataItem.getTierFromStack(stack)
         val seed = ShadowSignalDataItem.getEffectiveSeed(stack)
@@ -90,15 +91,9 @@ object AuraPulseHandler : ServerNetworkPacketHandler<AuraPulsePacket> {
         val executor = CompletableFuture.delayedExecutor(3, TimeUnit.SECONDS)
         CompletableFuture.runAsync({
             server.execute {
-                val tierMessage = when (tier) {
-                    ShadowSignalTier.FAINT -> "faint"
-                    ShadowSignalTier.WEAK -> "weak"
-                    ShadowSignalTier.MODERATE -> "moderate"
-                    ShadowSignalTier.STRONG -> "strong"
-                    ShadowSignalTier.RESONANT -> "resonant"
-                }
+                val tierMessage = Component.translatable("umbrafall.tier." + tier.name.lowercase(java.util.Locale.ROOT))
                 player.sendSystemMessage(
-                    Component.literal("The Aura Reader locks onto a $tierMessage shadow signal. A Shadow Pokemon is near!")
+                    Component.translatable("message.shadowedhearts.aura_reader.shadow_signal", tierMessage)
                         .withStyle(ChatFormatting.DARK_PURPLE)
                 )
                 val hotspot = session.advanceToNextHotspot(2.5f)

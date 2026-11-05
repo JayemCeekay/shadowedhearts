@@ -3,8 +3,10 @@ package com.jayemceekay.shadowedhearts.content.items;
 import com.jayemceekay.shadowedhearts.common.snag.PlayerSnagData;
 import com.jayemceekay.shadowedhearts.common.snag.SnagBattleUtil;
 import com.jayemceekay.shadowedhearts.common.snag.SnagCaps;
-import com.jayemceekay.shadowedhearts.common.snag.SnagEnergy;
+import com.jayemceekay.shadowedhearts.common.snag.SnagMachineClientState;
+import com.jayemceekay.shadowedhearts.common.snag.SnagMachineSettings;
 import com.jayemceekay.shadowedhearts.integration.accessories.SnagAccessoryBridgeHolder;
+import com.jayemceekay.shadowedhearts.registry.ModItems;
 import com.jayemceekay.shadowedhearts.registry.util.ModItemComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.InteractionHand;
@@ -19,17 +21,14 @@ import net.minecraft.world.level.Level;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
-import java.util.function.IntSupplier;
+import java.math.BigDecimal;
 
 /**
  * Unique wearable/held item that toggles an "armed" state for snagging.
  */
 public class SnagMachineItem extends Item implements Equipable {
-    private final IntSupplier capacity;
-
-    public SnagMachineItem(Properties p, IntSupplier capacity) {
+    public SnagMachineItem(Properties p) {
         super(p.stacksTo(1));
-        this.capacity = capacity;
     }
 
     @Override
@@ -45,8 +44,6 @@ public class SnagMachineItem extends Item implements Equipable {
         return "hand";
     }
 
-    public int capacity() { return capacity.getAsInt(); }
-
     @Override
     public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
         ItemStack held = player.getItemInHand(hand);
@@ -56,8 +53,6 @@ public class SnagMachineItem extends Item implements Equipable {
         // But Equipable usually handles it if we return success/consume.
         
         if (level.isClientSide) return InteractionResultHolder.success(held);
-        // Initialize energy store
-        SnagEnergy.ensureInitialized(held, capacity.getAsInt());
         
         // Check if it's already equipped in an accessory slot or offhand.
         // If not, let the Equipable system (or Accessories mod) handle it.
@@ -78,7 +73,7 @@ public class SnagMachineItem extends Item implements Equipable {
         PlayerSnagData cap = SnagCaps.get(player);
         if (!cap.hasSnagMachine()) return InteractionResultHolder.fail(held);
         if (cap.cooldown() > 0) return InteractionResultHolder.fail(held);
-        // Gate: only usable in trainer battles; arming is handled via C2S packet and energy is consumed server-side there.
+        // Gate: only usable in trainer battles; arming is handled by the server C2S handler.
         if (!SnagBattleUtil.isInTrainerBattle(player)) {
             return InteractionResultHolder.fail(held);
         }
@@ -92,9 +87,7 @@ public class SnagMachineItem extends Item implements Equipable {
 
     @Override
     public void inventoryTick(@NotNull ItemStack stack, Level level, @NotNull net.minecraft.world.entity.Entity entity, int slot, boolean selected) {
-        // ensure energy component exists
         if (!level.isClientSide) {
-            SnagEnergy.ensureInitialized(stack, capacity.getAsInt());
             if (!stack.has(ModItemComponents.SNAG_FAIL_ATTEMPTS.get())) {
                 stack.set(ModItemComponents.SNAG_FAIL_ATTEMPTS.get(), 0);
             }
@@ -104,11 +97,20 @@ public class SnagMachineItem extends Item implements Equipable {
 
     @Override
     public void appendHoverText(ItemStack stack, Item.TooltipContext context, List<Component> tooltip, TooltipFlag flag) {
-        int cur = SnagEnergy.get(stack);
-        tooltip.add(Component.translatable("tooltip.shadowedhearts.snag_machine.energy", cur, capacity.getAsInt()));
         tooltip.add(Component.translatable("tooltip.shadowedhearts.snag_machine.equippable.hand").withStyle(net.minecraft.ChatFormatting.GRAY));
+        SnagMachineSettings settings = SnagMachineClientState.INSTANCE.currentSettings(SnagMachineSettings::serverCurrent);
+        if (settings == null) {
+            tooltip.add(Component.translatable("tooltip.shadowedhearts.snag_machine.pending").withStyle(net.minecraft.ChatFormatting.GRAY));
+        } else {
+            var tier = stack.is(ModItems.SNAG_MACHINE_ADVANCED.get()) ? settings.advanced() : settings.prototype();
+            tooltip.add(Component.translatable("tooltip.shadowedhearts.snag_machine.configured.recharge", tier.attemptTurnSpacing()).withStyle(net.minecraft.ChatFormatting.GRAY));
+            tooltip.add(Component.translatable("tooltip.shadowedhearts.snag_machine.configured.catch_rate", number(tier.catchMultiplier())).withStyle(net.minecraft.ChatFormatting.GRAY));
+            tooltip.add(Component.translatable("tooltip.shadowedhearts.snag_machine.configured.extraction", number(tier.gaugeReductionPercent())).withStyle(net.minecraft.ChatFormatting.GRAY));
+        }
         super.appendHoverText(stack, context, tooltip, flag);
     }
+
+    private static String number(double value) { return BigDecimal.valueOf(value).stripTrailingZeros().toPlainString(); }
 
 
 }

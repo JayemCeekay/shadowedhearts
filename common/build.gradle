@@ -10,7 +10,12 @@ architectury {
     common rootProject.enabled_platforms.split(',')
 }
 
+// Native viewer API fixtures need Minecraft-mapped dependencies on the test source set too.
+loom.createRemapConfigurations(sourceSets.test)
+
 configurations {
+    showdownMegaFabric { canBeConsumed = false; canBeResolved = true }
+    showdownMegaNeoForge { canBeConsumed = false; canBeResolved = true }
     all {
         resolutionStrategy.cacheChangingModulesFor(0, "seconds")
     }
@@ -46,6 +51,8 @@ repositories {
 }
 
 dependencies {
+    showdownMegaFabric("maven.modrinth:SszvX85I:${rootProject.mega_showdown_fabric_version}") { transitive = false }
+    showdownMegaNeoForge("maven.modrinth:SszvX85I:${rootProject.mega_showdown_neoforge_version}") { transitive = false }
     minecraft "net.minecraft:minecraft:$rootProject.minecraft_version"
     mappings loom.officialMojangMappings()
     // We depend on Fabric Loader here to use the Fabric @Environment annotations,
@@ -58,17 +65,41 @@ dependencies {
     modImplementation("com.cobblemon:mod:${project.property('cobblemon_version')}")
     modCompileOnly( "com.cobblemon:fabric:${cobblemon_version}")
 
+    // Discovered by the installed viewer only; no viewer is a runtime requirement.
+    compileOnly "mezz.jei:jei-${rootProject.minecraft_version}-common-api:${rootProject.jei_version}"
+    modCompileOnly "me.shedaniel:RoughlyEnoughItems-api:${rootProject.rei_version}"
+    modCompileOnly "me.shedaniel:RoughlyEnoughItems-default-plugin:${rootProject.rei_version}"
+    modCompileOnly "dev.emi:emi-xplat-intermediary:${rootProject.emi_version}:api"
+    // Optional native screen bridge for non-container Chamber/PC screens; never bundled.
+    modCompileOnly("dev.emi:emi-fabric:${rootProject.emi_version}") { transitive = false }
+
+    // Optional typed Moonwound raid adapter; never bundled or required at runtime.
+    modCompileOnly("maven.modrinth:GebWh45l:${rootProject.raid_dens_fabric_version}") { transitive = false }
+
     //implementation("org.graalvm.sdk:graal-sdk:22.3.0")
 
     // Test framework for common module
-    testImplementation "org.junit.jupiter:junit-jupiter:5.10.2"
+    testImplementation platform("org.junit:junit-bom:${rootProject.junit_version}")
+    testImplementation "org.junit.jupiter:junit-jupiter"
+    testRuntimeOnly "org.junit.platform:junit-platform-launcher"
+    // Inspect Raid Dens' contributed mixin methods without launching Minecraft.
+    testRuntimeOnly("maven.modrinth:GebWh45l:${rootProject.raid_dens_fabric_version}") { transitive = false }
+    testImplementation "mezz.jei:jei-${rootProject.minecraft_version}-common-api:${rootProject.jei_version}"
+    modTestImplementation("dev.emi:emi-fabric:${rootProject.emi_version}") { transitive = false }
+    modTestImplementation("me.shedaniel:RoughlyEnoughItems-api:${rootProject.rei_version}") { transitive = false }
+    modTestImplementation("me.shedaniel:RoughlyEnoughItems-default-plugin:${rootProject.rei_version}") { transitive = false }
+    testRuntimeOnly "me.shedaniel.cloth:basic-math:0.6.1"
 
     compileOnly("name:molang-1.1.20")
+    // Exercise Cobblemon's Snowstorm/MoLang resource loaders in the common tests.
+    testRuntimeOnly("name:molang-1.1.20")
 
     modCompileOnlyApi("curse.maven:radical-cobblemon-trainers-api-1152792:${rootProject.rct_api_fabric_file}")
 
     // Forge Config API Port
     compileOnly "fuzs.forgeconfigapiport:forgeconfigapiport-common-neoforgeapi:$rootProject.fcap_version"
+    // Exercise real config schemas and TOML migration without a running client.
+    testImplementation "fuzs.forgeconfigapiport:forgeconfigapiport-common-neoforgeapi:$rootProject.fcap_version"
 
     //rctmod
     modCompileOnlyApi("curse.maven:rctmod-1009534:${rootProject.rct_mod_fabric_file}")
@@ -81,7 +112,8 @@ dependencies {
 
     //iris shaders
     modCompileOnly("maven.modrinth:YL57xq9U:zsoi0dso")
-
+    // Inspect Iris' actual mixin seam and core-shader state contract without launching it.
+    testRuntimeOnly("maven.modrinth:YL57xq9U:zsoi0dso")
 
     //mega showdown
     modCompileOnly("maven.modrinth:SszvX85I:${rootProject.mega_showdown_fabric_version}")
@@ -91,6 +123,24 @@ dependencies {
     modCompileOnly("dev.ftb.mods:ftb-library:${project.ftb_library_version}")
     modCompileOnly("dev.ftb.mods:ftb-teams:${project.ftb_teams_version}")
 
+}
+
+// Explicit release verification: Node is required only for this task, never to build the mod.
+tasks.register('showdownTest', JavaExec) {
+    group = 'verification'
+    description = 'Run simulator regression suites against fresh stock and pinned Mega Showdown runtimes.'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    javaLauncher = javaToolchains.launcherFor(java.toolchain)
+    mainClass = 'com.jayemceekay.shadowedhearts.showdown.ShowdownReleaseCheck'
+    workingDir rootProject.projectDir
+    doFirst {
+        setArgs([rootProject.projectDir.absolutePath,
+                 layout.buildDirectory.dir('reports/showdown').get().asFile.absolutePath,
+                 providers.gradleProperty('nodeExecutable').getOrElse('node'),
+                 configurations.showdownMegaFabric.singleFile.absolutePath,
+                 configurations.showdownMegaNeoForge.singleFile.absolutePath])
+    }
 }
 
 // Default for all resource/copy tasks
@@ -108,4 +158,33 @@ tasks.named("processResources").configure {
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     // Example:
     // filesMatching("META-INF/neoforge.mods.toml") { expand version: project.version }
+}
+
+// Explicit opt-in GPU fixture. This is not part of check/test and does not launch
+// Minecraft; its synthetic anatomy and material captures are not gameplay proof.
+tasks.register('classicAuraNativeCheck', JavaExec) {
+    group = 'verification'
+    description = 'Render classic aura shader/path fixtures in a hidden native GL context.'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    def nativeLibraries = configurations.findByName('minecraftNatives')
+    if (nativeLibraries != null) {
+        classpath nativeLibraries
+    }
+    javaLauncher = javaToolchains.launcherFor(java.toolchain)
+    mainClass = 'com.jayemceekay.shadowedhearts.client.aura.ClassicAuraNativeCheck'
+    workingDir rootProject.projectDir
+    systemProperty 'java.awt.headless', 'true'
+    if (System.getProperty('os.name').toLowerCase(Locale.ROOT).contains('mac')) {
+        jvmArgs '-XstartOnFirstThread'
+    }
+    doFirst {
+        def outputPath = providers.gradleProperty('classicAuraNativeOutput')
+                .map { rootProject.file(it).absolutePath }
+                .getOrElse(layout.buildDirectory.dir('reports/classic-aura-native').get().asFile.absolutePath)
+        setArgs([rootProject.projectDir.absolutePath, outputPath])
+        providers.gradleProperty('classicAuraNativesDirectory').orNull?.with {
+            systemProperty 'org.lwjgl.librarypath', rootProject.file(it).absolutePath
+        }
+    }
 }

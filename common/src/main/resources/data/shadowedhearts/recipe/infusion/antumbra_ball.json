@@ -1,0 +1,7 @@
+{
+  "type": "shadowedhearts:umbra_infusing",
+  "ingredient": { "item": "cobblemon:great_ball" },
+  "result": { "id": "shadowedhearts:antumbra_ball", "count": 1 },
+  "charge": 8,
+  "processing_ticks": 300
+}

@@ -12,6 +12,14 @@ public class ShadowedHeartsMixinConfigPlugin implements IMixinConfigPlugin {
 
     @Override
     public boolean shouldApplyMixin(String targetClassName, String mixinClassName) {
+        if (mixinClassName.startsWith("com.jayemceekay.shadowedhearts.mixin.emi.")) {
+            return Platform.isModLoaded("emi");
+        }
+        if (mixinClassName.startsWith("com.jayemceekay.shadowedhearts.mixin.raiddens.")) {
+            return net.fabricmc.loader.api.FabricLoader.getInstance().getModContainer("cobblemonraiddens")
+                    .map(mod -> com.jayemceekay.shadowedhearts.common.moonwound.raid.MoonwoundRaidCompatibility
+                            .supportsVersion(mod.getMetadata().getVersion().getFriendlyString())).orElse(false);
+        }
         if (mixinClassName.equals("com.jayemceekay.shadowedhearts.mixin.MixinCancelThrownPokeballInBattleHelper") ||
                 mixinClassName.equals("com.jayemceekay.shadowedhearts.mixin.MixinPokeballHitReserved")) {
             return Platform.isModLoaded("tim_core");
@@ -21,8 +29,6 @@ public class ShadowedHeartsMixinConfigPlugin implements IMixinConfigPlugin {
             case "com.jayemceekay.shadowedhearts.mixin.simpletms.MixinPokemonSelectingItemNonBattle",
                  "com.jayemceekay.shadowedhearts.mixin.simpletms.MixinMoveLearnItem" ->
                     Platform.isModLoaded("simpletms");
-            case "com.jayemceekay.shadowedhearts.mixin.rctmod.MixinRCTModMakeBattle" ->
-                   Platform.isModLoaded("rctmod");
             case "com.jayemceekay.shadowedhearts.mixin.MixinIrisRenderingPipeline",
                  "com.jayemceekay.shadowedhearts.mixin.IrisRenderingPipelineAccessor" ->
                     Platform.isModLoaded("iris");

@@ -1,0 +1,31 @@
+{
+  "parent": "shadowedhearts:main/strong_signal",
+  "display": {
+    "icon": {
+      "id": "shadowedhearts:condensed_shadow"
+    },
+    "title": {
+      "translate": "advancements.shadowedhearts.moonwound_overload.title"
+    },
+    "description": {
+      "translate": "advancements.shadowedhearts.moonwound_overload.description"
+    },
+    "frame": "challenge",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "moonwound_overload": {
+      "trigger": "shadowedhearts:progression",
+      "conditions": {
+        "milestone": "moonwound_overload"
+      }
+    }
+  },
+  "requirements": [
+    [
+      "moonwound_overload"
+    ]
+  ]
+}

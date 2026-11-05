@@ -11,7 +11,7 @@ public final class ModKeybinds {
     }
 
     public static KeyMapping AURA_SCANNER;
-    public static KeyMapping AURA_MODE_SELECTOR;
+    public static KeyMapping AURA_READER_HELP;
     public static KeyMapping AURA_PULSE;
     public static KeyMapping AURA_LOCK;
     public static KeyMapping AURA_NEXT_SIGNAL;
@@ -25,8 +25,9 @@ public final class ModKeybinds {
             AURA_SCANNER = new KeyMapping("key.shadowedhearts.aura_scanner", GLFW.GLFW_KEY_V, CAT);
         }
 
-        if (AURA_MODE_SELECTOR == null) {
-            AURA_MODE_SELECTOR = new KeyMapping("key.shadowedhearts.aura_mode_selector", GLFW.GLFW_KEY_C, CAT);
+        if (AURA_READER_HELP == null) {
+            // Preserve the saved binding ID from the former mode selector.
+            AURA_READER_HELP = new KeyMapping("key.shadowedhearts.aura_mode_selector", GLFW.GLFW_KEY_G, CAT);
         }
 
         if (AURA_PULSE == null) {
@@ -54,8 +55,8 @@ public final class ModKeybinds {
         return AURA_SCANNER != null && AURA_SCANNER.consumeClick();
     }
 
-    public static boolean consumeAuraModeSelectorPress() {
-        return AURA_MODE_SELECTOR != null && AURA_MODE_SELECTOR.consumeClick();
+    public static boolean consumeAuraReaderHelpPress() {
+        return AURA_READER_HELP != null && AURA_READER_HELP.consumeClick();
     }
 
     public static boolean consumeAuraPulsePress() {

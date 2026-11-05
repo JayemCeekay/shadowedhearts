@@ -1,0 +1,124 @@
+{
+  "type": "minecraft:gift",
+  "pools": [
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "shadowedhearts:core_sample",
+          "functions": [
+            {
+              "function": "minecraft:set_count",
+              "count": {
+                "type": "minecraft:uniform",
+                "min": 3,
+                "max": 5
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "rolls": 3,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "shadowedhearts:meteoric_alloy",
+          "weight": 5,
+          "functions": [
+            {
+              "function": "minecraft:set_count",
+              "count": {
+                "type": "minecraft:uniform",
+                "min": 1,
+                "max": 2
+              }
+            }
+          ]
+        },
+        {
+          "type": "minecraft:item",
+          "name": "shadowedhearts:condensed_shadow",
+          "weight": 3,
+          "functions": [
+            {
+              "function": "minecraft:set_count",
+              "count": {
+                "type": "minecraft:uniform",
+                "min": 1,
+                "max": 2
+              }
+            }
+          ]
+        },
+        {
+          "type": "minecraft:item",
+          "name": "shadowedhearts:refined_shadow_shard",
+          "weight": 2,
+          "functions": [
+            {
+              "function": "minecraft:set_count",
+              "count": {
+                "type": "minecraft:uniform",
+                "min": 1,
+                "max": 2
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "rolls": 2,
+      "entries": [
+        {
+          "type": "minecraft:loot_table",
+          "value": "shadowedhearts:moonwound/categories/apricorns",
+          "weight": 4
+        },
+        {
+          "type": "minecraft:loot_table",
+          "value": "shadowedhearts:moonwound/categories/tumblestones",
+          "weight": 4
+        },
+        {
+          "type": "minecraft:loot_table",
+          "value": "shadowedhearts:moonwound/categories/berries",
+          "weight": 2
+        },
+        {
+          "type": "minecraft:loot_table",
+          "value": "shadowedhearts:moonwound/categories/pokeballs",
+          "weight": 2
+        },
+        {
+          "type": "minecraft:loot_table",
+          "value": "shadowedhearts:moonwound/categories/exp_candies",
+          "weight": 2
+        },
+        {
+          "type": "minecraft:loot_table",
+          "value": "shadowedhearts:moonwound/categories/medicine"
+        }
+      ]
+    },
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "shadowedhearts:shadow_scale"
+        }
+      ],
+      "conditions": [
+        {
+          "condition": "minecraft:random_chance",
+          "chance": 0.25
+        }
+      ]
+    }
+  ],
+  "random_sequence": "shadowedhearts:moonwound/harvest"
+}

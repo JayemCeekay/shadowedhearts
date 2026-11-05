@@ -12,6 +12,8 @@ object AuraLockHandler : ServerNetworkPacketHandler<AuraLockC2SPacket> {
         when (packet.action) {
             AuraLockC2SPacket.Action.LOCK_FOCUSED -> AuraReaderService.lockFocusedTarget(player, auraReader)
             AuraLockC2SPacket.Action.CLEAR -> AuraReaderService.clearLock(player, auraReader)
+            AuraLockC2SPacket.Action.PIN_SELECTED -> AuraReaderService.pinSelectedContact(player, auraReader)
+            AuraLockC2SPacket.Action.CLEAR_PIN -> AuraReaderService.clearPinnedContact(player, auraReader)
         }
     }
 }

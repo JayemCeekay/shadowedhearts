@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "FF",
+    "FF"
+  ],
+  "key": {
+    "F": {
+      "item": "shadowedhearts:shadow_shard"
+    }
+  },
+  "result": {
+    "id": "shadowedhearts:umbrafall_shell",
+    "count": 1
+  }
+}

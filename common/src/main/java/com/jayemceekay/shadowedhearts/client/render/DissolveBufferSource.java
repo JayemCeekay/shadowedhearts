@@ -87,8 +87,7 @@ public class DissolveBufferSource implements MultiBufferSource {
         if (isEntityRenderType(name) && shaderAvailable()) {
             // Bind noise and uniforms before returning the replacement buffer;
             // RenderType setup will bind Sampler0 from the entity texture.
-            bindDissolveNoise();
-            applyShaderUniforms();
+            uploadUniforms();
             return delegate.getBuffer(BallRenderTypes.dissolve(entityTexture));
         }
         return delegate.getBuffer(renderType);
@@ -107,6 +106,12 @@ public class DissolveBufferSource implements MultiBufferSource {
 
     private boolean shaderAvailable() {
         return ModShaders.SNAG_DISSOLVE != null;
+    }
+
+    /** Upload immediately before an isolated draw so simultaneous captures retain their own progress. */
+    public void uploadUniforms() {
+        bindDissolveNoise();
+        applyShaderUniforms();
     }
 
     private void applyShaderUniforms() {

@@ -8,6 +8,7 @@ import com.cobblemon.mod.common.api.types.ElementalType;
 import com.cobblemon.mod.common.pokemon.Pokemon;
 import com.jayemceekay.shadowedhearts.config.ModConfig;
 import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs;
+import com.jayemceekay.shadowedhearts.integration.lostlore.LostLoreShadowMoves;
 
 import java.util.*;
 
@@ -42,6 +43,7 @@ public class ShadowMoveUtil {
     public static void assignShadowMoves(Pokemon pokemon, Random rng) {
         if (pokemon == null) return;
         if (MoveLifecycle.assignGoIfEnabled(pokemon)) return;
+        if (LostLoreShadowMoves.assignIfEnabled(pokemon)) return;
 
         Random r = (rng == null ? new Random() : rng);
         int count = ModConfig.resolveReplaceCount(r);

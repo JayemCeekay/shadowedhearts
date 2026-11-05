@@ -4,7 +4,7 @@
     "srcrgb": "srcalpha",
     "dstrgb": "1",
     "alphafunc": "add",
-    "srcalpha": "srcalpha",
+    "srcalpha": "zero",
     "dstalpha": "1"
   },
   "vertex": "shadowedhearts:aura/aura_pulse",
@@ -14,7 +14,6 @@
     "UV0"
   ],
   "samplers": [
-    { "name": "DiffuseSampler" },
     { "name": "uDepth" },
     { "name": "uPulseTexture" }
   ],

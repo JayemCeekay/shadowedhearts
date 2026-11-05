@@ -1,0 +1,12 @@
+{
+  "type": "shadowedhearts:umbra_infusing",
+  "ingredient": {
+    "item": "cobblemon:poke_ball"
+  },
+  "result": {
+    "id": "shadowedhearts:penumbra_ball",
+    "count": 1
+  },
+  "charge": 4,
+  "processing_ticks": 200
+}

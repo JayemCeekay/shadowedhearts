@@ -1,0 +1,7 @@
+{
+  "criteria": {
+    "purified": {
+      "trigger": "minecraft:impossible"
+    }
+  }
+}

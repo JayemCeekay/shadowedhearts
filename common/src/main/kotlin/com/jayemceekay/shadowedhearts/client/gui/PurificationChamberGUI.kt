@@ -65,7 +65,7 @@ import kotlin.math.floor
 class PurificationChamberGUI(
     val purificationStorage: ClientPurificationStorage
 ) : Screen(Component.translatable("gui.shadowedhearts.purification_chamber.title")),
-    CobblemonRenderable {
+    CobblemonRenderable, RecipeViewerScreen {
 
     companion object {
         const val BASE_WIDTH = 349
@@ -151,6 +151,9 @@ class PurificationChamberGUI(
     }
     private val viewportFit get() = PurificationScreenLayout.fit(width, height)
 
+    override fun recipeViewerBounds(): ScreenRectangle = RecipeViewerScreen.bounds(
+        viewportFit, (width - BASE_WIDTH) / 2 + PurificationScreenLayout.CONTENT_LEFT,
+        (height - BASE_HEIGHT) / 2, PurificationScreenLayout.CONTENT_WIDTH, PurificationScreenLayout.CONTENT_HEIGHT)
     private var deferredTooltip: ((GuiGraphics, Int, Int, Float) -> Unit)? = null
 
     var ticksElapsed = 0
@@ -1244,9 +1247,4 @@ class PurificationChamberGUI(
 
     override fun isPauseScreen() = false
 
-    override fun removed() {
-        //loopSound?.fadeOutAndStop()
-        //loopSound = null
-        super.removed()
-    }
 }

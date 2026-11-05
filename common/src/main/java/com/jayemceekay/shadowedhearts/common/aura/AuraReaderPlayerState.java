@@ -13,11 +13,11 @@ public final class AuraReaderPlayerState {
     }
 
     public static AuraReaderMode getMode(ServerPlayer player) {
-        return PlayerPersistentData.get(player).getAuraReaderMode();
+        return AuraReaderMode.PASSIVE_AURA;
     }
 
     public static void setMode(ServerPlayer player, AuraReaderMode mode) {
-        PlayerPersistentData.get(player).setAuraReaderMode(mode);
+        PlayerPersistentData.get(player).setAuraReaderMode(AuraReaderMode.PASSIVE_AURA);
     }
 
     public static boolean isActive(ServerPlayer player) {

@@ -25,6 +25,8 @@ public class ModCauldronInteractions {
                 return ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION;
             }
 
+            if (level.isClientSide) return ItemInteractionResult.SUCCESS;
+
             if (!player.getAbilities().instabuild) {
                 stack.shrink(1);
             }
@@ -42,7 +44,7 @@ public class ModCauldronInteractions {
             player.awardStat(Stats.ITEM_USED.get(ingredient));
             LayeredCauldronBlock.lowerFillLevel(state, level, pos);
             level.playSound(null, pos, SoundEvents.BOTTLE_FILL, SoundSource.BLOCKS, 1.0F, 1.0F);
-            return ItemInteractionResult.sidedSuccess(level.isClientSide);
+            return ItemInteractionResult.CONSUME;
         });
     }
 }

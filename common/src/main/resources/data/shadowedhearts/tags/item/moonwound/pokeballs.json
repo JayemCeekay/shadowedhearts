@@ -1,0 +1,20 @@
+{
+  "replace": false,
+  "values": [
+    "#cobblemon:tier_1_poke_balls",
+    "cobblemon:great_ball",
+    "cobblemon:fast_ball",
+    "cobblemon:level_ball",
+    "cobblemon:lure_ball",
+    "cobblemon:heavy_ball",
+    "cobblemon:friend_ball",
+    "cobblemon:moon_ball",
+    "cobblemon:sport_ball",
+    "cobblemon:net_ball",
+    "cobblemon:dive_ball",
+    "cobblemon:nest_ball",
+    "cobblemon:ancient_great_ball",
+    "cobblemon:ancient_wing_ball",
+    "cobblemon:ancient_leaden_ball"
+  ]
+}

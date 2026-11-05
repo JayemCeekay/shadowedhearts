@@ -1,0 +1,7 @@
+{
+  "type": "shadowedhearts:umbra_infusing",
+  "ingredient": { "item": "cobblemon:scope_lens" },
+  "result": { "id": "shadowedhearts:breach_lens", "count": 1 },
+  "charge": 32,
+  "processing_ticks": 600
+}

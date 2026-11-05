@@ -2,6 +2,7 @@ package com.jayemceekay.shadowedhearts.advancements;
 
 import com.jayemceekay.shadowedhearts.Shadowedhearts;
 import com.mojang.serialization.Codec;
+import com.mojang.serialization.codecs.RecordCodecBuilder;
 import dev.architectury.registry.registries.DeferredRegister;
 import dev.architectury.registry.registries.RegistrySupplier;
 import net.minecraft.advancements.critereon.ContextAwarePredicate;
@@ -23,6 +24,8 @@ public class ModCriteriaTriggers {
             TRIGGERS.register("shadow_purified", GenericTrigger::new);
     public static final RegistrySupplier<GenericTrigger> RELIC_STONE_INTERACT =
             TRIGGERS.register("relic_stone_interact", GenericTrigger::new);
+    public static final RegistrySupplier<ProgressionTrigger> PROGRESSION =
+            TRIGGERS.register("progression", ProgressionTrigger::new);
 
     public static void init() {
         TRIGGERS.register();
@@ -42,6 +45,29 @@ public class ModCriteriaTriggers {
 
     public static void triggerRelicStoneInteract(ServerPlayer player) {
         RELIC_STONE_INTERACT.get().trigger(player);
+    }
+
+    /** Called only after the server confirms the corresponding gameplay action succeeded. */
+    public static void triggerProgression(ServerPlayer player, String milestone) {
+        PROGRESSION.get().trigger(player, milestone);
+    }
+
+    public static class ProgressionTrigger extends SimpleCriterionTrigger<ProgressionTrigger.Instance> {
+        @Override
+        public Codec<Instance> codec() {
+            return Instance.CODEC;
+        }
+
+        public void trigger(ServerPlayer player, String milestone) {
+            super.trigger(player, instance -> instance.milestone().equals(milestone));
+        }
+
+        public record Instance(Optional<ContextAwarePredicate> player, String milestone) implements SimpleInstance {
+            public static final Codec<Instance> CODEC = RecordCodecBuilder.create(instance -> instance.group(
+                    ContextAwarePredicate.CODEC.optionalFieldOf("player").forGetter(Instance::player),
+                    Codec.STRING.fieldOf("milestone").forGetter(Instance::milestone)
+            ).apply(instance, Instance::new));
+        }
     }
 
     public static class GenericTrigger extends SimpleCriterionTrigger<GenericTrigger.Instance> {

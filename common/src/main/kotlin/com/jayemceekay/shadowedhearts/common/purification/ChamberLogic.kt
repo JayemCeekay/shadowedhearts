@@ -1,6 +1,8 @@
 package com.jayemceekay.shadowedhearts.common.purification
 
 import com.cobblemon.mod.common.pokemon.Pokemon
+import com.cobblemon.mod.common.util.getPlayer
+import com.jayemceekay.shadowedhearts.common.heart.HeartGaugeEvents
 import com.jayemceekay.shadowedhearts.common.heart.HeartGaugeProgressionMath
 import com.jayemceekay.shadowedhearts.common.shadow.ShadowAspectUtil
 import com.jayemceekay.shadowedhearts.common.shadow.ShadowService
@@ -49,6 +51,9 @@ object ChamberLogic {
                 val next = (cur.toLong() + delta.toLong() * intervals).coerceIn(0L, Int.MAX_VALUE.toLong()).toInt()
                 ShadowService.setHeartGauge(shadow, null, next, false)
                 affectedPokemon.add(shadow)
+                store.uuid.getPlayer()?.let { owner ->
+                    HeartGaugeEvents.recordCareProgress(owner, shadow, cur)
+                }
             }
         }
         affectedPokemon.forEach { ShadowService.syncAll(it) }

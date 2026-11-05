@@ -1,5 +1,5 @@
 {
-  "parent": "shadowedhearts:main/snag_from_npc",
+  "parent": "shadowedhearts:main/shadow_materials",
   "display": {
     "icon": {
       "id": "shadowedhearts:relic_stone"
@@ -12,7 +12,7 @@
     },
     "frame": "task",
     "show_toast": true,
-    "announce_to_chat": true,
+    "announce_to_chat": false,
     "hidden": false
   },
   "criteria": {

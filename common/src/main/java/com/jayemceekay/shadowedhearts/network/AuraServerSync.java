@@ -13,6 +13,10 @@ import dev.architectury.event.events.common.TickEvent;
 import kotlin.Unit;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.Entity;
+import com.jayemceekay.shadowedhearts.network.aura.AuraLifecyclePacket;
+import org.jetbrains.annotations.Nullable;
 
 import java.lang.ref.WeakReference;
 import java.util.Iterator;
@@ -29,6 +33,21 @@ public final class AuraServerSync {
 
     private static final Map<Integer, WeakReference<PokemonEntity>> TRACKING = new ConcurrentHashMap<>();
     private static final Map<Integer, LastSentState> LAST_SENT = new ConcurrentHashMap<>();
+
+    /** New viewers receive continuous cosmetic state, never another transient spawn/send-out reveal. */
+    public static void onStartTracking(Entity entity, ServerPlayer player) {
+        AuraLifecyclePacket packet = persistentAuraForTracking(entity);
+        if (packet != null && player.level() == entity.level()) {
+            ShadowedHeartsNetwork.sendToPlayer(player, packet);
+        }
+    }
+
+    @Nullable
+    public static AuraLifecyclePacket persistentAuraForTracking(Entity entity) {
+        if (!(entity instanceof PokemonEntity pokemon) || !(entity.level() instanceof ServerLevel)
+                || !entity.isAlive() || !ShadowAspectUtil.isHoldingShadowShard(pokemon.getPokemon())) return null;
+        return S2CUtils.auraStartPacket(pokemon, 1.0f, Integer.MAX_VALUE / 2);
+    }
 
     private static final class LastSentState {
         final double x, y, z;
@@ -81,6 +100,9 @@ public final class AuraServerSync {
                 if (p == null) return Unit.INSTANCE;
                 // Run occasional validation when sent out
                 ShadowAspectUtil.ensureRequiredShadowAspects(p);
+                // Send-out creates a fresh entity without the saved-entity load event.
+                // Restore the scanner/behavior flags from its backing Pokemon as well.
+                ShadowPokemonData.syncFromPokemon(pe);
                 if (!ShadowAspectUtil.shouldHaveShadowAura(p))
                     return Unit.INSTANCE;
             } catch (Exception ex) {

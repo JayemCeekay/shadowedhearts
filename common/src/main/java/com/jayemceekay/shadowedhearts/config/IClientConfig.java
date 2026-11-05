@@ -3,40 +3,52 @@ package com.jayemceekay.shadowedhearts.config;
 import com.jayemceekay.shadowedhearts.client.aura.ShadowAuraStyle;
 
 public interface IClientConfig extends IModConfig {
-    default boolean enableShadowAura() { return true; }
-    default ShadowAuraStyle shadowAuraStyle() { return ShadowAuraStyle.DEFAULT; }
+    default float darkBallBodyDepthSpecularStrength() { return 0.09f; }
+    default float darkBallBodyContourSheenStrength() { return 0.045f; }
+    default boolean darkBallVisualizeSpikeIndentAmplitude() { return false; }
+    default boolean darkBallForceExactMaskOnly() { return false; }
+    default int darkBallSurfelBudget() { return 0; }
     default boolean debugShadowAuraEmitters() { return false; }
-    default boolean auraScannerEnabled() { return true; }
+    default ShadowAuraStyle shadowAuraStyle() { return ShadowAuraStyle.DEFAULT; }
+    default ClientEffectPolicy.Preset accessibilityPreset() { return ClientEffectPolicy.Preset.DEFAULT; }
+    default ClientEffectPolicy.EffectOverride scanPulseEffects() { return ClientEffectPolicy.EffectOverride.INHERIT; }
+    default ClientEffectPolicy.EffectOverride darkBallEffects() { return ClientEffectPolicy.EffectOverride.INHERIT; }
+    default ClientEffectPolicy.EffectOverride moonwoundEffects() { return ClientEffectPolicy.EffectOverride.INHERIT; }
+    default ClientEffectPolicy.EffectOverride auraEffects() { return ClientEffectPolicy.EffectOverride.INHERIT; }
+    default ClientEffectPolicy.EffectOverride ambientEffects() { return ClientEffectPolicy.EffectOverride.INHERIT; }
+    default boolean enableShadowAura() { return true; }
+    default AuraPixelationStyle colosseumAuraPixelation() { return AuraPixelationStyle.SMOOTH; }
+    default AuraPixelationStyle xdAuraPixelation() { return AuraPixelationStyle.SMOOTH; }
     default float auraReaderYOffset() { return -0.15f; }
 
-    // Aura Reader HUD layout and accessibility options
+    // Aura Reader HUD presentation and accessibility options
     default float auraReaderHudScale() { return 1.0f; }
     default float auraReaderCompassWidth() { return 0.42f; }
-    default int auraReaderCompassVerticalOffset() { return 8; }
+    default int auraReaderTopInset() { return 16; }
     default int auraReaderCompassVisibleArc() { return 90; }
     default float auraReaderReticleScale() { return 1.0f; }
     default float auraReaderHudOpacity() { return 0.9f; }
-    default boolean auraReaderShowCardinalLabels() { return false; }
     default boolean auraReaderClusterMarkers() { return true; }
-    default int auraReaderMaxMarkers() { return 12; }
-    default String auraReaderChargeDisplay() { return "conditional"; }
-    default String auraReaderLayoutPreset() { return "default"; }
     default int auraReaderBottomSafeMargin() { return 104; }
     default int auraReaderPartyOverlayMargin() { return 12; }
-    default int auraReaderBossBarMargin() { return 8; }
     default int auraReaderRightOverlayMargin() { return 8; }
     default boolean auraReaderReducedMotion() { return false; }
     default float auraReaderStaticIntensity() { return 1.0f; }
 
+    // Moonwound objective presentation; offsets use scaled GUI pixels.
+    default MoonwoundObjectiveDisplay moonwoundObjectiveDisplay() { return MoonwoundObjectiveDisplay.HUD; }
+    default MoonwoundObjectivePlacement moonwoundObjectivePlacement() { return MoonwoundObjectivePlacement.AUTO; }
+    default int moonwoundObjectiveOffsetX() { return 0; }
+    default int moonwoundObjectiveOffsetY() { return 0; }
+
+    // Moonwound portal and miasma presentation; texels scale with distance, field of view and resolution.
+    default MoonwoundPortalStyle moonwoundPortalStyle() { return MoonwoundPortalStyle.PIXELATED; }
+
     ISoundConfig soundConfig();
-    /**
-     * If true, temperatures in HUD are displayed in Fahrenheit instead of Celsius.
-     */
-    default boolean useFahrenheitDisplay() { return false; }
 
     // ── Snag Ball VFX options ────────────────────────────────────────────
 
-    /** Multiplier for particle counts in snag ball VFX (0.0 = none, 1.0 = default, 2.0 = double). */
+    /** Multiplier for snag capture spark counts (0.0 = no sparks, 1.0 = default, 2.0 = double). */
     default float snagParticleMultiplier() { return 1.0f; }
 
     /** Whether the bloom/glow post-processing pass is enabled for snag ball VFX. */
@@ -54,40 +66,11 @@ public interface IClientConfig extends IModConfig {
     /** Whether shake-phase VFX (seam glow, ground pulses, sparks) are enabled. */
     default boolean snagShakeVfxEnabled() { return true; }
 
-    /** Reduced motion mode: disables fast-moving particles, flashes, and screen-shake. */
+    /** Disable the rotating glare spikes around the absorption cloud during snag captures. */
     default boolean snagReducedMotion() { return false; }
 
-    /** Low, medium, or high budget for the analytical Dark Ball volume and shell. */
+    /** Low, medium, or high quality for the anime-style Dark Ball capture. */
     default String darkBallVfxQuality() { return "medium"; }
 
-    /**
-     * Manual Dark Ball body-surfel budget. Zero keeps the selected quality
-     * preset's budget; positive values override only the surfel count.
-     */
-    default int darkBallSurfelBudget() { return 0; }
-
-    /**
-     * Diagnostic override that keeps the captured texture/depth mask as the
-     * only Dark Ball body presentation and bypasses surfel preparation.
-     */
-    default boolean darkBallForceExactMaskOnly() { return false; }
-
-    /**
-     * Diagnostic heatmap that colors live Dark Ball spikes and indentations
-     * from their signed, normalized surfel displacement amplitude.
-     */
-    default boolean darkBallVisualizeSpikeIndentAmplitude() { return false; }
-
-    /**
-     * Strength of the stable silhouette-distance body sheen. Zero disables it;
-     * the renderer hard-caps the contribution at 0.06.
-     */
-    default float darkBallBodyContourSheenStrength() { return 0.045f; }
-
-    /**
-     * Strength of the guarded body depth-normal highlight on the black-side
-     * silhouette shoulder. Zero disables it; the shader hard-caps the result.
-     */
-    default float darkBallBodyDepthSpecularStrength() { return 0.09f; }
 
 }

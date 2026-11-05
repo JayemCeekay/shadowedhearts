@@ -6,7 +6,10 @@ import com.cobblemon.mod.common.api.events.entity.SpawnEvent;
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
 import com.cobblemon.mod.common.pokemon.Pokemon;
 import com.jayemceekay.shadowedhearts.config.HeartGaugeConfig;
+import com.jayemceekay.shadowedhearts.config.ContextualSpawnConfig;
 import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs;
+import com.jayemceekay.shadowedhearts.common.util.SpeciesTagManager;
+import com.jayemceekay.shadowedhearts.world.gen.ImpactLocationSelector;
 import com.jayemceekay.shadowedhearts.network.AuraBroadcastQueue;
 import com.jayemceekay.shadowedhearts.network.S2CUtils;
 import com.jayemceekay.shadowedhearts.registry.ModSounds;
@@ -34,6 +37,8 @@ public final class WildShadowSpawnListener {
 
             Pokemon pokemon = entity.getPokemon();
             if (pokemon == null) return Unit.INSTANCE;
+            if (com.jayemceekay.shadowedhearts.common.voidshadow.VoidShadowService.isVoidShadow(pokemon))
+                return Unit.INSTANCE;
 
             // Only wild entities: no owner and not sent out battle clones
             if (entity.getOwnerUUID() != null) return Unit.INSTANCE;
@@ -45,9 +50,20 @@ public final class WildShadowSpawnListener {
             // Respect immunization
             if (ShadowAspectUtil.isImmunized(pokemon)) return Unit.INSTANCE;
 
-            // Roll chance
-            double chance = ShadowSpawnUtil.getChancePercent();
-            if (ShadowAspectUtil.isNearMeteoroid(level, entity.blockPosition(), 48, 48)) {
+            var context = ContextualSpawnConfig.INSTANCE;
+            String dimension = level.dimension().location().toString();
+            if (!ContextualSpawnRules.allows(context.dimensionAllowlist(), context.dimensionDenylist(), dimension::equals)
+                    || !ImpactLocationSelector.isBiomeAllowed(level.getBiome(entity.blockPosition()),
+                    context.biomeAllowlist(), context.biomeDenylist())) return Unit.INSTANCE;
+
+            double chance = ContextualSpawnRules.chance(ShadowSpawnUtil.getChancePercent(),
+                    context.speciesChanceOverrides(), selector -> selector.startsWith("#")
+                            ? SpeciesTagManager.INSTANCE.isInTag(pokemon.getSpecies(), selector)
+                            : pokemon.getSpecies().getResourceIdentifier().toString().equals(selector));
+            int horizontalRadius = context.umbrafallHorizontalRadius();
+            int verticalRadius = context.umbrafallVerticalRadius();
+            if (horizontalRadius > 0 && verticalRadius > 0
+                    && ShadowAspectUtil.isNearMeteoroid(level, entity.blockPosition(), horizontalRadius, verticalRadius)) {
                 chance *= ShadowedHeartsConfigs.getInstance().getShadowConfig().worldAlteration().meteoroidShadowSpawnChanceMultiplier();
             }
 

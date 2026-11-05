@@ -1,0 +1,31 @@
+{
+  "parent": "shadowedhearts:main/shadow_captured",
+  "display": {
+    "icon": {
+      "id": "shadowedhearts:heart_soothe_bell"
+    },
+    "title": {
+      "translate": "advancements.shadowedhearts.heart_opened.title"
+    },
+    "description": {
+      "translate": "advancements.shadowedhearts.heart_opened.description"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": false,
+    "hidden": false
+  },
+  "criteria": {
+    "heart_opened": {
+      "trigger": "shadowedhearts:progression",
+      "conditions": {
+        "milestone": "heart_opened"
+      }
+    }
+  },
+  "requirements": [
+    [
+      "heart_opened"
+    ]
+  ]
+}

@@ -51,8 +51,8 @@ public class AuraReaderArmorLayer extends RenderLayer<AbstractClientPlayer, Play
         getParentModel().copyPropertiesTo(model);
         model.prepareMobModel(player, limbSwing, limbSwingAmount, partialTicks);
         model.setupAnim(player, limbSwing, limbSwingAmount, ageInTicks, netHeadYaw, headPitch);
-        getParentModel().head.translateAndRotate(poseStack);
         poseStack.pushPose();
+        getParentModel().head.translateAndRotate(poseStack);
         float scale = 0.675f;
         poseStack.scale(scale, scale, scale);
         poseStack.translate(-0.025F, ShadowedHeartsConfigs.getInstance().getClientConfig().auraReaderYOffset(), -0.05F);

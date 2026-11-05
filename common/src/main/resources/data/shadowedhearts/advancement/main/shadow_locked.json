@@ -1,0 +1,31 @@
+{
+  "parent": "shadowedhearts:main/reader_pulse",
+  "display": {
+    "icon": {
+      "id": "cobblemon:dusk_ball"
+    },
+    "title": {
+      "translate": "advancements.shadowedhearts.shadow_locked.title"
+    },
+    "description": {
+      "translate": "advancements.shadowedhearts.shadow_locked.description"
+    },
+    "frame": "goal",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "shadow_locked": {
+      "trigger": "shadowedhearts:progression",
+      "conditions": {
+        "milestone": "shadow_locked"
+      }
+    }
+  },
+  "requirements": [
+    [
+      "shadow_locked"
+    ]
+  ]
+}

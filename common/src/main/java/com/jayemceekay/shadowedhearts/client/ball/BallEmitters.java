@@ -87,6 +87,7 @@ public final class BallEmitters {
      */
     public static void onClientTick(Minecraft minecraft) {
         prepareClientLevel(minecraft);
+        com.jayemceekay.shadowedhearts.client.render.VanillaWorldShaderFrame.onClientTick(minecraft);
     }
 
     /**

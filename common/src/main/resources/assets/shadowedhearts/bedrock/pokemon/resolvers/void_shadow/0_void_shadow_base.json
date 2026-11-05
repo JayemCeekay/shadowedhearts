@@ -1,0 +1,13 @@
+{
+  "species": "shadowedhearts:void_shadow",
+  "order": 0,
+  "variations": [
+    {
+      "aspects": [],
+      "poser": "shadowedhearts:void_shadow",
+      "model": "shadowedhearts:void_shadow.geo",
+      "texture": "shadowedhearts:textures/pokemon/void_shadow/void_shadow.png",
+      "layers": []
+    }
+  ]
+}

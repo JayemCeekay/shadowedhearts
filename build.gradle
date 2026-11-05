@@ -13,6 +13,43 @@ architectury {
     minecraft = project.minecraft_version
 }
 
+// Real, loader-specific FTB integration fixtures are deliberately opt-in.
+ext.ftbGameTestsEnabled = providers.gradleProperty('ftbGameTests')
+        .map { it.toBoolean() }.getOrElse(false)
+ext.ftbGameTestsWithFtb = providers.gradleProperty('ftbGameTestsWithFtb')
+        .map { it.toBoolean() }.getOrElse(true)
+
+if (ftbGameTestsEnabled) {
+    tasks.register('ftbGameTest') {
+        group = 'verification'
+        description = 'Runs the isolated native FTB integration suite on Fabric and NeoForge.'
+        dependsOn ':fabric:runFtbGameTest', ':neoforge:runFtbGameTest'
+    }
+}
+
+// Opt-in manual test content. This pack is not a mod resource or a runClient dependency.
+tasks.register('testDatapack', Zip) {
+    group = 'distribution'
+    description = 'Package the optional NPC testing datapack for manual installation.'
+    from layout.projectDirectory.dir('datapacks/shadowedhearts-testing')
+    archiveFileName = "ShadowedHearts-testing-${project.minecraft_version}.zip"
+    destinationDirectory = layout.buildDirectory.dir('datapacks')
+    preserveFileTimestamps = false
+    reproducibleFileOrder = true
+}
+
+// Client-side translations for the manually installed testing datapack.
+// This is deliberately independent of normal mod builds and client runs.
+tasks.register('testResourcePack', Zip) {
+    group = 'distribution'
+    description = 'Package the optional testing NPC names and dialogue resource pack for manual installation.'
+    from layout.projectDirectory.dir('resourcepacks/shadowedhearts-testing')
+    archiveFileName = "ShadowedHearts-testing-resources-${project.minecraft_version}.zip"
+    destinationDirectory = layout.buildDirectory.dir('resourcepacks')
+    preserveFileTimestamps = false
+    reproducibleFileOrder = true
+}
+
 allprojects {
     group = rootProject.maven_group
     version = rootProject.mod_version
@@ -62,6 +99,9 @@ subprojects {
 
     repositories {
         mavenCentral()
+        maven { url 'https://maven.blamejared.com'; content { includeGroup 'mezz.jei' } }
+        maven { url 'https://maven.shedaniel.me/'; content { includeGroupByRegex 'me\\.shedaniel.*' } }
+        maven { url 'https://repo.sleeping.town/'; content { includeGroup 'dev.emi' } }
         maven { url 'https://dl.cloudsmith.io/public/geckolib3/geckolib/maven/' }
         maven { url 'https://maven.impactdev.net/repository/development/' }
         maven { url 'https://maven.neoforged.net/releases' }

@@ -10,8 +10,6 @@ import net.minecraft.resources.ResourceLocation
 data class AuraReaderStateS2CPacket(
     val active: Boolean,
     val mode: AuraReaderMode,
-    val charge: Int,
-    val maxCharge: Int,
     val tracking: Boolean,
     val selectedSignal: String,
     val lockType: AuraReaderLockType,
@@ -23,8 +21,6 @@ data class AuraReaderStateS2CPacket(
     override fun encode(buffer: RegistryFriendlyByteBuf) {
         buffer.writeBoolean(active)
         buffer.writeUtf(mode.name)
-        buffer.writeVarInt(charge)
-        buffer.writeVarInt(maxCharge)
         buffer.writeBoolean(tracking)
         buffer.writeUtf(selectedSignal)
         buffer.writeUtf(lockType.name)
@@ -40,8 +36,6 @@ data class AuraReaderStateS2CPacket(
             return AuraReaderStateS2CPacket(
                 buf.readBoolean(),
                 AuraReaderMode.fromName(buf.readUtf()),
-                buf.readVarInt(),
-                buf.readVarInt(),
                 buf.readBoolean(),
                 buf.readUtf(),
                 AuraReaderLockType.fromName(buf.readUtf()),

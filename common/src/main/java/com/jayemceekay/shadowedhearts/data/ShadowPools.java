@@ -1,240 +1,269 @@
 package com.jayemceekay.shadowedhearts.data;
 
-import com.cobblemon.mod.common.api.npc.NPCClasses;
+import com.cobblemon.mod.common.Cobblemon;
 import com.cobblemon.mod.common.api.pokemon.PokemonProperties;
-import com.google.gson.*;
+import com.cobblemon.mod.common.api.pokemon.PokemonSpecies;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import dev.architectury.platform.Platform;
+import dev.architectury.registry.ReloadListenerRegistry;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.network.chat.Component;
+import com.jayemceekay.shadowedhearts.common.editor.TrainerEditorMessageException;
+import static com.jayemceekay.shadowedhearts.data.DefinitionMessages.text;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.packs.resources.Resource;
-import net.minecraft.server.packs.resources.ResourceManager;
+import net.minecraft.server.packs.PackType;
+import net.minecraft.server.packs.resources.ResourceManagerReloadListener;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Random;
+import java.util.Set;
+import java.util.regex.Pattern;
 
-/**
- * Lightweight loader for datapack-defined Shadow candidate pools.
- * Context: Minecraft Cobblemon mod; all shadow/purity/corruption/capture terms are gameplay mechanics.
- *
- * Files live at: data/<namespace>/shadow_pools/<id>.json
- * Minimal schema supported:
- * {
- *   "entries": [
- *     "gligar lvl=28",
- *     { "pokemon": "sneasel lvl=29", "weight": 2 }
- *   ]
- * }
- */
+/** Reloadable weighted pools at data/<namespace>/shadow_pools/<path>.json. */
 public final class ShadowPools {
+    private static final Pattern LEVEL = Pattern.compile("(?:^|\\s)(?:level|lvl|l)=([^\\s]*)", Pattern.CASE_INSENSITIVE);
+    private static final ShadowDefinitionRegistry<List<WeightedEntry>> REGISTRY = new ShadowDefinitionRegistry<>(
+            () -> Platform.getConfigFolder().resolve("shadowedhearts").resolve("shadow_pools"),
+            "shadow_pools", false, ShadowPools::parsePool, ShadowPools::encode);
+    private static boolean initialized;
+
     private ShadowPools() {}
 
     public static final class WeightedEntry {
         public final PokemonProperties props;
         public final int weight;
+
         public WeightedEntry(PokemonProperties props, int weight) {
-            this.props = props;
-            this.weight = Math.max(1, weight);
+            if (props == null) throw new TrainerEditorMessageException(text("pool.properties_required"));
+            if (weight <= 0) throw new TrainerEditorMessageException(text("pool.entry_weight_positive"));
+            this.props = props.copy();
+            this.weight = weight;
         }
 
         public JsonElement toJson() {
-            JsonObject obj = new JsonObject();
-            obj.addProperty("pokemon", props.toString());
-            if (weight != 1) {
-                obj.addProperty("weight", weight);
-            }
-            return obj;
+            JsonObject object = new JsonObject();
+            // Native object serialization preserves values even when originalString is stale.
+            object.add("properties", props.saveToJSON());
+            object.addProperty("weight", weight);
+            return object;
         }
     }
 
-    private static final Map<ResourceLocation, List<WeightedEntry>> CACHE = new HashMap<>();
-    private static final Map<ResourceLocation, List<WeightedEntry>> RUNTIME_POOLS = new HashMap<>();
-    private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
-
     public static List<WeightedEntry> get(MinecraftServer server, ResourceLocation id) {
-        if (id == null) return Collections.emptyList();
+        List<WeightedEntry> value = REGISTRY.get(server == null ? null : server.getResourceManager(), id);
+        return value == null ? List.of() : copyEntries(value);
+    }
 
-        if (RUNTIME_POOLS.containsKey(id)) {
-            return RUNTIME_POOLS.get(id);
-        }
+    public static Set<ResourceLocation> ids(MinecraftServer server) {
+        return REGISTRY.ids(server == null ? null : server.getResourceManager());
+    }
 
-        if (server == null) return Collections.emptyList();
-        return CACHE.computeIfAbsent(id, key -> load(server.getResourceManager(), key));
+    public static boolean hasOverride(ResourceLocation id) { return REGISTRY.hasOverride(id); }
+
+    /** Rollback for a coordinated editor save; captures raw overrides, including invalid definitions. */
+    public static Runnable editorCheckpoint(ResourceLocation id) { return REGISTRY.checkpoint(id); }
+
+    /** Validates and decodes the same native pool object used by datapacks and the in-game editor. */
+    public static List<WeightedEntry> parseDefinition(JsonElement definition) { return parsePool(definition); }
+
+    public static List<Component> diagnostics(MinecraftServer server, ResourceLocation id) {
+        List<Component> issues = REGISTRY.diagnostics(server == null ? null : server.getResourceManager(), id);
+        if (!issues.isEmpty()) return issues;
+        return get(server, id).isEmpty() ? List.of(text("pool.empty", id)) : List.of();
     }
 
     public static void savePool(MinecraftServer server, ResourceLocation id, List<WeightedEntry> entries) {
-        RUNTIME_POOLS.put(id, new ArrayList<>(entries));
-        saveToDisk(id, entries);
-        CACHE.remove(id);
+        if (entries == null) throw new TrainerEditorMessageException(text("pool.entries_required"));
+        for (int i = 0; i < entries.size(); i++) {
+            if (entries.get(i) == null) throw new TrainerEditorMessageException(text("pool.entry_null", i));
+            validateProperties(entries.get(i).props);
+        }
+        REGISTRY.save(id, copyEntries(entries));
     }
 
+    /** Removes the disk override; an existing datapack definition becomes effective again. */
     public static void deletePool(MinecraftServer server, ResourceLocation id) {
-        RUNTIME_POOLS.remove(id);
-        deleteFromDisk(id);
-        CACHE.remove(id);
+        REGISTRY.delete(id);
     }
 
     public static Map<ResourceLocation, List<WeightedEntry>> getRuntimePools() {
-        return Collections.unmodifiableMap(RUNTIME_POOLS);
+        Map<ResourceLocation, List<WeightedEntry>> result = new LinkedHashMap<>();
+        REGISTRY.runtimeValues().forEach((id, entries) -> result.put(id, copyEntries(entries)));
+        return java.util.Collections.unmodifiableMap(result);
     }
 
-    public static void init() {
-        loadFromDisk();
+    public static synchronized void init() {
+        if (initialized) return;
+        // Keep raw JSON until first use: Cobblemon's species/property registries load later.
+        REGISTRY.reload();
+        ReloadListenerRegistry.register(PackType.SERVER_DATA, (ResourceManagerReloadListener) manager -> REGISTRY.reload());
+        initialized = true;
     }
 
-    private static Path getPoolsDir() {
-        Path configDir = Platform.getConfigFolder();
-        return configDir.resolve("shadowedhearts").resolve("shadow_pools");
-    }
-
-    private static void saveToDisk(ResourceLocation id, List<WeightedEntry> entries) {
-        try {
-            Path dir = getPoolsDir();
-            Files.createDirectories(dir);
-            Path file = dir.resolve(id.getNamespace() + "_" + id.getPath() + ".json");
-
-            JsonObject root = new JsonObject();
-            JsonArray arr = new JsonArray();
-            for (WeightedEntry entry : entries) {
-                arr.add(entry.toJson());
-            }
-            root.add("entries", arr);
-
-            try (BufferedWriter writer = Files.newBufferedWriter(file, StandardCharsets.UTF_8)) {
-                GSON.toJson(root, writer);
-            }
-        } catch (Throwable t) {
-            t.printStackTrace();
-        }
-    }
-
-    private static void deleteFromDisk(ResourceLocation id) {
-        try {
-            Path dir = getPoolsDir();
-            Path file = dir.resolve(id.getNamespace() + "_" + id.getPath() + ".json");
-            Files.deleteIfExists(file);
-        } catch (Throwable t) {
-            t.printStackTrace();
-        }
-    }
-
-    private static void loadFromDisk() {
-        try {
-            Path dir = getPoolsDir();
-            if (!Files.exists(dir)) return;
-
-            Files.list(dir).forEach(file -> {
-                if (file.toString().endsWith(".json")) {
-                    try (BufferedReader reader = Files.newBufferedReader(file, StandardCharsets.UTF_8)) {
-                        String filename = file.getFileName().toString();
-                        filename = filename.substring(0, filename.length() - 5);
-                        int underscore = filename.indexOf('_');
-                        if (underscore <= 0) return;
-                        String ns = filename.substring(0, underscore);
-                        String idStr = filename.substring(underscore + 1);
-                        ResourceLocation id = new ResourceLocation(ns, idStr);
-
-                        JsonElement root = JsonParser.parseReader(reader);
-                        RUNTIME_POOLS.put(id, parsePool(root));
-                    } catch (Throwable t) {
-                        t.printStackTrace();
+    static List<WeightedEntry> parsePool(JsonElement root) {
+        JsonArray array = ShadowAspectPresets.definitionArray(root, "entries");
+        List<WeightedEntry> result = new ArrayList<>();
+        for (int i = 0; i < array.size(); i++) {
+            try {
+                JsonElement element = array.get(i);
+                int weight = 1;
+                PokemonProperties properties;
+                if (element.isJsonPrimitive() && element.getAsJsonPrimitive().isString()) {
+                    properties = parsePropertyText(element.getAsString());
+                } else if (element.isJsonObject()) {
+                    JsonObject object = element.getAsJsonObject();
+                    for (String key : object.keySet()) {
+                        if (!Set.of("pokemon", "properties", "weight").contains(key)) {
+                            throw new TrainerEditorMessageException(text("pool.unknown_field", key));
+                        }
                     }
-                }
-            });
-        } catch (Throwable t) {
-            t.printStackTrace();
-        }
-    }
-
-    private static List<WeightedEntry> load(ResourceManager rm, ResourceLocation id) {
-        try {
-            ResourceLocation file = new ResourceLocation(id.getNamespace(), "shadow_pools/" + id.getPath() + ".json");
-            Optional<Resource> res = rm.getResource(file);
-            if (res.isEmpty()) return Collections.emptyList();
-            try (var in = res.get().open();
-                 var reader = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8))) {
-                JsonElement root = JsonParser.parseReader(reader);
-                return parsePool(root);
-            }
-        } catch (Throwable t) {
-            return Collections.emptyList();
-        }
-    }
-
-    private static List<WeightedEntry> parsePool(JsonElement root) {
-        List<WeightedEntry> out = new ArrayList<>();
-        if (root == null || root.isJsonNull()) return out;
-        if (root.isJsonArray()) {
-            parseEntriesArray(root.getAsJsonArray(), out);
-            return out;
-        }
-        if (root.isJsonObject()) {
-            JsonObject obj = root.getAsJsonObject();
-            JsonArray arr = obj.getAsJsonArray("entries");
-            if (arr != null) parseEntriesArray(arr, out);
-        }
-        return out;
-        
-    }
-
-    private static void parseEntriesArray(JsonArray arr, List<WeightedEntry> out) {
-        for (JsonElement el : arr) {
-            if (el == null || el.isJsonNull()) continue;
-            if (el.isJsonPrimitive()) {
-                String s = el.getAsString();
-                PokemonProperties props = PokemonProperties.Companion.parse(s);
-                out.add(new WeightedEntry(props, 1));
-            } else if (el.isJsonObject()) {
-                JsonObject o = el.getAsJsonObject();
-                String s = o.has("pokemon") ? o.get("pokemon").getAsString() : null;
-                if (s == null || s.isBlank()) continue;
-                int weight = o.has("weight") ? safeInt(o.get("weight")) : 1;
-                PokemonProperties props;
-                // Use Cobblemon's configured Gson to allow richer object forms if provided
-                if (o.has("properties") && o.get("properties").isJsonObject()) {
-                    props = NPCClasses.INSTANCE.getGson().fromJson(o.get("properties"), PokemonProperties.class);
-                    // Merge the species string if given as well
-                    if (props.getSpecies() == null) {
-                        PokemonProperties parsed = PokemonProperties.Companion.parse(s);
-                        mergeInto(props, parsed);
+                    if (object.has("weight")) weight = parseWeight(object.get("weight"));
+                    PokemonProperties textProperties = null;
+                    if (object.has("pokemon")) {
+                        if (!object.get("pokemon").isJsonPrimitive() || !object.getAsJsonPrimitive("pokemon").isString()) {
+                            throw new TrainerEditorMessageException(text("pool.pokemon_string"));
+                        }
+                        textProperties = parsePropertyText(object.get("pokemon").getAsString());
+                    }
+                    if (object.has("properties")) {
+                        if (!object.get("properties").isJsonObject()) throw new TrainerEditorMessageException(text("pool.properties_object"));
+                        if (PokemonSpecies.INSTANCE.getSpecies().isEmpty()) {
+                            throw new ShadowDefinitionRegistry.NotReadyException(text("pool.species_not_ready"));
+                        }
+                        JsonObject nativeProperties = object.getAsJsonObject("properties");
+                        validateNativeProperties(nativeProperties, Cobblemon.INSTANCE.getConfig().getMaxPokemonLevel());
+                        properties = new PokemonProperties().loadFromJSON(nativeProperties);
+                        // Preserve the existing object-over-string precedence and missing-field merge.
+                        if (textProperties != null) {
+                            if (properties.getSpecies() == null) properties.setSpecies(textProperties.getSpecies());
+                            if (properties.getLevel() == null) properties.setLevel(textProperties.getLevel());
+                            if (properties.getForm() == null) properties.setForm(textProperties.getForm());
+                        }
+                    } else {
+                        if (textProperties == null) throw new TrainerEditorMessageException(text("pool.properties_missing"));
+                        properties = textProperties;
                     }
                 } else {
-                    props = PokemonProperties.Companion.parse(s);
+                    throw new TrainerEditorMessageException(text("pool.entry_type"));
                 }
-                out.add(new WeightedEntry(props, weight));
+                validateProperties(properties);
+                result.add(new WeightedEntry(properties, weight));
+            } catch (ShadowDefinitionRegistry.NotReadyException ex) {
+                throw ex;
+            } catch (RuntimeException ex) {
+                throw new TrainerEditorMessageException(text("pool.entry_error", i, TrainerEditorMessageException.component(ex)), ex);
+            }
+        }
+        return List.copyOf(result);
+    }
+
+    static int parseWeight(JsonElement element) {
+        if (!element.isJsonPrimitive() || !element.getAsJsonPrimitive().isNumber()) {
+            throw new TrainerEditorMessageException(text("pool.weight_positive"));
+        }
+        try {
+            int weight = element.getAsBigDecimal().intValueExact();
+            if (weight <= 0) throw new ArithmeticException("not positive");
+            return weight;
+        } catch (ArithmeticException | NumberFormatException ex) {
+            throw new TrainerEditorMessageException(text("pool.weight_range", Integer.MAX_VALUE), ex);
+        }
+    }
+
+    /** Native JSON uses 'Level'; reject fractions/overflow before Gson's asInt can truncate them. */
+    static void validateNativeProperties(JsonObject properties, int maxLevel) {
+        if (!properties.has("Level")) return;
+        JsonElement level = properties.get("Level");
+        Component message = text("pool.native_level_range", maxLevel);
+        if (!level.isJsonPrimitive() || !level.getAsJsonPrimitive().isNumber()) {
+            throw new TrainerEditorMessageException(message);
+        }
+        try {
+            int value = level.getAsBigDecimal().intValueExact();
+            if (value < 1 || value > maxLevel) throw new ArithmeticException("out of range");
+        } catch (ArithmeticException | NumberFormatException ex) {
+            throw new TrainerEditorMessageException(message, ex);
+        }
+    }
+
+    /** Authoring boundary: validates raw level input before Cobblemon can silently clamp it. */
+    public static PokemonProperties parseProperties(String text) {
+        PokemonProperties properties = parsePropertyText(text);
+        validateProperties(properties);
+        return properties;
+    }
+
+    private static PokemonProperties parsePropertyText(String text) {
+        if (text == null || text.isBlank()) throw new TrainerEditorMessageException(text("pool.properties_blank"));
+        if (PokemonSpecies.INSTANCE.getSpecies().isEmpty()) {
+            throw new ShadowDefinitionRegistry.NotReadyException(text("pool.species_not_ready"));
+        }
+        PokemonProperties properties = PokemonProperties.Companion.parse(text);
+        var levels = LEVEL.matcher(text);
+        while (levels.find()) {
+            try {
+                int requested = Integer.parseInt(levels.group(1));
+                if (requested < 1 || properties.getLevel() == null || properties.getLevel() != requested) {
+                    throw new NumberFormatException("clamped or conflicting level");
+                }
+            } catch (NumberFormatException ex) {
+                throw new TrainerEditorMessageException(text("pool.level_conflict", levels.group(1)), ex);
+            }
+        }
+        return properties;
+    }
+
+    private static void validateProperties(PokemonProperties properties) {
+        if (PokemonSpecies.INSTANCE.getSpecies().isEmpty()) {
+            throw new ShadowDefinitionRegistry.NotReadyException(text("pool.species_not_ready"));
+        }
+        String species = properties.getSpecies();
+        if (species == null || species.isBlank()) {
+            throw new TrainerEditorMessageException(text("pool.species_required"));
+        }
+        int maxLevel = Cobblemon.INSTANCE.getConfig().getMaxPokemonLevel();
+        if (properties.getLevel() != null && (properties.getLevel() < 1 || properties.getLevel() > maxLevel)) {
+            throw new TrainerEditorMessageException(text("pool.level_range", maxLevel));
+        }
+        if (!species.equals("random")) {
+            ResourceLocation id = species.contains(":") ? ResourceLocation.tryParse(species)
+                    : ResourceLocation.tryBuild("cobblemon", species);
+            if (id == null) throw new TrainerEditorMessageException(text("pool.species_id_invalid", species));
+            if (PokemonSpecies.INSTANCE.getByIdentifier(id) == null) {
+                throw new TrainerEditorMessageException(text("pool.species_unknown", species));
             }
         }
     }
 
-    private static int safeInt(JsonElement e) {
-        try { return e.getAsInt(); } catch (Throwable t) { return 1; }
+    private static JsonElement encode(List<WeightedEntry> entries) {
+        JsonObject object = new JsonObject();
+        JsonArray array = new JsonArray();
+        entries.forEach(entry -> array.add(entry.toJson()));
+        object.add("entries", array);
+        return object;
     }
 
-    private static void mergeInto(PokemonProperties base, PokemonProperties extra) {
-        try {
-            if (base.getLevel() == null) base.setLevel(extra.getLevel());
-            if (base.getSpecies() == null) base.setSpecies(extra.getSpecies());
-            if (base.getForm() == null) base.setForm(extra.getForm());
-        } catch (Throwable ignored) {}
+    private static List<WeightedEntry> copyEntries(List<WeightedEntry> entries) {
+        return entries.stream().map(entry -> new WeightedEntry(entry.props, entry.weight)).toList();
     }
 
     public static List<PokemonProperties> pick(Random rng, List<WeightedEntry> entries, int count) {
-        if (entries == null || entries.isEmpty() || count <= 0) return Collections.emptyList();
-        // Build cumulative weights
-        int total = 0;
-        for (WeightedEntry e : entries) total += Math.max(1, e.weight);
+        if (entries == null || entries.isEmpty() || count <= 0) return List.of();
+        long total = 0;
+        for (WeightedEntry entry : entries) total = Math.addExact(total, entry.weight);
         List<PokemonProperties> result = new ArrayList<>();
         for (int i = 0; i < count; i++) {
-            int r = rng.nextInt(Math.max(1, total));
-            int acc = 0;
-            for (WeightedEntry e : entries) {
-                acc += Math.max(1, e.weight);
-                if (r < acc) {
-                    result.add(e.props);
+            long roll = rng.nextLong(total);
+            long accumulated = 0;
+            for (WeightedEntry entry : entries) {
+                accumulated += entry.weight;
+                if (roll < accumulated) {
+                    result.add(entry.props.copy());
                     break;
                 }
             }

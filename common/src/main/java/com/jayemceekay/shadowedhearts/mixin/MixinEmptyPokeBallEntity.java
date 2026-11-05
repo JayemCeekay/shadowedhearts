@@ -1,6 +1,7 @@
 package com.jayemceekay.shadowedhearts.mixin;
 
 import com.cobblemon.mod.common.api.events.CobblemonEvents;
+import com.cobblemon.mod.common.api.battles.model.actor.ActorType;
 import com.cobblemon.mod.common.api.events.pokeball.ThrownPokeballHitEvent;
 import com.cobblemon.mod.common.battles.BattleCaptureAction;
 import com.cobblemon.mod.common.battles.BattleRegistry;
@@ -14,12 +15,14 @@ import com.google.common.collect.Iterables;
 import com.jayemceekay.shadowedhearts.common.capture.DarkBallCaptureTimings;
 import com.jayemceekay.shadowedhearts.common.shadow.SHAspects;
 import com.jayemceekay.shadowedhearts.common.snag.SnagCaps;
+import com.jayemceekay.shadowedhearts.common.snag.SnagMachineBenefits;
 import com.jayemceekay.shadowedhearts.network.ShadowedHeartsNetwork;
 import com.jayemceekay.shadowedhearts.network.snag.SnagArmedPacket;
 import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import kotlin.Unit;
 import net.minecraft.ChatFormatting;
+import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.TextColor;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.server.level.ServerPlayer;
@@ -81,6 +84,13 @@ public abstract class MixinEmptyPokeBallEntity extends ThrowableItemProjectile {
                         var battle = delegate.getBattle();
                         Entity owner = ((EmptyPokeBallEntity) (Object) this).getOwner();
 
+                        // Collision runs before Cobblemon's ownerless-ball tick cleanup.
+                        // A disconnected thrower must not start a capture or receive a message.
+                        if (owner == null || !owner.isAlive() || owner.isRemoved()) {
+                            drop();
+                            return;
+                        }
+
                         if ((pokemonEntity.getPokemon().isPlayerOwned())) {
                             owner.sendSystemMessage(lang("capture.not_wild", pokemonEntity.getExposedSpecies().getTranslatedName()).withColor(TextColor.parseColor("red").getOrThrow().getValue()));
                             drop();
@@ -93,15 +103,10 @@ public abstract class MixinEmptyPokeBallEntity extends ThrowableItemProjectile {
                             return;
                         }
 
-                        if (battle != null && owner != null) {
-                            if (!((EmptyPokeBallEntity) (Object) this).getAspects().contains("snag_ball") && !pokemonEntity.getPokemon().isWild()) {
-                                owner.sendSystemMessage(lang("message.shadowedhearts.snag_machine.requires_snag_ball").withStyle(ChatFormatting.RED));
-                                drop();
-                                return;
-                            }
+                        if (battle != null) {
                             var throwerActor = battle.getActor(owner.getUUID());
-                            var hitActor = Iterables.find(battle.getActors(), actor -> actor.isForPokemon(pokemonEntity));
-                            var hitBattlePokemon = Iterables.find(hitActor.getActivePokemon(), battlePokemon -> battlePokemon.getBattlePokemon().getEffectedPokemon().getEntity() == pokemonEntity, null);
+                            var hitActor = Iterables.find(battle.getActors(), actor -> actor.isForPokemon(pokemonEntity), null);
+                            var hitBattlePokemon = hitActor == null ? null : Iterables.find(hitActor.getActivePokemon(), battlePokemon -> battlePokemon.getBattlePokemon().getEffectedPokemon().getEntity() == pokemonEntity, null);
 
                             if (throwerActor == null) {
                                 owner.sendSystemMessage(lang("capture.in_battle", pokemonEntity.getExposedSpecies().getTranslatedName().withStyle(ChatFormatting.RED)));
@@ -119,6 +124,31 @@ public abstract class MixinEmptyPokeBallEntity extends ThrowableItemProjectile {
                                 owner.sendSystemMessage(lang("capture.not_your_turn").withStyle(ChatFormatting.RED));
                                 drop();
                                 return;
+                            }
+                            EmptyPokeBallEntity ball = (EmptyPokeBallEntity) (Object) this;
+                            // NPC Shadows report isWild=true for Cobblemon's capture pipeline. Use the
+                            // actual battle actor to enforce one-shot authorization and turn recovery.
+                            if (hitActor.getType() == ActorType.NPC) {
+                                if (!com.jayemceekay.shadowedhearts.config.GameplayTuningConfig.INSTANCE.snaggingEnabled()) {
+                                    owner.sendSystemMessage(Component.translatable("message.shadowedhearts.snag_machine.disabled").withStyle(ChatFormatting.RED));
+                                    drop();
+                                    return;
+                                }
+                                if (hitActor.getSide() != throwerActor.getSide().getOppositeSide()) {
+                                    drop();
+                                    return;
+                                }
+                                if (!ball.getAspects().contains("snag_ball")) {
+                                    owner.sendSystemMessage(Component.translatable("message.shadowedhearts.snag_machine.requires_snag_ball").withStyle(ChatFormatting.RED));
+                                    drop();
+                                    return;
+                                }
+                                if (!(owner instanceof ServerPlayer player)
+                                        || !SnagMachineBenefits.canAttempt(player, battle, ball)) {
+                                    owner.sendSystemMessage(Component.translatable("message.shadowedhearts.snag_machine.recharging").withStyle(ChatFormatting.RED));
+                                    drop();
+                                    return;
+                                }
                             }
                             BattleCaptureAction battleCaptureAction = new BattleCaptureAction(battle, hitBattlePokemon, ((EmptyPokeBallEntity) (Object) this));
                             battleCaptureAction.attach();
@@ -156,6 +186,8 @@ public abstract class MixinEmptyPokeBallEntity extends ThrowableItemProjectile {
                                 new ThrownPokeballHitEvent(((EmptyPokeBallEntity) (Object) this), pokemonEntity),
                                 thrownPokeballHitEvent -> {
                                     if (thrownPokeballHitEvent.isCanceled()) {
+                                        // Release the attached battle action before discarding the ball.
+                                        ((EmptyPokeBallEntity) (Object) this).getCaptureFuture().complete(false);
                                         drop();
                                     }
                                     return Unit.INSTANCE;

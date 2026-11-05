@@ -1,0 +1,175 @@
+{
+  "replace": false,
+  "values": [
+    "#minecraft:planks",
+    "#minecraft:stone_bricks",
+    "#minecraft:stairs",
+    "#minecraft:slabs",
+    "#minecraft:walls",
+    "#minecraft:fences",
+    "#minecraft:fence_gates",
+    "#minecraft:doors",
+    "#minecraft:trapdoors",
+    "#minecraft:buttons",
+    "#minecraft:pressure_plates",
+    "#minecraft:rails",
+    "#minecraft:all_signs",
+    "#minecraft:banners",
+    "#minecraft:beds",
+    "#minecraft:wool",
+    "#minecraft:wool_carpets",
+    "#minecraft:concrete_powder",
+    "#minecraft:candles",
+    "#minecraft:anvil",
+    "#minecraft:beehives",
+    "#minecraft:portals",
+    "minecraft:glass",
+    "minecraft:tinted_glass",
+    "minecraft:glass_pane",
+    "minecraft:cobblestone",
+    "minecraft:mossy_cobblestone",
+    "minecraft:cobbled_deepslate",
+    "minecraft:packed_mud",
+    "minecraft:farmland",
+    "minecraft:dirt_path",
+    "minecraft:polished_basalt",
+    "minecraft:polished_blackstone",
+    "minecraft:polished_deepslate",
+    "minecraft:polished_tuff",
+    "minecraft:stone_bricks",
+    "minecraft:bricks",
+    "minecraft:nether_bricks",
+    "minecraft:red_nether_bricks",
+    "minecraft:end_stone_bricks",
+    "minecraft:mud_bricks",
+    "minecraft:crafting_table",
+    "minecraft:cartography_table",
+    "minecraft:fletching_table",
+    "minecraft:smithing_table",
+    "minecraft:enchanting_table",
+    "minecraft:loom",
+    "minecraft:stonecutter",
+    "minecraft:grindstone",
+    "minecraft:composter",
+    "minecraft:redstone_wire",
+    "minecraft:redstone_block",
+    "minecraft:repeater",
+    "minecraft:comparator",
+    "minecraft:observer",
+    "minecraft:piston",
+    "minecraft:sticky_piston",
+    "minecraft:piston_head",
+    "minecraft:lever",
+    "minecraft:tripwire_hook",
+    "minecraft:tripwire",
+    "minecraft:target",
+    "minecraft:note_block",
+    "minecraft:lightning_rod",
+    "minecraft:redstone_lamp",
+    "minecraft:respawn_anchor",
+    "minecraft:ladder",
+    "minecraft:scaffolding",
+    "minecraft:iron_bars",
+    "minecraft:chain",
+    "minecraft:bell",
+    "minecraft:torch",
+    "minecraft:wall_torch",
+    "minecraft:soul_torch",
+    "minecraft:soul_wall_torch",
+    "minecraft:redstone_torch",
+    "minecraft:redstone_wall_torch",
+    "minecraft:lantern",
+    "minecraft:soul_lantern",
+    "minecraft:tnt",
+    "minecraft:carved_pumpkin",
+    "minecraft:jack_o_lantern",
+    {
+      "required": false,
+      "id": "#c:bricks"
+    },
+    {
+      "required": false,
+      "id": "#c:bricks/normal"
+    },
+    {
+      "required": false,
+      "id": "#c:bricks/nether"
+    },
+    {
+      "required": false,
+      "id": "#c:planks"
+    },
+    {
+      "required": false,
+      "id": "#c:glass_blocks"
+    },
+    {
+      "required": false,
+      "id": "#c:glass_panes"
+    },
+    {
+      "required": false,
+      "id": "#c:glazed_terracottas"
+    },
+    {
+      "required": false,
+      "id": "#c:concretes"
+    },
+    {
+      "required": false,
+      "id": "#c:concrete_powders"
+    },
+    {
+      "required": false,
+      "id": "#c:ropes"
+    },
+    {
+      "required": false,
+      "id": "#c:chains"
+    },
+    {
+      "required": false,
+      "id": "#c:fences"
+    },
+    {
+      "required": false,
+      "id": "#c:fence_gates"
+    },
+    {
+      "required": false,
+      "id": "#c:stairs"
+    },
+    {
+      "required": false,
+      "id": "#c:slabs"
+    },
+    {
+      "required": false,
+      "id": "#c:walls"
+    },
+    {
+      "required": false,
+      "id": "#forge:glass"
+    },
+    {
+      "required": false,
+      "id": "#forge:glass_panes"
+    },
+    {
+      "required": false,
+      "id": "#forge:fences"
+    },
+    {
+      "required": false,
+      "id": "#forge:fence_gates"
+    },
+    {
+      "required": false,
+      "id": "#forge:concrete"
+    },
+    {
+      "required": false,
+      "id": "#forge:concrete_powder"
+    }
+  ]
+}

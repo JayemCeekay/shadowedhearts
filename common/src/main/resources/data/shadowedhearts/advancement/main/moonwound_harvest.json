@@ -1,0 +1,31 @@
+{
+  "parent": "shadowedhearts:main/strong_signal",
+  "display": {
+    "icon": {
+      "id": "shadowedhearts:core_sample"
+    },
+    "title": {
+      "translate": "advancements.shadowedhearts.moonwound_harvest.title"
+    },
+    "description": {
+      "translate": "advancements.shadowedhearts.moonwound_harvest.description"
+    },
+    "frame": "goal",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "moonwound_harvest": {
+      "trigger": "shadowedhearts:progression",
+      "conditions": {
+        "milestone": "moonwound_harvest"
+      }
+    }
+  },
+  "requirements": [
+    [
+      "moonwound_harvest"
+    ]
+  ]
+}

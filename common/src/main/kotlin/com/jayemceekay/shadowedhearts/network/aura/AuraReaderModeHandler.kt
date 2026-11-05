@@ -10,7 +10,7 @@ object AuraReaderModeHandler : ServerNetworkPacketHandler<AuraReaderModeC2SPacke
     override fun handle(packet: AuraReaderModeC2SPacket, server: MinecraftServer, player: ServerPlayer) {
         val auraReader = SnagAccessoryBridgeHolder.INSTANCE.getAuraReaderStack(player)
         if (!auraReader.isEmpty) {
-            AuraReaderService.setMode(player, packet.mode, auraReader)
+            AuraReaderService.setMode(player, packet.mode)
         }
     }
 }

@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    {
+      "item": "shadowedhearts:umbrafall_shell"
+    },
+    {
+      "item": "shadowedhearts:shadow_dust"
+    }
+  ],
+  "result": {
+    "id": "shadowedhearts:cracked_umbrafall_shell",
+    "count": 1
+  }
+}

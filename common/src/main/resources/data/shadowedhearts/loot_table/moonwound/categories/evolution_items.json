@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:gift",
+  "pools": [
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:tag",
+          "name": "cobblemon:evolution_items",
+          "expand": true
+        }
+      ]
+    }
+  ],
+  "random_sequence": "shadowedhearts:moonwound/categories/evolution_items"
+}

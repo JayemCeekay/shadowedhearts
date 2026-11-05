@@ -20,7 +20,41 @@ public class ModShadersPlatformImpl {
 
     @SubscribeEvent
     public static void registerShaders(RegisterShadersEvent evt) {
+        com.jayemceekay.shadowedhearts.client.voidshadow.VoidShadowShaders.LIQUID = null;
+        ModShaders.UMBRA_LIQUID = null;
+        ModShaders.UMBRAFALL_CORE_SEEP = null;
+        com.jayemceekay.shadowedhearts.client.moonwound.MoonwoundPortalRenderer.resetShader();
+        com.jayemceekay.shadowedhearts.client.render.block.UmbrafallCoreSeepIrisRenderer.clear();
+        ModShaders.UMBRA_INFUSER_BACKGROUND = null;
+        com.jayemceekay.shadowedhearts.client.voidshadow.VoidShadowTransitions.clear();
         try {
+            evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:moonwound/portal",
+                            com.jayemceekay.shadowedhearts.client.moonwound.MoonwoundPortalRenderer.FORMAT),
+                    shader -> com.jayemceekay.shadowedhearts.client.moonwound.MoonwoundPortalRenderer.SHADER = shader);
+        } catch (IOException failure) {
+            Shadowedhearts.LOGGER.warn("[Moonwound] Portal shader unavailable", failure);
+        }
+        try {
+            evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:moonwound/pixel_resolve",
+                            com.jayemceekay.shadowedhearts.client.moonwound.MoonwoundPortalRenderer.PIXEL_FORMAT),
+                    shader -> com.jayemceekay.shadowedhearts.client.moonwound.MoonwoundPortalRenderer.PIXEL_RESOLVE = shader);
+            evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:moonwound/pixel_present",
+                            com.jayemceekay.shadowedhearts.client.moonwound.MoonwoundPortalRenderer.PIXEL_FORMAT),
+                    shader -> com.jayemceekay.shadowedhearts.client.moonwound.MoonwoundPortalRenderer.PIXEL_PRESENT = shader);
+        } catch (IOException failure) {
+            Shadowedhearts.LOGGER.warn("[Moonwound] Pixelation shaders unavailable; using smooth rendering", failure);
+        }
+        try {
+            evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:umbrafall/umbrafall_core_seep",
+                            com.jayemceekay.shadowedhearts.client.render.block.UmbrafallCoreSeepRenderTypes.FORMAT),
+                    shader -> ModShaders.UMBRAFALL_CORE_SEEP = shader);
+        } catch (IOException failure) {
+            Shadowedhearts.LOGGER.warn("[Umbrafall] Core seep shader unavailable; retaining baked texture", failure);
+        }
+        try {
+            evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:infusion/umbra_liquid",
+                            com.jayemceekay.shadowedhearts.client.render.block.UmbraLiquidRenderTypes.FORMAT),
+                    shader -> ModShaders.UMBRA_LIQUID = shader);
             // Cylinder variant for pillar-style aura bounds
             evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:aura/shadow_aura_fog_cylinder", DefaultVertexFormat.NEW_ENTITY),
                     shader -> {
@@ -38,6 +72,12 @@ public class ModShadersPlatformImpl {
             // Purification Chamber background
             evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:purification/purification_chamber_background", DefaultVertexFormat.POSITION_TEX),
                     shader -> ModShaders.PURIFICATION_CHAMBER_BACKGROUND = shader);
+
+            evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:infusion/umbra_infuser_background", DefaultVertexFormat.POSITION_TEX),
+                    shader -> ModShaders.UMBRA_INFUSER_BACKGROUND = shader);
+
+            evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:voidshadow/void_shadow_liquid", DefaultVertexFormat.NEW_ENTITY),
+                    shader -> com.jayemceekay.shadowedhearts.client.voidshadow.VoidShadowShaders.LIQUID = shader);
 
             // Poké Ball glow overlay — texture-based (additive + fullbright)
             evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:snag/ball_glow", DefaultVertexFormat.NEW_ENTITY),
@@ -208,14 +248,11 @@ public class ModShadersPlatformImpl {
                     shader -> ModShaders.SHADOW_POKEMON_AURA_GUI_PRESENT = shader);
 
             // Screen-space electromagnetic static overlay
-            evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:interference/aura_static_interference", DefaultVertexFormat.POSITION_TEX),
-                    shader -> ModShaders.AURA_STATIC_INTERFERENCE = shader);
 
-            evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:interference/heat_haze_interference", DefaultVertexFormat.POSITION_TEX),
-                    shader -> ModShaders.HEAT_HAZE_INTERFERENCE = shader);
 
-            evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:hud/barrel_distortion", DefaultVertexFormat.POSITION_COLOR),
-                    shader -> ModShaders.HUD_BARREL_DISTORTION = shader);
+
+
+
         } catch (IOException e) {
             throw new RuntimeException("Failed to load shaders", e);
         }

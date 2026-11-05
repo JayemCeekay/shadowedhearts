@@ -4,7 +4,9 @@ import com.cobblemon.mod.common.api.pokemon.Natures;
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
 import com.cobblemon.mod.common.pokemon.Nature;
 import com.cobblemon.mod.common.pokemon.Pokemon;
+import com.jayemceekay.shadowedhearts.advancements.ModCriteriaTriggers;
 import com.jayemceekay.shadowedhearts.common.heart.HeartGaugeDeltas;
+import com.jayemceekay.shadowedhearts.common.heart.HeartGaugeEvents;
 import com.jayemceekay.shadowedhearts.common.shadow.ShadowAspectUtil;
 import com.jayemceekay.shadowedhearts.common.shadow.ShadowService;
 import com.jayemceekay.shadowedhearts.common.shadow.ScentModeRecovery;
@@ -244,6 +246,13 @@ public class ScentItem extends Item {
         boolean reduced = ShadowAspectUtil.getHeartGaugeMeter(pokemon) < current;
         boolean calmed = canCalm && ScentModeRecovery.calm(pokemon, pe);
         if (!reduced && !calmed) return noEffect(player);
+
+        if (pokemon.getOwnerPlayer() instanceof ServerPlayer owner) {
+            HeartGaugeEvents.recordCareProgress(owner, pokemon, current);
+        }
+        if (player instanceof ServerPlayer serverPlayer) {
+            ModCriteriaTriggers.triggerProgression(serverPlayer, "scent_used");
+        }
 
         // A real gauge reduction or mode recovery starts cooldown and consumes one dose.
         ShadowAspectUtil.setScentCooldown(pokemon, now);

@@ -1,11 +1,13 @@
 package com.jayemceekay.shadowedhearts.common.aura;
 
-import com.jayemceekay.shadowedhearts.content.items.AuraReaderItem;
+import com.jayemceekay.shadowedhearts.advancements.ModCriteriaTriggers;
 import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs;
 import com.jayemceekay.shadowedhearts.network.ShadowedHeartsNetwork;
 import com.jayemceekay.shadowedhearts.network.aura.AuraReaderStateS2CPacket;
 import com.jayemceekay.shadowedhearts.registry.util.ModItemComponents;
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
+import com.jayemceekay.shadowedhearts.common.shadow.ShadowAspectUtil;
+import com.jayemceekay.shadowedhearts.integration.accessories.SnagAccessoryBridgeHolder;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.item.ItemStack;
@@ -18,7 +20,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 public final class AuraReaderService {
-    private static final int PULSE_CHARGE_COST = 100;
     private static final ConcurrentMap<UUID, AuraReaderSession> SESSIONS = new ConcurrentHashMap<>();
     private static final List<AuraReadingProvider> PROVIDERS = new ArrayList<>();
     private static boolean defaultProvidersRegistered;
@@ -36,10 +37,55 @@ public final class AuraReaderService {
 
     public static AuraReaderSession session(ServerPlayer player) {
         AuraReaderSession session = SESSIONS.computeIfAbsent(player.getUUID(), AuraReaderSession::new);
-        session.setMode(AuraReaderPlayerState.getMode(player));
+        AuraReaderPlayerState.setMode(player, AuraReaderMode.PASSIVE_AURA);
+        session.setMode(AuraReaderMode.PASSIVE_AURA);
         session.setActive(AuraReaderPlayerState.isActive(player));
         session.setSelectedReadingId(AuraReaderPlayerState.getSelectedSignal(player));
         return session;
+    }
+
+    /** Drop transient discoveries, pins and cooldown without changing saved navigation preferences. */
+    public static void removeSession(ServerPlayer player) {
+        AuraReaderSession removed = SESSIONS.remove(player.getUUID());
+        clearPokemonSelection(player, removed);
+        AuraLockManager.INSTANCE.clearPlayer(player.getUUID());
+        if (AuraReaderPlayerState.getLockType(player) == AuraReaderLockType.ENTITY) {
+            AuraReaderPlayerState.clearLock(player);
+        }
+        if (removed != null) {
+            AuraReaderPlayerState.setTracking(player, removed.isExplicitTracking()
+                    || !AuraReaderPlayerState.getSelectedSignal(player).isBlank()
+                    || AuraReaderPlayerState.getLockType(player) != AuraReaderLockType.NONE);
+        }
+    }
+
+    /** Observe transitions even while inactive; site navigation and pulse cooldown are independent. */
+    public static void invalidateContacts(ServerPlayer player) {
+        AuraReaderSession session = SESSIONS.get(player.getUUID());
+        clearPokemonSelection(player, session);
+        AuraLockManager.INSTANCE.clearPlayer(player.getUUID());
+        if (AuraReaderPlayerState.getLockType(player) == AuraReaderLockType.ENTITY) AuraReaderPlayerState.clearLock(player);
+        if (session != null) {
+            session.contacts().clear();
+            session.replaceCachedReadings(List.of());
+        }
+        restoreTracking(player);
+        sendState(player);
+    }
+
+    private static void clearPokemonSelection(ServerPlayer player, AuraReaderSession session) {
+        String selected = AuraReaderPlayerState.getSelectedSignal(player);
+        if ((session != null && session.isPokemonSelection(selected))
+                || (!selected.isBlank() && AuraReaderPlayerState.getLockType(player) == AuraReaderLockType.ENTITY
+                && selected.equals(AuraReaderPlayerState.getLockedTarget(player)))) {
+            AuraReaderPlayerState.clearSelectedSignal(player);
+            if (session != null) session.setSelectedReadingId("");
+        }
+    }
+
+    public static void resetSessions() {
+        SESSIONS.clear();
+        AuraLockManager.INSTANCE.clearAll();
     }
 
     public static void registerProvider(AuraReadingProvider provider) {
@@ -54,13 +100,14 @@ public final class AuraReaderService {
         return List.copyOf(PROVIDERS);
     }
 
+    /** Battle detection permits actions without changing the equipped item's manual toggle. */
+    public static boolean isActiveForActions(ServerPlayer player) {
+        return AuraReaderPlayerState.isActive(player) || AuraReaderBattleDetection.isDetecting(player);
+    }
+
     public static void setActive(ServerPlayer player, ItemStack auraReader, boolean active) {
         boolean allowed = !auraReader.isEmpty();
         boolean nextActive = active && allowed;
-        if (nextActive && !player.isCreative()) {
-            AuraReaderCharge.ensureInitialized(auraReader, AuraReaderItem.MAX_CHARGE);
-            nextActive = AuraReaderCharge.get(auraReader) > 0;
-        }
 
         AuraReaderPlayerState.setActive(player, nextActive);
         session(player).setActive(nextActive);
@@ -68,26 +115,28 @@ public final class AuraReaderService {
         if (!auraReader.isEmpty()) {
             auraReader.set(ModItemComponents.AURA_SCANNER_ACTIVE.get(), nextActive);
         }
-        sendState(player, auraReader);
+        sendState(player);
     }
 
     public static void setTracking(ServerPlayer player, ItemStack auraReader, boolean tracking) {
         boolean nextTracking = tracking && !auraReader.isEmpty();
+        session(player).setExplicitTracking(nextTracking);
+        if (!nextTracking) {
+            AuraLockManager.INSTANCE.clearPlayer(player.getUUID());
+            session(player).contacts().clearPin();
+        }
         AuraReaderPlayerState.setTracking(player, nextTracking);
         if (!auraReader.isEmpty()) {
             auraReader.set(ModItemComponents.AURA_SCANNER_TRACKING.get(), nextTracking);
         }
-        sendState(player, auraReader);
+        sendState(player);
     }
 
     public static void setMode(ServerPlayer player, AuraReaderMode mode) {
-        setMode(player, mode, ItemStack.EMPTY);
-    }
-
-    public static void setMode(ServerPlayer player, AuraReaderMode mode, ItemStack auraReader) {
-        AuraReaderPlayerState.setMode(player, mode);
-        session(player).setMode(mode);
-        sendState(player, auraReader);
+        // Legacy clients may still send this packet. Modes no longer gate Reader mechanics.
+        AuraReaderPlayerState.setMode(player, AuraReaderMode.PASSIVE_AURA);
+        session(player).setMode(AuraReaderMode.PASSIVE_AURA);
+        sendState(player);
     }
 
     public static void syncActiveFromStack(ServerPlayer player, ItemStack auraReader) {
@@ -98,24 +147,6 @@ public final class AuraReaderService {
 
         AuraReaderPlayerState.setActive(player, active);
         session(player).setActive(active);
-    }
-
-    public static boolean consumeActiveCharge(ServerPlayer player, ItemStack auraReader) {
-        if (auraReader.isEmpty()) {
-            setActive(player, auraReader, false);
-            return false;
-        }
-
-        if (player.isCreative()) {
-            syncActiveFromStack(player, auraReader);
-            return true;
-        }
-
-        boolean hasCharge = AuraReaderCharge.consume(auraReader, 1, AuraReaderItem.MAX_CHARGE);
-        if (!hasCharge) {
-            setActive(player, auraReader, false);
-        }
-        return hasCharge;
     }
 
     public static List<AuraReading> pulse(AuraScanContext context) {
@@ -134,14 +165,14 @@ public final class AuraReaderService {
 
         return readings.stream().map(r -> {
             boolean locked = r.id().equals(lockedTarget);
-            boolean selected = r.id().equals(selectedSignal);
+            boolean selected = r.selected() || r.id().equals(selectedSignal);
             if (locked || selected) {
                 return new AuraReading(
-                        r.id(), r.type(), r.source(), r.label(), r.status(), r.dimension(),
+                        r.id(), r.type(), r.source(), r.labelText(), r.statusText(), r.dimension(),
                         r.directionX(), r.directionY(), r.directionZ(), r.bearingUncertainty(),
                         r.distanceBand(), r.verticalHint(), r.strength(), r.confidence(),
                         r.interference(), r.priority(), r.expiryTick(), selected, locked,
-                        r.outOfDimension(), r.exactPositionAllowed()
+                        r.outOfDimension(), r.exactPositionAllowed(), r.heartGauge()
                 );
             }
             return r;
@@ -149,7 +180,7 @@ public final class AuraReaderService {
     }
 
     public static List<AuraReading> targetedScan(ServerPlayer player, ItemStack auraReader) {
-        if (auraReader.isEmpty() || !AuraReaderPlayerState.isActive(player)) {
+        if (!player.isAlive() || auraReader.isEmpty() || !isActiveForActions(player)) {
             return List.of();
         }
 
@@ -162,25 +193,21 @@ public final class AuraReaderService {
                 false
         );
         List<AuraReading> readings = pulse(context);
+        reconcileTracking(player, readings);
         session(player).replaceCachedReadings(readings);
         return readings;
     }
 
     public static AuraReaderPulseResult pulse(ServerPlayer player, ItemStack auraReader) {
-        if (auraReader.isEmpty() || !AuraReaderPlayerState.isActive(player)) {
-            sendState(player, auraReader);
+        if (!player.isAlive() || auraReader.isEmpty() || !isActiveForActions(player)) {
+            sendState(player);
             return AuraReaderPulseResult.rejected();
         }
 
         long gameTime = player.serverLevel().getGameTime();
         AuraReaderSession session = session(player);
         if (session.getPulseCooldownEndTick() > gameTime) {
-            sendState(player, auraReader);
-            return AuraReaderPulseResult.rejected();
-        }
-
-        if (!player.isCreative() && !AuraReaderCharge.consume(auraReader, PULSE_CHARGE_COST, AuraReaderItem.MAX_CHARGE)) {
-            setActive(player, auraReader, false);
+            sendState(player);
             return AuraReaderPulseResult.rejected();
         }
 
@@ -192,59 +219,133 @@ public final class AuraReaderService {
                 player,
                 player.serverLevel(),
                 auraReader,
-                AuraReaderMode.PULSE_SCAN,
+                AuraReaderMode.PASSIVE_AURA,
                 gameTime,
                 true
         );
         List<AuraReading> readings = pulse(context);
         session.replaceCachedReadings(readings);
-        sendState(player, auraReader);
+        ModCriteriaTriggers.triggerProgression(player, "reader_pulse");
+        sendState(player);
         return AuraReaderPulseResult.accepted(readings);
     }
 
     public static boolean lockFocusedTarget(ServerPlayer player, ItemStack auraReader) {
-        if (auraReader.isEmpty() || !AuraReaderPlayerState.isActive(player)) {
-            AuraReaderPlayerState.clearLock(player);
-            sendState(player, auraReader);
+        if (!player.isAlive() || auraReader.isEmpty() || !isActiveForActions(player)) {
+            sendState(player);
             return false;
         }
 
-        List<AuraReading> readings = targetedScan(player, auraReader);
-        AuraReading reading = readings.isEmpty() ? null : readings.get(0);
-        if (reading == null || reading.type() != AuraReadingType.SHADOW_POKEMON) {
-            AuraReaderPlayerState.clearLock(player);
-            sendState(player, auraReader);
+        int range = Math.max(1, ShadowedHeartsConfigs.getInstance().getShadowConfig().auraScannerShadowRange());
+        Entity target = AuraReaderTargeting.pickEntity(player.serverLevel(), player, 1.0f, range);
+        if (!(target instanceof PokemonEntity pokemonEntity)
+                || !isUsableContact(player, pokemonEntity, range)) {
+            sendState(player);
             return false;
         }
 
-        UUID entityUuid;
-        try {
-            entityUuid = UUID.fromString(reading.id());
-        } catch (IllegalArgumentException ignored) {
+        AuraReaderContacts contacts = contacts(player);
+        if (AuraReaderPlayerState.getLockType(player) == AuraReaderLockType.ENTITY) {
+            AuraLockManager.INSTANCE.clearPlayer(player.getUUID());
             AuraReaderPlayerState.clearLock(player);
-            sendState(player, auraReader);
-            return false;
         }
-
-        Entity entity = player.serverLevel().getEntity(entityUuid);
-        if (!(entity instanceof PokemonEntity pokemonEntity) || !isLockablePokemon(player, pokemonEntity)) {
-            AuraReaderPlayerState.clearLock(player);
-            sendState(player, auraReader);
-            return false;
+        contacts.pinVisible(pokemonEntity.getUUID());
+        // Pinning an owned/NPC contact never grants a wild gameplay lock.
+        if (isLockablePokemon(player, pokemonEntity)) {
+            int durationTicks = Math.max(1, ShadowedHeartsConfigs.getInstance().getShadowConfig().auraLockMaxSeconds() * 20);
+            AuraLockManager.INSTANCE.applyLock(pokemonEntity, player.getUUID(), player.serverLevel().getGameTime(), durationTicks);
+            AuraReaderPlayerState.lockEntity(player, pokemonEntity.getUUID(), player.serverLevel().dimension().location());
+            ModCriteriaTriggers.triggerProgression(player, "shadow_locked");
         }
-
-        int durationTicks = Math.max(1, ShadowedHeartsConfigs.getInstance().getShadowConfig().auraLockMaxSeconds() * 20);
-        AuraLockManager.INSTANCE.applyLock(pokemonEntity, player.serverLevel().getGameTime(), durationTicks);
-        AuraReaderPlayerState.lockEntity(player, pokemonEntity.getUUID(), player.serverLevel().dimension().location());
-        session(player).setSelectedReadingId(reading.id());
-        sendState(player, auraReader);
+        restoreTracking(player);
+        sendState(player);
         return true;
     }
 
+    public static boolean pinSelectedContact(ServerPlayer player, ItemStack auraReader) {
+        if (!player.isAlive() || auraReader.isEmpty() || !isActiveForActions(player)) return false;
+        // Resolve/prune only authorized contacts before accepting the selection.
+        targetedScan(player, auraReader);
+        UUID selected;
+        try {
+            selected = UUID.fromString(AuraReaderPlayerState.getSelectedSignal(player));
+        } catch (IllegalArgumentException ignored) {
+            return false;
+        }
+        int range = Math.max(1, ShadowedHeartsConfigs.getInstance().getShadowConfig().auraScannerShadowRange());
+        Entity entity = player.serverLevel().getEntity(selected);
+        if (!(entity instanceof PokemonEntity pokemonEntity) || !isUsableContact(player, pokemonEntity, range)
+                || !contacts(player).pinDiscovered(selected, player.serverLevel().getGameTime())) {
+            return false;
+        }
+        restoreTracking(player);
+        sendState(player);
+        return true;
+    }
+
+    public static void clearPinnedContact(ServerPlayer player, ItemStack auraReader) {
+        session(player).contacts().clearPin();
+        restoreTracking(player);
+        sendState(player);
+    }
+
+    public static void cycleSelectedSignal(ServerPlayer player, ItemStack auraReader, boolean previous) {
+        if (!player.isAlive() || auraReader.isEmpty() || !isActiveForActions(player)) return;
+        AuraReaderContacts contacts = contacts(player);
+        long nowTick = player.serverLevel().getGameTime();
+        List<String> ids = targetedScan(player, auraReader).stream()
+                .filter(reading -> reading.type() == AuraReadingType.UMBRAFALL_SIGNAL
+                        || reading.type() == AuraReadingType.SHADOW_POKEMON && authorizedContact(contacts, reading.id(), nowTick))
+                .sorted(Comparator.comparingInt(AuraReading::priority).reversed().thenComparing(AuraReading::id))
+                .map(AuraReading::id).toList();
+        String selected = AuraReaderSignalSelection.cycle(ids, AuraReaderPlayerState.getSelectedSignal(player), previous);
+        AuraReaderPlayerState.setSelectedSignal(player, selected);
+        session(player).setSelectedReadingId(selected);
+        restoreTracking(player);
+        sendState(player);
+    }
+
+    private static boolean authorizedContact(AuraReaderContacts contacts, String id, long nowTick) {
+        try {
+            return contacts.isAuthorized(UUID.fromString(id), nowTick);
+        } catch (IllegalArgumentException ignored) {
+            return false;
+        }
+    }
+
+    private static AuraReaderContacts contacts(ServerPlayer player) {
+        AuraReaderContacts contacts = session(player).contacts();
+        contacts.observeDimension(player.serverLevel().dimension().location().toString());
+        return contacts;
+    }
+
+    private static boolean isUsableContact(ServerPlayer player, PokemonEntity entity, int range) {
+        return AuraReaderContacts.usable(entity.isAlive() && !entity.isRemoved(),
+                ShadowAspectUtil.hasShadowAspect(entity.getPokemon()), AuraReaderTargeting.distanceToHitboxSqr(player, entity), range);
+    }
+
+    private static void restoreTracking(ServerPlayer player) {
+        AuraReaderSession session = session(player);
+        AuraReaderPlayerState.setTracking(player, session.isExplicitTracking() || session.contacts().pinnedId() != null
+                || !AuraReaderPlayerState.getSelectedSignal(player).isBlank()
+                || AuraReaderPlayerState.getLockType(player) != AuraReaderLockType.NONE);
+    }
+
+    private static void reconcileTracking(ServerPlayer player, List<AuraReading> completeReadings) {
+        String selected = AuraReaderPlayerState.getSelectedSignal(player);
+        if (!selected.isBlank() && completeReadings.stream().noneMatch(reading -> reading.id().equals(selected))) {
+            AuraReaderPlayerState.clearSelectedSignal(player);
+            session(player).setSelectedReadingId("");
+        }
+        restoreTracking(player);
+    }
+
     public static void clearLock(ServerPlayer player, ItemStack auraReader) {
+        AuraLockManager.INSTANCE.clearPlayer(player.getUUID());
         AuraReaderPlayerState.clearLock(player);
-        session(player).setSelectedReadingId("");
-        sendState(player, auraReader);
+        session(player).contacts().clearPin();
+        restoreTracking(player);
+        sendState(player);
     }
 
     public static boolean validateLock(ServerPlayer player, ItemStack auraReader) {
@@ -259,14 +360,15 @@ public final class AuraReaderService {
         Entity entity = resolveLockedEntity(player);
         if (!(entity instanceof PokemonEntity pokemonEntity)
                 || entity.isRemoved()
-                || !isLockablePokemon(player, pokemonEntity)
-                || !AuraLockManager.INSTANCE.isLocked(entity, player.serverLevel().getGameTime())) {
-            if (entity != null) {
-                AuraLockManager.INSTANCE.clear(entity);
-            }
+                || !entity.isAlive()
+                || !ShadowAspectUtil.hasShadowAspect(pokemonEntity.getPokemon())
+                || !isValidWildLockOwner(player, pokemonEntity)
+                || !AuraLockManager.INSTANCE.isLocked(entity, player.getUUID(), player.serverLevel().getGameTime())) {
+            AuraLockManager.INSTANCE.clearPlayer(player.getUUID());
             AuraReaderPlayerState.clearLock(player);
-            session(player).setSelectedReadingId("");
-            sendState(player, auraReader);
+            // The independent tracking pin may outlive the timed wild lock.
+            restoreTracking(player);
+            sendState(player);
             return false;
         }
 
@@ -292,20 +394,26 @@ public final class AuraReaderService {
     }
 
     private static boolean isLockablePokemon(ServerPlayer player, PokemonEntity entity) {
-        if (player.distanceTo(entity) > ShadowedHeartsConfigs.getInstance().getShadowConfig().auraLockRange()) {
+        int range = ShadowedHeartsConfigs.getInstance().getShadowConfig().auraLockRange();
+        if (!isUsableContact(player, entity, range)) {
             return false;
         }
-        return entity.getPokemon().getOwnerUUID() == null && !entity.getPokemon().isNPCOwned();
+        return AuraScanOwnership.resolve(player.getUUID(), entity) == AuraScanOwnership.WILD
+                && entity.getPokemon().getOwnerUUID() == null && !entity.getPokemon().isNPCOwned();
     }
 
-    public static void sendState(ServerPlayer player, ItemStack auraReader) {
+    /** Shared validity check for tick reconciliation and the native natural-despawn guard. */
+    public static boolean isValidWildLockOwner(ServerPlayer player, PokemonEntity entity) {
+        return player.isAlive() && !player.isRemoved() && player.serverLevel() == entity.level()
+                && !SnagAccessoryBridgeHolder.INSTANCE.getAuraReaderStack(player).isEmpty()
+                && AuraReaderPlayerState.getLockType(player) == AuraReaderLockType.ENTITY
+                && entity.getUUID().toString().equals(AuraReaderPlayerState.getLockedTarget(player))
+                && player.serverLevel().dimension().location().toString().equals(AuraReaderPlayerState.getLockDimension(player))
+                && isLockablePokemon(player, entity);
+    }
+
+    public static void sendState(ServerPlayer player) {
         boolean active = AuraReaderPlayerState.isActive(player);
-        int charge = 0;
-        int maxCharge = AuraReaderItem.MAX_CHARGE;
-        if (!auraReader.isEmpty()) {
-            AuraReaderCharge.ensureInitialized(auraReader, maxCharge);
-            charge = AuraReaderCharge.get(auraReader);
-        }
 
         AuraReaderSession session = session(player);
         long gameTime = player.serverLevel().getGameTime();
@@ -315,9 +423,7 @@ public final class AuraReaderService {
         ShadowedHeartsNetwork.sendToPlayer(player, new AuraReaderStateS2CPacket(
                 active,
                 AuraReaderPlayerState.getMode(player),
-                charge,
-                maxCharge,
-                AuraReaderPlayerState.isTracking(player),
+                AuraReaderPlayerState.isTracking(player) || session.contacts().pinnedId() != null,
                 AuraReaderPlayerState.getSelectedSignal(player),
                 AuraReaderPlayerState.getLockType(player),
                 pulseCooldownRemainingTicks,

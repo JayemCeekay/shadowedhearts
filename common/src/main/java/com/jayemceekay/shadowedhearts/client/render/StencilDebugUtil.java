@@ -57,7 +57,7 @@ public final class StencilDebugUtil {
         int w = ((RenderTargetAccessor)(Object)main).getWidth();
         int h = ((RenderTargetAccessor)(Object)main).getHeight();
         if (w <= 0 || h <= 0) {
-            toast("Invalid framebuffer size");
+            toast(Component.translatable("message.shadowedhearts.stencil.invalid_size"));
             return;
         }
 
@@ -73,7 +73,7 @@ public final class StencilDebugUtil {
                     GL30.GL_FRAMEBUFFER_ATTACHMENT_OBJECT_TYPE);
             boolean hasStencil = (objType != GL11.GL_NONE);
             if (!hasStencil) {
-                toast("No stencil attachment present; saving empty mask.");
+                toast(Component.translatable("message.shadowedhearts.stencil.no_attachment"));
             }
 
             // Read stencil as 8-bit index
@@ -99,10 +99,10 @@ public final class StencilDebugUtil {
         var main = mc.getMainRenderTarget();
         int w = ((RenderTargetAccessor)(Object)main).getWidth();
         int h = ((RenderTargetAccessor)(Object)main).getHeight();
-        if (w <= 0 || h <= 0) { toast("Invalid framebuffer size"); return; }
+        if (w <= 0 || h <= 0) { toast(Component.translatable("message.shadowedhearts.stencil.invalid_size")); return; }
 
         var entity = mc.level.getEntity(entityId);
-        if (entity == null) { toast("Entity not found for stencil dump"); return; }
+        if (entity == null) { toast(Component.translatable("message.shadowedhearts.stencil.no_entity")); return; }
 
         // Ensure main FBO bound for draw operations
         int srcFbo = ((RenderTargetAccessor)(Object)main).getFrameBufferId();
@@ -120,7 +120,7 @@ public final class StencilDebugUtil {
             int objType = GL30.glGetFramebufferAttachmentParameteri(
                     GL30.GL_DRAW_FRAMEBUFFER, GL30.GL_STENCIL_ATTACHMENT, GL30.GL_FRAMEBUFFER_ATTACHMENT_OBJECT_TYPE);
             if (objType == GL11.GL_NONE) {
-                toast("No stencil attachment on main FBO; dump will be empty");
+                toast(Component.translatable("message.shadowedhearts.stencil.no_main_attachment"));
             }
             // Prepare: enable stencil and clear to 0 (full buffer, ignore scissor)
             GL11.glEnable(GL11.GL_STENCIL_TEST);
@@ -193,18 +193,18 @@ public final class StencilDebugUtil {
             String ts = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss"));
             File out = new File(screenshots, baseName + "-" + ts + ".png");
             img.writeToFile(out);
-            toast("Saved " + out.getName());
+            toast(Component.translatable("message.shadowedhearts.stencil.saved", out.getName()));
         } catch (IOException ioe) {
-            toast("Failed to save stencil PNG: " + ioe.getMessage());
+            toast(Component.translatable("message.shadowedhearts.stencil.failed", ioe.getMessage()));
         } finally {
             img.close();
         }
     }
 
-    private static void toast(String msg) {
+    private static void toast(Component msg) {
         var player = Minecraft.getInstance().player;
         if (player != null) {
-            player.displayClientMessage(Component.literal("[ShadowedHearts] " + msg), false);
+            player.displayClientMessage(Component.translatable("message.shadowedhearts.stencil.prefix", msg), false);
         }
     }
 }

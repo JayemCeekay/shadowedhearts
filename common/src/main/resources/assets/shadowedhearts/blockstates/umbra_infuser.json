@@ -1,0 +1,34 @@
+{
+  "variants": {
+    "facing=north,half=lower": {
+      "model": "shadowedhearts:block/umbra_infuser_lower"
+    },
+    "facing=east,half=lower": {
+      "model": "shadowedhearts:block/umbra_infuser_lower",
+      "y": 90
+    },
+    "facing=south,half=lower": {
+      "model": "shadowedhearts:block/umbra_infuser_lower",
+      "y": 180
+    },
+    "facing=west,half=lower": {
+      "model": "shadowedhearts:block/umbra_infuser_lower",
+      "y": 270
+    },
+    "facing=north,half=upper": {
+      "model": "shadowedhearts:block/umbra_infuser_upper"
+    },
+    "facing=east,half=upper": {
+      "model": "shadowedhearts:block/umbra_infuser_upper",
+      "y": 90
+    },
+    "facing=south,half=upper": {
+      "model": "shadowedhearts:block/umbra_infuser_upper",
+      "y": 180
+    },
+    "facing=west,half=upper": {
+      "model": "shadowedhearts:block/umbra_infuser_upper",
+      "y": 270
+    }
+  }
+}

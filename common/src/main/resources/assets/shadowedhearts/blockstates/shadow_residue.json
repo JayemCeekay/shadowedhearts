@@ -1,0 +1,22 @@
+{
+  "variants": {
+    "": [
+      { "model": "shadowedhearts:block/shadow_residue" },
+      { "model": "shadowedhearts:block/shadow_residue", "y": 90 },
+      { "model": "shadowedhearts:block/shadow_residue", "y": 180 },
+      { "model": "shadowedhearts:block/shadow_residue", "y": 270 },
+      { "model": "shadowedhearts:block/shadow_residue_pool" },
+      { "model": "shadowedhearts:block/shadow_residue_pool", "y": 90 },
+      { "model": "shadowedhearts:block/shadow_residue_pool", "y": 180 },
+      { "model": "shadowedhearts:block/shadow_residue_pool", "y": 270 },
+      { "model": "shadowedhearts:block/shadow_residue_smear" },
+      { "model": "shadowedhearts:block/shadow_residue_smear", "y": 90 },
+      { "model": "shadowedhearts:block/shadow_residue_smear", "y": 180 },
+      { "model": "shadowedhearts:block/shadow_residue_smear", "y": 270 },
+      { "model": "shadowedhearts:block/shadow_residue_splash" },
+      { "model": "shadowedhearts:block/shadow_residue_splash", "y": 90 },
+      { "model": "shadowedhearts:block/shadow_residue_splash", "y": 180 },
+      { "model": "shadowedhearts:block/shadow_residue_splash", "y": 270 }
+    ]
+  }
+}

@@ -12,6 +12,9 @@ import net.minecraft.client.renderer.GameRenderer;
 import net.minecraft.client.renderer.texture.TextureAtlas;
 import net.minecraft.client.renderer.texture.TextureManager;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class ModParticleRenderTypes {
 
     public static final ParticleRenderType PARTICLE_SHEET_ADDITIVE = new ParticleRenderType() {
@@ -58,5 +61,14 @@ public class ModParticleRenderTypes {
         @Override
         public String toString() { return "PENUMBRA_TRAIL_RENDER_TYPE"; }
     };
+
+    /** Fabric's particle engine visits only this list; NeoForge already visits every registered layer. */
+    public static List<ParticleRenderType> appendMissingRenderTypes(List<ParticleRenderType> renderOrder) {
+        List<ParticleRenderType> extended = new ArrayList<>(renderOrder);
+        for (ParticleRenderType type : List.of(LUMINOUS_MOTE_RENDER_TYPE, PENUMBRA_TRAIL_RENDER_TYPE)) {
+            if (!extended.contains(type)) extended.add(type);
+        }
+        return List.copyOf(extended);
+    }
 
 }

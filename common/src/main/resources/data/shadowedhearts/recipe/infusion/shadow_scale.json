@@ -1,0 +1,7 @@
+{
+  "type": "shadowedhearts:umbra_infusing",
+  "ingredient": { "item": "cobblemon:deep_sea_scale" },
+  "result": { "id": "shadowedhearts:shadow_scale", "count": 1 },
+  "charge": 8,
+  "processing_ticks": 300
+}

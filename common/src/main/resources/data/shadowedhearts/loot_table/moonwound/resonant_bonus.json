@@ -1,0 +1,110 @@
+{
+  "type": "minecraft:gift",
+  "pools": [
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "shadowedhearts:meteoric_alloy",
+          "weight": 3,
+          "functions": [
+            {
+              "function": "minecraft:set_count",
+              "count": {
+                "type": "minecraft:uniform",
+                "min": 1,
+                "max": 2
+              }
+            }
+          ]
+        },
+        {
+          "type": "minecraft:item",
+          "name": "shadowedhearts:condensed_shadow",
+          "weight": 3,
+          "functions": [
+            {
+              "function": "minecraft:set_count",
+              "count": {
+                "type": "minecraft:uniform",
+                "min": 1,
+                "max": 2
+              }
+            }
+          ]
+        },
+        {
+          "type": "minecraft:item",
+          "name": "shadowedhearts:refined_shadow_shard",
+          "weight": 2,
+          "functions": [
+            {
+              "function": "minecraft:set_count",
+              "count": {
+                "type": "minecraft:uniform",
+                "min": 1,
+                "max": 2
+              }
+            }
+          ]
+        },
+        {
+          "type": "minecraft:item",
+          "name": "shadowedhearts:purified_dust",
+          "weight": 2,
+          "functions": [
+            {
+              "function": "minecraft:set_count",
+              "count": {
+                "type": "minecraft:uniform",
+                "min": 1,
+                "max": 2
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:loot_table",
+          "value": "shadowedhearts:moonwound/categories/exp_candies",
+          "weight": 4
+        },
+        {
+          "type": "minecraft:loot_table",
+          "value": "shadowedhearts:moonwound/categories/pokeballs",
+          "weight": 3
+        },
+        {
+          "type": "minecraft:loot_table",
+          "value": "shadowedhearts:moonwound/categories/medicine",
+          "weight": 2
+        },
+        {
+          "type": "minecraft:loot_table",
+          "value": "shadowedhearts:moonwound/categories/evolution_items"
+        }
+      ]
+    },
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "shadowedhearts:shadow_scale"
+        }
+      ],
+      "conditions": [
+        {
+          "condition": "minecraft:random_chance",
+          "chance": 0.25
+        }
+      ]
+    }
+  ],
+  "random_sequence": "shadowedhearts:moonwound/resonant_bonus"
+}

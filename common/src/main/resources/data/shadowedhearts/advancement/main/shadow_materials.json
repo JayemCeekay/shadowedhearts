@@ -1,0 +1,38 @@
+{
+  "parent": "shadowedhearts:main/root",
+  "display": {
+    "icon": {
+      "id": "shadowedhearts:shadow_shard"
+    },
+    "title": {
+      "translate": "advancements.shadowedhearts.shadow_materials.title"
+    },
+    "description": {
+      "translate": "advancements.shadowedhearts.shadow_materials.description"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": false,
+    "hidden": false
+  },
+  "criteria": {
+    "has_material": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": [
+              "shadowedhearts:shadow_dust",
+              "shadowedhearts:shadow_shard"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "has_material"
+    ]
+  ]
+}

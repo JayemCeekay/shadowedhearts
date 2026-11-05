@@ -1,6 +1,17 @@
 {
   "replace": false,
   "values": [
-    "shadowedhearts:shadowfall_meteoroid"
+    "shadowedhearts:relic_stone",
+    "shadowedhearts:shadowfall_meteoroid",
+    "shadowedhearts:umbra_infuser",
+    "shadowedhearts:umbra_infuser_tank",
+    "shadowedhearts:umbrafall_shell",
+    "shadowedhearts:cracked_umbrafall_shell",
+    "shadowedhearts:umbral_lattice",
+    "shadowedhearts:umbrafall_core_casing",
+    "shadowedhearts:umbrafall_vein",
+    "shadowedhearts:umbrafall_crystal",
+    "shadowedhearts:umbrafall_core",
+    "shadowedhearts:umbrafall_debris"
   ]
 }

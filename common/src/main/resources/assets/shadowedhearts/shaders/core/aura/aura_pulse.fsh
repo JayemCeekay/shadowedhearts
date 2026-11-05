@@ -1,6 +1,5 @@
 #version 150
 
-uniform sampler2D DiffuseSampler;
 uniform sampler2D uDepth;
 uniform mat4 uInvView;
 uniform mat4 uInvProj;
@@ -13,7 +12,6 @@ in vec2 texCoord;
 out vec4 fragColor;
 
 void main() {
-    vec4 original = texture(DiffuseSampler, texCoord);
     float depth = texture(uDepth, texCoord).r;
 
     vec4 clipPos = vec4(texCoord * 2.0 - 1.0, depth * 2.0 - 1.0, 1.0);
@@ -22,7 +20,6 @@ void main() {
     vec4 worldPos = uInvView * viewPos;
 
     vec3 finalPulseColor = vec3(0.0);
-    float finalPulseAlpha = 0.0;
 
     for (int i = 0; i < int(uPulseCount); i++) {
         vec4 data1 = texelFetch(uPulseTexture, ivec2(i * 2, 0), 0);
@@ -43,8 +40,9 @@ void main() {
 
         float alpha = pulse * fade * lifeFade;
         finalPulseColor += color * alpha;
-        finalPulseAlpha = max(finalPulseAlpha, alpha);
     }
 
-    fragColor = vec4(original.rgb + finalPulseColor, original.a);
+    // The draw uses additive blending over the caller's scene color. Sampling
+    // that same color attachment would introduce framebuffer feedback.
+    fragColor = vec4(finalPulseColor, 1.0);
 }

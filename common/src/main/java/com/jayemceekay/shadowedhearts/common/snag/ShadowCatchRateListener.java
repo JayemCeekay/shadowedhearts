@@ -32,6 +32,7 @@ public final class ShadowCatchRateListener {
                         rate += (float) bonus;
                     }
                 }
+                rate *= (float) SnagCaptureProvenance.catchRateMultiplier(e);
                 e.setCatchRate(rate);
             }
             return Unit.INSTANCE;

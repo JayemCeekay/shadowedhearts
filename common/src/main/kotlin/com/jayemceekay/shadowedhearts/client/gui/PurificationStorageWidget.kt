@@ -1270,7 +1270,7 @@ class PurificationStorageWidget(
                                     value >= 60 -> Component.translatable("gui.shadowedhearts.purification_chamber.heart.opening")
                                     value >= 40 -> Component.translatable("gui.shadowedhearts.purification_chamber.heart.wider")
                                     value >= 20 -> Component.translatable("gui.shadowedhearts.purification_chamber.heart.nearly")
-                                    value >= 1 -> Component.translatable("gui.shadowedhearts.purification_chamber.heart.almost")
+                                    !ShadowAspectUtil.isReadyForPurification(centerPokemon) -> Component.translatable("gui.shadowedhearts.purification_chamber.heart.almost")
                                     else -> Component.translatable("gui.shadowedhearts.purification_chamber.heart.ready")
                                 }
                             } else {

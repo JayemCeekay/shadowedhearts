@@ -7,6 +7,7 @@ import com.cobblemon.mod.common.battles.BattleRegistry;
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
 import com.cobblemon.mod.common.pokemon.properties.UncatchableProperty;
 import com.jayemceekay.shadowedhearts.common.shadow.SHAspects;
+import com.jayemceekay.shadowedhearts.config.GameplayTuningConfig;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
 
@@ -73,6 +74,7 @@ public final class SnagBattleUtil {
         if (player.level().isClientSide) {
             return com.jayemceekay.shadowedhearts.client.snag.ClientSnagState.isEligible();
         }
+        if (!GameplayTuningConfig.INSTANCE.snaggingEnabled()) return false;
         if (!SnagCaps.hasMachineAvailable(player)) return false;
         if (!isInTrainerBattle(player)) return false;
         return hasEligibleShadowOpponent(player);

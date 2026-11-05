@@ -1,8 +1,8 @@
 {
-  "parent": "shadowedhearts:main/relic_stone_interact",
+  "parent": "shadowedhearts:main/heart_ready",
   "display": {
     "icon": {
-      "id": "cobblemon:exp_share"
+      "id": "shadowedhearts:purified_gem"
     },
     "title": {
       "translate": "advancements.shadowedhearts.shadow_purified.title"
@@ -10,7 +10,7 @@
     "description": {
       "translate": "advancements.shadowedhearts.shadow_purified.description"
     },
-    "frame": "task",
+    "frame": "goal",
     "show_toast": true,
     "announce_to_chat": true,
     "hidden": false

@@ -4,9 +4,7 @@ import com.jayemceekay.shadowedhearts.Shadowedhearts;
 import com.jayemceekay.shadowedhearts.client.aura.AuraReaderInputHandler;
 import com.jayemceekay.shadowedhearts.client.aura.AuraReaderHud;
 import com.jayemceekay.shadowedhearts.client.aura.AuraReaderPulseRenderer;
-import com.jayemceekay.shadowedhearts.client.aura.ShadowPokemonAuraSystem;
 import com.jayemceekay.shadowedhearts.client.ball.BallEmitters;
-import com.jayemceekay.shadowedhearts.client.ball.DarkBallFboDebugPreview;
 import com.jayemceekay.shadowedhearts.client.sound.RelicStoneSoundManager;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -15,7 +13,7 @@ import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.client.event.RenderGuiEvent;
 
 /**
- * NeoForge HUD overlay hook to render the Ball Trail debug quad every frame.
+ * NeoForge hooks for client effects and the Aura Reader HUD.
  */
 @EventBusSubscriber(modid = Shadowedhearts.MOD_ID, value = Dist.CLIENT)
 public final class ClientHudOverlay {
@@ -25,6 +23,7 @@ public final class ClientHudOverlay {
     public static void onClientTick(ClientTickEvent.Post event) {
         var minecraft = net.minecraft.client.Minecraft.getInstance();
         BallEmitters.onClientTick(minecraft);
+        com.jayemceekay.shadowedhearts.client.voidshadow.VoidShadowTransitions.tick(minecraft);
         AuraReaderInputHandler.tick(minecraft);
         AuraReaderPulseRenderer.tick();
         RelicStoneSoundManager.tick();
@@ -32,8 +31,7 @@ public final class ClientHudOverlay {
 
     @SubscribeEvent
     public static void onRenderGui(RenderGuiEvent.Post event) {
-        AuraReaderHud.render(event.getGuiGraphics());
-        ShadowPokemonAuraSystem.renderDebugHud(event.getGuiGraphics());
-        DarkBallFboDebugPreview.renderHud(event.getGuiGraphics());
+        AuraReaderHud.render(event.getGuiGraphics(), event.getPartialTick());
+        com.jayemceekay.shadowedhearts.client.moonwound.MoonwoundClient.renderHud(event.getGuiGraphics());
     }
 }

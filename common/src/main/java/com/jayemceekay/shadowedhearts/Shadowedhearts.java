@@ -29,6 +29,7 @@ import com.jayemceekay.shadowedhearts.integration.mega_showdown.MegaShowdownBrid
 import com.jayemceekay.shadowedhearts.integration.rctmod.RCTBridgeHolder;
 import com.jayemceekay.shadowedhearts.network.AuraBroadcastQueue;
 import com.jayemceekay.shadowedhearts.network.AuraServerSync;
+import com.jayemceekay.shadowedhearts.network.AuraStyleDefaultSync;
 import com.jayemceekay.shadowedhearts.network.NullCharmEffectSync;
 import com.jayemceekay.shadowedhearts.network.DarkBallSettingsSync;
 import com.jayemceekay.shadowedhearts.network.ShadowRestrictionSettingsSync;
@@ -41,6 +42,7 @@ import com.jayemceekay.shadowedhearts.showdown.ShowdownRuntimePatcher;
 import com.jayemceekay.shadowedhearts.util.ShadowedHeartsPlayerData;
 import com.jayemceekay.shadowedhearts.world.gen.ModStructures;
 import dev.architectury.event.events.common.LifecycleEvent;
+import dev.architectury.event.events.common.TickEvent;
 import dev.architectury.registry.ReloadListenerRegistry;
 import kotlin.Unit;
 import net.minecraft.network.chat.Component;
@@ -90,23 +92,34 @@ public final class Shadowedhearts {
         LifecycleEvent.SETUP.register(ModCauldronInteractions::register);
         ModCreativeTabs.init();
         ModBlockEntities.init();
+        ModInfusionRecipes.init();
+        ModMenus.init();
+        TickEvent.SERVER_POST.register(server -> {
+            if (server.getTickCount() % 100 == 0) {
+                com.jayemceekay.shadowedhearts.content.infusion.InfuserPokemonRecoveryData.retry(server);
+            }
+        });
         ModPoiTypes.init();
         ModCriteriaTriggers.init();
         AuraServerSync.init();
+        AuraStyleDefaultSync.init();
         NullCharmEffectSync.init();
         DarkBallSettingsSync.init();
         ShadowRestrictionSettingsSync.init();
         HeartGaugeSettingsSync.init();
+        com.jayemceekay.shadowedhearts.network.SnagMachineSettingsSync.init();
         com.jayemceekay.shadowedhearts.network.MoveLifecycleSettingsSync.init();
         com.jayemceekay.shadowedhearts.network.ShadowBattleSettingsSync.init();
         com.jayemceekay.shadowedhearts.network.ItemRuleSettingsSync.init();
         AuraReaderService.init();
         AuraReaderEvents.init();
+        com.jayemceekay.shadowedhearts.common.aura.AuraReaderBattleDetection.init();
         ModSounds.init();
         ShadowAspectValidator.init();
         ShadowAspectPresets.init();
         ShadowPools.init();
         SnagEvents.init();
+        com.jayemceekay.shadowedhearts.common.snag.DeferredSnagDelivery.init();
         ModCommands.init();
         ModParticleTypes.register();
         LifecycleEvent.SETUP.register(PropertyRegistration::register);
@@ -116,6 +129,9 @@ public final class Shadowedhearts {
         com.jayemceekay.shadowedhearts.storage.purification.link.PurificationLinkManager.INSTANCE.init();
         BattleSentOnceListener.INSTANCE.init();
         WildShadowSpawnListener.init();
+        com.jayemceekay.shadowedhearts.common.voidshadow.VoidShadowService.init();
+        com.jayemceekay.shadowedhearts.content.umbrafall.UmbrafallSites.init();
+        com.jayemceekay.shadowedhearts.common.moonwound.MoonwoundService.init();
         ShadowCatchRateListener.init();
         StarterShadowListener.init();
         AuraBroadcastQueue.init();
@@ -131,12 +147,12 @@ public final class Shadowedhearts {
         RULE_SHADOW_STARTERS = GameRules.register("doShadowStarters", GameRules.Category.MISC, GameRules.BooleanValue.create(false));
 
         SH_SHADOW_TYPE = ElementalTypes.register(new ElementalType(
-                "shadow", Component.literal("Shadow"),
+                "shadow", Component.translatable("type.shadowedhearts.shadow"),
                 0x604E82, 19, 0x604E82, 0x604E82, ResourceLocation.fromNamespaceAndPath(Cobblemon.MODID, "textures/gui/types.png"),
                 "shadow", ResourceLocation.fromNamespaceAndPath(Shadowedhearts.MOD_ID, "shadow_gem"), 1000
         ));
 
-        ElementalTypes.register(new ElementalType("shadow-locked", Component.literal("Locked"), 0x1F1F1F, 20, 0x1F1F1F,0x1F1F1F, ResourceLocation.fromNamespaceAndPath(Cobblemon.MODID, "textures/gui/types.png"), "shadow-locked", ResourceLocation.fromNamespaceAndPath(Shadowedhearts.MOD_ID, "shadow_gem"), 1000));
+        ElementalTypes.register(new ElementalType("shadow-locked", Component.translatable("type.shadowedhearts.shadow_locked"), 0x1F1F1F, 20, 0x1F1F1F,0x1F1F1F, ResourceLocation.fromNamespaceAndPath(Cobblemon.MODID, "textures/gui/types.png"), "shadow-locked", ResourceLocation.fromNamespaceAndPath(Shadowedhearts.MOD_ID, "shadow_gem"), 1000));
 
         Cobblemon.INSTANCE.getShowdownThread().queue(showdownService -> {
             if (showdownService instanceof GraalShowdownService service) {

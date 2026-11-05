@@ -3,13 +3,10 @@
   "id": "shadowedhearts",
   "version": "${version}",
   "name": "Cobblemon: Shadowed Hearts",
-  "description": "",
+  "description": "Adds Shadow Pokemon, snagging, purification, Shadow moves and equipment, and Moonwound events to Cobblemon.",
   "authors": [
     "JayemCeekay"
   ],
-  "contact": {
-    "homepage": ""
-  },
   "license": "All-Rights-Reserved",
   "icon": "assets/shadowedhearts/icon.png",
   "environment": "*",
@@ -19,24 +16,51 @@
     ],
     "client": [
       "com.jayemceekay.shadowedhearts.client.fabric.ShadowedheartsFabricClient"
+    ],
+    "jei_mod_plugin": [
+      "com.jayemceekay.shadowedhearts.integration.recipeviewer.jei.ShadowedHeartsJeiPlugin"
+    ],
+    "rei_client": [
+      "com.jayemceekay.shadowedhearts.integration.recipeviewer.rei.ShadowedHeartsReiPlugin"
+    ],
+    "emi": [
+      "com.jayemceekay.shadowedhearts.integration.recipeviewer.emi.ShadowedHeartsEmiPlugin"
     ]
   },
   "mixins": [
-    "shadowedhearts.mixins.json"
+    "shadowedhearts.mixins.json",
+    "shadowedhearts.fabric.mixins.json"
   ],
   "depends": {
-    "fabricloader": ">=0.17.2",
-    "minecraft": "~1.21.1",
-    "java": ">=21",
-    "architectury": ">=13.0.8",
+    "fabricloader": ">=0.19.5",
+    "minecraft": "1.21.1",
+    "java": ">=21 <22",
+    "architectury": ">=13.0.11",
     "cobblemon": ">=1.8.4",
-    "fabric-api": "*",
-    "fabric-language-kotlin": ">=1.8.0+kotlin.1.8.21",
+    "fabric-api": ">=0.116.17+1.21.1",
+    "fabric-language-kotlin": ">=1.14.2+kotlin.2.4.21",
     "special-model-loader": "1.3.0",
-    "forgeconfigapiport": ">=0.4.8"
+    "forgeconfigapiport": ">=21.1.6"
   },
   "suggests": {
-    "rctapi": ">=0.14.4-beta",
-    "accessories": ">=1.1.0-beta.51"
+    "jei": ">=19.21.0.247",
+    "roughlyenoughitems": ">=16.0.799",
+    "emi": ">=1.1.24+1.21.1",
+    "modmenu": ">=11.0.5",
+    "rctapi": ">=0.16.2-beta",
+    "accessories": ">=1.1.0-beta.54+1.21.1",
+    "rctmod": "*",
+    "mega_showdown": "*",
+    "cobblemonraiddens": "*",
+    "lost_lore": "*",
+    "ftbchunks": "*",
+    "simpletms": "*",
+    "tim_core": "*",
+    "iris": "*"
+  },
+  "breaks": {
+    "jei": "<19.21.0.247",
+    "roughlyenoughitems": "<16.0.799",
+    "emi": "<1.1.24+1.21.1"
   }
 }

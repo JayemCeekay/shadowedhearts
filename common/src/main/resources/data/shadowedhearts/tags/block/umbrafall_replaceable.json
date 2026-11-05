@@ -1,0 +1,360 @@
+{
+  "replace": false,
+  "values": [
+    "minecraft:stone",
+    "minecraft:deepslate",
+    "minecraft:granite",
+    "minecraft:diorite",
+    "minecraft:andesite",
+    "minecraft:tuff",
+    "minecraft:calcite",
+    "minecraft:dirt",
+    "minecraft:grass_block",
+    "minecraft:podzol",
+    "minecraft:mycelium",
+    "minecraft:rooted_dirt",
+    "minecraft:coarse_dirt",
+    "minecraft:mud",
+    "minecraft:sand",
+    "minecraft:red_sand",
+    "minecraft:gravel",
+    "minecraft:clay",
+    "minecraft:terracotta",
+    "minecraft:white_terracotta",
+    "minecraft:orange_terracotta",
+    "minecraft:magenta_terracotta",
+    "minecraft:light_blue_terracotta",
+    "minecraft:yellow_terracotta",
+    "minecraft:lime_terracotta",
+    "minecraft:pink_terracotta",
+    "minecraft:gray_terracotta",
+    "minecraft:light_gray_terracotta",
+    "minecraft:cyan_terracotta",
+    "minecraft:purple_terracotta",
+    "minecraft:blue_terracotta",
+    "minecraft:brown_terracotta",
+    "minecraft:green_terracotta",
+    "minecraft:red_terracotta",
+    "minecraft:black_terracotta",
+    "minecraft:snow",
+    "minecraft:snow_block",
+    "minecraft:ice",
+    "minecraft:packed_ice",
+    "minecraft:blue_ice",
+    "minecraft:coal_ore",
+    "minecraft:iron_ore",
+    "minecraft:copper_ore",
+    "minecraft:gold_ore",
+    "minecraft:redstone_ore",
+    "minecraft:lapis_ore",
+    "minecraft:diamond_ore",
+    "minecraft:emerald_ore",
+    "minecraft:deepslate_coal_ore",
+    "minecraft:deepslate_iron_ore",
+    "minecraft:deepslate_copper_ore",
+    "minecraft:deepslate_gold_ore",
+    "minecraft:deepslate_redstone_ore",
+    "minecraft:deepslate_lapis_ore",
+    "minecraft:deepslate_diamond_ore",
+    "minecraft:deepslate_emerald_ore",
+    "minecraft:oak_leaves",
+    "minecraft:spruce_leaves",
+    "minecraft:birch_leaves",
+    "minecraft:jungle_leaves",
+    "minecraft:acacia_leaves",
+    "minecraft:dark_oak_leaves",
+    "minecraft:mangrove_leaves",
+    "minecraft:cherry_leaves",
+    "minecraft:azalea_leaves",
+    "minecraft:flowering_azalea_leaves",
+    "minecraft:short_grass",
+    "minecraft:tall_grass",
+    "minecraft:fern",
+    "minecraft:large_fern",
+    "minecraft:dead_bush",
+    "minecraft:dandelion",
+    "minecraft:poppy",
+    "minecraft:blue_orchid",
+    "minecraft:allium",
+    "minecraft:azure_bluet",
+    "minecraft:red_tulip",
+    "minecraft:orange_tulip",
+    "minecraft:white_tulip",
+    "minecraft:pink_tulip",
+    "minecraft:oxeye_daisy",
+    "minecraft:cornflower",
+    "minecraft:lily_of_the_valley",
+    "minecraft:sunflower",
+    "minecraft:lilac",
+    "minecraft:rose_bush",
+    "minecraft:peony",
+    "minecraft:pink_petals",
+    "minecraft:brown_mushroom",
+    "minecraft:red_mushroom",
+    "minecraft:brown_mushroom_block",
+    "minecraft:red_mushroom_block",
+    "minecraft:mushroom_stem",
+    "minecraft:cactus",
+    "minecraft:sugar_cane",
+    "minecraft:bamboo",
+    "minecraft:bamboo_sapling",
+    "minecraft:sweet_berry_bush",
+    "minecraft:vine",
+    "minecraft:glow_lichen",
+    "minecraft:hanging_roots",
+    "minecraft:cave_vines",
+    "minecraft:cave_vines_plant",
+    "minecraft:azalea",
+    "minecraft:flowering_azalea",
+    "minecraft:small_dripleaf",
+    "minecraft:big_dripleaf",
+    "minecraft:big_dripleaf_stem",
+    "minecraft:moss_block",
+    "minecraft:moss_carpet",
+    "#minecraft:logs",
+    "#minecraft:leaves",
+    "#minecraft:bamboo_blocks",
+    "#minecraft:saplings",
+    "#minecraft:flowers",
+    "#minecraft:wart_blocks",
+    "#minecraft:dirt",
+    "#minecraft:sand",
+    "#minecraft:terracotta",
+    "#minecraft:ice",
+    "#minecraft:base_stone_overworld",
+    "#minecraft:base_stone_nether",
+    "#minecraft:nylium",
+    "#minecraft:coral_blocks",
+    "#minecraft:corals",
+    "minecraft:sandstone",
+    "minecraft:red_sandstone",
+    "minecraft:dripstone_block",
+    "minecraft:pointed_dripstone",
+    "minecraft:amethyst_block",
+    "minecraft:budding_amethyst",
+    "minecraft:small_amethyst_bud",
+    "minecraft:medium_amethyst_bud",
+    "minecraft:large_amethyst_bud",
+    "minecraft:amethyst_cluster",
+    "minecraft:obsidian",
+    "minecraft:crying_obsidian",
+    "minecraft:pumpkin",
+    "minecraft:melon",
+    "minecraft:cobweb",
+    "minecraft:mangrove_roots",
+    "minecraft:muddy_mangrove_roots",
+    "minecraft:netherrack",
+    "minecraft:nether_quartz_ore",
+    "minecraft:nether_gold_ore",
+    "minecraft:ancient_debris",
+    "minecraft:soul_sand",
+    "minecraft:soul_soil",
+    "minecraft:magma_block",
+    "minecraft:basalt",
+    "minecraft:smooth_basalt",
+    "minecraft:blackstone",
+    "minecraft:gilded_blackstone",
+    "minecraft:end_stone",
+    "minecraft:chorus_plant",
+    "minecraft:chorus_flower",
+    "minecraft:crimson_fungus",
+    "minecraft:warped_fungus",
+    "minecraft:crimson_roots",
+    "minecraft:warped_roots",
+    "minecraft:nether_sprouts",
+    "minecraft:weeping_vines",
+    "minecraft:weeping_vines_plant",
+    "minecraft:twisting_vines",
+    "minecraft:twisting_vines_plant",
+    "minecraft:glowstone",
+    "minecraft:shroomlight",
+    "minecraft:powder_snow",
+    "minecraft:frosted_ice",
+    "minecraft:sculk",
+    "minecraft:sculk_vein",
+    "minecraft:bone_block",
+    "minecraft:raw_iron_block",
+    "minecraft:raw_copper_block",
+    "minecraft:sponge",
+    "minecraft:wet_sponge",
+    "minecraft:spore_blossom",
+    {
+      "required": false,
+      "id": "#c:stones"
+    },
+    {
+      "required": false,
+      "id": "#c:stone"
+    },
+    {
+      "required": false,
+      "id": "#c:ores"
+    },
+    {
+      "required": false,
+      "id": "#c:ore_bearing_ground/stone"
+    },
+    {
+      "required": false,
+      "id": "#c:ore_bearing_ground/deepslate"
+    },
+    {
+      "required": false,
+      "id": "#c:ore_bearing_ground/netherrack"
+    },
+    {
+      "required": false,
+      "id": "#c:sands"
+    },
+    {
+      "required": false,
+      "id": "#c:sandstone/uncolored_blocks"
+    },
+    {
+      "required": false,
+      "id": "#c:sandstone/red_blocks"
+    },
+    {
+      "required": false,
+      "id": "#c:gravels"
+    },
+    {
+      "required": false,
+      "id": "#c:gravel"
+    },
+    {
+      "required": false,
+      "id": "#c:dirts"
+    },
+    {
+      "required": false,
+      "id": "#c:dirt"
+    },
+    {
+      "required": false,
+      "id": "#c:grass_blocks"
+    },
+    {
+      "required": false,
+      "id": "#c:obsidians"
+    },
+    {
+      "required": false,
+      "id": "#c:netherracks"
+    },
+    {
+      "required": false,
+      "id": "#c:end_stones"
+    },
+    {
+      "required": false,
+      "id": "#c:logs"
+    },
+    {
+      "required": false,
+      "id": "#c:stripped_logs"
+    },
+    {
+      "required": false,
+      "id": "#c:wood"
+    },
+    {
+      "required": false,
+      "id": "#c:woods"
+    },
+    {
+      "required": false,
+      "id": "#c:stripped_woods"
+    },
+    {
+      "required": false,
+      "id": "#c:leaves"
+    },
+    {
+      "required": false,
+      "id": "#c:plants"
+    },
+    {
+      "required": false,
+      "id": "#c:flowers"
+    },
+    {
+      "required": false,
+      "id": "#c:clays"
+    },
+    {
+      "required": false,
+      "id": "#c:clay"
+    },
+    {
+      "required": false,
+      "id": "#c:mosses"
+    },
+    {
+      "required": false,
+      "id": "#c:snow"
+    },
+    {
+      "required": false,
+      "id": "#c:ice"
+    },
+    {
+      "required": false,
+      "id": "#forge:stone"
+    },
+    {
+      "required": false,
+      "id": "#forge:ores"
+    },
+    {
+      "required": false,
+      "id": "#forge:sand"
+    },
+    {
+      "required": false,
+      "id": "#forge:sandstone"
+    },
+    {
+      "required": false,
+      "id": "#forge:gravel"
+    },
+    {
+      "required": false,
+      "id": "#forge:dirt"
+    },
+    {
+      "required": false,
+      "id": "#forge:grass"
+    },
+    {
+      "required": false,
+      "id": "#forge:obsidian"
+    },
+    {
+      "required": false,
+      "id": "#forge:netherrack"
+    },
+    {
+      "required": false,
+      "id": "#forge:end_stones"
+    },
+    {
+      "required": false,
+      "id": "#forge:logs"
+    },
+    {
+      "required": false,
+      "id": "#forge:stripped_logs"
+    },
+    {
+      "required": false,
+      "id": "#forge:wood"
+    },
+    {
+      "required": false,
+      "id": "#forge:leaves"
+    },
+    "minecraft:infested_stone",
+    "minecraft:infested_deepslate"
+  ]
+}

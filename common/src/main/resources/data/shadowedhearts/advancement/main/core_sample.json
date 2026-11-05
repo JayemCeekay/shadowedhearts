@@ -1,0 +1,37 @@
+{
+  "parent": "shadowedhearts:main/signal_received",
+  "display": {
+    "icon": {
+      "id": "shadowedhearts:core_sample"
+    },
+    "title": {
+      "translate": "advancements.shadowedhearts.core_sample.title"
+    },
+    "description": {
+      "translate": "advancements.shadowedhearts.core_sample.description"
+    },
+    "frame": "goal",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "has_core_sample": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": [
+              "shadowedhearts:core_sample"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "has_core_sample"
+    ]
+  ]
+}

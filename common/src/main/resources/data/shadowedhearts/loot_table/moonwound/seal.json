@@ -1,0 +1,93 @@
+{
+  "type": "minecraft:gift",
+  "pools": [
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "shadowedhearts:core_sample"
+        }
+      ]
+    },
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "shadowedhearts:null_glass",
+          "functions": [
+            {
+              "function": "minecraft:set_count",
+              "count": {
+                "type": "minecraft:uniform",
+                "min": 1,
+                "max": 3
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "shadowedhearts:purified_dust",
+          "functions": [
+            {
+              "function": "minecraft:set_count",
+              "count": {
+                "type": "minecraft:uniform",
+                "min": 1,
+                "max": 2
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "rolls": 2,
+      "entries": [
+        {
+          "type": "minecraft:loot_table",
+          "value": "shadowedhearts:moonwound/categories/berries",
+          "weight": 4
+        },
+        {
+          "type": "minecraft:loot_table",
+          "value": "shadowedhearts:moonwound/categories/medicine",
+          "weight": 4
+        },
+        {
+          "type": "minecraft:loot_table",
+          "value": "shadowedhearts:moonwound/categories/exp_candies",
+          "weight": 2
+        },
+        {
+          "type": "minecraft:loot_table",
+          "value": "shadowedhearts:moonwound/categories/pokeballs",
+          "weight": 2
+        }
+      ]
+    },
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "shadowedhearts:shadow_scale"
+        }
+      ],
+      "conditions": [
+        {
+          "condition": "minecraft:random_chance",
+          "chance": 0.25
+        }
+      ]
+    }
+  ],
+  "random_sequence": "shadowedhearts:moonwound/seal"
+}

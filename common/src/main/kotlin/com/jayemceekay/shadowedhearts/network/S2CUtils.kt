@@ -48,7 +48,14 @@ object S2CUtils {
     @JvmOverloads
     fun broadcastAuraStartToTracking(entity: Entity, heightMultiplier: Float = 1.0f, sustainOverride: Int = -1) {
         if (entity is PokemonEntity) {
-            val pkt = AuraLifecyclePacket(
+            broadcastToTracking(entity, auraStartPacket(entity, heightMultiplier, sustainOverride))
+        }
+    }
+
+    /** Lifecycle state only: callers decide separately whether a send-out/spawn burst should play. */
+    @JvmStatic
+    fun auraStartPacket(entity: PokemonEntity, heightMultiplier: Float, sustainOverride: Int): AuraLifecyclePacket =
+        AuraLifecyclePacket(
                 entity.id,
                 AuraLifecyclePacket.Action.START,
                 0,
@@ -64,10 +71,7 @@ object S2CUtils {
                 ShadowAspectUtil.getHeartGauge(entity.pokemon),
                 heightMultiplier,
                 sustainOverride
-            )
-            broadcastToTracking(entity, pkt)
-        }
-    }
+        )
 
     @JvmStatic
     fun broadcastLuminousMoteToTracking(entity: Entity) {

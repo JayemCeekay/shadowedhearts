@@ -10,7 +10,6 @@ import net.minecraft.network.codec.ByteBufCodecs;
 
 /**
  * Data components used by ShadowedHearts items.
- * Currently provides an integer energy store for Snag Machines.
  *
  * Uses Architectury DeferredRegister (same pattern as ModBlocks) for cross-loader correctness.
  */
@@ -21,6 +20,7 @@ public final class ModItemComponents {
     public static final DeferredRegister<DataComponentType<?>> COMPONENT_TYPES =
             DeferredRegister.create(Shadowedhearts.MOD_ID, Registries.DATA_COMPONENT_TYPE);
 
+    /** Legacy saved-item data only. Snag Machines no longer consume or replenish energy. */
     public static final RegistrySupplier<DataComponentType<Integer>> SNAG_ENERGY = COMPONENT_TYPES.register(
             "snag_energy",
             () -> DataComponentType.<Integer>builder()
@@ -77,6 +77,7 @@ public final class ModItemComponents {
                     .build()
     );
 
+    /** Legacy saved-item data only. Readers no longer consume or replenish charge. */
     public static final RegistrySupplier<DataComponentType<Integer>> AURA_READER_CHARGE = COMPONENT_TYPES.register(
             "aura_reader_charge",
             () -> DataComponentType.<Integer>builder()

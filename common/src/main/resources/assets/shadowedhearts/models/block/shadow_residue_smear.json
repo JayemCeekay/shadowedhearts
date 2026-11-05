@@ -1,0 +1,6 @@
+{
+  "parent": "shadowedhearts:block/shadow_residue",
+  "textures": {
+    "0": "shadowedhearts:block/shadow_residue_smear"
+  }
+}

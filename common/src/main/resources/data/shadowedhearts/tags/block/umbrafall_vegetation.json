@@ -1,0 +1,81 @@
+{
+  "replace": false,
+  "values": [
+    "#minecraft:logs",
+    "#minecraft:leaves",
+    "#minecraft:bamboo_blocks",
+    "#minecraft:saplings",
+    "#minecraft:flowers",
+    "#minecraft:wart_blocks",
+    "minecraft:mangrove_roots",
+    "minecraft:muddy_mangrove_roots",
+    "minecraft:brown_mushroom_block",
+    "minecraft:red_mushroom_block",
+    "minecraft:mushroom_stem",
+    "minecraft:shroomlight",
+    "minecraft:vine",
+    "minecraft:glow_lichen",
+    "minecraft:hanging_roots",
+    "minecraft:short_grass",
+    "minecraft:tall_grass",
+    "minecraft:fern",
+    "minecraft:large_fern",
+    "minecraft:dead_bush",
+    "minecraft:bamboo",
+    "minecraft:bamboo_sapling",
+    "minecraft:cactus",
+    "minecraft:sugar_cane",
+    "minecraft:sweet_berry_bush",
+    "minecraft:chorus_plant",
+    "minecraft:chorus_flower",
+    {
+      "required": false,
+      "id": "#c:logs"
+    },
+    {
+      "required": false,
+      "id": "#c:stripped_logs"
+    },
+    {
+      "required": false,
+      "id": "#c:wood"
+    },
+    {
+      "required": false,
+      "id": "#c:woods"
+    },
+    {
+      "required": false,
+      "id": "#c:stripped_woods"
+    },
+    {
+      "required": false,
+      "id": "#c:leaves"
+    },
+    {
+      "required": false,
+      "id": "#c:plants"
+    },
+    {
+      "required": false,
+      "id": "#c:flowers"
+    },
+    {
+      "required": false,
+      "id": "#forge:logs"
+    },
+    {
+      "required": false,
+      "id": "#forge:stripped_logs"
+    },
+    {
+      "required": false,
+      "id": "#forge:wood"
+    },
+    {
+      "required": false,
+      "id": "#forge:leaves"
+    },
+    "minecraft:moss_carpet"
+  ]
+}

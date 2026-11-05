@@ -1,0 +1,38 @@
+{
+  "parent": "shadowedhearts:main/refined_shadow_shard",
+  "display": {
+    "icon": {
+      "id": "shadowedhearts:shadow_signal_data_strong"
+    },
+    "title": {
+      "translate": "advancements.shadowedhearts.strong_signal.title"
+    },
+    "description": {
+      "translate": "advancements.shadowedhearts.strong_signal.description"
+    },
+    "frame": "goal",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "has_strong_signal": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": [
+              "shadowedhearts:shadow_signal_data_strong",
+              "shadowedhearts:shadow_signal_data_resonant"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "has_strong_signal"
+    ]
+  ]
+}

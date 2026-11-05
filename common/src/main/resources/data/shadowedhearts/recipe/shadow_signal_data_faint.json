@@ -1,0 +1,22 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    {
+      "item": "minecraft:paper"
+    },
+    {
+      "item": "minecraft:copper_ingot"
+    },
+    {
+      "item": "shadowedhearts:shadow_dust"
+    },
+    {
+      "item": "shadowedhearts:shadow_dust"
+    }
+  ],
+  "result": {
+    "id": "shadowedhearts:shadow_signal_data_faint",
+    "count": 1
+  }
+}

@@ -7,5 +7,6 @@ import net.minecraft.client.Minecraft
 object SnagEligibilityHandler : ClientNetworkPacketHandler<SnagEligibilityPacket> {
     override fun handle(packet: SnagEligibilityPacket, client: Minecraft) {
         ClientSnagState.setEligible(packet.eligible)
+        ClientSnagState.setRechargeTurnsRemaining(packet.rechargeTurnsRemaining)
     }
 }

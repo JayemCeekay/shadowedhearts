@@ -4,11 +4,12 @@ import com.cobblemon.mod.common.api.pokeball.PokeBalls;
 import com.cobblemon.mod.common.item.PokeBallItem;
 import com.cobblemon.mod.common.pokemon.helditem.CobblemonHeldItemManager;
 import com.jayemceekay.shadowedhearts.Shadowedhearts;
-import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs;
+import com.jayemceekay.shadowedhearts.common.aura.AuraStyleSelection;
 import com.jayemceekay.shadowedhearts.content.items.*;
 import com.jayemceekay.shadowedhearts.integration.mega_showdown.MegaShowdownBridgeHolder;
-import dev.architectury.registry.registries.DeferredRegister;
+import com.jayemceekay.shadowedhearts.world.umbrafall.UmbrafallTier;
 import dev.architectury.event.events.common.LifecycleEvent;
+import dev.architectury.registry.registries.DeferredRegister;
 import dev.architectury.registry.registries.RegistrySupplier;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
@@ -25,6 +26,12 @@ public final class ModItems {
     public static final DeferredRegister<Item> ITEMS =
             DeferredRegister.create(Shadowedhearts.MOD_ID, Registries.ITEM);
 
+    public static final RegistrySupplier<Item> UMBRA_INFUSER = ITEMS.register("umbra_infuser",
+            () -> new BlockItem(ModBlocks.UMBRA_INFUSER.get(), new Item.Properties().arch$tab(ModCreativeTabs.SHADOWED_HEARTS_TAB)));
+
+    public static final RegistrySupplier<Item> UMBRA_INFUSER_TANK = ITEMS.register("umbra_infuser_tank",
+            () -> new BlockItem(ModBlocks.UMBRA_INFUSER_TANK.get(), new Item.Properties().arch$tab(ModCreativeTabs.SHADOWED_HEARTS_TAB)));
+
     public static final RegistrySupplier<Item> SHADOW_DUST = ITEMS.register("shadow_dust",
             () -> new Item(new Item.Properties().arch$tab(ModCreativeTabs.SHADOWED_HEARTS_TAB)));
 
@@ -34,13 +41,11 @@ public final class ModItems {
     // Snag Machines: Prototype and Advanced
     public static final RegistrySupplier<Item> SNAG_MACHINE_PROTOTYPE = ITEMS.register(
             "snag_machine_prototype",
-            () -> new SnagMachineItem(new Item.Properties().arch$tab(ModCreativeTabs.SHADOWED_HEARTS_TAB).stacksTo(1),
-                    ShadowedHeartsConfigs.getInstance().getSnagConfig()::prototypeCapacity));
+            () -> new SnagMachineItem(new Item.Properties().arch$tab(ModCreativeTabs.SHADOWED_HEARTS_TAB).stacksTo(1)));
 
     public static final RegistrySupplier<Item> SNAG_MACHINE_ADVANCED = ITEMS.register(
             "snag_machine_advanced",
-            () -> new SnagMachineItem(new Item.Properties().arch$tab(ModCreativeTabs.SHADOWED_HEARTS_TAB).stacksTo(1),
-                    ShadowedHeartsConfigs.getInstance().getSnagConfig()::advancedCapacity));
+            () -> new SnagMachineItem(new Item.Properties().arch$tab(ModCreativeTabs.SHADOWED_HEARTS_TAB).stacksTo(1)));
 
     public static final RegistrySupplier<Item> PURIFICATION_PC_ITEM = ITEMS.register(
             "purification_pc",
@@ -52,7 +57,25 @@ public final class ModItems {
 
     public static final RegistrySupplier<Item> SHADOWFALL_METEOROID_ITEM = ITEMS.register(
             "shadowfall_meteoroid",
-            () -> new BlockItem(ModBlocks.SHADOWFALL_METEOROID.get(), new Item.Properties().arch$tab(ModCreativeTabs.SHADOWED_HEARTS_TAB)));
+            () -> new BlockItem(ModBlocks.UMBRAFALL_SHELL.get(), new Item.Properties()));
+
+    public static final RegistrySupplier<Item> UMBRAFALL_SHELL = registerMeteorBlock("umbrafall_shell", ModBlocks.UMBRAFALL_SHELL);
+
+    public static final RegistrySupplier<Item> CRACKED_UMBRAFALL_SHELL = registerMeteorBlock("cracked_umbrafall_shell", ModBlocks.CRACKED_UMBRAFALL_SHELL);
+
+    public static final RegistrySupplier<Item> UMBRAL_LATTICE = registerMeteorBlock("umbral_lattice", ModBlocks.UMBRAL_LATTICE);
+
+    public static final RegistrySupplier<Item> UMBRAFALL_CORE_CASING = registerMeteorBlock("umbrafall_core_casing", ModBlocks.UMBRAFALL_CORE_CASING);
+
+    public static final RegistrySupplier<Item> UMBRAFALL_VEIN = registerMeteorBlock("umbrafall_vein", ModBlocks.UMBRAFALL_VEIN);
+
+    public static final RegistrySupplier<Item> UMBRAFALL_CRYSTAL = registerMeteorBlock("umbrafall_crystal", ModBlocks.UMBRAFALL_CRYSTAL);
+
+    public static final RegistrySupplier<Item> UMBRAFALL_CORE = registerMeteorBlock("umbrafall_core", ModBlocks.UMBRAFALL_CORE);
+
+    public static final RegistrySupplier<Item> SHADOW_RESIDUE = registerMeteorBlock("shadow_residue", ModBlocks.SHADOW_RESIDUE);
+
+    public static final RegistrySupplier<Item> UMBRAFALL_DEBRIS = registerMeteorBlock("umbrafall_debris", ModBlocks.UMBRAFALL_DEBRIS);
 
     public static final RegistrySupplier<Item> METEORIC_ALLOY = registerMeteorMaterial("meteoric_alloy");
 
@@ -60,8 +83,15 @@ public final class ModItems {
 
     public static final RegistrySupplier<Item> CORE_SAMPLE = registerMeteorMaterial("core_sample");
 
+    // A new ID: pure_stabilizer_tool remains a retired item migrated into alloy.
+    public static final RegistrySupplier<Item> PURE_STABILIZER = registerDescribedItem("pure_stabilizer", 2);
+
     private static Item.Properties meteorItemProperties() {
         return new Item.Properties().arch$tab(ModCreativeTabs.SHADOWED_HEARTS_TAB);
+    }
+
+    private static RegistrySupplier<Item> registerMeteorBlock(String name, RegistrySupplier<net.minecraft.world.level.block.Block> block) {
+        return ITEMS.register(name, () -> new BlockItem(block.get(), meteorItemProperties()));
     }
 
     private static RegistrySupplier<Item> registerMeteorMaterial(String name) {
@@ -149,24 +179,37 @@ public final class ModItems {
             "aura_reader",
             () -> new AuraReaderItem(new Item.Properties().arch$tab(ModCreativeTabs.SHADOWED_HEARTS_TAB).stacksTo(1)));
 
+    public static final RegistrySupplier<Item> COLOSSEUM_EMBER = registerAuraCatalyst("colosseum_ember", AuraStyleSelection.COLOSSEUM);
+    public static final RegistrySupplier<Item> GALE_PHIAL = registerAuraCatalyst("gale_phial", AuraStyleSelection.XD_FAITHFUL);
+    public static final RegistrySupplier<Item> UMBRAFALL_PRISM = registerAuraCatalyst("umbrafall_prism", AuraStyleSelection.SIGNATURE);
+    public static final RegistrySupplier<Item> AGATE_DEW = registerAuraCatalyst("agate_dew", AuraStyleSelection.DEFAULT);
+
+    private static RegistrySupplier<Item> registerAuraCatalyst(String name, AuraStyleSelection style) {
+        return ITEMS.register(name, () -> new AuraCatalystItem(
+                new Item.Properties().arch$tab(ModCreativeTabs.SHADOWED_HEARTS_TAB).stacksTo(16), style));
+    }
+
     public static final RegistrySupplier<Item> DIRECTION_ARROW = ITEMS.register(
             "direction_arrow",
             () -> new Item(new Item.Properties()));
 
     // Shadow Signal Data — tiered hunt-initiating items (tiers 1–5)
-    /*public static final RegistrySupplier<Item> SHADOW_SIGNAL_DATA_FAINT = registerSignalData("faint", ShadowSignalTier.FAINT);
-    public static final RegistrySupplier<Item> SHADOW_SIGNAL_DATA_WEAK = registerSignalData("weak", ShadowSignalTier.WEAK);
-    public static final RegistrySupplier<Item> SHADOW_SIGNAL_DATA_MODERATE = registerSignalData("moderate", ShadowSignalTier.MODERATE);
-    public static final RegistrySupplier<Item> SHADOW_SIGNAL_DATA_STRONG = registerSignalData("strong", ShadowSignalTier.STRONG);
-    public static final RegistrySupplier<Item> SHADOW_SIGNAL_DATA_RESONANT = registerSignalData("resonant", ShadowSignalTier.RESONANT);
+    public static final RegistrySupplier<Item> SHADOW_SIGNAL_DATA_FAINT = registerSignalData("faint", UmbrafallTier.FAINT);
 
-    private static RegistrySupplier<Item> registerSignalData(String name, ShadowSignalTier tier) {
+    public static final RegistrySupplier<Item> SHADOW_SIGNAL_DATA_WEAK = registerSignalData("weak", UmbrafallTier.WEAK);
+
+    public static final RegistrySupplier<Item> SHADOW_SIGNAL_DATA_MODERATE = registerSignalData("moderate", UmbrafallTier.MODERATE);
+
+    public static final RegistrySupplier<Item> SHADOW_SIGNAL_DATA_STRONG = registerSignalData("strong", UmbrafallTier.STRONG);
+
+    public static final RegistrySupplier<Item> SHADOW_SIGNAL_DATA_RESONANT = registerSignalData("resonant", UmbrafallTier.RESONANT);
+
+    private static RegistrySupplier<Item> registerSignalData(String name, UmbrafallTier tier) {
         return ITEMS.register("shadow_signal_data_" + name,
                 () -> new ShadowSignalDataItem(
-                        new Item.Properties().arch$tab(ModCreativeTabs.SHADOWED_HEARTS_TAB).stacksTo(16)
-                                .rarity(ShadowSignalDataItem.tierToRarity(tier)),
+                        meteorItemProperties().stacksTo(16),
                         tier));
-    }*/
+    }
 
     public static final RegistrySupplier<Item> PENUMBRA_BALL = ITEMS.register(
             "penumbra_ball",

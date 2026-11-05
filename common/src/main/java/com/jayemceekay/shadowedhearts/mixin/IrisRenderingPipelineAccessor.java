@@ -9,4 +9,7 @@ import org.spongepowered.asm.mixin.gen.Accessor;
 public interface IrisRenderingPipelineAccessor {
     @Accessor
     RenderTargets getRenderTargets();
+
+    @Accessor("isMainBound")
+    boolean shadowedhearts$isMainBound();
 }

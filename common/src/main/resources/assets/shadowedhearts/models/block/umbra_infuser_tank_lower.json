@@ -1,0 +1,4 @@
+{
+  "parent": "cobblemon:block/restoration_tank_lower",
+  "render_type": "minecraft:cutout"
+}

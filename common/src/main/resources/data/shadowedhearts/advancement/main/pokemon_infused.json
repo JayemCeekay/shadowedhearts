@@ -1,0 +1,31 @@
+{
+  "parent": "shadowedhearts:main/infuser_tank",
+  "display": {
+    "icon": {
+      "id": "shadowedhearts:condensed_shadow"
+    },
+    "title": {
+      "translate": "advancements.shadowedhearts.pokemon_infused.title"
+    },
+    "description": {
+      "translate": "advancements.shadowedhearts.pokemon_infused.description"
+    },
+    "frame": "challenge",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "pokemon_infused": {
+      "trigger": "shadowedhearts:progression",
+      "conditions": {
+        "milestone": "pokemon_infused"
+      }
+    }
+  },
+  "requirements": [
+    [
+      "pokemon_infused"
+    ]
+  ]
+}

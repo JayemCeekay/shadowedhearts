@@ -4,13 +4,19 @@ import com.cobblemon.mod.common.api.gui.GuiUtilsKt;
 import com.cobblemon.mod.common.client.CobblemonClient;
 import com.cobblemon.mod.common.client.CobblemonResources;
 import com.cobblemon.mod.common.client.gui.PartyOverlay;
-import com.jayemceekay.shadowedhearts.common.aura.AuraReaderMode;
+import com.jayemceekay.shadowedhearts.client.ModKeybinds;
+import com.jayemceekay.shadowedhearts.client.moonwound.MoonwoundHudPresentation;
+import com.jayemceekay.shadowedhearts.common.aura.AuraHeartGaugeReadout;
 import com.jayemceekay.shadowedhearts.common.aura.AuraReadingSource;
+import com.jayemceekay.shadowedhearts.common.aura.AuraReaderTargeting;
 import com.jayemceekay.shadowedhearts.common.aura.AuraReadingType;
+import com.jayemceekay.shadowedhearts.content.umbrafall.AuraReaderSearchProgress;
 import com.jayemceekay.shadowedhearts.config.IClientConfig;
 import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs;
+import com.jayemceekay.shadowedhearts.network.moonwound.MoonwoundSnapshot;
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
@@ -24,6 +30,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * Field presentation for the Aura Reader.
@@ -35,10 +42,8 @@ public final class AuraReaderHud {
     private static final int SCAN_OVERLAY_NOTCH_WIDTH = 200;
     private static final int SCAN_RING_MIDDLE_WIDTH = 100;
     private static final int SCAN_RING_MIDDLE_HEIGHT = 1;
-    private static final int SCAN_RING_OUTER_DIAMETER = 116;
+    private static final int SCAN_RING_OUTER_DIAMETER = AuraReaderHudGeometry.SCANNER_RETICLE_DIAMETER;
     private static final int SCAN_RING_INNER_DIAMETER = 84;
-    private static final int SCAN_UNKNOWN_WIDTH = 34;
-    private static final int SCAN_UNKNOWN_HEIGHT = 46;
     private static final int COMPASS_DIRECTION_BOX_SIZE = 32;
     private static final int COMPASS_CURVE_SEGMENTS = 64;
     private static final float COMPASS_CURVE_RISE_FACTOR = 0.70f;
@@ -46,11 +51,17 @@ public final class AuraReaderHud {
     private static final float COMPASS_CENTER_THICKNESS_FACTOR = 1.40f;
     private static final float COMPASS_END_THICKNESS_FACTOR = 0.25f;
     private static final float COMPASS_EDGE_FADE_START = 0.72f;
-    private static final int SCANNER_INFO_FRAME_STEPS = 10;
+    private static final int SCANNER_PANEL_BORDER = 0xE027ECFF;
+    private static final int SCANNER_PANEL_FILL = 0x6627ECFF;
+    private static final float SCANNER_ARM_OPEN_FRACTION = 4.0f / 9.0f;
+    private static final int READOUT_TEXT_HEIGHT = 8;
+    private static final int SIGNAL_FRAME_VERTICAL_INSET = 2;
     private static final int PARTY_OVERLAY_SAFE_WIDTH = 72;
-    private static final float SOFT_FOCUS_DEGREES = 15.0f;
+    private static final float MINIMUM_TEXT_SCALE = AuraReaderHudGeometry.MIN_READOUT_SCALE;
     private static final ResourceLocation HUD_FONT = ResourceLocation.parse("uniform");
     private static final ResourceLocation COMPASS_DIRECTION_FONT =
+            CobblemonResources.INSTANCE.getDEFAULT_LARGE();
+    private static final ResourceLocation SCANNER_TEXT_FONT =
             CobblemonResources.INSTANCE.getDEFAULT_LARGE();
 
     private static final ResourceLocation SCAN_OVERLAY_CORNERS = cobblemon("textures/gui/pokedex/scan/overlay_corners.png");
@@ -63,13 +74,21 @@ public final class AuraReaderHud {
     private static final ResourceLocation SCAN_RING_OUTER = cobblemon("textures/gui/pokedex/scan/scan_ring_outer.png");
     private static final ResourceLocation SCAN_RING_MIDDLE = cobblemon("textures/gui/pokedex/scan/scan_ring_middle.png");
     private static final ResourceLocation SCAN_RING_INNER = cobblemon("textures/gui/pokedex/scan/scan_ring_inner.png");
-    private static final ResourceLocation SCAN_UNKNOWN = cobblemon("textures/gui/pokedex/scan/scan_unknown.png");
     private static final ResourceLocation COMPASS_DIRECTION_BOX = ResourceLocation.fromNamespaceAndPath(
             "shadowedhearts",
             "textures/gui/aura_reader/compass_direction_box.png"
     );
+    private static final ResourceLocation SCANNER_BRACKETS = ResourceLocation.fromNamespaceAndPath(
+            "shadowedhearts", "textures/gui/aura_reader/scanner_brackets.png");
 
     private static float frameAlpha = 1.0f;
+    private static final List<AuraReaderHudRect> occupiedAreas = new ArrayList<>();
+    private static String panelLayoutTargetId;
+    private static AuraReaderScannerInfoFrameLayout.Request panelLayoutRequest;
+    private static AuraReaderScannerInfoFrameLayout.Layout panelLayout;
+    private static ScannerArmLayoutKey panelArmLayoutKey;
+    private static List<AuraReaderScannerArmLayout.Arm> panelArms = List.of();
+    private static List<AuraReaderHudRect> panelArmQuads = List.of();
 
     private AuraReaderHud() {
     }
@@ -78,64 +97,61 @@ public final class AuraReaderHud {
         return ResourceLocation.fromNamespaceAndPath("cobblemon", path);
     }
 
-    public static void render(GuiGraphics graphics) {
+    public static void render(GuiGraphics graphics, DeltaTracker tickCounter) {
+        occupiedAreas.clear();
         Minecraft minecraft = Minecraft.getInstance();
         if (minecraft == null || minecraft.player == null || minecraft.options.hideGui) {
             return;
         }
 
         IClientConfig config = ShadowedHeartsConfigs.getInstance().getClientConfig();
-        if (!config.auraScannerEnabled()) {
-            return;
-        }
-
-        AuraReaderClientState.updateHudAnimations();
-        float activationProgress = AuraReaderClientState.getActivationProgress();
-        if (activationProgress <= 0.0f && !AuraReaderClientState.isActive()) {
-            return;
-        }
-
         int width = minecraft.getWindow().getGuiScaledWidth();
         int height = minecraft.getWindow().getGuiScaledHeight();
-        long ticks = System.currentTimeMillis() / 50L;
+        long ticks = minecraft.level == null ? 0L : minecraft.level.getGameTime();
         float playerYaw = minecraft.player.getViewYRot(1.0f);
         List<AuraReaderClientState.ReadingSnapshot> readings = AuraReaderClientState.getReadings();
-        AuraReaderClientState.ReadingSnapshot preliminaryFocus = getFocusedReading(readings, playerYaw);
+        AuraReaderSearchProgress search = AuraReaderSearchClientState.getProgress(minecraft.player.tickCount);
+        var reticleTarget = AuraReaderClientState.isActive() && !readings.isEmpty()
+                ? AuraReaderTargeting.pickEntity(
+                        minecraft.level, minecraft.getCameraEntity(), tickCounter.getGameTimeDeltaPartialTick(false),
+                        AuraReaderClientState.getScanRange())
+                : null;
+        AuraReaderClientState.ReadingSnapshot observedFocus = getFocusedReading(
+                readings, reticleTarget == null ? null : reticleTarget.getUUID().toString());
         AuraReaderClientState.ReadingSnapshot tracked = getTrackedReading(readings);
-        AuraReaderHudLayoutPreset preset = AuraReaderHudLayoutPreset.fromName(config.auraReaderLayoutPreset());
+
         List<AuraReaderClientState.ReadingSnapshot> displayedReadings = selectReadings(
                 readings,
-                config.auraReaderMaxMarkers(),
-                preliminaryFocus,
-                preset
+                observedFocus
         );
-        AuraReaderClientState.ReadingSnapshot focused = getFocusedReading(displayedReadings, playerYaw);
-        long presentationSeed = focused != null
-                ? focused.id().hashCode()
-                : AuraReaderClientState.getSelectedSignal().hashCode();
+        float elapsedSeconds = minecraft.isPaused() ? 0.0f : tickCounter.getRealtimeDeltaTicks() / 20.0f;
+        AuraReaderClientState.updateHudAnimations(observedFocus, tracked, elapsedSeconds);
+        AuraReaderClientState.ReadingSnapshot focused = AuraReaderClientState.getFocusedReading();
+        float activationProgress = AuraReaderClientState.getActivationProgress();
+        boolean visorVisible = activationProgress > 0.0f || AuraReaderClientState.isActive();
+        if (!visorVisible && search == null) {
+            return;
+        }
+        boolean compactSignal = tracked == null
+                && (search == null || AuraReaderSearchClientState.isCollapsed());
+        AuraReaderHudGeometry.Geometry layout = resolveGeometry(width, height, config, compactSignal);
 
-        AuraReaderHudLayoutResolver.Layout layout = AuraReaderHudLayoutResolver.resolve(
-                new AuraReaderHudLayoutResolver.Request(
-                        width,
-                        height,
-                        config.auraReaderHudScale(),
-                        config.auraReaderCompassWidth(),
-                        config.auraReaderCompassVerticalOffset(),
-                        config.auraReaderReticleScale(),
-                        config.auraReaderBottomSafeMargin(),
-                        visiblePartyOverlayWidth(),
-                        config.auraReaderPartyOverlayMargin(),
-                        config.auraReaderBossBarMargin(),
-                        config.auraReaderRightOverlayMargin(),
-                        preset,
-                        presentationSeed
-                )
-        );
-
-        frameAlpha = clamp01(activationProgress * config.auraReaderHudOpacity());
+        frameAlpha = clamp01((visorVisible ? activationProgress : 1.0f) * config.auraReaderHudOpacity());
         RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();
         RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f);
+
+        if (!visorVisible) {
+            //drawReaderCap(graphics, minecraft, layout.modeCap(), search);
+            if (!AuraReaderSearchClientState.isCollapsed()) {
+                drawSearchPopover(graphics, minecraft, layout.signalPopover(), search, config.auraReaderReducedMotion());
+                occupiedAreas.add(layout.signalPopover());
+            }
+            RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f);
+            RenderSystem.disableBlend();
+            frameAlpha = 1.0f;
+            return;
+        }
 
         float panOffset = config.auraReaderReducedMotion()
                 ? 0.0f
@@ -145,14 +161,12 @@ public final class AuraReaderHud {
 
         drawScreenWash(graphics, width, height, ticks, config);
         drawScannerBorder(graphics, width, height);
-        drawCompass(graphics, minecraft, layout, displayedReadings, focused, playerYaw, ticks, config);
+        drawCompass(graphics, minecraft, layout, displayedReadings, focused, playerYaw, ticks, search, config);
         float scannerScale = Math.min(layout.reticle().width(), layout.reticle().height())
                 / (float) SCAN_RING_OUTER_DIAMETER;
         int scannerCenterX = width / 2;
         int scannerCenterY = height / 2;
-        if (preset != AuraReaderHudLayoutPreset.MINIMAL) {
-            drawSignalPopover(graphics, minecraft, layout.signalPopover(), tracked);
-            drawContextPanels(
+        drawContextPanels(
                     graphics,
                     minecraft,
                     width,
@@ -161,9 +175,9 @@ public final class AuraReaderHud {
                     scannerCenterY,
                     scannerScale,
                     layout,
-                    focused
+                    AuraReaderClientState.getPanelReading(),
+                    config.auraReaderReducedMotion()
             );
-        }
 
         drawReticle(
                 graphics,
@@ -174,10 +188,97 @@ public final class AuraReaderHud {
                 config
         );
 
+        // Keep text in front of the ring when a short viewport needs overlap.
+        if (search != null && !AuraReaderSearchClientState.isCollapsed()) {
+            drawSearchPopover(graphics, minecraft, layout.signalPopover(), search, config.auraReaderReducedMotion());
+        } else {
+            drawSignalPopover(graphics, minecraft, layout.signalPopover(), tracked);
+        }
+
         graphics.pose().popPose();
+        // Other field readouts share the scanner's actual visible reservations.
+        int panY = Math.round(panOffset);
+        var areas = new ArrayList<>(scannerReservedZones(layout));
+        areas.add(layout.reticle());
+        if (panelLayout != null) panelLayout.visibleFrames().forEach(frame -> areas.add(frame.bounds()));
+        for (var area : areas) {
+            occupiedAreas.add(new AuraReaderHudRect(area.left(), area.top() + panY,
+                    area.right(), area.bottom() + panY));
+        }
+        // Reserve one envelope per connector, not hundreds of its raster pixels.
+        for (var arm : panelArms) {
+            if (arm.pixels().isEmpty()) continue;
+            int left = arm.pixels().stream().mapToInt(AuraReaderHudRect::left).min().orElseThrow();
+            int top = arm.pixels().stream().mapToInt(AuraReaderHudRect::top).min().orElseThrow();
+            int right = arm.pixels().stream().mapToInt(AuraReaderHudRect::right).max().orElseThrow();
+            int bottom = arm.pixels().stream().mapToInt(AuraReaderHudRect::bottom).max().orElseThrow();
+            occupiedAreas.add(new AuraReaderHudRect(
+                    (int) Math.floor(scannerCenterX + left * scannerScale),
+                    (int) Math.floor(scannerCenterY + top * scannerScale + panOffset),
+                    (int) Math.ceil(scannerCenterX + right * scannerScale),
+                    (int) Math.ceil(scannerCenterY + bottom * scannerScale + panOffset)));
+        }
         RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f);
         RenderSystem.disableBlend();
         frameAlpha = 1.0f;
+    }
+
+    /** Both loaders render other field readouts after this visor, in the same frame. */
+    public static List<AuraReaderHudRect> occupiedAreas(int width, int height, IClientConfig config) {
+        var layout = resolveGeometry(width, height, config);
+        var areas = new ArrayList<>(occupiedAreas);
+        areas.add(layout.partySafeZone());
+        areas.add(layout.bottomSafeZone());
+        return List.copyOf(areas);
+    }
+
+    /** The same bracket texture, font and two-line readout used by the Reader, without requiring its visor. */
+    public static void renderMoonwoundInfoBox(GuiGraphics graphics, AuraReaderHudRect rect,
+                                             MoonwoundSnapshot snapshot, float opacity) {
+        float previousAlpha = frameAlpha;
+        frameAlpha = clamp01(opacity);
+        RenderSystem.enableBlend();
+        RenderSystem.defaultBlendFunc();
+        RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f);
+        try {
+            drawMoonwoundPopover(graphics, Minecraft.getInstance(), rect, snapshot);
+        } finally {
+            frameAlpha = previousAlpha;
+            RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f);
+            RenderSystem.disableBlend();
+        }
+    }
+
+    public static int moonwoundInfoBoxWidth(MoonwoundSnapshot snapshot) {
+        Minecraft minecraft = Minecraft.getInstance();
+        return Math.max(scannerTextWidth(minecraft, MoonwoundHudPresentation.title(snapshot)),
+                scannerTextWidth(minecraft, MoonwoundHudPresentation.detail(snapshot))) + 17;
+    }
+
+    /** Tutorial arrows use the same scale, offsets, and overlay clearances as the live visor. */
+    public static AuraReaderHudGeometry.Geometry getTutorialGeometry(int width, int height) {
+        Minecraft minecraft = Minecraft.getInstance();
+        IClientConfig config = ShadowedHeartsConfigs.getInstance().getClientConfig();
+        var search = minecraft.player == null ? null
+                : AuraReaderSearchClientState.getProgress(minecraft.player.tickCount);
+        boolean compactSignal = getTrackedReading(AuraReaderClientState.getReadings()) == null
+                && (search == null || AuraReaderSearchClientState.isCollapsed());
+        return resolveGeometry(width, height, config, compactSignal);
+    }
+
+    private static AuraReaderHudGeometry.Geometry resolveGeometry(
+            int width, int height, IClientConfig config) {
+        return resolveGeometry(width, height, config, false);
+    }
+
+    private static AuraReaderHudGeometry.Geometry resolveGeometry(
+            int width, int height, IClientConfig config, boolean compactSignal) {
+        return AuraReaderHudGeometry.resolve(new AuraReaderHudGeometry.Request(
+                width, height, config.auraReaderHudScale(), config.auraReaderCompassWidth(),
+                config.auraReaderTopInset(), config.auraReaderReticleScale(),
+                config.auraReaderBottomSafeMargin(), visiblePartyOverlayWidth(),
+                config.auraReaderPartyOverlayMargin(),
+                config.auraReaderRightOverlayMargin(), compactSignal));
     }
 
     private static void drawScreenWash(
@@ -259,11 +360,12 @@ public final class AuraReaderHud {
     private static void drawCompass(
             GuiGraphics graphics,
             Minecraft minecraft,
-            AuraReaderHudLayoutResolver.Layout layout,
+            AuraReaderHudGeometry.Geometry layout,
             List<AuraReaderClientState.ReadingSnapshot> allReadings,
             AuraReaderClientState.ReadingSnapshot focused,
             float playerYaw,
             long ticks,
+            AuraReaderSearchProgress search,
             IClientConfig config) {
         AuraReaderHudRect rail = layout.compassRail();
         int railY = centerY(rail);
@@ -273,8 +375,7 @@ public final class AuraReaderHud {
         float visibleArc = Math.max(30.0f, Math.min(180.0f, config.auraReaderCompassVisibleArc()));
 
         drawCurvedCompassRail(graphics, rail, railY, railCenterX, halfWidth, curveRise);
-        drawModeCap(graphics, minecraft, layout.modeCap());
-        drawChargeCap(graphics, minecraft, layout.chargeCap(), config);
+        //drawReaderCap(graphics, minecraft, layout.modeCap(), search);
 
         for (int heading = -180; heading < 180; heading += 15) {
             if (Math.floorMod(heading, 45) == 0) {
@@ -318,6 +419,7 @@ public final class AuraReaderHud {
         int rightEdgeCount = 0;
 
         for (AuraReaderClientState.ReadingSnapshot reading : readings) {
+            if (reading.outOfDimension()) continue;
             float readingYaw = AuraReaderCompassMath.worldYaw(reading.directionX(), reading.directionZ());
             float delta = AuraReaderCompassMath.signedDelta(playerYaw, readingYaw);
             if (!AuraReaderCompassMath.isInsideVisibleArc(delta, visibleArc)) {
@@ -337,7 +439,8 @@ public final class AuraReaderHud {
                     reading.source(),
                     normalizedX,
                     reading.priority(),
-                    reading.selected() || (focused != null && focused.id().equals(reading.id())),
+                    isNavigationSelected(reading) || isPinned(reading)
+                            || (focused != null && focused.id().equals(reading.id())),
                     reading.locked()
             ));
         }
@@ -356,6 +459,25 @@ public final class AuraReaderHud {
                     .toList();
         }
 
+        Map<String, Integer> markerOffsets = AuraReaderCompassPlacement.verticalOffsets(clusters.stream()
+                .map(cluster -> {
+                    var reading = insideById.get(cluster.representative().id()).reading();
+                    boolean selected = isNavigationSelected(reading);
+                    boolean hasFocus = focused != null && focused.id().equals(reading.id());
+                    int radius = Math.max(9, Math.round(compassDirectionBoxSize(rail)
+                            * (selected ? 1.0f : hasFocus ? 0.90f : 0.80f))) / 2;
+                    return new AuraReaderCompassPlacement.Marker(reading.id(),
+                            railCenterX + Math.round(cluster.normalizedX() * halfWidth), radius,
+                            selected, isPinned(reading));
+                }).toList());
+
+        // Draw the navigation selection last so an overlapping lower-priority
+        // contact cannot cover its icon or selection arcs.
+        clusters = clusters.stream().sorted(Comparator
+                .comparing((AuraReaderMarkerClusterer.Cluster cluster) ->
+                        isNavigationSelected(insideById.get(cluster.representative().id()).reading()))
+                .thenComparing(cluster -> isPinned(insideById.get(cluster.representative().id()).reading())))
+                .toList();
         for (AuraReaderMarkerClusterer.Cluster cluster : clusters) {
             MarkerPresentation representative = insideById.get(cluster.representative().id());
             if (representative == null) {
@@ -373,6 +495,7 @@ public final class AuraReaderHud {
                     halfWidth,
                     marker,
                     cluster.count(),
+                    markerOffsets.getOrDefault(marker.reading().id(), 0),
                     focused != null && focused.id().equals(marker.reading().id()),
                     visibleArc,
                     curveRise,
@@ -462,74 +585,26 @@ public final class AuraReaderHud {
         ));
     }
 
-    private static void drawModeCap(
-            GuiGraphics graphics,
-            Minecraft minecraft,
-            AuraReaderHudRect rect) {
-        if (rect.width() <= 0 || rect.height() <= 0) {
-            return;
-        }
-        drawBeveledPanel(graphics, rect, AuraReaderHudTheme.CYAN, AuraReaderHudTheme.PANEL_BACKGROUND);
-        drawCenteredHudString(
-                graphics,
-                minecraft,
-                modeLabel(AuraReaderClientState.getMode()),
-                centerX(rect),
-                centerY(rect) - 4,
-                AuraReaderHudTheme.TEXT_PRIMARY
-        );
-    }
-
-    private static void drawChargeCap(
+    private static void drawReaderCap(
             GuiGraphics graphics,
             Minecraft minecraft,
             AuraReaderHudRect rect,
-            IClientConfig config) {
-        String visibility = config.auraReaderChargeDisplay();
-        if ("hidden".equalsIgnoreCase(visibility)
-                || rect.width() <= 0
-                || rect.height() <= 0) {
+            AuraReaderSearchProgress search) {
+        if (!canDrawReadout(rect, AuraReaderHudGeometry.MODE_CAP_HEIGHT)) {
             return;
         }
-
-        boolean conditional = "conditional".equalsIgnoreCase(visibility);
-        float chargeFraction = AuraReaderClientState.getChargeFraction();
-        if (conditional
-                && chargeFraction >= 0.999f
-                && !AuraReaderClientState.isPulseOnCooldown()) {
-            return;
+        AuraReaderHudRect local = beginReadout(graphics, rect, AuraReaderHudGeometry.MODE_CAP_HEIGHT);
+        drawReadoutBrackets(graphics, local);
+        if (search == null) {
+            String title = fitScannerText(minecraft, translated("hud.shadowedhearts.aura_reader.title"), local.width() - 16);
+            drawScannerString(graphics, title, centerX(local),
+                    (local.height() - READOUT_TEXT_HEIGHT) / 2, AuraReaderHudTheme.TEXT_PRIMARY, true);
+        } else {
+            String phase = fitScannerText(minecraft, translated(search.translationKey()), local.width() - 12);
+            drawScannerString(graphics, phase, centerX(local),
+                    (local.height() - READOUT_TEXT_HEIGHT) / 2, AuraReaderHudTheme.TEXT_PRIMARY, true);
         }
-
-        drawBeveledPanel(graphics, rect, AuraReaderHudTheme.CYAN, AuraReaderHudTheme.PANEL_BACKGROUND);
-        int midY = centerY(rect);
-        int labelX = rect.left() + 10;
-        String chargeLabel = translated("hud.shadowedhearts.aura_reader.label.charge");
-        drawHudString(
-                graphics,
-                minecraft,
-                chargeLabel,
-                labelX,
-                midY - 4,
-                chargeTextColor(chargeFraction)
-        );
-
-        int percent = Math.round(chargeFraction * 100.0f);
-        String percentLabel = percent + "%";
-        int percentWidth = hudTextWidth(minecraft, percentLabel);
-        int barLeft = labelX + hudTextWidth(minecraft, chargeLabel) + 7;
-        int barRight = Math.max(barLeft, rect.right() - percentWidth - 9);
-        int barTop = midY - 3;
-        fill(graphics, barLeft, barTop, barRight, barTop + 6, 0xCC061116);
-        int filledRight = barLeft + Math.round((barRight - barLeft) * chargeFraction);
-        fill(graphics, barLeft + 1, barTop + 1, Math.max(barLeft + 1, filledRight), barTop + 5, chargeColor(chargeFraction));
-        drawHudString(
-                graphics,
-                minecraft,
-                percentLabel,
-                rect.right() - percentWidth - 5,
-                midY - 4,
-                chargeTextColor(chargeFraction)
-        );
+        graphics.pose().popPose();
     }
 
     private static void drawCompassDirectionIcons(
@@ -614,6 +689,7 @@ public final class AuraReaderHud {
             int halfWidth,
             MarkerPresentation marker,
             int clusterCount,
+            int verticalOffset,
             boolean focused,
             float visibleArc,
             int curveRise,
@@ -621,8 +697,10 @@ public final class AuraReaderHud {
             IClientConfig config) {
         AuraReaderClientState.ReadingSnapshot reading = marker.reading();
         int x = centerX(rail) + Math.round(marker.normalizedX() * halfWidth);
-        int markerY = railY + compassCurveOffset(marker.normalizedX(), curveRise);
+        int markerY = railY + compassCurveOffset(marker.normalizedX(), curveRise) + verticalOffset;
+        boolean navigationSelected = isNavigationSelected(reading);
         float edgeFade = compassEdgeFade(marker.normalizedX());
+        if (navigationSelected) edgeFade = Math.max(0.65f, edgeFade);
         if (!config.auraReaderReducedMotion() && reading.interference() > 0.0f) {
             double phase = ticks * 0.78 + reading.id().hashCode() * 0.031;
             x += Math.round(
@@ -654,16 +732,18 @@ public final class AuraReaderHud {
             );
         }
 
-        int size = focused ? 5 : isTrackedOrLocked(reading) ? 4 : 3;
+        int size = focused || navigationSelected ? 5 : isTrackedOrLocked(reading) ? 4 : 3;
         int visualRadius = size;
-        if (reading.type() == AuraReadingType.SHADOW_POKEMON) {
+        AuraReaderCompassIcon icon = AuraReaderCompassIcon.forType(reading.type());
+        if (icon != null) {
             int frameSize = Math.max(
                     9,
-                    Math.round(compassDirectionBoxSize(rail) * (focused ? 0.90f : 0.80f))
+                    Math.round(compassDirectionBoxSize(rail) * (navigationSelected ? 1.0f : focused ? 0.90f : 0.80f))
             );
             visualRadius = frameSize / 2;
-            drawShadowPokemonCompassMarker(
+            drawTexturedCompassMarker(
                     graphics,
+                    icon,
                     x,
                     markerY,
                     frameSize,
@@ -680,7 +760,7 @@ public final class AuraReaderHud {
                     reading.source() == AuraReadingSource.PULSE
             );
         }
-        if (reading.source() == AuraReadingSource.TRACKED) {
+        if (isPinned(reading)) {
             drawBrackets(graphics, x, markerY, visualRadius + 3, color);
         }
         if (reading.locked() || reading.source() == AuraReadingSource.LOCKED) {
@@ -689,7 +769,7 @@ public final class AuraReaderHud {
                     x,
                     markerY,
                     visualRadius + 5,
-                    AuraReaderHudTheme.multiplyAlpha(AuraReaderHudTheme.LOCKED, edgeFade)
+                    AuraReaderHudTheme.multiplyAlpha(AuraReaderHudTheme.LOCKED, markerAlpha)
             );
         }
         if (focused) {
@@ -715,6 +795,10 @@ public final class AuraReaderHud {
                     AuraReaderHudTheme.multiplyAlpha(AuraReaderHudTheme.TEXT_SECONDARY, edgeFade)
             );
         }
+        if (AuraReaderClientState.isReadingStale(reading.id())) {
+            drawX(graphics, x + visualRadius, markerY + visualRadius, 2,
+                    AuraReaderHudTheme.multiplyAlpha(AuraReaderHudTheme.TEXT_WARNING, markerAlpha));
+        }
         drawVerticalHint(
                 graphics,
                 x,
@@ -732,8 +816,9 @@ public final class AuraReaderHud {
         );
     }
 
-    private static void drawShadowPokemonCompassMarker(
+    private static void drawTexturedCompassMarker(
             GuiGraphics graphics,
+            AuraReaderCompassIcon icon,
             int centerX,
             int centerY,
             int frameSize,
@@ -741,37 +826,19 @@ public final class AuraReaderHud {
         int halfSize = frameSize / 2;
         int left = centerX - halfSize;
         int top = centerY - halfSize;
-        int right = left + frameSize;
-        int bottom = top + frameSize;
-        int bevel = Math.max(1, Math.round(frameSize * (2.0f / COMPASS_DIRECTION_BOX_SIZE)));
-        int borderColor = AuraReaderHudTheme.multiplyAlpha(AuraReaderHudTheme.SHADOW_MARKER, alpha);
-        int backgroundColor = AuraReaderHudTheme.multiplyAlpha(AuraReaderHudTheme.SHADOW_MARKER_BACKGROUND, alpha);
-
-        fill(graphics, left + bevel, top, right - bevel, bottom, backgroundColor);
-        fill(graphics, left, top + bevel, right, bottom - bevel, backgroundColor);
-        fill(graphics, left + bevel, top, right - bevel, top + 1, borderColor);
-        fill(graphics, left + bevel, bottom - 1, right - bevel, bottom, borderColor);
-        fill(graphics, left, top + bevel, left + 1, bottom - bevel, borderColor);
-        fill(graphics, right - 1, top + bevel, right, bottom - bevel, borderColor);
-
-        int questionHeight = Math.max(7, frameSize - 6);
-        int questionWidth = Math.max(
-                5,
-                Math.round(questionHeight * (SCAN_UNKNOWN_WIDTH / (float) SCAN_UNKNOWN_HEIGHT))
-        );
         blit(
                 graphics,
-                SCAN_UNKNOWN,
-                centerX - questionWidth / 2,
-                centerY - questionHeight / 2,
-                questionWidth,
-                questionHeight,
+                ResourceLocation.fromNamespaceAndPath("shadowedhearts", icon.path()),
+                left,
+                top,
+                frameSize,
+                frameSize,
                 0,
                 0,
-                SCAN_UNKNOWN_WIDTH,
-                SCAN_UNKNOWN_HEIGHT,
-                SCAN_UNKNOWN_WIDTH,
-                SCAN_UNKNOWN_HEIGHT,
+                icon.size(),
+                icon.size(),
+                icon.size(),
+                icon.size(),
                 alpha
         );
     }
@@ -784,10 +851,18 @@ public final class AuraReaderHud {
             AuraReaderClientState.ReadingSnapshot reading) {
         int x = side < 0 ? rail.left() + 3 : rail.right() - 4;
         int y = centerY(rail) + Math.min(2, stack) * 4;
+        if (isNavigationSelected(reading)) y -= 8;
+        else if (isPinned(reading)) y += 8;
         int color = reading.locked() || reading.source() == AuraReadingSource.LOCKED
                 ? AuraReaderHudTheme.LOCKED
                 : AuraReaderHudTheme.TRACKED;
+        float alpha = AuraReaderClientState.getReadingAlpha(reading.id());
+        color = AuraReaderHudTheme.multiplyAlpha(color, alpha);
         drawHorizontalChevron(graphics, x, y, side, 5, color);
+        if (AuraReaderClientState.isReadingStale(reading.id())) {
+            drawX(graphics, x - side * 6, y, 2,
+                    AuraReaderHudTheme.multiplyAlpha(AuraReaderHudTheme.TEXT_WARNING, alpha));
+        }
         if (reading.locked()) {
             drawBrackets(graphics, x, y, 7, color);
         }
@@ -906,43 +981,19 @@ public final class AuraReaderHud {
         graphics.pose().popPose();
 
         drawCooldownRing(graphics);
-        if (pulseActive) {
-            float sweepRotation = config.auraReaderReducedMotion()
-                    ? -90.0f
-                    : pulseProgress * 360.0f - 90.0f;
-            graphics.pose().pushPose();
-            graphics.pose().mulPose(new Quaternionf().rotateZ((float) Math.toRadians(sweepRotation)));
-            fill(
-                    graphics,
-                    -1,
-                    -SCAN_RING_INNER_DIAMETER / 2,
-                    1,
-                    2,
-                    AuraReaderHudTheme.multiplyAlpha(AuraReaderHudTheme.PULSE, 0.58f)
-            );
-            graphics.pose().popPose();
-        }
 
         graphics.pose().popPose();
     }
 
     private static void drawCooldownRing(GuiGraphics graphics) {
         float readyFraction = 1.0f - AuraReaderClientState.getPulseCooldownFraction();
-        float chargeFraction = AuraReaderClientState.getChargeFraction();
         int litSegments = Math.round(24 * readyFraction);
         for (int index = 0; index < 24; index++) {
             graphics.pose().pushPose();
             graphics.pose().mulPose(new Quaternionf().rotateZ((float) Math.toRadians(index * 15.0f)));
-            int color;
-            if (chargeFraction < 0.2f) {
-                color = index < litSegments
-                        ? AuraReaderHudTheme.TEXT_WARNING
-                        : AuraReaderHudTheme.multiplyAlpha(AuraReaderHudTheme.TEXT_WARNING, 0.20f);
-            } else {
-                color = index < litSegments
-                        ? AuraReaderHudTheme.multiplyAlpha(AuraReaderHudTheme.CYAN, 0.72f)
-                        : AuraReaderHudTheme.multiplyAlpha(AuraReaderHudTheme.CYAN_DIM, 0.24f);
-            }
+            int color = index < litSegments
+                    ? AuraReaderHudTheme.multiplyAlpha(AuraReaderHudTheme.CYAN, 0.72f)
+                    : AuraReaderHudTheme.multiplyAlpha(AuraReaderHudTheme.CYAN_DIM, 0.24f);
             fill(graphics, -1, -57, 1, -53, color);
             graphics.pose().popPose();
         }
@@ -953,41 +1004,154 @@ public final class AuraReaderHud {
             Minecraft minecraft,
             AuraReaderHudRect rect,
             AuraReaderClientState.ReadingSnapshot tracked) {
-        if (tracked == null || rect.width() < 48 || rect.height() < 20) {
+        int designHeight = tracked == null ? AuraReaderHudGeometry.SIGNAL_STATUS_HEIGHT
+                : AuraReaderHudGeometry.SIGNAL_POPOVER_HEIGHT;
+        if (!canDrawReadout(rect, designHeight)) {
             return;
         }
 
-        drawBeveledPanel(graphics, rect, AuraReaderHudTheme.TRACKED, AuraReaderHudTheme.PANEL_BACKGROUND);
-        drawPanelHeader(
-                graphics,
-                minecraft,
-                rect,
-                translated("hud.shadowedhearts.aura_reader.panel.signal"),
-                AuraReaderHudTheme.TRACKED
-        );
-
-        String firstLine = tracked.label().isBlank()
-                ? prettyType(tracked.type())
-                : tracked.label();
-        String secondLine = joinSignalDetails(tracked);
-        drawCenteredHudString(
-                graphics,
-                minecraft,
-                trimToWidth(minecraft, firstLine, rect.width() - 16),
-                centerX(rect),
-                rect.top() + Math.max(13, rect.height() / 2 - 4),
-                AuraReaderHudTheme.TEXT_PRIMARY
-        );
-        if (rect.height() >= 34) {
-            drawCenteredHudString(
-                    graphics,
-                    minecraft,
-                    trimToWidth(minecraft, secondLine, rect.width() - 16),
-                    centerX(rect),
-                    rect.bottom() - 11,
-                    AuraReaderHudTheme.TEXT_SECONDARY
-            );
+        AuraReaderHudRect local = beginReadout(graphics, rect, designHeight);
+        boolean twoRows = local.height() >= 27;
+        int textY = (local.height() - READOUT_TEXT_HEIGHT) / 2;
+        int padding = 8;
+        int valueWidth = Math.max(0, local.width() - padding * 2);
+        if (valueWidth < scannerTextWidth(minecraft, "...") + 1) {
+            graphics.pose().popPose();
+            return;
         }
+        // Trim frame padding without changing the readable text scale or layout clearance.
+        int frameInset = twoRows ? SIGNAL_FRAME_VERTICAL_INSET : 0;
+        drawScannerPanelBrackets(graphics, 0, frameInset, local.width(), local.height() - frameInset * 2, 0.96f);
+        if (tracked == null) {
+            int contactCount = AuraReaderClientState.getLastPulseContactCount();
+            String resultKey = contactCount == 0 ? "hud.shadowedhearts.aura_reader.pulse.empty"
+                    : contactCount == 1 ? "hud.shadowedhearts.aura_reader.pulse.one_contact"
+                    : "hud.shadowedhearts.aura_reader.pulse.contacts";
+            String status = AuraReaderClientState.hasRecentPulseResult()
+                    ? Component.translatable(resultKey, contactCount).getString()
+                    : translated(AuraReaderClientState.isSignalRecentlyLost()
+                    ? "hud.shadowedhearts.aura_reader.status.signal_lost"
+                    : AuraReaderClientState.getReadings().stream().anyMatch(reading ->
+                            !reading.outOfDimension()
+                                    && !AuraReaderClientState.isReadingStale(reading.id()))
+                            ? "hud.shadowedhearts.aura_reader.pulse.select_hint"
+                            : "hud.shadowedhearts.aura_reader.pulse.search_hint");
+            drawScannerString(graphics, fitScannerText(minecraft, status, valueWidth), centerX(local), textY,
+                    AuraReaderHudTheme.TEXT_SECONDARY, true);
+            graphics.pose().popPose();
+            return;
+        }
+
+        AuraReaderReadoutPresentation.SignalTitle title = AuraReaderReadoutPresentation.signalTitle(
+                tracked.type(), tracked.labelText(), prettyType(tracked.type()));
+        int strengthWidth = scannerTextWidth(minecraft, title.strength()) + 1;
+        boolean showStrength = !title.strength().isEmpty()
+                && valueWidth >= strengthWidth + 12 + Math.min(80, scannerTextWidth(minecraft, title.name()) + 1);
+        int nameWidth = valueWidth - (showStrength ? strengthWidth + 12 : 0);
+        String fittedName = fitScannerText(minecraft, title.name(), nameWidth);
+        int fittedNameWidth = scannerTextWidth(minecraft, fittedName) + 1;
+        int titleWidth = fittedNameWidth + (showStrength ? strengthWidth + 12 : 0);
+        int titleLeft = (local.width() - titleWidth) / 2;
+        String details = AuraReaderReadoutPresentation.fitDetails(
+                "above".equalsIgnoreCase(tracked.verticalHint()) || "below".equalsIgnoreCase(tracked.verticalHint())
+                        ? verticalLabel(tracked.verticalHint()) : "",
+                distanceLabel(tracked.distanceBand()).toUpperCase(Locale.ROOT),
+                stabilityLabel(tracked),
+                twoRows ? valueWidth : 0,
+                value -> scannerTextWidth(minecraft, value) + 1
+        );
+        int lineStep = READOUT_TEXT_HEIGHT + 4;
+        int textBlockHeight = READOUT_TEXT_HEIGHT + (details.isEmpty() ? 0 : lineStep);
+        textY = (local.height() - textBlockHeight) / 2;
+        drawScannerString(graphics, fittedName, titleLeft, textY,
+                AuraReaderHudTheme.TEXT_PRIMARY, false);
+        if (showStrength) {
+            int strengthX = titleLeft + fittedNameWidth + 12;
+            fill(graphics, strengthX - 7, textY, strengthX - 6, textY + READOUT_TEXT_HEIGHT,
+                    AuraReaderHudTheme.CYAN_DIM);
+            drawScannerString(graphics, title.strength(), strengthX, textY,
+                    AuraReaderHudTheme.TEXT_SECONDARY, false);
+        }
+        if (!details.isEmpty()) {
+            drawScannerString(graphics, details, centerX(local), textY + lineStep,
+                    AuraReaderHudTheme.TEXT_SECONDARY, true);
+        }
+        graphics.pose().popPose();
+    }
+
+    private static boolean drawMoonwoundPopover(
+            GuiGraphics graphics, Minecraft minecraft, AuraReaderHudRect rect, MoonwoundSnapshot snapshot) {
+        int designHeight = AuraReaderHudGeometry.SIGNAL_POPOVER_HEIGHT;
+        if (!canDrawReadout(rect, designHeight)) return false;
+        AuraReaderHudRect local = beginReadout(graphics, rect, designHeight);
+        int usableWidth = Math.max(0, local.width() - 16);
+        if (local.height() < 27 || usableWidth < scannerTextWidth(minecraft, Component.translatable("hud.shadowedhearts.aura_reader.type.moonwound").getString()) + 1) {
+            graphics.pose().popPose();
+            return false;
+        }
+        drawScannerPanelBrackets(graphics, 0, SIGNAL_FRAME_VERTICAL_INSET,
+                local.width(), local.height() - SIGNAL_FRAME_VERTICAL_INSET * 2, 0.96f);
+        int lineStep = READOUT_TEXT_HEIGHT + 4;
+        int textY = (local.height() - READOUT_TEXT_HEIGHT - lineStep) / 2;
+        drawScannerString(graphics, fitScannerText(minecraft, MoonwoundHudPresentation.title(snapshot), usableWidth),
+                centerX(local), textY, AuraReaderHudTheme.TEXT_PRIMARY, true);
+        drawScannerString(graphics, fitScannerText(minecraft, MoonwoundHudPresentation.detail(snapshot), usableWidth),
+                centerX(local), textY + lineStep, AuraReaderHudTheme.TEXT_SECONDARY, true);
+        graphics.pose().popPose();
+        return true;
+    }
+
+    private static void drawSearchPopover(
+            GuiGraphics graphics, Minecraft minecraft, AuraReaderHudRect rect,
+            AuraReaderSearchProgress search, boolean reducedMotion) {
+        if (search == null || !canDrawReadout(rect, AuraReaderHudGeometry.SIGNAL_POPOVER_HEIGHT)) return;
+        AuraReaderHudRect local = beginReadout(graphics, rect, AuraReaderHudGeometry.SIGNAL_POPOVER_HEIGHT);
+        drawScannerPanelBrackets(graphics, 0, 0, local.width(), local.height(), 0.96f);
+        int padding = 8;
+        int usableWidth = Math.max(0, local.width() - padding * 2);
+        boolean full = local.height() >= AuraReaderHudGeometry.SIGNAL_POPOVER_HEIGHT;
+        int lineStep = READOUT_TEXT_HEIGHT + 2;
+        int textBlockHeight = READOUT_TEXT_HEIGHT + (full ? lineStep * 2 : 0);
+        int textY = (local.height() - textBlockHeight) / 2;
+        String status = translated(search.translationKey());
+        if (full) {
+            String title = translated("item.shadowedhearts.shadow_signal_data_"
+                    + search.tier().name().toLowerCase(Locale.ROOT));
+            drawScannerString(graphics, fitScannerText(minecraft, title, usableWidth), centerX(local), textY,
+                    AuraReaderHudTheme.TEXT_SECONDARY, true);
+        }
+        drawScannerString(graphics, fitScannerText(minecraft, status, usableWidth), centerX(local),
+                full ? textY + lineStep : textY, AuraReaderHudTheme.TEXT_PRIMARY, true);
+        if (full) {
+            String detail = search.dataRetained() ? translated("hud.shadowedhearts.aura_reader.search.retained")
+                    : switch (search.stage()) {
+                        case SEARCHING, SURVEYING, CHECKING -> translated("hud.shadowedhearts.aura_reader.search.keep_in_hand");
+                        case READY -> translated("hud.shadowedhearts.aura_reader.search.follow");
+                        case READY_ELSEWHERE -> translated("message.shadowedhearts.aura_reader.signal.ready_elsewhere");
+                        case WAITING -> translated(search.waitTranslationKey());
+                        case PAUSED -> translated("hud.shadowedhearts.aura_reader.search.operator");
+                        case RELEASED -> translated("hud.shadowedhearts.aura_reader.search.released");
+                        default -> search.phasePercent() >= 0
+                                ? Component.translatable("hud.shadowedhearts.aura_reader.search.phase_progress", search.phasePercent()).getString() : "";
+                    };
+            drawScannerString(graphics, fitScannerText(minecraft, detail, usableWidth), centerX(local), textY + lineStep * 2,
+                    AuraReaderHudTheme.TEXT_SECONDARY, true);
+            if (!search.stage().terminal()) {
+                int meterY = local.bottom() - 2;
+                fill(graphics, padding, meterY, local.right() - padding, meterY + 1, AuraReaderHudTheme.METER_TRACK);
+                if (search.phasePercent() >= 0) {
+                    fill(graphics, padding, meterY, padding + usableWidth * search.phasePercent() / 100,
+                            meterY + 1, AuraReaderHudTheme.CYAN_BRIGHT);
+                } else if (search.stage().preflight()) {
+                    long ticks = AuraReaderSearchClientState.processingElapsedTicks(minecraft.player.tickCount);
+                    int sweepWidth = Math.max(2, usableWidth / 5);
+                    int sweepStart = padding + (reducedMotion ? (usableWidth - sweepWidth) / 2
+                            : (int) (ticks % 60L) * Math.max(0, usableWidth - sweepWidth) / 59);
+                    fill(graphics, sweepStart, meterY, sweepStart + sweepWidth, meterY + 1, AuraReaderHudTheme.CYAN);
+                }
+            }
+        }
+        graphics.pose().popPose();
     }
 
     private static void drawContextPanels(
@@ -998,148 +1162,215 @@ public final class AuraReaderHud {
             int scannerCenterX,
             int scannerCenterY,
             float scannerScale,
-            AuraReaderHudLayoutResolver.Layout layout,
-            AuraReaderClientState.ReadingSnapshot focused) {
-        if (focused == null || !(scannerScale > 0.0f) || !Float.isFinite(scannerScale)) {
+            AuraReaderHudGeometry.Geometry layout,
+            AuraReaderClientState.ReadingSnapshot completedReading,
+            boolean reducedMotion) {
+        if (completedReading == null || completedReading.outOfDimension() || AuraReaderClientState.getPanelProgress() <= 0.0f
+                || !(scannerScale > 0.0f) || !Float.isFinite(scannerScale)) {
+            panelLayoutTargetId = null;
+            panelLayoutRequest = null;
+            panelLayout = null;
+            panelArmLayoutKey = null;
+            panelArms = List.of();
+            panelArmQuads = List.of();
             return;
         }
 
-        AuraReaderScannerInfoFrameLayout.Layout frameLayout =
-                AuraReaderScannerInfoFrameLayout.resolve(
-                        new AuraReaderScannerInfoFrameLayout.Request(
-                                viewportWidth,
-                                viewportHeight,
-                                scannerCenterX,
-                                scannerCenterY,
-                                scannerScale,
-                                layout.partySafeZone(),
-                                layout.bottomSafeZone()
-                        )
-                );
+        boolean sameTarget = Objects.equals(panelLayoutTargetId, completedReading.id());
+        String auraText = Component.translatable("hud.shadowedhearts.aura_reader.panel.aura_value", auraStatus(completedReading)).getString();
+        String targetText = completedReading.label().isBlank()
+                ? prettyType(completedReading.type()) : completedReading.label();
+        boolean hasHeart = completedReading.type() == AuraReadingType.SHADOW_POKEMON
+                && completedReading.heartGauge() != null;
+        AuraReaderScannerInfoFrameLayout.Request previous = sameTarget ? panelLayoutRequest : null;
+        AuraReaderScannerInfoFrameLayout.Request request = new AuraReaderScannerInfoFrameLayout.Request(
+                viewportWidth,
+                viewportHeight,
+                scannerCenterX,
+                scannerCenterY,
+                scannerScale,
+                layout.partySafeZone(),
+                layout.bottomSafeZone(),
+                scannerReservedZones(layout),
+                scannerPanelSide(AuraReaderScannerInfoFrameLayout.AURA_TIER),
+                scannerPanelSide(AuraReaderScannerInfoFrameLayout.TARGET_TIER),
+                hasHeart ? scannerPanelSide(AuraReaderScannerInfoFrameLayout.HEART_TIER) : null,
+                MINIMUM_TEXT_SCALE,
+                scannerPanelContent(minecraft, auraText, previous == null ? null : previous.auraContent()),
+                scannerPanelContent(minecraft, targetText, previous == null ? null : previous.targetContent()),
+                hasHeart ? scannerPanelContent(minecraft, heartGaugeText(completedReading.heartGauge()),
+                        previous == null ? null : previous.heartContent()) : null
+        );
+        // Retain peak measured widths for this target so changing live values
+        // do not make the frame contract. Reflow when content or safe areas change.
+        if (!sameTarget || !request.equals(panelLayoutRequest)) {
+            panelLayout = AuraReaderScannerInfoFrameLayout.resolve(request,
+                    value -> scannerTextWidth(minecraft, value), sameTarget ? panelLayout : null);
+            panelLayoutRequest = request;
+            panelLayoutTargetId = completedReading.id();
+        }
+        ScannerArmLayoutKey armLayoutKey = new ScannerArmLayoutKey(
+                viewportWidth, viewportHeight, scannerCenterX, scannerCenterY, scannerScale,
+                request.partySafeZone(), request.bottomSafeZone(), request.reservedZones(),
+                panelLayout.visibleFrames().stream().map(AuraReaderScannerInfoFrameLayout.FramePlacement::geometry).toList());
+        if (!armLayoutKey.equals(panelArmLayoutKey)) {
+            panelArms = AuraReaderScannerArmLayout.resolve(panelLayout, request);
+            panelArmQuads = AuraReaderScannerArmLayout.quads(panelArms, 1.0f);
+            panelArmLayoutKey = armLayoutKey;
+        }
 
         graphics.pose().pushPose();
         graphics.pose().translate(scannerCenterX, scannerCenterY, 0.0f);
         graphics.pose().scale(scannerScale, scannerScale, 1.0f);
-        frameLayout.auraFrame().ifPresent(frame -> drawScannerContextFrame(
+        drawScannerContextArms(graphics, reducedMotion);
+        panelLayout.auraFrame().ifPresent(frame -> drawScannerContextFrame(
                 graphics,
-                minecraft,
                 frame,
-                translated("hud.shadowedhearts.aura_reader.panel.aura"),
-                auraStatus(focused)
+                reducedMotion
         ));
-        frameLayout.targetFrame().ifPresent(frame -> drawScannerContextFrame(
+        panelLayout.targetFrame().ifPresent(frame -> drawScannerContextFrame(
                 graphics,
-                minecraft,
                 frame,
-                translated("hud.shadowedhearts.aura_reader.panel.target"),
-                focused.label().isBlank() ? prettyType(focused.type()) : focused.label()
+                reducedMotion
+        ));
+        panelLayout.heartFrame().ifPresent(frame -> drawScannerContextFrame(
+                graphics,
+                frame,
+                reducedMotion
         ));
         graphics.pose().popPose();
     }
 
+    private static AuraReaderScannerInfoFrameLayout.Content scannerPanelContent(
+            Minecraft minecraft, String value, AuraReaderScannerInfoFrameLayout.Content previous) {
+        int measuredWidth = value.lines().mapToInt(line -> scannerTextWidth(minecraft, line)).max().orElse(0);
+        return new AuraReaderScannerInfoFrameLayout.Content(value,
+                Math.max(measuredWidth, previous == null ? 0 : previous.naturalWidth()));
+    }
+
     private static void drawScannerContextFrame(
             GuiGraphics graphics,
-            Minecraft minecraft,
             AuraReaderScannerInfoFrameLayout.FramePlacement frame,
-            String title,
-            String value) {
-        AuraReaderScannerInfoFrameLayout.NativeGeometry geometry = frame.geometry();
-        int step = Math.max(
-                0,
-                Math.min(
-                        SCANNER_INFO_FRAME_STEPS - 1,
-                        (int) Math.ceil(
-                                clamp01(AuraReaderClientState.getReticleScanProgress() / 100.0f)
-                                        * (SCANNER_INFO_FRAME_STEPS - 1)
-                        )
-                )
-        );
-        int frameHeight = geometry.height();
-        blitNative(
-                graphics,
-                infoFrameResource(
-                        frame.side() == AuraReaderScannerInfoFrameLayout.Side.LEFT,
-                        frame.tier()
-                ),
-                geometry.xOffset(),
-                geometry.yOffset(),
-                geometry.width(),
-                frameHeight,
-                0,
-                frameHeight * step,
-                geometry.width(),
-                frameHeight * SCANNER_INFO_FRAME_STEPS,
-                0.96f
-        );
+            boolean reducedMotion) {
+        var geometry = frame.geometry();
+        float progress = AuraReaderClientState.getPanelProgress();
+        float bodyProgress = reducedMotion ? 1.0f
+                : clamp01((progress - SCANNER_ARM_OPEN_FRACTION) / (1.0f - SCANNER_ARM_OPEN_FRACTION));
+        if (bodyProgress <= 0.0f) {
+            return;
+        }
+        var attachment = panelArms.stream()
+                .filter(arm -> arm.panel().equals(geometry))
+                .map(AuraReaderScannerArmLayout.Arm::attachment)
+                .findFirst()
+                .orElse(AuraReaderScannerArmLayout.attachment(geometry));
+        var visible = AuraReaderScannerArmLayout.reveal(geometry, attachment, bodyProgress);
+        drawScannerPanelBrackets(graphics, visible.xOffset(), visible.yOffset(), visible.width(), visible.height(),
+                0.96f * (reducedMotion ? progress : 1.0f));
 
         if (!AuraReaderClientState.shouldShowPanelText()) {
             return;
         }
 
-        int textWidth = (frame.tier() == 1 || frame.tier() == 2)
-                ? AuraReaderScannerInfoFrameLayout.INNER_FRAME_WIDTH
-                        - AuraReaderScannerInfoFrameLayout.INNER_FRAME_STEM_WIDTH
-                        - 12
-                : geometry.width() - 12;
-        int textCenterX = geometry.textCenterXOffset();
-        int titleY = scannerFrameTitleY(geometry);
-        int valueY = scannerFrameValueY(geometry);
-        drawCenteredHudString(
-                graphics,
-                minecraft,
-                trimToWidth(minecraft, title, textWidth),
-                textCenterX,
-                titleY,
-                AuraReaderHudTheme.TEXT_SECONDARY
-        );
-        drawCenteredHudString(
-                graphics,
-                minecraft,
-                trimToWidth(minecraft, value, textWidth),
-                textCenterX,
-                valueY,
-                AuraReaderHudTheme.TEXT_PRIMARY
-        );
-    }
-
-    private static int scannerFrameTitleY(
-            AuraReaderScannerInfoFrameLayout.NativeGeometry geometry) {
-        if (geometry.tier() == 1 || geometry.tier() == 2) {
-            return geometry.yOffset() + 3;
+        graphics.pose().pushPose();
+        int lineHeight = AuraReaderScannerInfoFrameLayout.LINE_HEIGHT;
+        float textHeight = ((frame.lines().size() - 1) * lineHeight
+                + AuraReaderScannerInfoFrameLayout.TEXT_HEIGHT_WITH_SHADOW) * frame.relativeTextScale();
+        graphics.pose().translate(geometry.xOffset() + geometry.width() / 2.0f,
+                geometry.yOffset() + (geometry.height() - textHeight) / 2.0f, 0.0f);
+        graphics.pose().scale(frame.relativeTextScale(), frame.relativeTextScale(), 1.0f);
+        int textColor = AuraReaderHudTheme.multiplyAlpha(AuraReaderHudTheme.TEXT_PRIMARY,
+                AuraReaderClientState.getPanelTextAlpha());
+        for (int line = 0; line < frame.lines().size(); line++) {
+            drawScannerString(graphics, frame.lines().get(line), 0, line * lineHeight, textColor, true);
         }
-        return geometry.yOffset() + (geometry.tier() == 3 ? 31 : 6);
+        graphics.pose().popPose();
     }
 
-    private static int scannerFrameValueY(
-            AuraReaderScannerInfoFrameLayout.NativeGeometry geometry) {
-        if (geometry.tier() == 1 || geometry.tier() == 2) {
-            return geometry.yOffset() + 11;
+    private static void drawScannerContextArms(GuiGraphics graphics, boolean reducedMotion) {
+        float progress = AuraReaderClientState.getPanelProgress();
+        float armProgress = reducedMotion ? 1.0f : clamp01(progress / SCANNER_ARM_OPEN_FRACTION);
+        List<AuraReaderHudRect> quads = armProgress >= 1.0f
+                ? panelArmQuads : AuraReaderScannerArmLayout.quads(panelArms, armProgress);
+        int color = AuraReaderHudTheme.multiplyAlpha(SCANNER_PANEL_BORDER,
+                0.96f * (reducedMotion ? progress : 1.0f));
+        for (AuraReaderHudRect quad : quads) {
+            fill(graphics, quad.left(), quad.top(), quad.right(), quad.bottom(), color);
         }
-        return geometry.yOffset() + (geometry.tier() == 3 ? 42 : 18);
     }
 
-    private static void drawPanelHeader(
-            GuiGraphics graphics,
-            Minecraft minecraft,
-            AuraReaderHudRect rect,
-            String title,
-            int color) {
-        int titleWidth = hudTextWidth(minecraft, title);
-        int center = centerX(rect);
-        int y = rect.top() + 6;
-        fill(graphics, rect.left() + 9, y, center - titleWidth / 2 - 5, y + 1, AuraReaderHudTheme.multiplyAlpha(color, 0.65f));
-        fill(graphics, center + titleWidth / 2 + 5, y, rect.right() - 9, y + 1, AuraReaderHudTheme.multiplyAlpha(color, 0.65f));
-        drawCenteredHudString(graphics, minecraft, title, center, rect.top() + 2, AuraReaderHudTheme.TEXT_SECONDARY);
+    private static void drawScannerPanelBrackets(
+            GuiGraphics graphics, int x, int y, int width, int height, float alpha) {
+        int borderColor = AuraReaderHudTheme.multiplyAlpha(SCANNER_PANEL_BORDER, alpha);
+        int fillColor = AuraReaderHudTheme.multiplyAlpha(SCANNER_PANEL_FILL, alpha);
+        // The left/right halves already contain translucent body pixels; only
+        // fill between them so the joins do not receive a second alpha layer.
+        fill(graphics, x + 5, y + 1, x + width - 5, y + height - 1, fillColor);
+        fill(graphics, x + 5, y, x + width - 5, y + 1, borderColor);
+        fill(graphics, x + 5, y + height - 1, x + width - 5, y + height, borderColor);
+        for (int side = 0; side < 2; side++) {
+            int capX = side == 0 ? x : x + width - 5;
+            int capV = side * 16;
+            // Preserve the two corner rows; stretch only the straight middle.
+            blit(graphics, SCANNER_BRACKETS, capX, y, 5, 2, 0, capV, 5, 2, 5, 32, alpha);
+            blit(graphics, SCANNER_BRACKETS, capX, y + 2, 5, height - 4,
+                    0, capV + 2, 5, 1, 5, 32, alpha);
+            blit(graphics, SCANNER_BRACKETS, capX, y + height - 2, 5, 2,
+                    0, capV + 14, 5, 2, 5, 32, alpha);
+        }
     }
 
-    private static ResourceLocation infoFrameResource(boolean leftSide, int tier) {
-        return cobblemon(
-                "textures/gui/pokedex/scan/scan_info_frame_"
-                        + (leftSide ? "left" : "right")
-                        + "_"
-                        + tier
-                        + ".png"
+    private static String heartGaugeText(AuraHeartGaugeReadout readout) {
+        String bandKey = readout.band() == null ? ""
+                : readout.band().name().toLowerCase(Locale.ROOT);
+        return AuraReaderHeartGaugePresentation.format(
+                readout,
+                translated("hud.shadowedhearts.aura_reader.panel.heart_gauge"),
+                bandKey.isEmpty() ? "" : translated("hud.shadowedhearts.aura_reader.heart_gauge." + bandKey),
+                translated("hud.shadowedhearts.aura_reader.heart_gauge.hidden")
         );
+    }
+
+    private static AuraReaderScannerInfoFrameLayout.Side scannerPanelSide(int tier) {
+        return AuraReaderClientState.getPanelSide(tier)
+                ? AuraReaderScannerInfoFrameLayout.Side.LEFT
+                : AuraReaderScannerInfoFrameLayout.Side.RIGHT;
+    }
+
+    private static List<AuraReaderHudRect> scannerReservedZones(AuraReaderHudGeometry.Geometry layout) {
+        // Direction tiles and the curved rail extend beyond the rail's nominal rectangle.
+        AuraReaderHudRect rail = layout.compassRail();
+        int tileRadius = (compassDirectionBoxSize(rail) + 1) / 2;
+        int rise = Math.max(1, Math.round(rail.height() * COMPASS_CURVE_RISE_FACTOR));
+        AuraReaderHudRect compassBounds = new AuraReaderHudRect(
+                rail.left() - tileRadius,
+                Math.min(centerY(rail) - rise - tileRadius, rail.top() - rise - 8),
+                rail.right() + tileRadius,
+                Math.max(centerY(rail) + tileRadius, rail.bottom() + 3));
+        return List.of(compassBounds, layout.modeCap(), layout.signalPopover());
+    }
+
+    private static AuraReaderHudRect beginReadout(GuiGraphics graphics, AuraReaderHudRect rect, int designHeight) {
+        float scale = Math.max(MINIMUM_TEXT_SCALE, rect.height() / (float) designHeight);
+        graphics.pose().pushPose();
+        graphics.pose().translate(rect.left(), rect.top(), 0.0f);
+        graphics.pose().scale(scale, scale, 1.0f);
+        return new AuraReaderHudRect(0, 0, (int) Math.floor(rect.width() / scale),
+                (int) Math.floor(rect.height() / scale));
+    }
+
+    private static boolean canDrawReadout(AuraReaderHudRect rect, int designHeight) {
+        float scale = Math.max(MINIMUM_TEXT_SCALE, rect.height() / (float) designHeight);
+        return Math.floor(rect.width() / scale) >= 24 && Math.floor(rect.height() / scale) >= 13;
+    }
+
+    private static void drawReadoutBrackets(GuiGraphics graphics, AuraReaderHudRect rect) {
+        fill(graphics, rect.left(), rect.top(), rect.right(), rect.bottom(), AuraReaderHudTheme.READOUT_BACKGROUND);
+        int corner = Math.min(7, Math.min(rect.width(), rect.height()) / 2);
+        fill(graphics, rect.left(), rect.top(), rect.left() + corner, rect.top() + 1, AuraReaderHudTheme.CYAN);
+        fill(graphics, rect.left(), rect.top() + 1, rect.left() + 1, rect.top() + corner, AuraReaderHudTheme.CYAN);
+        fill(graphics, rect.right() - corner, rect.bottom() - 1, rect.right(), rect.bottom(), AuraReaderHudTheme.CYAN);
+        fill(graphics, rect.right() - 1, rect.bottom() - corner, rect.right(), rect.bottom() - 1, AuraReaderHudTheme.CYAN);
     }
 
     private static void drawBeveledPanel(
@@ -1152,7 +1383,8 @@ public final class AuraReaderHud {
         }
         int bevel = Math.min(5, Math.min(rect.width(), rect.height()) / 4);
         fill(graphics, rect.left() + bevel, rect.top(), rect.right() - bevel, rect.bottom(), backgroundColor);
-        fill(graphics, rect.left(), rect.top() + bevel, rect.right(), rect.bottom() - bevel, backgroundColor);
+        fill(graphics, rect.left(), rect.top() + bevel, rect.left() + bevel, rect.bottom() - bevel, backgroundColor);
+        fill(graphics, rect.right() - bevel, rect.top() + bevel, rect.right(), rect.bottom() - bevel, backgroundColor);
 
         fill(graphics, rect.left() + bevel, rect.top(), rect.right() - bevel, rect.top() + 1, borderColor);
         fill(graphics, rect.left() + bevel, rect.bottom() - 1, rect.right() - bevel, rect.bottom(), borderColor);
@@ -1334,28 +1566,25 @@ public final class AuraReaderHud {
 
     private static List<AuraReaderClientState.ReadingSnapshot> selectReadings(
             List<AuraReaderClientState.ReadingSnapshot> readings,
-            int maximum,
-            AuraReaderClientState.ReadingSnapshot focused,
-            AuraReaderHudLayoutPreset preset) {
+            AuraReaderClientState.ReadingSnapshot focused) {
         if (readings == null || readings.isEmpty()) {
             return List.of();
         }
-
-        ArrayList<AuraReaderClientState.ReadingSnapshot> sorted = new ArrayList<>();
-        for (AuraReaderClientState.ReadingSnapshot reading : readings) {
-            if (preset != AuraReaderHudLayoutPreset.MINIMAL || isTrackedOrLocked(reading)) {
-                sorted.add(reading);
-            }
+        Map<String, AuraReaderClientState.ReadingSnapshot> byId = new HashMap<>();
+        List<AuraReaderCompassSelection.Candidate> candidates = new ArrayList<>(readings.size());
+        for (var reading : readings) {
+            byId.put(reading.id(), reading);
+            candidates.add(compassCandidate(reading, focused != null && focused.id().equals(reading.id())));
         }
-        sorted.sort(
-                Comparator
-                        .comparing((AuraReaderClientState.ReadingSnapshot reading) -> !isTrackedOrLocked(reading))
-                        .thenComparing(reading -> focused == null || !focused.id().equals(reading.id()))
-                        .thenComparing(Comparator.comparingInt(AuraReaderClientState.ReadingSnapshot::priority).reversed())
-                        .thenComparing(Comparator.comparingDouble(AuraReaderClientState.ReadingSnapshot::strength).reversed())
-                        .thenComparing(AuraReaderClientState.ReadingSnapshot::id)
-        );
-        return List.copyOf(sorted.subList(0, Math.min(Math.max(1, maximum), sorted.size())));
+        return AuraReaderCompassSelection.order(candidates, AuraReaderClientState.getSelectedSignal())
+                .stream().map(candidate -> byId.get(candidate.id())).toList();
+    }
+
+    private static AuraReaderCompassSelection.Candidate compassCandidate(
+            AuraReaderClientState.ReadingSnapshot reading, boolean focused) {
+        return new AuraReaderCompassSelection.Candidate(reading.id(), reading.outOfDimension(),
+                isPinned(reading), reading.locked() || reading.source() == AuraReadingSource.LOCKED,
+                focused, reading.priority(), reading.strength());
     }
 
     private static int visiblePartyOverlayWidth() {
@@ -1370,48 +1599,46 @@ public final class AuraReaderHud {
 
     private static AuraReaderClientState.ReadingSnapshot getFocusedReading(
             List<AuraReaderClientState.ReadingSnapshot> readings,
-            float playerYaw) {
-        AuraReaderClientState.ReadingSnapshot closest = null;
-        float closestDelta = SOFT_FOCUS_DEGREES;
+            String reticleTargetId) {
+        List<AuraReaderFocusSelector.Candidate> candidates = new ArrayList<>(readings.size());
         for (AuraReaderClientState.ReadingSnapshot reading : readings) {
-            float readingYaw = AuraReaderCompassMath.worldYaw(reading.directionX(), reading.directionZ());
-            float delta = Math.abs(AuraReaderCompassMath.signedDelta(playerYaw, readingYaw));
-            if (delta <= closestDelta) {
-                closestDelta = delta;
-                closest = reading;
-            }
+            if (AuraReaderClientState.isReadingStale(reading.id())) continue;
+            candidates.add(new AuraReaderFocusSelector.Candidate(
+                    reading.id(), reading.type(), reading.outOfDimension()));
         }
-        return closest;
-    }
-
-    private static AuraReaderClientState.ReadingSnapshot getTrackedReading(
-            List<AuraReaderClientState.ReadingSnapshot> readings) {
-        String selectedSignal = AuraReaderClientState.getSelectedSignal();
-        if (!AuraReaderClientState.isTracking()
-                && (selectedSignal == null || selectedSignal.isBlank())) {
-            return null;
-        }
+        String selectedId = AuraReaderFocusSelector.select(candidates, reticleTargetId);
         for (AuraReaderClientState.ReadingSnapshot reading : readings) {
-            if (selectedSignal != null
-                    && !selectedSignal.isBlank()
-                    && selectedSignal.equals(reading.id())) {
-                return reading;
-            }
-        }
-        for (AuraReaderClientState.ReadingSnapshot reading : readings) {
-            if (reading.selected()
-                    && (reading.source() == AuraReadingSource.TRACKED
-                    || reading.source() == AuraReadingSource.LOCKED)) {
+            if (reading.id().equals(selectedId)) {
                 return reading;
             }
         }
         return null;
     }
 
+    private static AuraReaderClientState.ReadingSnapshot getTrackedReading(
+            List<AuraReaderClientState.ReadingSnapshot> readings) {
+        List<AuraReaderCompassSelection.Candidate> freshCandidates = readings.stream()
+                .filter(reading -> !AuraReaderClientState.isReadingStale(reading.id()))
+                .map(reading -> compassCandidate(reading, false)).toList();
+        String primaryId = AuraReaderCompassSelection.primaryId(
+                freshCandidates, AuraReaderClientState.getSelectedSignal());
+        return readings.stream().filter(reading -> reading.id().equals(primaryId)).findFirst().orElse(null);
+    }
+
+    private static boolean isNavigationSelected(AuraReaderClientState.ReadingSnapshot reading) {
+        return reading.id().equals(AuraReaderClientState.getSelectedSignal());
+    }
+
+    private static boolean isPinned(AuraReaderClientState.ReadingSnapshot reading) {
+        return reading.type() == AuraReadingType.SHADOW_POKEMON
+                && (reading.source() == AuraReadingSource.TRACKED
+                || reading.source() == AuraReadingSource.LOCKED || reading.locked());
+    }
+
     private static boolean isTrackedOrLocked(AuraReaderClientState.ReadingSnapshot reading) {
-        return reading.selected()
+        return isNavigationSelected(reading)
+                || isPinned(reading)
                 || reading.locked()
-                || reading.source() == AuraReadingSource.TRACKED
                 || reading.source() == AuraReadingSource.LOCKED;
     }
 
@@ -1432,52 +1659,35 @@ public final class AuraReaderHud {
         };
     }
 
-    private static String modeLabel(AuraReaderMode mode) {
-        String key = switch (mode) {
-            case PASSIVE_AURA -> "hud.shadowedhearts.aura_reader.mode.aura";
-            case SIGNAL_TRACKING -> "hud.shadowedhearts.aura_reader.mode.track";
-            case PULSE_SCAN, ENTITY_ANALYSIS -> "hud.shadowedhearts.aura_reader.mode.analyze";
-            case ANOMALY_SCAN -> "hud.shadowedhearts.aura_reader.mode.anomaly";
-        };
-        return translated(key);
-    }
-
     private static String cardinalLabel(int heading) {
         int normalized = Math.floorMod(heading, 360);
         if (normalized < 23 || normalized >= 338) {
-            return "S";
+            return Component.translatable("hud.shadowedhearts.aura_reader.compass.s").getString();
         }
         if (normalized < 68) {
-            return "SW";
+            return Component.translatable("hud.shadowedhearts.aura_reader.compass.sw").getString();
         }
         if (normalized < 113) {
-            return "W";
+            return Component.translatable("hud.shadowedhearts.aura_reader.compass.w").getString();
         }
         if (normalized < 158) {
-            return "NW";
+            return Component.translatable("hud.shadowedhearts.aura_reader.compass.nw").getString();
         }
         if (normalized < 203) {
-            return "N";
+            return Component.translatable("hud.shadowedhearts.aura_reader.compass.n").getString();
         }
         if (normalized < 248) {
-            return "NE";
+            return Component.translatable("hud.shadowedhearts.aura_reader.compass.ne").getString();
         }
         if (normalized < 293) {
-            return "E";
+            return Component.translatable("hud.shadowedhearts.aura_reader.compass.e").getString();
         }
-        return "SE";
+        return Component.translatable("hud.shadowedhearts.aura_reader.compass.se").getString();
     }
 
-    private static String joinSignalDetails(AuraReaderClientState.ReadingSnapshot reading) {
-        List<String> parts = new ArrayList<>(3);
-        if (!reading.distanceBand().isBlank()) {
-            parts.add(reading.distanceBand().toUpperCase(Locale.ROOT));
-        }
-        if (!reading.verticalHint().isBlank() && !"level".equalsIgnoreCase(reading.verticalHint())) {
-            parts.add(verticalLabel(reading.verticalHint()));
-        }
-        parts.add(stabilityLabel(reading));
-        return String.join("  \u2022  ", parts);
+    private static String distanceLabel(String band) {
+        String key = "hud.shadowedhearts.aura_reader.distance." + band.toLowerCase(Locale.ROOT);
+        return net.minecraft.locale.Language.getInstance().has(key) ? translated(key) : band;
     }
 
     private static String verticalLabel(String verticalHint) {
@@ -1517,55 +1727,58 @@ public final class AuraReaderHud {
     }
 
     private static String prettyType(AuraReadingType type) {
-        String normalized = type.name().toLowerCase(Locale.ROOT).replace('_', ' ');
-        StringBuilder result = new StringBuilder(normalized.length());
-        boolean capitalize = true;
-        for (int index = 0; index < normalized.length(); index++) {
-            char character = normalized.charAt(index);
-            if (capitalize && Character.isLetter(character)) {
-                result.append(Character.toUpperCase(character));
-                capitalize = false;
-            } else {
-                result.append(character);
-            }
-            if (character == ' ') {
-                capitalize = true;
-            }
-        }
-        return result.toString();
-    }
-
-    private static int chargeColor(float fraction) {
-        if (fraction < 0.2f) {
-            return AuraReaderHudTheme.TEXT_DANGER;
-        }
-        if (fraction < 0.5f) {
-            return AuraReaderHudTheme.TEXT_WARNING;
-        }
-        return AuraReaderHudTheme.CYAN;
-    }
-
-    private static int chargeTextColor(float fraction) {
-        return chargeColor(fraction);
+        return translated("hud.shadowedhearts.aura_reader.type." + type.name().toLowerCase(Locale.ROOT));
     }
 
     private static String translated(String key) {
         return Component.translatable(key).getString();
     }
 
-    private static String trimToWidth(Minecraft minecraft, String value, int maxWidth) {
-        String safeValue = value == null ? "" : value;
-        if (maxWidth <= 0 || hudTextWidth(minecraft, safeValue) <= maxWidth) {
-            return maxWidth <= 0 ? "" : safeValue;
+    private static String fitScannerText(Minecraft minecraft, String value, int maxWidth) {
+        String safeValue = value == null ? "" : value.replace('\n', ' ').replace('\r', ' ');
+        // Reserve the final pixel for the native font's shadow as well as its bold glyph width.
+        int glyphWidth = maxWidth - 1;
+        if (glyphWidth <= 0) {
+            return "";
+        }
+        if (scannerTextWidth(minecraft, safeValue) <= glyphWidth) {
+            return safeValue;
         }
 
         String ellipsis = "...";
+        if (scannerTextWidth(minecraft, ellipsis) > glyphWidth) {
+            return "";
+        }
         int end = safeValue.length();
         while (end > 0
-                && hudTextWidth(minecraft, safeValue.substring(0, end) + ellipsis) > maxWidth) {
-            end--;
+                && scannerTextWidth(minecraft, safeValue.substring(0, end) + ellipsis) > glyphWidth) {
+            end = safeValue.offsetByCodePoints(end, -1);
         }
-        return end <= 0 ? ellipsis : safeValue.substring(0, end) + ellipsis;
+        return safeValue.substring(0, end) + ellipsis;
+    }
+
+    private static int scannerTextWidth(Minecraft minecraft, String value) {
+        return minecraft.font.width(scannerText(value));
+    }
+
+    private static MutableComponent scannerText(String value) {
+        return Component.literal(value == null ? "" : value)
+                .withStyle(style -> style.withFont(SCANNER_TEXT_FONT).withBold(true));
+    }
+
+    private static void drawScannerString(
+            GuiGraphics graphics,
+            String value,
+            int x,
+            int y,
+            int color,
+            boolean centered) {
+        int adjustedColor = AuraReaderHudTheme.multiplyAlpha(color, frameAlpha);
+        if (value.isEmpty() || FastColor.ARGB32.alpha(adjustedColor) <= 3) {
+            return;
+        }
+        GuiUtilsKt.drawText(graphics, SCANNER_TEXT_FONT, scannerText(value), x, y,
+                centered, adjustedColor, true, null, null);
     }
 
     private static int hudTextWidth(Minecraft minecraft, String value) {
@@ -1790,6 +2003,13 @@ public final class AuraReaderHud {
                 true,
                 1.0f
         );
+    }
+
+    private record ScannerArmLayoutKey(
+            int viewportWidth, int viewportHeight, float centerX, float centerY, float scale,
+            AuraReaderHudRect partySafeZone, AuraReaderHudRect bottomSafeZone,
+            List<AuraReaderHudRect> reservedZones,
+            List<AuraReaderScannerInfoFrameLayout.Geometry> panels) {
     }
 
     private record MarkerPresentation(

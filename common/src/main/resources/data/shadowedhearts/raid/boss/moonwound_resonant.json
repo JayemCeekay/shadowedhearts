@@ -1,0 +1,21 @@
+{
+  "pokemon": { "species": "absol", "level": 65, "shiny": false },
+  "boss": { "species": "absol", "level": 65, "shiny": false },
+  "raid_tier": "TIER_FIVE",
+  "raid_type": "DARK",
+  "raid_feature": "shadow",
+  "boss_bar_text": "Moonwound • Shadow Raid Boss",
+  "weight": 0.0,
+  "max_players": 4,
+  "max_catches": 1,
+  "health_multi": 8,
+  "multiplayer_health_multi": 1.5,
+  "raid_party_size": 6,
+  "lives": 3,
+  "players_share_lives": false,
+  "required_damage": 0.01,
+  "catch_rate": 1.0,
+  "scale": 2.5,
+  "no_ai": false,
+  "raid_ai": "strong"
+}

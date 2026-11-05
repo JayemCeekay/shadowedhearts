@@ -1,6 +1,9 @@
 {
   "replace": false,
   "values": [
-    "shadowedhearts:shadowfall_meteoroid"
+    "shadowedhearts:shadowfall_meteoroid",
+    "shadowedhearts:umbrafall_shell",
+    "shadowedhearts:cracked_umbrafall_shell",
+    "shadowedhearts:umbral_lattice"
   ]
 }

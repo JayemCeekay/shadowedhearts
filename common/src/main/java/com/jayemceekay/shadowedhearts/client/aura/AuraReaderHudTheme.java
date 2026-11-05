@@ -15,6 +15,8 @@ public final class AuraReaderHudTheme {
     public static final int CYAN_DIM = 0x7A34D4DE;
     public static final int PANEL_BACKGROUND = 0xB20A2630;
     public static final int PANEL_BACKGROUND_SOFT = 0x8010212A;
+    public static final int READOUT_BACKGROUND = 0xD412303A;
+    public static final int METER_TRACK = 0xA027454D;
 
     public static final int TEXT_PRIMARY = 0xFFEAFBFF;
     public static final int TEXT_SECONDARY = 0xFFBFEAF1;

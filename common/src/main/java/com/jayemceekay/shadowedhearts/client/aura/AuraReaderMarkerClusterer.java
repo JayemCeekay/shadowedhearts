@@ -9,7 +9,7 @@ import java.util.List;
 
 /**
  * Groups low-priority compass markers that would otherwise occupy the same
- * few horizontal pixels. Selected, tracked, and locked readings are always
+ * few horizontal pixels. Selected, pinned Pokemon, and locked readings are always
  * emitted as their own cluster.
  */
 public final class AuraReaderMarkerClusterer {
@@ -78,7 +78,7 @@ public final class AuraReaderMarkerClusterer {
         public boolean protectedFromClustering() {
             return selected
                     || locked
-                    || source == AuraReadingSource.TRACKED
+                    || (source == AuraReadingSource.TRACKED && type == AuraReadingType.SHADOW_POKEMON)
                     || source == AuraReadingSource.LOCKED;
         }
     }

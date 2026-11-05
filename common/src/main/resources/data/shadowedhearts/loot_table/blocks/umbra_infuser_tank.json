@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:block",
+  "pools": [
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "shadowedhearts:umbra_infuser_tank"
+        }
+      ],
+      "conditions": [
+        {
+          "condition": "minecraft:survives_explosion"
+        },
+        {
+          "condition": "minecraft:block_state_property",
+          "block": "shadowedhearts:umbra_infuser_tank",
+          "properties": {
+            "half": "lower"
+          }
+        }
+      ]
+    }
+  ],
+  "random_sequence": "shadowedhearts:blocks/umbra_infuser_tank"
+}

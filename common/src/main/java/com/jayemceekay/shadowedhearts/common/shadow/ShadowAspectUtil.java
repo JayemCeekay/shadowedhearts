@@ -825,12 +825,19 @@ public final class ShadowAspectUtil {
         double searchRadius = Math.max(radius, verticalRadius);
 
         return level.getPoiManager().getInRange(
-                holder -> holder.value() == ModPoiTypes.SHADOWFALL_METEOROID.get(),
+                holder -> holder.value() == ModPoiTypes.SHADOWFALL_METEOROID.get()
+                        || holder.value() == ModPoiTypes.UMBRAFALL_CORE.get(),
                 pos,
                 (int) Math.ceil(searchRadius),
                 PoiManager.Occupancy.ANY
         ).anyMatch(poiRecord -> {
             BlockPos p = poiRecord.getPos();
+            // A saved legacy POI may outlive its migrated block until vanilla refreshes the section.
+            // Never re-enable corruption around inert shell, and never load a chunk just for this check.
+            if (!level.hasChunkAt(p)) return false;
+            var material = level.getBlockState(p);
+            if (!material.is(com.jayemceekay.shadowedhearts.registry.ModBlocks.SHADOWFALL_METEOROID.get())
+                    && !material.is(com.jayemceekay.shadowedhearts.registry.ModBlocks.UMBRAFALL_CORE.get())) return false;
             // Use squared distance for efficiency
             double dx = p.getX() - pos.getX();
             double dy = p.getY() - pos.getY();

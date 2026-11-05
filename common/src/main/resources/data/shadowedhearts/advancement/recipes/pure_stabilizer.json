@@ -1,0 +1,15 @@
+{
+  "parent": "shadowedhearts:recipes/root",
+  "criteria": {
+    "has_ingredient": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": { "items": [{ "items": "shadowedhearts:purified_gem" }] }
+    },
+    "has_the_recipe": {
+      "trigger": "minecraft:recipe_unlocked",
+      "conditions": { "recipe": "shadowedhearts:pure_stabilizer" }
+    }
+  },
+  "requirements": [["has_ingredient", "has_the_recipe"]],
+  "rewards": { "recipes": ["shadowedhearts:pure_stabilizer"] }
+}

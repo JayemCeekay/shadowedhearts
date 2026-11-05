@@ -1,0 +1,41 @@
+{
+  "parent": "shadowedhearts:main/shadow_materials",
+  "display": {
+    "icon": {
+      "id": "shadowedhearts:shadow_signal_data_faint"
+    },
+    "title": {
+      "translate": "advancements.shadowedhearts.signal_data.title"
+    },
+    "description": {
+      "translate": "advancements.shadowedhearts.signal_data.description"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": false,
+    "hidden": false
+  },
+  "criteria": {
+    "has_signal": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": [
+              "shadowedhearts:shadow_signal_data_faint",
+              "shadowedhearts:shadow_signal_data_weak",
+              "shadowedhearts:shadow_signal_data_moderate",
+              "shadowedhearts:shadow_signal_data_strong",
+              "shadowedhearts:shadow_signal_data_resonant"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "has_signal"
+    ]
+  ]
+}

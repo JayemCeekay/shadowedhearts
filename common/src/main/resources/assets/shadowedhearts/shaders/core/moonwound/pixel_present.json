@@ -1,0 +1,17 @@
+{
+  "vertex": "shadowedhearts:moonwound/pixel",
+  "fragment": "shadowedhearts:moonwound/pixel_present",
+  "attributes": ["Position"],
+  "samplers": [{"name": "Sampler0"}, {"name": "Sampler1"}, {"name": "Sampler2"}, {"name": "Sampler3"}],
+  "uniforms": [
+    {"name": "PixelSize", "type": "float", "count": 1, "values": [4]},
+    {"name": "GridOrigin", "type": "float", "count": 2, "values": [0, 0]},
+    {"name": "GridSize", "type": "float", "count": 2, "values": [1, 1]},
+    {"name": "ViewportOrigin", "type": "float", "count": 2, "values": [0, 0]},
+    {"name": "PixelBlend", "type": "float", "count": 1, "values": [1]},
+    {"name": "EnergyCoverage", "type": "int", "count": 1, "values": [0]},
+    {"name": "SceneOcclusion", "type": "int", "count": 1, "values": [0]},
+    {"name": "ClipEnabled", "type": "int", "count": 1, "values": [0]},
+    {"name": "ClipBounds", "type": "float", "count": 4, "values": [0, 0, 1, 1]}
+  ]
+}

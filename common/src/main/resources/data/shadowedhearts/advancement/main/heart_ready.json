@@ -1,0 +1,31 @@
+{
+  "parent": "shadowedhearts:main/heart_opened",
+  "display": {
+    "icon": {
+      "id": "shadowedhearts:relic_stone"
+    },
+    "title": {
+      "translate": "advancements.shadowedhearts.heart_ready.title"
+    },
+    "description": {
+      "translate": "advancements.shadowedhearts.heart_ready.description"
+    },
+    "frame": "goal",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "heart_ready": {
+      "trigger": "shadowedhearts:progression",
+      "conditions": {
+        "milestone": "heart_ready"
+      }
+    }
+  },
+  "requirements": [
+    [
+      "heart_ready"
+    ]
+  ]
+}

@@ -3,6 +3,8 @@ package com.jayemceekay.shadowedhearts.registry;
 import com.jayemceekay.shadowedhearts.Shadowedhearts;
 import com.jayemceekay.shadowedhearts.content.blocks.entity.PurificationChamberBlockEntity;
 import com.jayemceekay.shadowedhearts.content.blocks.entity.RelicStoneBlockEntity;
+import com.jayemceekay.shadowedhearts.content.blocks.entity.UmbraInfuserBlockEntity;
+import com.jayemceekay.shadowedhearts.content.umbrafall.UmbrafallCoreBlockEntity;
 import dev.architectury.registry.registries.DeferredRegister;
 import dev.architectury.registry.registries.RegistrySupplier;
 import net.minecraft.core.registries.Registries;
@@ -16,6 +18,14 @@ public final class ModBlockEntities {
 
     public static final DeferredRegister<BlockEntityType<?>> BLOCK_ENTITIES =
             DeferredRegister.create(Shadowedhearts.MOD_ID, Registries.BLOCK_ENTITY_TYPE);
+
+    public static final RegistrySupplier<BlockEntityType<UmbrafallCoreBlockEntity>> UMBRAFALL_CORE = BLOCK_ENTITIES.register(
+            "umbrafall_core", () -> BlockEntityType.Builder.of(UmbrafallCoreBlockEntity::new,
+                    ModBlocks.UMBRAFALL_CORE.get()).build(null));
+
+    public static final RegistrySupplier<BlockEntityType<UmbraInfuserBlockEntity>> UMBRA_INFUSER_BE = BLOCK_ENTITIES.register(
+            "umbra_infuser", () -> BlockEntityType.Builder.of(UmbraInfuserBlockEntity::new,
+                    ModBlocks.UMBRA_INFUSER.get(), ModBlocks.UMBRA_INFUSER_TANK.get()).build(null));
 
     public static final RegistrySupplier<BlockEntityType<RelicStoneBlockEntity>> RELIC_STONE_BE = BLOCK_ENTITIES.register(
             "relic_stone",

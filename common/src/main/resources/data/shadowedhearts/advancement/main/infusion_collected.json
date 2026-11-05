@@ -1,0 +1,31 @@
+{
+  "parent": "shadowedhearts:main/umbra_infuser",
+  "display": {
+    "icon": {
+      "id": "shadowedhearts:penumbra_ball"
+    },
+    "title": {
+      "translate": "advancements.shadowedhearts.infusion_collected.title"
+    },
+    "description": {
+      "translate": "advancements.shadowedhearts.infusion_collected.description"
+    },
+    "frame": "goal",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "infusion_collected": {
+      "trigger": "shadowedhearts:progression",
+      "conditions": {
+        "milestone": "infusion_collected"
+      }
+    }
+  },
+  "requirements": [
+    [
+      "infusion_collected"
+    ]
+  ]
+}

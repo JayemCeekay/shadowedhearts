@@ -1,0 +1,67 @@
+{
+  "parent": "shadowedhearts:main/infusion_collected",
+  "display": {
+    "icon": {
+      "id": "shadowedhearts:umbra_ball"
+    },
+    "title": {
+      "translate": "advancements.shadowedhearts.ball_collection.title"
+    },
+    "description": {
+      "translate": "advancements.shadowedhearts.ball_collection.description"
+    },
+    "frame": "challenge",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "penumbra": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": [
+              "shadowedhearts:penumbra_ball"
+            ]
+          }
+        ]
+      }
+    },
+    "antumbra": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": [
+              "shadowedhearts:antumbra_ball"
+            ]
+          }
+        ]
+      }
+    },
+    "umbra": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": [
+              "shadowedhearts:umbra_ball"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "penumbra"
+    ],
+    [
+      "antumbra"
+    ],
+    [
+      "umbra"
+    ]
+  ]
+}

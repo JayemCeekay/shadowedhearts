@@ -31,6 +31,10 @@ repositories {
         url = 'https://api.modrinth.com/maven'
     }
     maven { url 'https://maven.wispforest.io/releases' }
+    maven {
+        name = 'Terraformers'
+        url = 'https://maven.terraformersmc.com/'
+    }
 
     exclusiveContent {
         forRepository {
@@ -58,14 +62,26 @@ dependencies {
 
     modImplementation "dev.architectury:architectury-fabric:$rootProject.architectury_api_version"
 
+    // Exercise claims in ordinary dev clients; keep the explicit absent-mod suite isolated.
+    [
+            "dev.ftb.mods:ftb-chunks-fabric:${rootProject.ftb_chunks_version}",
+            "dev.ftb.mods:ftb-library-fabric:${rootProject.ftb_library_version}",
+            "dev.ftb.mods:ftb-teams-fabric:${rootProject.ftb_teams_version}"
+    ].each { dependency ->
+        if (rootProject.ftbGameTestsEnabled) modCompileOnly(dependency) { transitive = false }
+        if (!rootProject.ftbGameTestsEnabled || rootProject.ftbGameTestsWithFtb) {
+            modLocalRuntime(dependency) { transitive = false }
+        }
+    }
+
     common(project(path: ':common', configuration: 'namedElements')) { transitive false }
     shadowBundle project(path: ':common', configuration: 'transformProductionFabric')
 
     modImplementation( "com.cobblemon:fabric:${cobblemon_version}")
 
+    modCompileOnly("maven.modrinth:GebWh45l:${rootProject.raid_dens_fabric_version}") { transitive = false }
+
     modCompileOnly("io.wispforest:accessories-fabric:${project.accessories_version}")
-
-
 
     //Fabric Language Kotlin
     modImplementation("maven.modrinth:Ha28R6CL:${rootProject.fabric_kotlin_version}")
@@ -84,6 +100,15 @@ dependencies {
     //forge config api port
     modImplementation "fuzs.forgeconfigapiport:forgeconfigapiport-fabric:${fcap_version}"
 
+    // Optional in production; included in development to exercise the config screen.
+    modRuntimeOnly "com.terraformersmc:modmenu:${rootProject.modmenu_version}"
+
+    // Opt-in development viewers; none is required or bundled in the published mod.
+    def recipeViewers = providers.gradleProperty('recipeViewers').getOrElse('none').split(',') as List
+    if (recipeViewers.contains('rei')) modLocalRuntime("me.shedaniel:RoughlyEnoughItems-fabric:${rootProject.rei_version}")
+    if (recipeViewers.contains('jei')) modLocalRuntime("mezz.jei:jei-${rootProject.minecraft_version}-fabric:${rootProject.jei_version}")
+    if (recipeViewers.contains('emi')) modLocalRuntime("dev.emi:emi-fabric:${rootProject.emi_version}")
+
 }
 
 processResources {
@@ -101,4 +126,71 @@ shadowJar {
 
 remapJar {
     input.set shadowJar.archiveFile
+}
+
+if (rootProject.ftbGameTestsEnabled) {
+    def suiteName = rootProject.ftbGameTestsWithFtb ? 'ftb-gametest' : 'ftb-gametest-without-ftb'
+    def reportFile = layout.buildDirectory.file("test-results/${suiteName}.xml")
+    fabricApi.configureTests {
+        createSourceSet = true
+        modId = 'shadowedhearts_ftb_gametest'
+        enableGameTests = true
+        enableClientGameTests = false
+        eula = false
+        clearRunDirectory = false
+    }
+    sourceSets.named('gametest') {
+        java.setSrcDirs([rootProject.file('common/src/ftbGametest/java'), file('src/ftbGametest/java')])
+        resources.setSrcDirs([rootProject.file('common/src/ftbGametest/resources'), file('src/ftbGametest/resources')])
+        compileClasspath += sourceSets.main.compileClasspath
+    }
+    dependencies {
+        // Required by the production metadata, but normally only on the compile classpath.
+        modLocalRuntime('maven.modrinth:ajFw7VkX:tbPW2bdB') { transitive = false }
+        minecraftServerLibraries 'com.ibm.icu:icu4j:71.1'
+    }
+    loom.runs.named('gameTest') {
+        runDir "build/${suiteName}"
+        ideConfigGenerated false
+        property 'shadowedhearts.ftbGametest.expectFtb', rootProject.ftbGameTestsWithFtb.toString()
+        property 'fabric-api.gametest.report-file', reportFile.get().asFile.absolutePath
+    }
+    tasks.named('runGameTest') {
+        doFirst {
+            def report = reportFile.get().asFile
+            if (report.exists() && !report.delete()) throw new GradleException("Cannot remove stale FTB test report: ${report}")
+        }
+        doLast {
+            def report = reportFile.get().asFile
+            if (!report.isFile()) throw new GradleException("FTB GameTests did not produce an XML report: ${report}")
+            def xml = javax.xml.parsers.DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(report)
+            def cases = xml.getElementsByTagName('testcase')
+            def names = (0..<cases.length).collect { cases.item(it).getAttribute('name') }
+            // Keep these counts aligned with both FTB GameTest generators.
+            def expectedCount = rootProject.ftbGameTestsWithFtb ? 54 : 7
+            if (names.size() != expectedCount || names.toSet().size() != expectedCount
+                    || names.any { !it.startsWith('shadowedhearts_ftb_gametest.') }
+                    || xml.getElementsByTagName('failure').length > 0
+                    || xml.getElementsByTagName('error').length > 0
+                    || xml.getElementsByTagName('skipped').length > 0) {
+                throw new GradleException("FTB GameTests did not complete all ${expectedCount} required cases successfully: ${report}")
+            }
+        }
+    }
+    tasks.named('processGametestResources') {
+        inputs.property('withFtb', rootProject.ftbGameTestsWithFtb)
+        doLast {
+            if (!rootProject.ftbGameTestsWithFtb) {
+                def metadata = new File(destinationDir, 'fabric.mod.json')
+                def json = new groovy.json.JsonSlurper().parse(metadata)
+                ['ftbchunks', 'ftblibrary', 'ftbteams'].each { json.depends.remove(it) }
+                metadata.setText(groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(json)), 'UTF-8')
+            }
+        }
+    }
+    tasks.register('runFtbGameTest') {
+        group = 'verification'
+        description = 'Runs real FTB claim and infuser integration GameTests in build/ftb-gametest.'
+        dependsOn tasks.named('runGameTest')
+    }
 }

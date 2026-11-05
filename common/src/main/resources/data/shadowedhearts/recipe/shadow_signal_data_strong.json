@@ -1,0 +1,22 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    {
+      "item": "shadowedhearts:shadow_signal_data_moderate"
+    },
+    {
+      "item": "shadowedhearts:refined_shadow_shard"
+    },
+    {
+      "item": "minecraft:diamond"
+    },
+    {
+      "item": "minecraft:diamond"
+    }
+  ],
+  "result": {
+    "id": "shadowedhearts:shadow_signal_data_strong",
+    "count": 1
+  }
+}

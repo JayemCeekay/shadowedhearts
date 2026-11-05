@@ -1,0 +1,31 @@
+{
+  "parent": "shadowedhearts:main/heart_opened",
+  "display": {
+    "icon": {
+      "id": "shadowedhearts:joy_scent"
+    },
+    "title": {
+      "translate": "advancements.shadowedhearts.scent_used.title"
+    },
+    "description": {
+      "translate": "advancements.shadowedhearts.scent_used.description"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": false,
+    "hidden": false
+  },
+  "criteria": {
+    "scent_used": {
+      "trigger": "shadowedhearts:progression",
+      "conditions": {
+        "milestone": "scent_used"
+      }
+    }
+  },
+  "requirements": [
+    [
+      "scent_used"
+    ]
+  ]
+}

@@ -1,0 +1,6 @@
+{
+  "parent": "shadowedhearts:block/cube_all_roll_90",
+  "textures": {
+    "all": "shadowedhearts:block/cracked_umbrafall_shell"
+  }
+}

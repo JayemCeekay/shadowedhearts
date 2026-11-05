@@ -1,12 +1,9 @@
 package com.jayemceekay.shadowedhearts.content.items;
 
-import com.jayemceekay.shadowedhearts.common.aura.AuraReaderCharge;
-import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResultHolder;
-import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Equipable;
@@ -18,8 +15,6 @@ import net.minecraft.world.level.Level;
 import java.util.List;
 
 public class AuraReaderItem extends Item implements Equipable {
-    public static final int MAX_CHARGE = 12000; // 10 minutes at 20/sec? Or maybe less. Let's say 12000 ticks = 10 mins.
-
     public AuraReaderItem(Properties properties) {
         super(properties);
     }
@@ -27,13 +22,6 @@ public class AuraReaderItem extends Item implements Equipable {
     @Override
     public EquipmentSlot getEquipmentSlot() {
         return EquipmentSlot.HEAD;
-    }
-
-    @Override
-    public void inventoryTick(ItemStack stack, Level level, Entity entity, int slotId, boolean isSelected) {
-        if (!level.isClientSide) {
-            AuraReaderCharge.ensureInitialized(stack, MAX_CHARGE);
-        }
     }
 
     @Override
@@ -65,26 +53,9 @@ public class AuraReaderItem extends Item implements Equipable {
 
     @Override
     public void appendHoverText(ItemStack stack, TooltipContext context, List<Component> tooltip, TooltipFlag type) {
-        int charge = AuraReaderCharge.get(stack);
         tooltip.add(Component.translatable("item.shadowedhearts.aura_reader.tooltip"));
-        if (ShadowedHeartsConfigs.getInstance().getShadowConfig().expandedAuraReaderEnabled()) {
-            tooltip.add(Component.translatable("tooltip.shadowedhearts.aura_reader.charge", charge, MAX_CHARGE));
-        }
+        tooltip.add(Component.translatable("item.shadowedhearts.aura_reader.tooltip.equip"));
+        tooltip.add(Component.translatable("item.shadowedhearts.aura_reader.tooltip.controls"));
         super.appendHoverText(stack, context, tooltip, type);
-    }
-
-    @Override
-    public boolean isBarVisible(ItemStack stack) {
-        return false;
-    }
-
-    @Override
-    public int getBarWidth(ItemStack stack) {
-        return Math.round(13.0f * (float) AuraReaderCharge.get(stack) / (float) MAX_CHARGE);
-    }
-
-    @Override
-    public int getBarColor(ItemStack stack) {
-        return 0x00FFFF; // Cyan
     }
 }

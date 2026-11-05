@@ -1,7 +1,10 @@
 package com.jayemceekay.shadowedhearts.client.aura;
 
 import com.jayemceekay.shadowedhearts.client.ModShaders;
+import com.jayemceekay.shadowedhearts.client.ClientEffects;
 import com.jayemceekay.shadowedhearts.client.render.DepthCapture;
+import com.jayemceekay.shadowedhearts.client.render.DensityFboPipeline;
+import com.jayemceekay.shadowedhearts.client.render.ColorOnlyShaderTarget;
 import com.mojang.blaze3d.platform.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.*;
@@ -10,10 +13,8 @@ import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.phys.Vec3;
 import org.joml.Matrix4f;
-import org.joml.Vector3f;
 import org.lwjgl.opengl.*;
 
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -21,13 +22,8 @@ import java.util.List;
 public class AuraReaderPulseRenderer {
     private static final List<PulseInstance> PULSES = Collections.synchronizedList(new ArrayList<>());
     public static final IrisHandler IRIS_HANDLER = Platform.isModLoaded("iris") ? new IrisHandlerImpl() : null;
-    private static int pulseTextureId = -1;
-    // Use a Pixel Unpack Buffer (PBO) for robust uploads across drivers
-    private static int pulsePboId = 0;
-    private static int pboCapacityTexels = 0; // number of RGBA texels capacity in the PBO/texture
-    private static int allocatedTextureWidthCapacity = 0; // texture storage width currently allocated (texels)
+    private static final AuraPulseTextureUpload PULSE_TEXTURE = new AuraPulseTextureUpload();
     private static int maxTextureSizeCached = -1;
-    private static final int INTERNAL_FORMAT = GL30.GL_RGBA16F; // friendlier than RGBA32F on many drivers
 
     public static void spawnPulse(Vec3 origin) {
             spawnPulse(origin, 0.0f, 1.0f, 1.0f, 128.0f);
@@ -44,6 +40,7 @@ public class AuraReaderPulseRenderer {
     }
 
     private static void addPulse(Vec3 origin, float r, float g, float b, float distance) {
+        if (!ClientEffects.scanWave()) return;
         synchronized (PULSES) {
             PULSES.add(new PulseInstance(origin, r, g, b, distance));
         }
@@ -84,6 +81,16 @@ public class AuraReaderPulseRenderer {
         //PostWorldRenderCallback.register(AuraPulseRenderer::onWorldRendered);
     }
 
+    public static boolean hasActivePulses() {
+        if (!ClientEffects.scanWave()) {
+            clearPulses();
+            return false;
+        }
+        synchronized (PULSES) {
+            return !PULSES.isEmpty();
+        }
+    }
+
     public static void onWorldRendered(PoseStack matrices, Matrix4f projectionMatrix, Matrix4f modelViewMatrix, Camera camera, float tickDelta) {
         onRenderWorld(camera, projectionMatrix, modelViewMatrix, tickDelta);
     }
@@ -102,53 +109,77 @@ public class AuraReaderPulseRenderer {
     }
 
     public static void onRenderWorld(Camera camera, Matrix4f projectionMatrix, Matrix4f modelViewMatrix, float partialTicks) {
+        if (!hasActivePulses() || camera == null || Minecraft.getInstance().level == null) return;
+        if (IRIS_HANDLER != null && IRIS_HANDLER.isShaderPackInUse()) {
+            IrisHandler.IrisRenderingSnapshot frame = IRIS_HANDLER.getIrisRenderingSnapshot();
+            if (frame == null || IRIS_HANDLER.isShadowRenderActive()
+                    || frame.renderWidth <= 0 || frame.renderHeight <= 0) return;
+            try (var ignored = DensityFboPipeline.preserveRenderState()) {
+                RenderSystem.viewport(0, 0, frame.renderWidth, frame.renderHeight);
+                onRenderWorldCapturedDepth(camera, frame.projectionMatrix, frame.modelViewMatrix,
+                        partialTicks, frame.depthTexture);
+            }
+        } else {
+            // Immediate callers still own scene depth here. Loader callbacks
+            // use the retained pre-combine depth through the explicit overload.
+            try (var ignored = DensityFboPipeline.preserveRenderState()) {
+                DepthCapture.captureIfNeeded();
+            }
+            onRenderWorldCapturedDepth(camera, projectionMatrix, modelViewMatrix,
+                    partialTicks, DepthCapture.textureId());
+        }
+    }
+
+    /** Draws into the caller's target using its retained scene depth and matching world matrices. */
+    public static void onRenderWorldCapturedDepth(Camera camera, Matrix4f projectionMatrix,
+                                                   Matrix4f modelViewMatrix, float partialTicks,
+                                                   int depthTexture) {
+        if (!hasActivePulses()) return;
+        if (camera == null || depthTexture <= 0 || projectionMatrix == null || modelViewMatrix == null
+                || !projectionMatrix.isFinite() || !modelViewMatrix.isFinite()) return;
         List<PulseInstance> pulsesSnapshot;
         synchronized (PULSES) {
             if (PULSES.isEmpty()) return;
             pulsesSnapshot = List.copyOf(PULSES);
         }
 
-        try {
+        try (var output = ColorOnlyShaderTarget.open()) {
+            if (output == null) return;
             if (ModShaders.AURA_PULSE == null) return;
             Minecraft mc = Minecraft.getInstance();
-            DepthCapture.captureIfNeeded();
+            if (mc.level == null) return;
 
             Matrix4f proj = projectionMatrix;
             Matrix4f view = modelViewMatrix;
 
-            int diffuseTexture = mc.getMainRenderTarget().getColorTextureId();
-            int depthTexture = DepthCapture.textureId();
-
-            if (IRIS_HANDLER != null && IRIS_HANDLER.isShaderPackInUse()) {
-                IrisHandler.IrisRenderingSnapshot snapshot = IRIS_HANDLER.getIrisRenderingSnapshot();
-                if (snapshot != null) {
-                    if (snapshot.diffuseTexture != -1) {
-                        diffuseTexture = snapshot.diffuseTexture;
-                    }
-                    depthTexture = snapshot.depthTexture;
-                    proj = snapshot.projectionMatrix;
-                    view = snapshot.modelViewMatrix;
-                }
-            }
-
             Matrix4f invProj = new Matrix4f(proj).invert();
             Matrix4f invView = new Matrix4f(view).invert();
+            if (!invProj.isFinite() || !invView.isFinite()) return;
 
-            ModShaders.AURA_PULSE.setSampler("DiffuseSampler", diffuseTexture);
             ModShaders.AURA_PULSE.setSampler("uDepth", depthTexture);
 
 
             Vec3 camPos = camera.getPosition();
 
             RenderSystem.enableBlend();
-            //RenderSystem.defaultBlendFunc();
+            RenderSystem.blendFuncSeparate(
+                    GlStateManager.SourceFactor.SRC_ALPHA, GlStateManager.DestFactor.ONE,
+                    GlStateManager.SourceFactor.ZERO, GlStateManager.DestFactor.ONE);
             RenderSystem.disableDepthTest();
             RenderSystem.depthMask(false);
+            RenderSystem.disableCull();
+            RenderSystem.colorMask(true, true, true, true);
+            GL11.glEnable(GL11.GL_BLEND);
+            GL14.glBlendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO, GL11.GL_ONE);
+            GL20.glBlendEquationSeparate(GL14.GL_FUNC_ADD, GL14.GL_FUNC_ADD);
+            GL11.glDisable(GL11.GL_DEPTH_TEST);
+            GL11.glDepthMask(false);
+            GL11.glDisable(GL11.GL_CULL_FACE);
+            GL11.glDisable(GL11.GL_SCISSOR_TEST);
+            GL11.glDisable(GL11.GL_STENCIL_TEST);
+            GL11.glColorMask(true, true, true, true);
 
             int count = pulsesSnapshot.size();
-            if (pulseTextureId == -1) {
-                pulseTextureId = GlStateManager._genTexture();
-            }
 
             // Cache max texture size and clamp width to be safe
             if (maxTextureSizeCached <= 0) {
@@ -168,90 +199,22 @@ public class AuraReaderPulseRenderer {
                 width = count * 2;
             }
 
-            // Prepare PBO capacity (texel = RGBA float = 16 bytes)
-            int requiredTexels = Math.max(2, width); // ensure at least 2 texels
-            if (pulsePboId == 0) {
-                pulsePboId = GL15.glGenBuffers();
-            }
-
-            int prevUnpackPbo = GL11.glGetInteger(GL21.GL_PIXEL_UNPACK_BUFFER_BINDING);
-            try {
-                GL15.glBindBuffer(GL21.GL_PIXEL_UNPACK_BUFFER, pulsePboId);
-
-                // Grow capacity using next power of two to avoid frequent reallocs
-                if (pboCapacityTexels < requiredTexels) {
-                    int newCapacity = nextPow2(requiredTexels);
-                    newCapacity = Math.min(newCapacity, maxTextureSizeCached);
-                    int newBytes = newCapacity * 16;
-                    GL15.glBufferData(GL21.GL_PIXEL_UNPACK_BUFFER, newBytes, GL15.GL_STREAM_DRAW);
-                    pboCapacityTexels = newCapacity;
+            int uploadCount = count;
+            if (!PULSE_TEXTURE.upload(width, maxTextureSizeCached, mapped -> {
+                for (int i = 0; i < uploadCount; i++) {
+                    PulseInstance pulse = pulsesSnapshot.get(i);
+                    mapped.putFloat((float) (pulse.origin.x - camPos.x));
+                    mapped.putFloat((float) (pulse.origin.y - camPos.y));
+                    mapped.putFloat((float) (pulse.origin.z - camPos.z));
+                    mapped.putFloat(pulse.getRadius(partialTicks));
+                    mapped.putFloat(pulse.r);
+                    mapped.putFloat(pulse.g);
+                    mapped.putFloat(pulse.b);
+                    mapped.putFloat(pulse.distance);
                 }
+            })) return;
 
-                // Map only the portion we will write this frame (guard against zero-length mapping)
-                int writeBytes = width * 16;
-                if (writeBytes > 0) {
-                    ByteBuffer mapped = GL30.glMapBufferRange(
-                            GL21.GL_PIXEL_UNPACK_BUFFER,
-                            0,
-                            writeBytes,
-                            GL30.GL_MAP_WRITE_BIT | GL30.GL_MAP_INVALIDATE_RANGE_BIT
-                    );
-
-                    if (mapped != null) {
-                        mapped.clear();
-                        for (int i = 0; i < count; i++) {
-                            PulseInstance pulse = pulsesSnapshot.get(i);
-                            float radius = pulse.getRadius(partialTicks);
-                            Vector3f origin = new Vector3f((float) (pulse.origin.x - camPos.x), (float) (pulse.origin.y - camPos.y), (float) (pulse.origin.z - camPos.z));
-
-                            mapped.putFloat(origin.x);
-                            mapped.putFloat(origin.y);
-                            mapped.putFloat(origin.z);
-                            mapped.putFloat(radius);
-
-                            mapped.putFloat(pulse.r);
-                            mapped.putFloat(pulse.g);
-                            mapped.putFloat(pulse.b);
-                            mapped.putFloat(pulse.distance);
-                        }
-                        mapped.flip();
-                        GL15.glUnmapBuffer(GL21.GL_PIXEL_UNPACK_BUFFER);
-                    }
-                }
-
-                // Bind the texture and ensure allocation to capacity (avoid resize churn on count changes)
-                RenderSystem.activeTexture(GL13.GL_TEXTURE2);
-                RenderSystem.bindTexture(pulseTextureId);
-
-                // Ensure pixel-store state is sane for PBO uploads (avoid inherited bad state from other render paths)
-                GL11.glPixelStorei(GL11.GL_UNPACK_ALIGNMENT, 4);
-                GL12.glPixelStorei(GL12.GL_UNPACK_ROW_LENGTH, 0);
-
-                if (allocatedTextureWidthCapacity != pboCapacityTexels) {
-                    // Temporarily unbind PBO so this is a pure allocation (avoid INVALID_OPERATION on some drivers)
-                    GL15.glBindBuffer(GL21.GL_PIXEL_UNPACK_BUFFER, 0);
-                    GL11.glTexImage2D(
-                            GL11.GL_TEXTURE_2D, 0, INTERNAL_FORMAT, pboCapacityTexels, 1, 0, GL11.GL_RGBA, GL11.GL_FLOAT, 0
-                    );
-                    allocatedTextureWidthCapacity = pboCapacityTexels;
-                    GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
-                    GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
-                    // Rebind PBO for subsequent subimage upload
-                    GL15.glBindBuffer(GL21.GL_PIXEL_UNPACK_BUFFER, pulsePboId);
-                }
-
-                // Upload from PBO with offset 0 (driver reads from GL-owned storage). Guard against zero-sized upload.
-                if (width > 0) {
-                    GL11.glTexSubImage2D(
-                            GL11.GL_TEXTURE_2D, 0, 0, 0, width, 1, GL11.GL_RGBA, GL11.GL_FLOAT, 0L
-                    );
-                }
-            } finally {
-                // Restore previous PBO binding
-                GL15.glBindBuffer(GL21.GL_PIXEL_UNPACK_BUFFER, prevUnpackPbo);
-            }
-
-            ModShaders.AURA_PULSE.setSampler("uPulseTexture", pulseTextureId);
+            ModShaders.AURA_PULSE.setSampler("uPulseTexture", PULSE_TEXTURE.textureId());
 
             if (ModShaders.AURA_PULSE.safeGetUniform("uThickness") != null) {
                 ModShaders.AURA_PULSE.safeGetUniform("uThickness").set(2.0f);
@@ -290,10 +253,6 @@ public class AuraReaderPulseRenderer {
             BufferUploader.drawWithShader(buf.buildOrThrow());
 
             ModShaders.AURA_PULSE.clear();
-            RenderSystem.enableDepthTest();
-            RenderSystem.depthMask(true);
-            RenderSystem.activeTexture(GL13.GL_TEXTURE0);
-            RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -323,8 +282,4 @@ public class AuraReaderPulseRenderer {
         }
     }
 
-    private static int nextPow2(int x) {
-        if (x <= 1) return 1;
-        return 1 << (32 - Integer.numberOfLeadingZeros(x - 1));
-    }
 }

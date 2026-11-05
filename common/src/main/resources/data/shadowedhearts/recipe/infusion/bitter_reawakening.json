@@ -1,0 +1,7 @@
+{
+  "type": "shadowedhearts:umbra_infusing",
+  "ingredient": { "item": "cobblemon:revive" },
+  "result": { "id": "shadowedhearts:bitter_reawakening", "count": 1 },
+  "charge": 16,
+  "processing_ticks": 400
+}

@@ -9,11 +9,13 @@ public final class AuraReaderSession {
     private AuraReaderMode mode = AuraReaderMode.PASSIVE_AURA;
     private String selectedReadingId = "";
     private boolean active;
+    private boolean explicitTracking;
     private long lastPulseTick;
     private long pulseCooldownEndTick;
     private long lastSnapshotSentTick;
     private boolean dirty = true;
     private final List<AuraReading> cachedReadings = new ArrayList<>();
+    private final AuraReaderContacts contacts = new AuraReaderContacts();
 
     public AuraReaderSession(UUID playerId) {
         this.playerId = playerId;
@@ -28,7 +30,7 @@ public final class AuraReaderSession {
     }
 
     public void setMode(AuraReaderMode mode) {
-        this.mode = mode == null ? AuraReaderMode.PASSIVE_AURA : mode;
+        this.mode = AuraReaderMode.PASSIVE_AURA;
         this.dirty = true;
     }
 
@@ -85,6 +87,29 @@ public final class AuraReaderSession {
 
     public List<AuraReading> getCachedReadings() {
         return List.copyOf(cachedReadings);
+    }
+
+    public AuraReaderContacts contacts() {
+        return contacts;
+    }
+
+    public boolean isExplicitTracking() {
+        return explicitTracking;
+    }
+
+    public boolean isPokemonSelection(String id) {
+        if (id == null || id.isBlank()) return false;
+        if (cachedReadings.stream().anyMatch(reading -> reading.id().equals(id)
+                && reading.type() == AuraReadingType.SHADOW_POKEMON)) return true;
+        try {
+            return contacts.knows(UUID.fromString(id));
+        } catch (IllegalArgumentException ignored) {
+            return false;
+        }
+    }
+
+    public void setExplicitTracking(boolean explicitTracking) {
+        this.explicitTracking = explicitTracking;
     }
 
     public void replaceCachedReadings(List<AuraReading> readings) {

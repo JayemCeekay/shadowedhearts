@@ -1,0 +1,37 @@
+{
+  "parent": "shadowedhearts:main/core_sample",
+  "display": {
+    "icon": {
+      "id": "shadowedhearts:shadow_signal_data_resonant"
+    },
+    "title": {
+      "translate": "advancements.shadowedhearts.resonant_signal.title"
+    },
+    "description": {
+      "translate": "advancements.shadowedhearts.resonant_signal.description"
+    },
+    "frame": "goal",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "has_resonant_signal": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": [
+              "shadowedhearts:shadow_signal_data_resonant"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "has_resonant_signal"
+    ]
+  ]
+}

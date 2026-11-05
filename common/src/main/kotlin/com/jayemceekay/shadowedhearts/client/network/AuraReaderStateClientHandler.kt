@@ -10,8 +10,6 @@ object AuraReaderStateClientHandler : ClientNetworkPacketHandler<AuraReaderState
         AuraReaderClientState.applyServerState(
             packet.active,
             packet.mode,
-            packet.charge,
-            packet.maxCharge,
             packet.tracking,
             packet.selectedSignal,
             packet.lockType,

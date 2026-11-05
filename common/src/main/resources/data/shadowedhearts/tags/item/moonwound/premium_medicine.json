@@ -1,0 +1,14 @@
+{
+  "replace": false,
+  "values": [
+    "cobblemon:hyper_potion",
+    "cobblemon:max_potion",
+    "cobblemon:full_restore",
+    "cobblemon:max_revive",
+    "cobblemon:max_ether",
+    "cobblemon:elixir",
+    "cobblemon:max_elixir",
+    "cobblemon:revival_herb",
+    "cobblemon:superb_remedy"
+  ]
+}
