@@ -3,6 +3,7 @@ package com.jayemceekay.shadowedhearts.network.purification.server
 import com.cobblemon.mod.common.Cobblemon
 import com.cobblemon.mod.common.api.net.ServerNetworkPacketHandler
 import com.jayemceekay.shadowedhearts.common.shadow.ShadowAspectUtil
+import com.jayemceekay.shadowedhearts.config.GameplayTuningConfig
 import com.jayemceekay.shadowedhearts.network.purification.MovePCToPurificationPacket
 import com.jayemceekay.shadowedhearts.storage.purification.link.PurificationLinkManager
 import net.minecraft.server.MinecraftServer
@@ -14,6 +15,10 @@ import net.minecraft.server.level.ServerPlayer
  */
 object MovePCToPurificationHandler : ServerNetworkPacketHandler<MovePCToPurificationPacket> {
     override fun handle(packet: MovePCToPurificationPacket, server: MinecraftServer, player: ServerPlayer) {
+        if (!GameplayTuningConfig.INSTANCE.chamberPurificationEnabled()) {
+            player.displayClientMessage(net.minecraft.network.chat.Component.translatable("message.shadowedhearts.chamber.disabled"), true)
+            return
+        }
         val target = PurificationTransfers.position(
             player.uuid, packet.purificationStoreID, packet.setIndex, packet.targetIndex
         ) ?: return

@@ -8,6 +8,7 @@ import com.jayemceekay.shadowedhearts.advancements.ModCriteriaTriggers;
 import com.jayemceekay.shadowedhearts.common.shadow.ShadowAspectUtil;
 import com.jayemceekay.shadowedhearts.common.shadow.ShadowService;
 import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs;
+import com.jayemceekay.shadowedhearts.config.GameplayTuningConfig;
 import com.jayemceekay.shadowedhearts.content.blocks.entity.RelicStoneBlockEntity;
 import com.jayemceekay.shadowedhearts.network.purification.RelicStoneMotePacket;
 import com.jayemceekay.shadowedhearts.registry.ModBlockEntities;
@@ -350,6 +351,11 @@ public class RelicStoneBlock extends Block implements EntityBlock {
         }
 
         if (player instanceof ServerPlayer serverPlayer) {
+            if (!GameplayTuningConfig.INSTANCE.relicStonePurificationEnabled()) {
+                serverPlayer.displayClientMessage(Component.translatable("message.shadowedhearts.relic_stone.disabled")
+                        .withStyle(ChatFormatting.RED), true);
+                return InteractionResult.SUCCESS;
+            }
             long lastPurify; // Fallback
             long now = level.getGameTime();
             long cooldownTicks = (long) ShadowedHeartsConfigs.getInstance().getShadowConfig().relicStoneCooldownMinutes() * 60 * 20;

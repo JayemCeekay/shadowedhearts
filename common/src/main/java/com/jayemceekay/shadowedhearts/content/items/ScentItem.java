@@ -8,6 +8,8 @@ import com.jayemceekay.shadowedhearts.common.heart.HeartGaugeDeltas;
 import com.jayemceekay.shadowedhearts.common.shadow.ShadowAspectUtil;
 import com.jayemceekay.shadowedhearts.common.shadow.ShadowService;
 import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs;
+import com.jayemceekay.shadowedhearts.config.GameplayTuningConfig;
+import com.jayemceekay.shadowedhearts.common.heart.HeartGaugeProgressionMath;
 import com.jayemceekay.shadowedhearts.registry.ModItems;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
@@ -25,7 +27,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Base Scent item. Applies heart gauge reduction to a targeted Shadow Pokémon based on nature.
+ * Base Scent item. Applies nature-based Heart Gauge reduction to the user's own Shadow Pokémon.
  */
 public class ScentItem extends Item {
     private final int multiplier; // 1=Joy, 2=Excite, 3=Vivid
@@ -187,44 +189,49 @@ public class ScentItem extends Item {
         if (pokemon == null) return InteractionResult.PASS;
         if (!ShadowAspectUtil.hasShadowAspect(pokemon)) return InteractionResult.PASS;
 
+        if (!pokemon.isPlayerOwned() || !player.getUUID().equals(pokemon.getOwnerUUID())) {
+            player.displayClientMessage(Component.translatable("message.shadowedhearts.scent_not_owned")
+                    .withStyle(ChatFormatting.RED), true);
+            return InteractionResult.FAIL;
+        }
+
+        int current = ShadowAspectUtil.getHeartGaugeMeter(pokemon);
+        if (current <= 0 || GameplayTuningConfig.INSTANCE.scentMultiplier() <= 0.0) return noEffect(player);
+
         // Check cooldown
         long now = level.getGameTime(); // using game time ticks
         long lastUse = ShadowAspectUtil.getScentCooldown(pokemon);
-        int cooldownTicks = ShadowedHeartsConfigs.getInstance().getShadowConfig().scentCooldownSeconds() * 20;
+        long cooldownTicks = ShadowedHeartsConfigs.getInstance().getShadowConfig().scentCooldownSeconds() * 20L;
 
-        if (now - lastUse < cooldownTicks) {
-            if (!level.isClientSide) {
-                long remainingTicks = cooldownTicks - (now - lastUse);
-                long remainingSeconds = remainingTicks / 20;
-                player.displayClientMessage(Component.translatable("message.shadowedhearts.scent_cooldown", remainingSeconds).withStyle(ChatFormatting.RED), true);
-            }
+        if (cooldownTicks > 0 && lastUse >= 0 && now - lastUse < cooldownTicks) {
+            long remainingTicks = cooldownTicks - (now - lastUse);
+            long remainingSeconds = (remainingTicks + 19) / 20;
+            player.displayClientMessage(Component.translatable("message.shadowedhearts.scent_cooldown", remainingSeconds).withStyle(ChatFormatting.RED), true);
             return InteractionResult.FAIL;
         }
 
         // Compute delta and apply
         int base = ShadowedHeartsConfigs.getInstance().getShadowConfig().expandedScentSystemEnabled() ? -100 : HeartGaugeDeltas.getDelta(pokemon, HeartGaugeDeltas.EventType.SCENT);
         double finalMultiplier = this.multiplier;
+        AffinityTier tier = AffinityTier.NEUTRAL;
 
         // Expanded system: FULL coverage across all 25 natures & all 5 scent types.
         if (ShadowedHeartsConfigs.getInstance().getShadowConfig().expandedScentSystemEnabled() && !scentType.equals("none")) {
             Nature nature = pokemon.getNature();
-            AffinityTier tier = getAffinityTier(nature, scentType);
+            tier = getAffinityTier(nature, scentType);
             finalMultiplier *= tier.multiplier;
-
-            // Re-use existing messages (keeps lang file stable). You can add more granular keys later.
-            if (tier == AffinityTier.STRONG_LIKE || tier == AffinityTier.LIKE) {
-                player.displayClientMessage(Component.translatable("message.shadowedhearts.scent_preferred").withStyle(ChatFormatting.GREEN), true);
-            } else if (tier == AffinityTier.DISLIKE || tier == AffinityTier.STRONG_DISLIKE) {
-                player.displayClientMessage(Component.translatable("message.shadowedhearts.scent_disliked").withStyle(ChatFormatting.RED), true);
-            }
         }
 
         int delta = (int) (base * finalMultiplier); // base is negative to open heart
-        int current = ShadowAspectUtil.getHeartGaugeMeter(pokemon);
-        int next = current + delta; // delta negative => reduces meter
-        ShadowService.setHeartGauge(pokemon, pe, next);
+        delta = HeartGaugeProgressionMath.scaleReduction(delta, GameplayTuningConfig.INSTANCE.scentMultiplier());
+        if (current > 0 && delta < 0) {
+            int next = Math.max(0, current + delta);
+            ShadowService.setHeartGauge(pokemon, pe, next);
+        }
+        boolean reduced = ShadowAspectUtil.getHeartGaugeMeter(pokemon) < current;
+        if (!reduced) return noEffect(player);
 
-        // Update cooldown
+        // A real gauge reduction starts cooldown and consumes one dose.
         ShadowAspectUtil.setScentCooldown(pokemon, now);
 
         // Consume one scent
@@ -232,6 +239,17 @@ public class ScentItem extends Item {
             stack.shrink(1);
         }
 
+        if (tier == AffinityTier.STRONG_LIKE || tier == AffinityTier.LIKE) {
+            player.displayClientMessage(Component.translatable("message.shadowedhearts.scent_preferred").withStyle(ChatFormatting.GREEN), true);
+        } else if (tier == AffinityTier.DISLIKE || tier == AffinityTier.STRONG_DISLIKE) {
+            player.displayClientMessage(Component.translatable("message.shadowedhearts.scent_disliked").withStyle(ChatFormatting.RED), true);
+        }
+
         return InteractionResult.CONSUME;
+    }
+
+    private static InteractionResult noEffect(Player player) {
+        player.displayClientMessage(Component.translatable("message.shadowedhearts.scent_no_effect").withStyle(ChatFormatting.RED), true);
+        return InteractionResult.FAIL;
     }
 }

@@ -19,6 +19,7 @@ import com.jayemceekay.shadowedhearts.registry.ModPoiTypes;
 import kotlin.Unit;
 import kotlin.jvm.functions.Function0;
 import net.minecraft.core.BlockPos;
+import net.minecraft.nbt.Tag;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.ai.village.poi.PoiManager;
@@ -402,12 +403,14 @@ public final class ShadowAspectUtil {
         syncProperties(pokemon);
     }
 
+    /** Last successful scent-use tick, or -1 when never used. Tick zero is a valid saved use. */
     public static long getScentCooldown(Pokemon pokemon) {
         return pokemon.getCustomProperties().stream()
                 .filter(p -> p instanceof ScentCooldownProperty)
                 .map(p -> ((ScentCooldownProperty) p).getLastUseTime())
                 .findFirst()
-                .orElseGet(() -> pokemon.getPersistentData().getLong(NBT_SCENT_COOLDOWN));
+                .orElseGet(() -> pokemon.getPersistentData().contains(NBT_SCENT_COOLDOWN, Tag.TAG_ANY_NUMERIC)
+                        ? pokemon.getPersistentData().getLong(NBT_SCENT_COOLDOWN) : -1L);
     }
 
     public static float getHeartGauge(Pokemon pokemon) {

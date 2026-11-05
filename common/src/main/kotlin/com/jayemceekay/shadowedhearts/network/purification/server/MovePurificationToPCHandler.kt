@@ -3,6 +3,7 @@ package com.jayemceekay.shadowedhearts.network.purification.server
 import com.cobblemon.mod.common.Cobblemon
 import com.cobblemon.mod.common.api.net.ServerNetworkPacketHandler
 import com.jayemceekay.shadowedhearts.common.shadow.ShadowAspectUtil
+import com.jayemceekay.shadowedhearts.config.GameplayTuningConfig
 import com.jayemceekay.shadowedhearts.network.purification.MovePurificationToPCPacket
 import com.jayemceekay.shadowedhearts.storage.purification.link.PurificationLinkManager
 import net.minecraft.server.MinecraftServer
@@ -25,7 +26,8 @@ object MovePurificationToPCHandler : ServerNetworkPacketHandler<MovePurification
                 from.isShadow == ShadowAspectUtil.hasShadowAspect(it)
             },
             destination = PurificationTransfers.slot(pc, packet.pcPosition),
-            allowSwap = true
+            // Retrieval to an empty PC slot remains available when chamber deposits are disabled.
+            allowSwap = GameplayTuningConfig.INSTANCE.chamberPurificationEnabled()
         )
         if (moved) purification.sendTo(player)
     }

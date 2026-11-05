@@ -1,15 +1,18 @@
 package com.jayemceekay.shadowedhearts.common.purification
 
 import com.cobblemon.mod.common.pokemon.Pokemon
+import com.jayemceekay.shadowedhearts.common.heart.HeartGaugeProgressionMath
 import com.jayemceekay.shadowedhearts.common.shadow.ShadowAspectUtil
 import com.jayemceekay.shadowedhearts.common.shadow.ShadowService
 import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs
+import com.jayemceekay.shadowedhearts.config.GameplayTuningConfig
 import com.jayemceekay.shadowedhearts.storage.purification.PurificationChamberStore
 
 object ChamberLogic {
 
     fun advanceSteps(store: PurificationChamberStore, steps: Int, stepAccumulator: Int): Int {
-        if (steps <= 0) return stepAccumulator
+        if (steps <= 0 || !GameplayTuningConfig.INSTANCE.chamberPurificationEnabled()
+            || GameplayTuningConfig.INSTANCE.chamberMultiplier() <= 0.0) return stepAccumulator
         val stepRequirement = ShadowedHeartsConfigs.getInstance().shadowConfig.purificationChamberStepRequirement()
         val accumulated = stepAccumulator.toLong() + steps.toLong()
         val intervals = accumulated / stepRequirement
@@ -35,7 +38,9 @@ object ChamberLogic {
         for (setIndex in 0 until setsCount) {
             val shadow = store.getShadow(setIndex)
             val supports = store.getSupports(setIndex)
-            val delta = PurificationMath.computePurificationDeltaForSet(shadow, supports, perfectCount)
+            val delta = HeartGaugeProgressionMath.scaleReduction(
+                PurificationMath.computePurificationDeltaForSet(shadow, supports, perfectCount),
+                GameplayTuningConfig.INSTANCE.chamberMultiplier())
             
             if (delta != 0 && shadow != null) {
                 val cur = ShadowAspectUtil.getHeartGaugeMeter(shadow)

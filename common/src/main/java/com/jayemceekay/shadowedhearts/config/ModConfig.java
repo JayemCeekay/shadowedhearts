@@ -19,7 +19,9 @@ public final class ModConfig implements IShadowConfig {
     static {
         ModConfigSpec.Builder builder = new ModConfigSpec.Builder();
         DATA.build(builder);
+        GameplayTuningConfig.INSTANCE.build(builder);
         SPEC = builder.build();
+        GameplayTuningConfig.INSTANCE.bind(SPEC);
     }
 
     @Override

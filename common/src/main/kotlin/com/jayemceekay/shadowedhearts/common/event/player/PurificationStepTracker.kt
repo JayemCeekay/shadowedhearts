@@ -7,6 +7,7 @@ import com.cobblemon.mod.common.platform.events.ServerPlayerEvent
 import com.cobblemon.mod.common.platform.events.ServerPlayerTickEvent
 import com.jayemceekay.shadowedhearts.common.heart.HeartGaugeEvents
 import com.jayemceekay.shadowedhearts.common.shadow.ShadowAspectUtil
+import com.jayemceekay.shadowedhearts.config.GameplayTuningConfig
 import com.jayemceekay.shadowedhearts.storage.purification.PurificationChamberStore
 import net.minecraft.server.level.ServerPlayer
 import java.util.*
@@ -38,7 +39,7 @@ object PurificationStepTracker {
         PlatformEvents.SERVER_PLAYER_TICK_POST.subscribe { ev: ServerPlayerTickEvent.Post ->
             val player: ServerPlayer = ev.player
             val credit = walkingProgress.computeIfAbsent(player.uuid) { PurificationWalkingProgress() }
-                .advance(player.x, player.y, player.z, !player.isSpectator)
+                .advance(player.x, player.y, player.z, !player.isSpectator, GameplayTuningConfig.INSTANCE.partyStepInterval())
             if (credit.chamberSteps == 0) return@subscribe
 
             // Resolve the player's Purification store and advance steps

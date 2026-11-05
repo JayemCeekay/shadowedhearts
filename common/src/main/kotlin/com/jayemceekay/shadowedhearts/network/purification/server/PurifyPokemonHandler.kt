@@ -5,6 +5,7 @@ import com.cobblemon.mod.common.api.net.ServerNetworkPacketHandler
 import com.jayemceekay.shadowedhearts.advancements.ModCriteriaTriggers
 import com.jayemceekay.shadowedhearts.common.shadow.ShadowAspectUtil
 import com.jayemceekay.shadowedhearts.common.shadow.ShadowService
+import com.jayemceekay.shadowedhearts.config.GameplayTuningConfig
 import com.jayemceekay.shadowedhearts.network.purification.PurifyPokemonPacket
 import com.jayemceekay.shadowedhearts.network.purification.client.PokemonPurifiedPacket
 import com.jayemceekay.shadowedhearts.storage.purification.PurificationChamberPosition
@@ -19,6 +20,10 @@ import net.minecraft.server.level.ServerPlayer
  */
 object PurifyPokemonHandler : ServerNetworkPacketHandler<PurifyPokemonPacket> {
     override fun handle(packet: PurifyPokemonPacket, server: MinecraftServer, player: ServerPlayer) {
+        if (!GameplayTuningConfig.INSTANCE.chamberPurificationEnabled()) {
+            player.displayClientMessage(net.minecraft.network.chat.Component.translatable("message.shadowedhearts.chamber.disabled"), true)
+            return
+        }
         // Chamber stores are per-player. Never resolve another player's store from a packet.
         if (packet.purificationStoreID != player.uuid || packet.setIndex !in 0 until PurificationChamberStore.SETS) return
         val purification = PurificationLinkManager.getStore(player) ?: return
