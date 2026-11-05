@@ -191,7 +191,7 @@ public class PokedexUsageContext {
                     return;
                 }
 
-                isPokemonInFocusOwned = CobblemonClient.INSTANCE.getClientPokedexData().getHighestKnowledgeForSpecies(resolvedPokemon.getApparentSpecies().getResourceIdentifier()) == PokedexEntryProgress.CAUGHT;
+                isPokemonInFocusOwned = CobblemonClient.INSTANCE.getClientPokedexData().getHighestKnowledgeForSpecies(resolvedPokemon.getApparentSpecies().getResourceIdentifier()) == PokedexEntryProgress.OWNED;
 
                 if (focusIntervals == 0.0F) {
                     availableInfoFrames = new ArrayList<>(Arrays.asList(null, null, null, null));

@@ -8,12 +8,6 @@ architectury {
     fabric()
 }
 
-loom {
-    mixin {
-        defaultRefmapName = "shadowedhearts.refmap.json"
-    }
-}
-
 configurations {
     common {
         canBeResolved = true
@@ -76,7 +70,7 @@ dependencies {
     //Fabric Language Kotlin
     modImplementation("maven.modrinth:Ha28R6CL:${rootProject.fabric_kotlin_version}")
 
-    modCompileOnly("curse.maven:radical-cobblemon-trainers-api-1152792:7319961")
+    modCompileOnly("curse.maven:radical-cobblemon-trainers-api-1152792:${rootProject.rct_api_fabric_file}")
 
     //simpleTMs
     modCompileOnly("maven.modrinth:yFqR0DNc:uWiIETYV")
@@ -90,10 +84,6 @@ dependencies {
     //forge config api port
     modImplementation "fuzs.forgeconfigapiport:forgeconfigapiport-fabric:${fcap_version}"
 
-    implementation ("org.xerial:sqlite-jdbc:3.46.0.0") {
-        exclude group: 'org.slf4j'
-    }
-    include("org.xerial:sqlite-jdbc:3.46.0.0")
 }
 
 processResources {

@@ -72,13 +72,13 @@ public abstract class MixinPokemonRenderer {
         PokemonClientDelegate delegate = (PokemonClientDelegate) entity.getDelegate();
         DarkBallCaptureVfx darkVfx = DarkBallCaptureVfx.getByPokemonId(entity.getId());
         if (darkVfx != null) {
-            delegate.setEntityScaleModifier(darkVfx.getDesiredPokemonScale());
+            delegate.setActiveSendoutScale(darkVfx.getDesiredPokemonScale());
             return;
         }
 
         SnagCaptureVfx vfx = SnagCaptureVfx.getByPokemonId(entity.getId());
         if (vfx != null) {
-            delegate.setEntityScaleModifier(vfx.getDesiredPokemonScale());
+            delegate.setActiveSendoutScale(vfx.getDesiredPokemonScale());
         }
     }
 

@@ -16,12 +16,6 @@ configurations {
     }
 }
 
-loom {
-    mixin {
-        defaultRefmapName = "shadowedhearts.refmap.json"
-    }
-}
-
 repositories {
     mavenLocal()
     maven {
@@ -60,10 +54,6 @@ dependencies {
     modImplementation "net.fabricmc:fabric-loader:$rootProject.fabric_loader_version"
 
     modImplementation "dev.architectury:architectury:$rootProject.architectury_api_version"
-    // We use implementation so it can be picked up by the shadowBundle in platform modules
-    compileOnly("org.xerial:sqlite-jdbc:3.46.0.0") {
-        exclude group: 'org.slf4j'
-    }
 
     modImplementation("com.cobblemon:mod:${project.property('cobblemon_version')}")
     modCompileOnly( "com.cobblemon:fabric:${cobblemon_version}")
@@ -75,13 +65,13 @@ dependencies {
 
     compileOnly("name:molang-1.1.20")
 
-    modCompileOnlyApi("curse.maven:radical-cobblemon-trainers-api-1152792:7952421")
+    modCompileOnlyApi("curse.maven:radical-cobblemon-trainers-api-1152792:${rootProject.rct_api_fabric_file}")
 
     // Forge Config API Port
     compileOnly "fuzs.forgeconfigapiport:forgeconfigapiport-common-neoforgeapi:$rootProject.fcap_version"
 
     //rctmod
-    modCompileOnlyApi("curse.maven:rctmod-1009534:7913182")
+    modCompileOnlyApi("curse.maven:rctmod-1009534:${rootProject.rct_mod_fabric_file}")
 
     //accessories
     modCompileOnlyApi("io.wispforest:accessories-common:${project.accessories_version}")
@@ -94,7 +84,7 @@ dependencies {
 
 
     //mega showdown
-    modCompileOnly("maven.modrinth:SszvX85I:BAOrFYvg")
+    modCompileOnly("maven.modrinth:SszvX85I:${rootProject.mega_showdown_fabric_version}")
 
     // FTB Chunks integration
     modCompileOnly("dev.ftb.mods:ftb-chunks:${project.ftb_chunks_version}")

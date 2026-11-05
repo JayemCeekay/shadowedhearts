@@ -11,8 +11,11 @@ architectury {
 }
 
 loom {
-    mixin {
-        defaultRefmapName = "shadowedhearts.refmap.json"
+    // Loom 1.17 processes owo's dependency interfaces before its NeoForge
+    // Mojang mapping provider exists. These are dev-only interface hints;
+    // dependency mixins still supply the interfaces at runtime.
+    interfaceInjection {
+        enableDependencyInterfaceInjection.set(false)
     }
     silentMojangMappingsLicense()
 
@@ -96,42 +99,59 @@ dependencies {
     modImplementation("com.cobblemon:neoforge:${cobblemon_version}")
 
     //kotlin for forge
-    modCompileOnly("maven.modrinth:ordsPcFz:4qCjWixP")
-    runtimeOnly("maven.modrinth:ordsPcFz:4qCjWixP")
+    modCompileOnly("maven.modrinth:ordsPcFz:${rootProject.kotlin_for_forge_version}")
+    runtimeOnly("maven.modrinth:ordsPcFz:${rootProject.kotlin_for_forge_version}")
 
     //iris shaders
     modCompileOnly("maven.modrinth:YL57xq9U:t3ruzodq")
 
     //rctapi
-    modImplementation("curse.maven:radical-cobblemon-trainers-api-1152792:7952419")
+    modImplementation("curse.maven:radical-cobblemon-trainers-api-1152792:${rootProject.rct_api_neoforge_file}")
 
     //rctmod
-    modImplementation("curse.maven:rctmod-1009534:7913180")
+    modImplementation("curse.maven:rctmod-1009534:${rootProject.rct_mod_neoforge_file}")
 
     //owo lib
-    modImplementation("io.wispforest:owo-lib-neoforge:${project.owo_version}")
+    // The current NeoForge release is published on Modrinth, not Wispforest Maven.
+    modImplementation("maven.modrinth:ccKDOlHs:${project.owo_version}")
 
     //accessories
-    modImplementation("io.wispforest:accessories-neoforge:${project.accessories_version}")
+    modImplementation("io.wispforest:accessories-neoforge:${project.accessories_version}") {
+        // Owo is supplied above; its libraries use forgeRuntimeLibrary below.
+        // Avoid separate remapped copies of Accessories' older library versions.
+        exclude group: 'io.wispforest', module: 'owo-lib-neoforge'
+        exclude group: 'io.wispforest', module: 'endec'
+        exclude group: 'io.wispforest.endec', module: 'gson'
+        exclude group: 'io.wispforest.endec', module: 'jankson'
+        exclude group: 'io.wispforest.endec', module: 'netty'
+        exclude group: 'blue.endless', module: 'jankson'
+    }
 
-    forgeRuntimeLibrary("io.wispforest:endec:0.1.5.1")
-    forgeRuntimeLibrary("io.wispforest.endec:gson:0.1.3.1")
-    forgeRuntimeLibrary("io.wispforest.endec:jankson:0.1.3.1")
-    forgeRuntimeLibrary("io.wispforest.endec:netty:0.1.2")
-    forgeRuntimeLibrary("blue.endless:jankson:1.2.2")
+    // Loom's dependency source remapper reads modCompileOnly, not plain compileOnly.
+    // Keep remapped copies compile-only and provide the original libraries at runtime.
+    [
+        "io.wispforest:endec:0.1.8.1",
+        "io.wispforest.endec:gson:0.1.5.1",
+        "io.wispforest.endec:jankson:0.1.5.1",
+        "io.wispforest.endec:netty:0.1.4.1",
+        "blue.endless:jankson:1.2.2"
+    ].each { library ->
+        modCompileOnly(library) { transitive = false }
+        forgeRuntimeLibrary(library)
+    }
 
     //modRuntimeOnly("maven.modrinth:AANobbMI:Pb3OXVqC")
 
 
 
     //cobblemon mega showdown
-    modImplementation("maven.modrinth:SszvX85I:BAOrFYvg")
+    modImplementation("maven.modrinth:SszvX85I:${rootProject.mega_showdown_neoforge_version}")
 
     //simpleTMs
     modCompileOnly("maven.modrinth:yFqR0DNc:uaKfPMYS")
 
     //lost lore
-    modImplementation("maven.modrinth:49cNEVjn:IJowghCi")
+    //modImplementation("maven.modrinth:49cNEVjn:vFf95Mjx")
 
     //wild battle api
     modImplementation("curse.maven:wild-battle-api-1478863:7765020")

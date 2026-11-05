@@ -4,7 +4,6 @@
   "plugin": "com.jayemceekay.shadowedhearts.mixin.ShadowedHeartsMixinConfigPlugin",
   "compatibilityLevel": "JAVA_21",
   "minVersion": "0.8",
-  "refmap": "shadowedhearts.refmap.json",
   "client": [
     "client.MixinPosableModelAuraMask",
     "client.MixinModelPartShadowAuraCapture",
