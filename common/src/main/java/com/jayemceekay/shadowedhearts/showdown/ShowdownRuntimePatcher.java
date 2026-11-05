@@ -73,134 +73,64 @@ public final class ShowdownRuntimePatcher {
 
     public static class DynamicInjector {
         public static void prepareContext(Object context) {
+            final ShowdownContextAccess access;
+            final boolean mega;
             try {
-                if (context == null) {
-                    Shadowedhearts.LOGGER.info("Failed to access Showdown context object, skipping preparation.");
-                    return;
-                }
-
-                var bindings = new ShowdownContextAccess(context).getBindings("js");
-
-                if (!Platform.isModLoaded("mega_showdown")) {
-                    new ShowdownContextAccess(context).eval("js", "if (typeof items === 'undefined') items = require('./data/mods/cobblemon/items');\n" +
-                            "if (typeof conditions === 'undefined') conditions = require('./data/mods/cobblemon/conditions');\n" +
-                            "if (typeof typechart === 'undefined') typechart = require('./data/mods/cobblemon/typechart');\n" +
-                            "if (typeof scripts === 'undefined') scripts = require('./data/mods/cobblemon/scripts');\n" +
-                            "\n" +
-                            "if (typeof receiveConditionData === 'undefined') {\n" +
-                            "    receiveConditionData = function(conditionId, conditionData) {\n" +
-                            "        const target = conditions.Conditions || conditions;\n" +
-                            "        target[conditionId] = eval(`(${conditionData})`);\n" +
-                            "    };\n" +
-                            "}\n" +
-                            "\n" +
-                            "if (typeof receiveTypeChartData === 'undefined') {\n" +
-                            "    receiveTypeChartData = function(typeChartId, typeChartData) {\n" +
-                            "        const target = typechart.TypeChart || typechart;\n" +
-                            "        target[typeChartId] = eval(`(${typeChartData})`);\n" +
-                            "    };\n" +
-                            "}\n" +
-                            "\n" +
-                            "if (typeof receiveScriptData === 'undefined') {\n" +
-                            "    receiveScriptData = function(scriptId, scriptData) {\n" +
-                            "        const newFunctions = eval(`(${scriptData})`);\n" +
-                            "        const target = scripts.Scripts || scripts;\n" +
-                            "        if (!target[scriptId]) target[scriptId] = {};\n" +
-                            "        Object.assign(target[scriptId], newFunctions);\n" +
-                            "    };\n" +
-                            "}\n" +
-                            "\n" +
-                            "if (typeof receiveHeldItemData === 'undefined') {\n" +
-                            "    receiveHeldItemData = function(itemId, itemData) {\n" +
-                            "        const target = items.Items || items;\n" +
-                            "        target[itemId] = eval(`(${itemData})`);\n" +
-                            "    };\n" +
-                            "}\n" +
-                            "\n" +
-                            "if (typeof receiveMoveData === 'undefined') {\n" +
-                            "    receiveMoveData = function(moveId, moveData) {\n" +
-                            "        const target = moves.Moves || moves;\n" +
-                            "        target[moveId] = eval(`(${moveData})`);\n" +
-                            "    };\n" +
-                            "}\n" +
-                            "\n" +
-                            "if (typeof receiveNewTypeData === 'undefined') {\n" +
-                            "    receiveNewTypeData = function(type, max, z) {\n" +
-                            "        battleActions.MAX_MOVES[type] = max;\n" +
-                            "        battleActions.Z_MOVES[type] = z;\n" +
-                            "    };\n" +
-                            "}");
-                }
-
-                if (bindings.hasMember("receiveConditionData")) {
-                    Object receiveConditionDataFn = bindings.getMember("receiveConditionData");
-                    injectCondition(receiveConditionDataFn, "shadowyaura", "/data/shadowedhearts/showdown/conditions/shadowyaura.js");
-                    injectCondition(receiveConditionDataFn, "hypermode", "/data/shadowedhearts/showdown/conditions/hypermode.js");
-                    injectCondition(receiveConditionDataFn, "reversemode", "/data/shadowedhearts/showdown/conditions/reversemode.js");
-                    injectCondition(receiveConditionDataFn, "shadowengine", "/data/shadowedhearts/showdown/conditions/shadowengine.js");
-                    Shadowedhearts.LOGGER.info("Injected custom conditions into Showdown...");
-                } else {
-                    Shadowedhearts.LOGGER.info("Failed to find receiveConditionData function, skipping injection.");
-                }
-
-                if (bindings.hasMember("receiveTypeChartData")) {
-                    Object receiveTypeChartDataFn = bindings.getMember("receiveTypeChartData");
-                    injectTypeChart(receiveTypeChartDataFn, "shadow", "/data/shadowedhearts/showdown/typecharts/shadow.js");
-                    Shadowedhearts.LOGGER.info("Injected custom typechart into Showdown...");
-                } else {
-                    Shadowedhearts.LOGGER.info("Failed to find receiveTypeChartData function, skipping injection.");
-                }
-
-                if (bindings.hasMember("receiveMoveData")) {
-                    Object receiveMoveDataFn = bindings.getMember("receiveMoveData");
-                    injectMove(receiveMoveDataFn, "maxshadow", "/data/shadowedhearts/showdown/moves/maxshadow.js");
-                    injectMove(receiveMoveDataFn, "shadowsupernova", "/data/shadowedhearts/showdown/moves/shadowsupernova.js");
-                    Shadowedhearts.LOGGER.info("Injected custom gimmick moves into Showdown...");
-                }
-
-                if (bindings.hasMember("receiveHeldItemData")) {
-                    Object receiveHeldItemDataFn = bindings.getMember("receiveHeldItemData");
-                    injectHeldItem(receiveHeldItemDataFn, "shadowiumz", "/data/shadowedhearts/showdown/held_items/shadowiumz.js");
-                    Shadowedhearts.LOGGER.info("Injected custom items into Showdown...");
-                }
-
-                if (bindings.hasMember("receiveNewTypeData")) {
-                    Object receiveNewTypeDataFn = bindings.getMember("receiveNewTypeData");
-                    executeFn(receiveNewTypeDataFn, "Shadow", "Max Shadow", "Shadow Supernova");
-                    Shadowedhearts.LOGGER.info("Mapped Shadow type to custom gimmick moves...");
-                }
+                access = contextAccess(context);
+                mega = Platform.isModLoaded("mega_showdown");
+                // Fill missing APIs and install cache refresh without replacing another provider's APIs.
+                access.eval("js", ShowdownInjectionSupport.fallbackScript());
             } catch (Exception e) {
-                Shadowedhearts.LOGGER.info("Failed to prepare Showdown context object: " + e);
-                e.printStackTrace();
+                Shadowedhearts.LOGGER.error("Failed to prepare Showdown injection APIs", e);
+                return;
             }
+
+            injectResource(access, "receiveConditionData", "shadowyaura", "conditions/shadowyaura.js", null);
+            injectResource(access, "receiveConditionData", "hypermode", "conditions/hypermode.js", null);
+            injectResource(access, "receiveConditionData", "reversemode", "conditions/reversemode.js", null);
+            injectResource(access, "receiveConditionData", "shadowengine", "conditions/shadowengine.js", null);
+            injectResource(access, "receiveTypeChartData", "shadow", "typecharts/shadow.js", null);
+            injectResource(access, "receiveMoveData", "maxshadow", "moves/maxshadow.js", null);
+            injectResource(access, "receiveMoveData", "shadowsupernova", "moves/shadowsupernova.js", null);
+            injectHeldItems(access);
+            if (mega) {
+                try {
+                    executeFunction(access, "receiveNewTypeData", "Shadow", "Max Shadow", "Shadow Supernova");
+                    Shadowedhearts.LOGGER.info("Mapped Shadow type to Mega Showdown gimmick moves");
+                } catch (Exception e) {
+                    Shadowedhearts.LOGGER.error("Failed Showdown injection receiveNewTypeData/Shadow", e);
+                }
+            } else {
+                Shadowedhearts.LOGGER.info("Skipped Mega Showdown gimmick mapping on stock Showdown");
+            }
+        }
+
+        private static void injectHeldItems(ShowdownContextAccess access) {
+            injectResource(access, "receiveHeldItemData", "shadowiumz", "held_items/shadowiumz.js", null);
         }
 
         public static void injectConfig(Object context) {
             try {
-                if (context == null) {
-                    Shadowedhearts.LOGGER.info("Failed to access Showdown context object, skipping config injection.");
-                    return;
-                }
-
-                var bindings = new ShowdownContextAccess(context).getBindings("js");
-
-                if (bindings.hasMember("receiveScriptData")) {
-                    Object receiveScriptDataFn = bindings.getMember("receiveScriptData");
-                    injectScript(receiveScriptDataFn, "shadowedhearts", "/data/shadowedhearts/showdown/scripts/shadowedhearts.js");
-                    Shadowedhearts.LOGGER.info("Injected custom scripts and config into Showdown.");
-                } else {
-                    Shadowedhearts.LOGGER.info("Failed to find receiveScriptData function, skipping config injection.");
-                }
-
-                if (bindings.hasMember("receiveHeldItemData")) {
-                    Object receiveHeldItemDataFn = bindings.getMember("receiveHeldItemData");
-                    // If we had any custom items to inject, we'd do it here.
-                    // injectHeldItem(receiveHeldItemDataFn, "itemid", "/path/to/item.js");
-                }
-
+                IShadowConfig cfg = ShadowedHeartsConfigs.getInstance().getShadowConfig();
+                String configJs = String.format(
+                        "\"Config\": { " +
+                                "\"callButton\": { \"accuracyBoost\": %b, \"removeSleep\": %b }, " +
+                                "\"hyperMode\": { \"enabled\": %b}, " +
+                                "\"reverseMode\": { \"enabled\": %b}, " +
+                                "\"GOdamageModifier\": { \"enabled\": %b}, " +
+                                "\"shadowMoves\": { \"superEffectiveEnabled\": %b } " +
+                                "},",
+                        cfg.callButtonAccuracyBoost(),
+                        cfg.callButtonRemoveSleep(),
+                        cfg.hyperModeEnabled(),
+                        cfg.reverseModeEnabled(),
+                        cfg.goDamageModifierEnabled(),
+                        cfg.superEffectiveShadowMovesEnabled()
+                );
+                injectResource(contextAccess(context), "receiveScriptData", "shadowedhearts",
+                        "scripts/shadowedhearts.js", configJs);
             } catch (Exception e) {
-                Shadowedhearts.LOGGER.info("Failed to inject config into Showdown context object: " + e);
-                e.printStackTrace();
+                Shadowedhearts.LOGGER.error("Failed to prepare Showdown config injection", e);
             }
         }
 
@@ -211,91 +141,34 @@ public final class ShowdownRuntimePatcher {
             }
         }
 
-        private static void injectScript(Object fn, String id, String resourcePath) {
-            String js = readResourceText(resourcePath);
-            if (js != null) {
-                js = js.replaceAll("//.*", "");
-                js = extractExportedTemplate(js);
-
-                if (id.equals("shadowedhearts")) {
-                    IShadowConfig cfg = ShadowedHeartsConfigs.getInstance().getShadowConfig();
-                    String configJs = String.format(
-                            "\"Config\": { " +
-                                    "\"callButton\": { \"accuracyBoost\": %b, \"removeSleep\": %b }, " +
-                                    "\"hyperMode\": { \"enabled\": %b}, " +
-                                    "\"reverseMode\": { \"enabled\": %b}, " +
-                                    "\"GOdamageModifier\": { \"enabled\": %b}, " +
-                                    "\"shadowMoves\": { \"superEffectiveEnabled\": %b } " +
-                                    "},",
-                            cfg.callButtonAccuracyBoost(),
-                            cfg.callButtonRemoveSleep(),
-                            cfg.hyperModeEnabled(),
-                            cfg.reverseModeEnabled(),
-                            cfg.goDamageModifierEnabled(),
-                            cfg.superEffectiveShadowMovesEnabled()
-                    );
-                    js = js.replaceFirst("\\{", "{" + configJs);
-                }
-
-                js = js.replace("\n", " ").replace("\r", "");
-                executeFn(fn, id, js);
-            } else {
-                Shadowedhearts.LOGGER.info("Failed to find script resource: " + resourcePath);
-            }
+        private static ShowdownContextAccess contextAccess(Object context) {
+            if (context == null) throw new IllegalArgumentException("Showdown context is unavailable");
+            return new ShowdownContextAccess(context);
         }
 
-        private static void injectCondition(Object fn, String id, String resourcePath) {
-            String js = readResourceText(resourcePath);
-            if (js != null) {
-                js = js.replaceAll("//.*", "");
-                js = extractExportedTemplate(js);
-                js = js.replace("\n", " ").replace("\r", "");
-                executeFn(fn, id, js);
-            } else {
-                Shadowedhearts.LOGGER.info("Failed to find condition resource: " + resourcePath);
-            }
-        }
-
-        private static void injectTypeChart(Object fn, String id, String resourcePath) {
-            String js = readResourceText(resourcePath);
-            if (js != null) {
-                js = js.replaceAll("//.*", "");
-                js = js.replace("\n", " ").replace("\r", "");
-                executeFn(fn, id, js);
-            } else {
-                Shadowedhearts.LOGGER.info("Failed to find typechart resource: " + resourcePath);
-            }
-        }
-
-        private static void injectMove(Object fn, String id, String resourcePath) {
-            String js = readResourceText(resourcePath);
-            if (js != null) {
-                js = js.replaceAll("//.*", "");
-                js = js.replace("\n", " ").replace("\r", "");
-                executeFn(fn, id, js);
-            } else {
-                Shadowedhearts.LOGGER.info("Failed to find move resource: " + resourcePath);
-            }
-        }
-
-        private static void injectHeldItem(Object fn, String id, String resourcePath) {
-            String js = readResourceText(resourcePath);
-            if (js != null) {
-                js = js.replaceAll("//.*", "");
-                js = js.replace("\n", " ").replace("\r", "");
-                executeFn(fn, id, js);
-            } else {
-                Shadowedhearts.LOGGER.info("Failed to find held item resource: " + resourcePath);
-            }
-        }
-
-        private static void executeFn(Object fn, Object... args) {
+        private static void injectResource(ShowdownContextAccess access, String functionName, String id,
+                                           String relativePath, String config) {
+            String resourcePath = "/data/shadowedhearts/showdown/" + relativePath;
             try {
-                var executeMethod = fn.getClass().getMethod("execute", Object[].class);
-                executeMethod.invoke(fn, (Object) args);
+                String expression = ShowdownInjectionSupport.resourceExpression(resourcePath);
+                if (config != null) {
+                    int objectStart = expression.indexOf('{');
+                    if (objectStart < 0) throw new IOException("Script has no configuration object: " + resourcePath);
+                    expression = expression.substring(0, objectStart + 1) + config + expression.substring(objectStart + 1);
+                }
+                executeFunction(access, functionName, id, expression + "\n");
+                executeFunction(access, "shadowedheartsRefreshData", functionName, id);
+                Shadowedhearts.LOGGER.info("Injected Showdown {}/{} from {}", functionName, id, resourcePath);
             } catch (Exception e) {
-                Shadowedhearts.LOGGER.info("Failed to execute Showdown injection function for args: " + java.util.Arrays.toString(args));
+                Shadowedhearts.LOGGER.error("Failed Showdown injection {}/{} from {}", functionName, id, resourcePath, e);
             }
+        }
+
+        private static void executeFunction(ShowdownContextAccess access, String name, Object... arguments)
+                throws ReflectiveOperationException {
+            var bindings = access.getBindings("js");
+            if (!bindings.hasMember(name)) throw new NoSuchMethodException("Missing Showdown function: " + name);
+            ShowdownInjectionSupport.execute(bindings.getMember(name), arguments);
         }
     }
 
