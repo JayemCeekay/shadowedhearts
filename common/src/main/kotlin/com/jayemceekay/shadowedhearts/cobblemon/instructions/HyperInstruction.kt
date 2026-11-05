@@ -14,43 +14,47 @@ class HyperInstruction(private val message: BattleMessage) : InterpreterInstruct
     override fun invoke(battle: PokemonBattle) {
         val action = message.argumentAt(0) ?: return
 
-        // Locate actor + active slot using the next token (index 1) after the id
-        val (_, active) = battle.getActorAndActiveSlotFromPNX(message.argumentAt(1) ?: return)
-        val bp = active.battlePokemon ?: return
+        val pnx = message.argumentAt(1) ?: return
 
-        val effected = bp.effectedPokemon
-        val original = bp.originalPokemon
+        // Keep mode changes and Call in the same order as the battle actions.
+        battle.dispatchGo {
+            val (_, active) = battle.getActorAndActiveSlotFromPNX(pnx)
+            val bp = active.battlePokemon ?: return@dispatchGo
 
-        when (action) {
-            "start" -> {
-                // Add aspect to both effected and original to ensure persistence
-                val aspectsEff = effected.aspects.toMutableSet()
-                if (!aspectsEff.contains(SHAspects.HYPER_MODE)) {
-                    aspectsEff.add(SHAspects.HYPER_MODE)
-                    effected.forcedAspects = aspectsEff
-                    effected.updateAspects()
-                    ShadowAspectUtil.syncAspects(effected)
+            val effected = bp.effectedPokemon
+            val original = bp.originalPokemon
+
+            when (action) {
+                "start" -> {
+                    // Add aspect to both effected and original to ensure persistence
+                    val aspectsEff = effected.aspects.toMutableSet()
+                    if (!aspectsEff.contains(SHAspects.HYPER_MODE)) {
+                        aspectsEff.add(SHAspects.HYPER_MODE)
+                        effected.forcedAspects = aspectsEff
+                        effected.updateAspects()
+                        ShadowAspectUtil.syncAspects(effected)
+                    }
+                    val aspectsOrig = original.aspects.toMutableSet()
+                    if (!aspectsOrig.contains(SHAspects.HYPER_MODE)) {
+                        aspectsOrig.add(SHAspects.HYPER_MODE)
+                        original.forcedAspects = aspectsOrig
+                        original.updateAspects()
+                        ShadowAspectUtil.syncAspects(original)
+                    }
                 }
-                val aspectsOrig = original.aspects.toMutableSet()
-                if (!aspectsOrig.contains(SHAspects.HYPER_MODE)) {
-                    aspectsOrig.add(SHAspects.HYPER_MODE)
-                    original.forcedAspects = aspectsOrig
-                    original.updateAspects()
-                    ShadowAspectUtil.syncAspects(original)
-                }
-            }
-            "end" -> {
-                val aspectsEff = effected.aspects.toMutableSet()
-                if (aspectsEff.remove(SHAspects.HYPER_MODE)) {
-                    effected.forcedAspects = aspectsEff
-                    effected.updateAspects()
-                    ShadowAspectUtil.syncAspects(effected)
-                }
-                val aspectsOrig = original.aspects.toMutableSet()
-                if (aspectsOrig.remove(SHAspects.HYPER_MODE)) {
-                    original.forcedAspects = aspectsOrig
-                    original.updateAspects()
-                    ShadowAspectUtil.syncAspects(original)
+                "end" -> {
+                    val aspectsEff = effected.aspects.toMutableSet()
+                    if (aspectsEff.remove(SHAspects.HYPER_MODE)) {
+                        effected.forcedAspects = aspectsEff
+                        effected.updateAspects()
+                        ShadowAspectUtil.syncAspects(effected)
+                    }
+                    val aspectsOrig = original.aspects.toMutableSet()
+                    if (aspectsOrig.remove(SHAspects.HYPER_MODE)) {
+                        original.forcedAspects = aspectsOrig
+                        original.updateAspects()
+                        ShadowAspectUtil.syncAspects(original)
+                    }
                 }
             }
         }
