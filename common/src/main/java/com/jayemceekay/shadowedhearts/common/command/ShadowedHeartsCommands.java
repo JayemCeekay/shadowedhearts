@@ -1,28 +1,23 @@
 package com.jayemceekay.shadowedhearts.common.command;
 
 import com.cobblemon.mod.common.Cobblemon;
-import com.cobblemon.mod.common.battles.runner.graal.GraalShowdownService;
 import com.cobblemon.mod.common.command.argument.PokemonPropertiesArgumentType;
 import com.cobblemon.mod.common.entity.npc.NPCEntity;
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
 import com.cobblemon.mod.common.pokemon.Pokemon;
-import com.cobblemon.mod.relocations.graalvm.polyglot.Context;
 import com.jayemceekay.shadowedhearts.common.heart.HeartGaugeEvents;
 import com.jayemceekay.shadowedhearts.common.shadow.ShadowAspectUtil;
 import com.jayemceekay.shadowedhearts.common.shadow.ShadowMoveUtil;
 import com.jayemceekay.shadowedhearts.common.shadow.ShadowService;
 import com.jayemceekay.shadowedhearts.config.HeartGaugeConfig;
-import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs;
 import com.jayemceekay.shadowedhearts.data.ShadowAspectPresets;
 import com.jayemceekay.shadowedhearts.data.ShadowPools;
 import com.jayemceekay.shadowedhearts.network.AuraBroadcastQueue;
-import com.jayemceekay.shadowedhearts.showdown.ShowdownRuntimePatcher;
 import com.jayemceekay.shadowedhearts.storage.purification.PurificationChamberStore;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
-import kotlin.Unit;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.EntityArgument;
@@ -42,33 +37,7 @@ import java.util.*;
 public class ShadowedHeartsCommands {
     public static void register(CommandDispatcher<CommandSourceStack> d) {
         LiteralArgumentBuilder<CommandSourceStack> root = Commands.literal("shadowedhearts")
-                .requires(src -> src.hasPermission(2))
-                .then(Commands.literal("reloadConfigs")
-                        .executes(ctx -> {
-                            try {
-                                ShadowedHeartsConfigs.getInstance().getShadowConfig().load();
-                                ShadowedHeartsConfigs.getInstance().getSnagConfig().load();
-                                Cobblemon.INSTANCE.getShowdownThread().queue(showdownService -> {
-                                    if (showdownService instanceof GraalShowdownService service) {
-                                        Context context = null;
-                                        try {
-                                            context = (Context) service.getClass().getDeclaredField("context").get(service);
-                                        } catch (IllegalAccessException | NoSuchFieldException e) {
-                                            throw new RuntimeException(e);
-                                        }
-                                        ShowdownRuntimePatcher.DynamicInjector.inject(context);
-                                    }
-                                    return Unit.INSTANCE;
-                                });
-                                ctx.getSource().sendSuccess(() -> Component.literal("Shadowed Hearts configurations reloaded successfully."), true);
-                                return 1;
-                            } catch (Exception e) {
-                                ctx.getSource().sendFailure(Component.literal("Failed to reload configurations: " + e.getMessage()));
-                                e.printStackTrace();
-                                return 0;
-                            }
-                        })
-                );
+                .requires(src -> src.hasPermission(2));
 
         registerSubcommands(root);
 

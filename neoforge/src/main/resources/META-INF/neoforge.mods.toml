@@ -37,7 +37,7 @@ side = "BOTH"
 [[dependencies.shadowedhearts]]
 modId = "cobblemon"
 type = "required"
-versionRange = "[1.7.0,)"
+versionRange = "[1.8.4,)"
 ordering = "AFTER"
 side = "BOTH"
 

@@ -1,6 +1,5 @@
 package com.jayemceekay.shadowedhearts.showdown;
 
-import com.cobblemon.mod.relocations.graalvm.polyglot.Context;
 import com.jayemceekay.shadowedhearts.Shadowedhearts;
 import com.jayemceekay.shadowedhearts.config.IShadowConfig;
 import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs;
@@ -85,17 +84,17 @@ public final class ShowdownRuntimePatcher {
     }
 
     public static class DynamicInjector {
-        public static void prepareContext(Context context) {
+        public static void prepareContext(Object context) {
             try {
                 if (context == null) {
                     Shadowedhearts.LOGGER.info("Failed to access Showdown context object, skipping preparation.");
                     return;
                 }
 
-                var bindings = context.getBindings("js");
+                var bindings = new ShowdownContextAccess(context).getBindings("js");
 
                 if (!Platform.isModLoaded("mega_showdown")) {
-                    context.eval("js", "if (typeof items === 'undefined') items = require('./data/mods/cobblemon/items');\n" +
+                    new ShowdownContextAccess(context).eval("js", "if (typeof items === 'undefined') items = require('./data/mods/cobblemon/items');\n" +
                             "if (typeof conditions === 'undefined') conditions = require('./data/mods/cobblemon/conditions');\n" +
                             "if (typeof typechart === 'undefined') typechart = require('./data/mods/cobblemon/typechart');\n" +
                             "if (typeof scripts === 'undefined') scripts = require('./data/mods/cobblemon/scripts');\n" +
@@ -188,14 +187,14 @@ public final class ShowdownRuntimePatcher {
             }
         }
 
-        public static void injectConfig(Context context) {
+        public static void injectConfig(Object context) {
             try {
                 if (context == null) {
                     Shadowedhearts.LOGGER.info("Failed to access Showdown context object, skipping config injection.");
                     return;
                 }
 
-                var bindings = context.getBindings("js");
+                var bindings = new ShowdownContextAccess(context).getBindings("js");
 
                 if (bindings.hasMember("receiveScriptData")) {
                     Object receiveScriptDataFn = bindings.getMember("receiveScriptData");
@@ -217,7 +216,7 @@ public final class ShowdownRuntimePatcher {
             }
         }
 
-        public static void inject(Context context) {
+        public static void inject(Object context) {
             prepareContext(context);
             if (ShadowedHeartsConfigs.getInstance().getShadowConfig().isLoaded()) {
                 injectConfig(context);

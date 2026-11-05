@@ -5,7 +5,6 @@ import com.cobblemon.mod.common.api.storage.player.PlayerDataExtensionRegistry;
 import com.cobblemon.mod.common.api.types.ElementalType;
 import com.cobblemon.mod.common.api.types.ElementalTypes;
 import com.cobblemon.mod.common.battles.runner.graal.GraalShowdownService;
-import com.cobblemon.mod.relocations.graalvm.polyglot.Context;
 import com.jayemceekay.shadowedhearts.advancements.ModCriteriaTriggers;
 import com.jayemceekay.shadowedhearts.common.aura.AuraReaderEvents;
 import com.jayemceekay.shadowedhearts.common.aura.AuraReaderService;
@@ -121,11 +120,11 @@ public final class Shadowedhearts {
 
         SH_SHADOW_TYPE = ElementalTypes.register(new ElementalType(
                 "shadow", Component.literal("Shadow"),
-                0x604E82, 19, ResourceLocation.fromNamespaceAndPath(Cobblemon.MODID, "textures/gui/types.png"),
-                "shadow"
+                0x604E82, 19, 0x604E82, 0x604E82, ResourceLocation.fromNamespaceAndPath(Cobblemon.MODID, "textures/gui/types.png"),
+                "shadow", ResourceLocation.fromNamespaceAndPath(Shadowedhearts.MOD_ID, "shadow_gem"), 1000
         ));
 
-        ElementalTypes.register(new ElementalType("shadow-locked", Component.literal("Locked"), 0x1F1F1F, 20, ResourceLocation.fromNamespaceAndPath(Cobblemon.MODID, "textures/gui/types.png"), "shadow-locked"));
+        ElementalTypes.register(new ElementalType("shadow-locked", Component.literal("Locked"), 0x1F1F1F, 20, 0x1F1F1F,0x1F1F1F, ResourceLocation.fromNamespaceAndPath(Cobblemon.MODID, "textures/gui/types.png"), "shadow-locked", ResourceLocation.fromNamespaceAndPath(Shadowedhearts.MOD_ID, "shadow_gem"), 1000));
 
         Cobblemon.INSTANCE.getShowdownThread().queue(showdownService -> {
             if (showdownService instanceof GraalShowdownService service) {
@@ -136,9 +135,9 @@ public final class Shadowedhearts {
                     throw new RuntimeException(e);
                 }
                 field.setAccessible(true);
-                Context context = null;
+                Object context = null;
                 try {
-                    context = (Context) field.get(service);
+                    context = field.get(service);
                 } catch (IllegalAccessException e) {
                     throw new RuntimeException(e);
                 }
@@ -164,9 +163,9 @@ public final class Shadowedhearts {
                     throw new RuntimeException(e);
                 }
                 field.setAccessible(true);
-                Context context = null;
+                Object context = null;
                 try {
-                    context = (Context) field.get(service);
+                    context = field.get(service);
                 } catch (IllegalAccessException e) {
                     throw new RuntimeException(e);
                 }

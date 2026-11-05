@@ -29,6 +29,7 @@
     "minecraft": "~1.21.1",
     "java": ">=21",
     "architectury": ">=13.0.8",
+    "cobblemon": ">=1.8.4",
     "fabric-api": "*",
     "fabric-language-kotlin": ">=1.8.0+kotlin.1.8.21",
     "special-model-loader": "1.3.0",
