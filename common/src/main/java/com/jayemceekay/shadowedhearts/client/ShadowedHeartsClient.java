@@ -12,6 +12,7 @@ public class ShadowedHeartsClient {
     public static void init() {
         ClientTickEvent.CLIENT_POST.register(client -> {
             com.jayemceekay.shadowedhearts.client.aura.ShadowAuraEmitters.onClientTick(client);
+            com.jayemceekay.shadowedhearts.client.purification.PurificationChamberClientSession.INSTANCE.onClientTick(client);
         });
 
         EntityModelLayerRegistry.register(

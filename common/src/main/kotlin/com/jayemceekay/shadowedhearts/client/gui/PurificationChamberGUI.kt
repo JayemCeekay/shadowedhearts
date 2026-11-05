@@ -32,6 +32,7 @@ import com.cobblemon.mod.common.util.lang
 import com.jayemceekay.shadowedhearts.Shadowedhearts
 import com.jayemceekay.shadowedhearts.client.gui.summary.widgets.screens.stats.features.HeartGaugeFeatureRenderer
 import com.jayemceekay.shadowedhearts.client.purification.PurificationClientMetrics
+import com.jayemceekay.shadowedhearts.client.purification.PurificationChamberClientSession
 import com.jayemceekay.shadowedhearts.client.storage.ClientPurificationStorage
 import com.jayemceekay.shadowedhearts.client.storage.ClientPurificationStorage.PurificationPosition
 import com.jayemceekay.shadowedhearts.common.purification.PurificationMath
@@ -39,7 +40,6 @@ import com.jayemceekay.shadowedhearts.common.shadow.ShadowAspectUtil
 import com.jayemceekay.shadowedhearts.network.purification.MovePCToPurificationPacket
 import com.jayemceekay.shadowedhearts.network.purification.MovePurificationToPCPacket
 import com.jayemceekay.shadowedhearts.network.purification.PurifyPokemonPacket
-import com.jayemceekay.shadowedhearts.network.purification.UnlinkPlayerFromPurificationChamberPacket
 import com.mojang.blaze3d.platform.InputConstants
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphics
@@ -218,15 +218,11 @@ class PurificationChamberGUI(
                                 targetIndex = targetIndex,
                                 setIndex = currentSet()
                             ).sendToServer()
-                            // Place into the selected purification slot locally for MVP.
-                            setPokemonAt(targetIndex, pokemon)
-
-                            // Remove it from the PC client view to simulate a move.
-                            pc.set(position, null)
+                            // The server updates both stores after authorization. A stale
+                            // session or rejected transfer must not move client-only Pokemon.
 
                             // Close PC and return to the Purification Chamber screen.
-                            Minecraft.getInstance()
-                                .setScreen(this@PurificationChamberGUI)
+                            PurificationChamberClientSession.returnTo(this@PurificationChamberGUI)
                             // Optional sound feedback
                             playClick()
                         }
@@ -235,7 +231,8 @@ class PurificationChamberGUI(
                     showParty = true
                 )
 
-                Minecraft.getInstance().setScreen(
+                PurificationChamberClientSession.select(
+                    this@PurificationChamberGUI,
                     PCGUI(
                         pc = pc,
                         party = party,
@@ -249,8 +246,7 @@ class PurificationChamberGUI(
                     ?: return@PurificationStorageWidget
                 val party = CobblemonClient.storage.party
 
-                val fromMon =
-                    getPokemonAt(fromIndex) ?: return@PurificationStorageWidget
+                getPokemonAt(fromIndex) ?: return@PurificationStorageWidget
 
                 val configuration = PCGUIConfiguration(
                     selectOverride = { _, position, _ ->
@@ -263,27 +259,17 @@ class PurificationChamberGUI(
                                 pcPosition = position
                             ).sendToServer()
 
-                            // Optimistic client update
-                            val dest = pc.get(position)
-                            if (dest == null) {
-                                // Move
-                                pc.set(position, fromMon)
-                                setPokemonAt(fromIndex, null)
-                            } else {
-                                // Swap if compatible; UI doesn't enforce compatibility, server will reject if invalid.
-                                pc.set(position, fromMon)
-                                setPokemonAt(fromIndex, dest)
-                            }
+                            // Wait for authoritative store updates, including swap validation.
 
-                            Minecraft.getInstance()
-                                .setScreen(this@PurificationChamberGUI)
+                            PurificationChamberClientSession.returnTo(this@PurificationChamberGUI)
                             playClick()
                         }
                     },
                     showParty = true
                 )
 
-                Minecraft.getInstance().setScreen(
+                PurificationChamberClientSession.select(
+                    this@PurificationChamberGUI,
                     PCGUI(
                         pc = pc,
                         party = party,
@@ -330,8 +316,6 @@ class PurificationChamberGUI(
         this.addRenderableWidget(
             ExitButton(pX = x + 320, pY = y + 186) {
                 playSound(CobblemonSounds.PC_OFF)
-                // Inform server to unlink this player from the purification chamber
-                UnlinkPlayerFromPurificationChamberPacket().sendToServer()
                 Minecraft.getInstance().setScreen(null)
 
             }
@@ -948,7 +932,6 @@ class PurificationChamberGUI(
         when (keyCode) {
             InputConstants.KEY_ESCAPE -> {
                 playSound(CobblemonSounds.PC_OFF)
-                UnlinkPlayerFromPurificationChamberPacket().sendToServer()
                 onClose()
                 return true
             }
