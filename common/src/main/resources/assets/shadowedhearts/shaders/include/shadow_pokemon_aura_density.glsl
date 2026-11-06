@@ -1,4 +1,5 @@
 // Shared density material used by the world and GUI Shadow Pokemon aura programs.
+#moj_import <shadowedhearts:shadow_pokemon_aura_performance.glsl>
 
 float shadowAuraHash31(vec3 p) {
     p = fract(p * 0.1031);
@@ -27,6 +28,17 @@ float shadowAuraNoise3(vec3 p) {
 }
 
 float shadowAuraFbm3(vec3 p) {
+    if (AuraPerformance > 0.5) {
+        float a = 0.5, f = 0.0;
+        for (int i = 0; i < 2; ++i) {
+            f += a * shadowAuraNoise3(p);
+            p = p * 2.03 + vec3(29.1, 43.7, 17.9);
+            a *= 0.5;
+        }
+        // Keep the four-octave amplitude sum (.9375), so less detail does not
+        // unintentionally weaken the authored coverage/breakup thresholds.
+        return f * 1.25;
+    }
     float a = 0.5, f = 0.0;
     for (int i = 0; i < 4; ++i) {
         f += a * shadowAuraNoise3(p);

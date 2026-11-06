@@ -1,5 +1,6 @@
 package com.jayemceekay.shadowedhearts.client;
 
+import com.jayemceekay.shadowedhearts.config.AuraRenderQuality;
 import com.jayemceekay.shadowedhearts.config.ClientEffectPolicy;
 import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs;
 
@@ -27,6 +28,11 @@ public final class ClientEffects {
     }
 
     public static float auraQuality() { return ClientEffectPolicy.auraQuality(level(Family.AURA)); }
+    public static boolean auraPerformanceMode() {
+        return ShadowedHeartsConfigs.getInstance().getClientConfig().auraRenderQuality()
+                == AuraRenderQuality.PERFORMANCE;
+    }
+
     public static float ambientDensity() { return ClientEffectPolicy.ambientDensity(level(Family.AMBIENT)); }
     public static boolean darkBallReplacement() { return ClientEffectPolicy.useDarkBallReplacement(level(Family.DARK_BALL)); }
     public static boolean scanWave() { return ClientEffectPolicy.drawScanWave(level(Family.SCAN_PULSE)); }

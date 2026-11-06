@@ -260,7 +260,7 @@ public final class ShadowPokemonAuraGuiRenderer {
 
         try {
             // ModelWidget's scissor is expressed in full-resolution framebuffer
-            // coordinates, while the density target is deliberately half-size.
+            // coordinates, while the density target uses the selected reduced resolution.
             // The bounded composite below provides the correct GUI-space clip.
             GL11.glDisable(GL11.GL_SCISSOR_TEST);
             if (persistentAura) {

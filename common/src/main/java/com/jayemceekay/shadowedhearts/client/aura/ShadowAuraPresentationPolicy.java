@@ -7,19 +7,15 @@ final class ShadowAuraPresentationPolicy {
     private ShadowAuraPresentationPolicy() {}
 
     /**
-     * Signature keeps its authored pixel grid; the classic styles are smooth.
+     * Missing settings keep Signature's authored pixel grid and smooth classic styles.
      * An explicitly supplied JVM property retains the previous global override
      * semantics, including Boolean.parseBoolean's handling of invalid values.
      */
-    static boolean pixelated(ShadowAuraStyle style, String override) {
-        if (override != null) {
-            return Boolean.parseBoolean(override);
-        }
-        return style == null || style == ShadowAuraStyle.SIGNATURE;
-    }
-
-    static AuraPixelationStyle classicPixelation(AuraPixelationStyle configured, String override) {
-        AuraPixelationStyle selected = configured == null ? AuraPixelationStyle.SMOOTH : configured;
+    static AuraPixelationStyle pixelation(ShadowAuraStyle style,
+                                         AuraPixelationStyle configured, String override) {
+        AuraPixelationStyle fallback = style == null || style == ShadowAuraStyle.SIGNATURE
+                ? AuraPixelationStyle.PIXELATED : AuraPixelationStyle.SMOOTH;
+        AuraPixelationStyle selected = configured == null ? fallback : configured;
         if (override == null) return selected;
         if (!Boolean.parseBoolean(override)) return AuraPixelationStyle.SMOOTH;
         return selected == AuraPixelationStyle.SMOOTH ? AuraPixelationStyle.PIXELATED : selected;

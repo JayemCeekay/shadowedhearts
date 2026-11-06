@@ -1,6 +1,7 @@
 package com.jayemceekay.shadowedhearts.client.aura;
 
 import com.jayemceekay.shadowedhearts.client.ModShaders;
+import com.jayemceekay.shadowedhearts.client.ClientEffects;
 import com.jayemceekay.shadowedhearts.client.render.DensityFboPipeline;
 import com.jayemceekay.shadowedhearts.client.moonwound.MoonwoundPixelationScale;
 import com.jayemceekay.shadowedhearts.config.AuraPixelationStyle;
@@ -97,7 +98,8 @@ public final class ShadowPokemonAuraFBO {
         // leaves XD unblurred rather than silently erasing its fine detail.
         return pipeline(batch).blur(safeStyle == ShadowAuraStyle.XD_FAITHFUL
                 ? ModShaders.SHADOW_POKEMON_AURA_XD_FAITHFUL_BLUR
-                : ModShaders.PENUMBRA_BLUR);
+                : ModShaders.PENUMBRA_BLUR, null,
+                renderSettings(safeStyle, ClientEffects.auraPerformanceMode()).blurIterations());
     }
 
     public static boolean composite() {
@@ -145,7 +147,10 @@ public final class ShadowPokemonAuraFBO {
                             effectivePixelLod
                                     + (float) (Math.log(pixelScale) / Math.log(2.0))));
         }
-        if (ShadowAuraPresentationPolicy.pixelated(safeStyle, PIXEL_PRESENTATION_OVERRIDE)
+        AuraPixelationStyle presentation = pixelationStyle(safeStyle);
+        // Keep the authored distance LOD intact; Chunky selects the next coarser grid.
+        if (presentation == AuraPixelationStyle.CHUNKY) effectivePixelLod += 1.0f;
+        if (presentation != AuraPixelationStyle.SMOOTH
                 && effectivePixelLod > 0.001f
                 && pipeline.compositeFractionalMip(
                 worldPixelCompositeShader(safeStyle),
@@ -220,7 +225,9 @@ public final class ShadowPokemonAuraFBO {
                         * ShadowAuraStyleProfiles.forStyle(safeStyle)
                         .render()
                         .pixelSizeScale()));
-        if (ShadowAuraPresentationPolicy.pixelated(safeStyle, PIXEL_PRESENTATION_OVERRIDE)
+        AuraPixelationStyle presentation = pixelationStyle(safeStyle);
+        if (presentation == AuraPixelationStyle.CHUNKY) guiPixelSize *= 2;
+        if (presentation != AuraPixelationStyle.SMOOTH
                 && guiPixelSize > 1
                 && pipeline.compositePixelated(
                 guiPixelCompositeShader(safeStyle),
@@ -255,10 +262,9 @@ public final class ShadowPokemonAuraFBO {
         AuraPixelationStyle selected = switch (safeStyle(style)) {
             case COLOSSEUM -> config.colosseumAuraPixelation();
             case XD_FAITHFUL -> config.xdAuraPixelation();
-            case SIGNATURE -> AuraPixelationStyle.SMOOTH;
+            case SIGNATURE -> config.signatureAuraPixelation();
         };
-        return safeStyle(style) == ShadowAuraStyle.SIGNATURE ? AuraPixelationStyle.SMOOTH
-                : ShadowAuraPresentationPolicy.classicPixelation(selected, PIXEL_PRESENTATION_OVERRIDE);
+        return ShadowAuraPresentationPolicy.pixelation(safeStyle(style), selected, PIXEL_PRESENTATION_OVERRIDE);
     }
 
     static boolean compositeColosseumMotes(MoonwoundPixelationScale.Grid grid, Runnable draw) {
@@ -276,25 +282,33 @@ public final class ShadowPokemonAuraFBO {
     }
 
     public static ShaderInstance worldDensityShader(ShadowAuraStyle style) {
-        return switch (safeStyle(style)) {
+        return configureMaterial(switch (safeStyle(style)) {
             case SIGNATURE -> ModShaders.SHADOW_POKEMON_AURA_DENSITY;
             case COLOSSEUM -> ModShaders.SHADOW_POKEMON_AURA_COLOSSEUM_DENSITY;
             case XD_FAITHFUL -> ModShaders.SHADOW_POKEMON_AURA_XD_FAITHFUL_DENSITY;
-        };
+        });
     }
 
     public static ShaderInstance guiDensityShader(ShadowAuraStyle style) {
-        return switch (safeStyle(style)) {
+        return configureMaterial(switch (safeStyle(style)) {
             case SIGNATURE -> ModShaders.SHADOW_POKEMON_AURA_GUI_DENSITY;
             case COLOSSEUM -> ModShaders.SHADOW_POKEMON_AURA_COLOSSEUM_GUI_DENSITY;
             case XD_FAITHFUL -> ModShaders.SHADOW_POKEMON_AURA_XD_FAITHFUL_GUI_DENSITY;
-        };
+        });
     }
 
     public static ShaderInstance filamentDensityShader(boolean gui) {
-        return gui
+        return configureMaterial(gui
                 ? ModShaders.SHADOW_POKEMON_AURA_XD_FAITHFUL_GUI_FILAMENT_DENSITY
-                : ModShaders.SHADOW_POKEMON_AURA_XD_FAITHFUL_FILAMENT_DENSITY;
+                : ModShaders.SHADOW_POKEMON_AURA_XD_FAITHFUL_FILAMENT_DENSITY);
+    }
+
+    private static ShaderInstance configureMaterial(ShaderInstance shader) {
+        if (shader != null) {
+            Uniform performance = shader.getUniform("AuraPerformance");
+            if (performance != null) performance.set(ClientEffects.auraPerformanceMode() ? 1f : 0f);
+        }
+        return shader;
     }
 
     private static ShaderInstance worldCompositeShader(ShadowAuraStyle style) {
@@ -339,14 +353,28 @@ public final class ShadowPokemonAuraFBO {
 
     private static DensityFboPipeline pipeline(ShadowAuraRenderBatch batch) {
         synchronized (STYLE_PIPELINES) {
-            return STYLE_PIPELINES.computeIfAbsent(
+            DensityFboPipeline pipeline = STYLE_PIPELINES.computeIfAbsent(
                     batch,
                     ignored -> new DensityFboPipeline(
                             2,
                             0.82f * ShadowAuraStyleProfiles.forStyle(batch.style())
                                     .render()
                                     .blurRadiusScale()));
+            pipeline.setResolutionDivisor(renderSettings(batch.style(),
+                    ClientEffects.auraPerformanceMode()).resolutionDivisor());
+            return pipeline;
         }
+    }
+
+    record RenderSettings(int resolutionDivisor, int blurIterations) { }
+
+    private static final RenderSettings QUALITY = new RenderSettings(2, 2);
+    private static final RenderSettings PERFORMANCE_SMOKE = new RenderSettings(4, 1);
+
+    static RenderSettings renderSettings(ShadowAuraStyle style, boolean performance) {
+        // XD's narrow cellular cores retain their existing resolution and dedicated blur.
+        return performance && safeStyle(style) != ShadowAuraStyle.XD_FAITHFUL
+                ? PERFORMANCE_SMOKE : QUALITY;
     }
 
     private static int readPixelSize(
@@ -376,7 +404,7 @@ public final class ShadowPokemonAuraFBO {
     }
 
     private static void setupCompositeUniforms(ShaderInstance shader, float gameTime, boolean modeTint) {
-
+        configureMaterial(shader);
         Uniform uModeTint = shader.getUniform("AuraModeTint");
         if (uModeTint != null) uModeTint.set(modeTint ? 1.0f : 0.0f);
 

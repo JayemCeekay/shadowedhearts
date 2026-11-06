@@ -1,5 +1,6 @@
 // Shared composite material used by the world and GUI Shadow Pokemon aura programs.
 #moj_import <shadowedhearts:shadow_pokemon_aura_palette.glsl>
+#moj_import <shadowedhearts:shadow_pokemon_aura_performance.glsl>
 
 float shadowAuraCompositeHash(vec2 p) {
     return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
@@ -17,6 +18,16 @@ float shadowAuraCompositeNoise(vec2 p) {
 }
 
 float shadowAuraCompositeFbm(vec2 p) {
+    if (AuraPerformance > 0.5) {
+        float v = 0.0;
+        float amp = 0.5;
+        for (int i = 0; i < 2; i++) {
+            v += amp * shadowAuraCompositeNoise(p);
+            p *= 2.02;
+            amp *= 0.5;
+        }
+        return v * 1.25;
+    }
     float v = 0.0;
     float amp = 0.5;
     for (int i = 0; i < 4; i++) {

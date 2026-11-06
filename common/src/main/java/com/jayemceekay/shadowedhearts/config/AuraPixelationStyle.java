@@ -1,6 +1,6 @@
 package com.jayemceekay.shadowedhearts.config;
 
-/** Client presentation strength for the finished Colosseum and XD aura effects. */
+/** Client presentation choice for the finished Shadow aura effects. */
 public enum AuraPixelationStyle {
     SMOOTH(1), PIXELATED(4), CHUNKY(8);
 

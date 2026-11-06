@@ -56,6 +56,7 @@ public final class DensityFboPipeline {
             worldPixelPresentation,
             new PixelPresentationTarget(),
             new PixelPresentationTarget(),
+            new PixelPresentationTarget(),
             new PixelPresentationTarget()
     };
     private final PixelPresentationTarget guiPixelPresentation =
@@ -458,7 +459,13 @@ public final class DensityFboPipeline {
      * @return number of blur iterations completed
      */
     public int blur(ShaderInstance blurShader, Consumer<ShaderInstance> uniformSetup) {
-        if (blurIterations <= 0 || blurShader == null || densityTarget == null || blurTempTarget == null) return 0;
+        return blur(blurShader, uniformSetup, blurIterations);
+    }
+
+    /** Limits blur work for this pass without changing other callers' configured quality. */
+    public int blur(ShaderInstance blurShader, Consumer<ShaderInstance> uniformSetup, int iterationLimit) {
+        int iterations = Math.max(0, Math.min(blurIterations, iterationLimit));
+        if (iterations <= 0 || blurShader == null || densityTarget == null || blurTempTarget == null) return 0;
 
         RenderTransactionState savedState = RenderTransactionState.capture();
         Matrix4f savedMV = new Matrix4f(RenderSystem.getModelViewMatrix());
@@ -500,7 +507,7 @@ public final class DensityFboPipeline {
                 uniformSetup.accept(blurShader);
             }
 
-            for (int i = 0; i < blurIterations; i++) {
+            for (int i = 0; i < iterations; i++) {
                 clearTargetUnscissored(blurTempTarget);
                 blurTempTarget.bindWrite(false);
                 RenderSystem.viewport(0, 0, lastWidth, lastHeight);
@@ -1187,7 +1194,8 @@ public final class DensityFboPipeline {
     /**
      * Resolves and presents the world aura at a continuous pixel LOD.
      * LOD {@code 0} is one framebuffer pixel, {@code 1} is two pixels,
-     * {@code 2} is four pixels, and {@code 3} is eight pixels. Fractional
+     * {@code 2} is four pixels, {@code 3} is eight pixels, and {@code 4}
+     * is sixteen pixels. Fractional
      * values resolve the adjacent nested grids and blend those two exact
      * nearest-neighbour samples; an integral LOD resolves only one level.
      *
@@ -1212,7 +1220,7 @@ public final class DensityFboPipeline {
         }
 
         float safeLod = Float.isFinite(pixelLod)
-                ? Math.max(0.0f, Math.min(3.0f, pixelLod))
+                ? Math.max(0.0f, Math.min(worldFractionalMipPresentations.length - 1, pixelLod))
                 : 0.0f;
         int lowerLevel = (int) Math.floor(safeLod);
         int upperLevel = (int) Math.ceil(safeLod);

@@ -18,10 +18,17 @@ vec4 shadowPokemonAuraColosseumDensity(
     // Noise gently roughens each puff; its own texture defines the center and
     // surrounding violet falloff. It must not paint unrelated black patches.
     p.y -= seconds * 0.14;
-    vec3 warp = vec3(
-            shadowAuraNoise3(p * 0.65 + vec3(0.0, seconds * 0.07, 0.0)),
-            shadowAuraNoise3(p * 0.65 + vec3(17.0, 5.0, 9.0)),
-            shadowAuraNoise3(p * 0.65 + vec3(3.0, 13.0, 21.0)));
+    vec3 warp;
+    if (AuraPerformance > 0.5) {
+        // The authored sprite retains the billow silhouette. One coherent
+        // warp plus the billow sample keeps contour movement at half the noise cost.
+        warp = vec3(shadowAuraNoise3(p * 0.65 + vec3(0.0, seconds * 0.07, 0.0)));
+    } else {
+        warp = vec3(
+                shadowAuraNoise3(p * 0.65 + vec3(0.0, seconds * 0.07, 0.0)),
+                shadowAuraNoise3(p * 0.65 + vec3(17.0, 5.0, 9.0)),
+                shadowAuraNoise3(p * 0.65 + vec3(3.0, 13.0, 21.0)));
+    }
     vec3 folded = p + (warp - 0.5) * 0.90;
     float billow = shadowAuraNoise3(folded);
     float mask = shadowClassicMask(texColor.a, maskFalloff);
@@ -67,7 +74,12 @@ vec4 shadowPokemonAuraXdDensity(
     float fold = shadowAuraNoise3(p + vec3(seconds * 0.12, 0.0, seconds * 0.16));
     p.xz += vec2(fold - 0.5, shadowAuraNoise3(p + 13.7) - 0.5) * 0.85;
     float body = shadowAuraNoise3(p);
-    float fine = shadowAuraNoise3(p * 2.35 + vec3(0.0, -seconds * 0.15, 5.0));
+    // Keep the broad moving foundation; Performance omits only its smallest
+    // noise layer. The independent cellular puffs retain their full geometry.
+    float fine = body;
+    if (AuraPerformance <= 0.5) {
+        fine = shadowAuraNoise3(p * 2.35 + vec3(0.0, -seconds * 0.15, 5.0));
+    }
     float mask = shadowClassicMask(texColor.a, maskFalloff);
     float strength = mask * max(particleColor.a, 0.0);
     // The foundation carries translucent violet depth between rolling sheets.

@@ -4,6 +4,7 @@ import com.cobblemon.mod.common.client.render.models.blockbench.pose.Bone;
 import com.cobblemon.mod.common.client.render.models.blockbench.repository.RenderContext;
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
 import com.cobblemon.mod.common.pokemon.RenderablePokemon;
+import com.jayemceekay.shadowedhearts.client.ClientEffects;
 import com.jayemceekay.shadowedhearts.client.ModShaders;
 import com.jayemceekay.shadowedhearts.client.particle.LuminousMoteEmitters;
 import com.jayemceekay.shadowedhearts.client.render.DensityFboPipeline;
@@ -169,6 +170,7 @@ public final class ShadowPokemonAuraSystem {
         state.fade = fade;
         state.corruption = corruption;
         state.quality = quality;
+        state.performanceBudget = AuraPerformanceBudget.forMode(ClientEffects.auraPerformanceMode());
         state.pixelCenterX = x;
         state.pixelCenterY = y + height * 0.5;
         state.pixelCenterZ = z;
@@ -225,6 +227,7 @@ public final class ShadowPokemonAuraSystem {
                 * adaptiveEmitterScale(quality)
                 * styleProfile.emission().rateScale()
                 * styleProfile.emission().fallbackEmitterScale()));
+        count = state.performanceBudget.signatureFallbackCount(count);
 
         Vec3 motionDir = speed > 0.0001 ? motion.normalize() : Vec3.ZERO;
         for (int i = 0; i < count; i++) {
@@ -1053,11 +1056,13 @@ public final class ShadowPokemonAuraSystem {
         state.colosseumVolume = null;
         state.colosseumBirthCarry = 0;
         state.colosseumInfillCarry = 0;
+        state.colosseumAccentCarry = 0;
         state.colosseumSmokeSequence = null;
         state.lastClassicFrameTick = Integer.MIN_VALUE;
         state.classicEmissionTick = 0;
         state.xdCurveBirthCarry = 0;
         state.xdFlakeBirthCarry = 0;
+        state.xdHazeBirthCarry = 0;
         state.lastBoneAnchors.clear();
         state.bodySampleCursor = 0;
         state.bodyAnchorFillCursor = 0;
@@ -1753,7 +1758,9 @@ public final class ShadowPokemonAuraSystem {
 
     private static int adaptiveAnchorBudget(int baseBudget, float quality) {
         float scale = 0.38f + quality * 0.62f;
-        return Mth.clamp(Math.round(baseBudget * scale), MIN_ADAPTIVE_BONE_ANCHORS, MAX_BONE_ANCHORS);
+        int fullCount = Mth.clamp(Math.round(baseBudget * scale), MIN_ADAPTIVE_BONE_ANCHORS, MAX_BONE_ANCHORS);
+        return AuraPerformanceBudget.forMode(ClientEffects.auraPerformanceMode())
+                .captureAnchors(fullCount, MIN_ADAPTIVE_BONE_ANCHORS);
     }
 
     private static float adaptiveEmitterScale(float quality) {
@@ -2496,6 +2503,9 @@ public final class ShadowPokemonAuraSystem {
                                       float strength,
                                       float quality,
                                       ParticleRuntime particles) {
+        // Keep render-quality changes local to admission. Existing particles keep
+        // their age, movement and lifetime while the new population settles.
+        state.performanceBudget = AuraPerformanceBudget.forMode(ClientEffects.auraPerformanceMode());
         ShadowAuraStyleProfile profile = ShadowAuraStyleProfiles.forStyle(state.style);
         if (state.style != ShadowAuraStyle.SIGNATURE) {
             emitClassicAura(frame, state, anchors, strength, quality, particles, profile);
@@ -2734,9 +2744,10 @@ public final class ShadowPokemonAuraSystem {
         }
         float demand = 0;
         for (ClassicRegion region : regions) demand += region.demand;
-        int nearTarget = ClassicAuraMorphology.nearCoverageTarget(demand, xd);
+        int fullNearTarget = ClassicAuraMorphology.nearCoverageTarget(demand, xd);
+        int nearTarget = state.performanceBudget.xdHazeTarget(fullNearTarget);
         int plumeTarget = xd ? 0 : ClassicAuraMorphology.plumeCoverageTarget(demand);
-        int curveTarget = xd ? ClassicAuraMorphology.curveTarget(demand, quality) : 0;
+        int curveTarget = xd ? state.performanceBudget.xdCellTarget(ClassicAuraMorphology.curveTarget(demand, quality)) : 0;
         int sourcePuffs = 0, sourceCurves = 0;
         // One inventory pass per emission tick, never per render frame. The existing
         // runtime remains owner-local in previews and globally bounded in world views.
@@ -2763,7 +2774,14 @@ public final class ShadowPokemonAuraSystem {
                 }
             }
         }
-        int nearBirths = Mth.clamp((int) Math.ceil(nearTarget / 32.0f * interval), 1, 20);
+        int nearBirths = Mth.clamp((int) Math.ceil(fullNearTarget / 32.0f * interval), 1, 20);
+        if (state.performanceBudget == AuraPerformanceBudget.PERFORMANCE) {
+            // Fractional admission also reduces a one-puff tick without changing
+            // the simulation clock or introducing a permanent one-puff floor.
+            state.xdHazeBirthCarry += state.performanceBudget.xdHazeRate(nearBirths);
+            nearBirths = (int) state.xdHazeBirthCarry;
+            state.xdHazeBirthCarry -= nearBirths;
+        }
         int plumeBirths = xd ? 0 : Mth.clamp((int) Math.ceil(plumeTarget / 40.0f * interval), 2, 18);
         for (int i = 0; i < nearBirths + plumeBirths && sourcePuffs < CLASSIC_PUFFS_PER_SOURCE; i++) {
             boolean plume = i >= nearBirths;
@@ -2787,7 +2805,7 @@ public final class ShadowPokemonAuraSystem {
         int moteBirths = quality <= 0.38f || worldColosseumMotes ? 0
                 : xd ? (frame.tickCount % 10 < interval ? 1 : 0) : Math.min(4, interval * 2);
         if (xd) {
-            state.xdFlakeBirthCarry += (quality <= .38f ? 0 : .76 * quality) * interval;
+            state.xdFlakeBirthCarry += state.performanceBudget.accentRate(quality <= .38f ? 0 : .76 * quality) * interval;
             moteBirths = Math.min(4, (int) state.xdFlakeBirthCarry);
             state.xdFlakeBirthCarry -= Math.floor(state.xdFlakeBirthCarry);
         }
@@ -2920,11 +2938,12 @@ public final class ShadowPokemonAuraSystem {
         // Integrate a continuous rate instead of opening/closing births when
         // one cohort brightens or fades. Replenish the shorter-lived smoke
         // steadily so faster turnover does not open gaps between cohorts.
-        double rate = volume.smokeTarget(quality) / 36.0;
+        double rate = state.performanceBudget.colosseumSmokeRate(volume.smokeTarget(quality) / 36.0);
         double desired = state.colosseumBirthCarry + rate * interval;
         int births = Math.min(28, (int) Math.floor(desired));
         state.colosseumBirthCarry = desired - Math.floor(desired);
-        double infillDesired = state.colosseumInfillCarry + rate * volume.infillRateMultiplier() * interval;
+        double infillDesired = state.colosseumInfillCarry
+                + state.performanceBudget.colosseumInfillRate(rate * volume.infillRateMultiplier()) * interval;
         int infillBirths = Math.min(12, (int) Math.floor(infillDesired));
         state.colosseumInfillCarry = infillDesired - Math.floor(infillDesired);
         if (volume.largeModelWeight() > 0 && state.colosseumSmokeSequence == null) {
@@ -2944,7 +2963,13 @@ public final class ShadowPokemonAuraSystem {
         // World points use the full-resolution late emitter. Preview accents
         // sample the same volume rather than lining up on anatomical anchors.
         if (particles == WORLD_PARTICLES || quality <= .38f) return;
-        for (int i = 0; i < Math.min(4, interval) && sourcePuffs < CLASSIC_PUFFS_PER_SOURCE; i++) {
+        int accentBirths = Math.min(4, interval);
+        if (state.performanceBudget == AuraPerformanceBudget.PERFORMANCE) {
+            state.colosseumAccentCarry += state.performanceBudget.accentRate(accentBirths);
+            accentBirths = (int) state.colosseumAccentCarry;
+            state.colosseumAccentCarry -= accentBirths;
+        }
+        for (int i = 0; i < accentBirths && sourcePuffs < CLASSIC_PUFFS_PER_SOURCE; i++) {
             Vec3 position = volume.sample(particles.random.nextDouble(), particles.random.nextDouble(), particles.random.nextDouble());
             float local = volume.puffScale();
             Vec3 direction = randomUnitVector(particles.random);
@@ -3310,6 +3335,7 @@ public final class ShadowPokemonAuraSystem {
         float sourceDepthWeight = anchor.source == AnchorSource.CHAIN ? depthWeight * 1.16f : depthWeight;
         float sourceIntensity = anchor.source == AnchorSource.CHAIN ? roleIntensity * 1.08f : roleIntensity;
         float detailQuality = Mth.clamp((quality - 0.25f) / 0.75f, 0.0f, 1.0f);
+        float detailScale = state.performanceBudget.signatureDetailScale();
 
         RandomSource random = particles.random;
         ShadowAuraStyleProfile profile = ShadowAuraStyleProfiles.forStyle(state.style);
@@ -3326,22 +3352,22 @@ public final class ShadowPokemonAuraSystem {
             }
         }
         if (random.nextFloat() < anchor.role.wispChance * sourceIntensity * detailQuality
-                * profile.wisp().spawnWeight()) {
+                * profile.wisp().spawnWeight() * detailScale) {
             spawnBonePuff(state, anchor.pos, center, boneMotion, entityMotion, modelSize, sourceIntensity, sourceDepthWeight, anchor.role, anchor.normal, PuffType.WISP, quality, particles);
         }
         if (random.nextFloat() < anchor.role.hazeChance * sourceIntensity * (0.72f + quality * 0.28f)
-                * profile.broadHaze().spawnWeight()) {
+                * profile.broadHaze().spawnWeight() * detailScale) {
             spawnBonePuff(state, anchor.pos, center, boneMotion, entityMotion, modelSize, sourceIntensity, sourceDepthWeight, anchor.role, anchor.normal, PuffType.BROAD_HAZE, quality, particles);
         }
         if (anchor.source == AnchorSource.CHAIN && random.nextFloat() < 0.30f * sourceIntensity * quality
-                * profile.broadHaze().spawnWeight()) {
+                * profile.broadHaze().spawnWeight() * detailScale) {
             spawnBonePuff(state, anchor.pos, center, boneMotion, entityMotion, modelSize, sourceIntensity, sourceDepthWeight * 1.10f, anchor.role, anchor.normal, PuffType.BROAD_HAZE, quality, particles);
         }
 
         float fleckChance = (speed > 0.04 || boneMotion.lengthSqr() > 0.0005) ? 0.055f : 0.018f;
         float sourceSparkWeight = anchor.source == AnchorSource.CHAIN ? 0.72f : 1.0f;
         if (random.nextFloat() < fleckChance * anchor.role.sparkWeight * sourceSparkWeight
-                * sourceIntensity * detailQuality * profile.hotFleck().spawnWeight()) {
+                * sourceIntensity * detailQuality * profile.hotFleck().spawnWeight() * detailScale) {
             spawnBonePuff(state, anchor.pos, center, boneMotion, entityMotion, modelSize, sourceIntensity, sourceDepthWeight, anchor.role, anchor.normal, PuffType.HOT_FLECK, quality, particles);
         }
     }
@@ -3369,6 +3395,7 @@ public final class ShadowPokemonAuraSystem {
                 Math.max(2 + Math.round(smallModelBoost * 3.0f),
                         Math.round(BODY_ANCHOR_FILL_EMITTERS_PER_TICK * (1.0f + smallModelBoost * 1.35f) * intensity * adaptiveEmitterScale(quality)))
         );
+        count = state.performanceBudget.signatureFillCount(count);
         if (count <= 0) {
             return;
         }
@@ -3445,6 +3472,7 @@ public final class ShadowPokemonAuraSystem {
                 * profile.emission().upperBodyFillScale()
                 * smallModelBoost * (0.80f + quality * 0.20f), 0.0f, 0.22f);
         int count = Math.min(eligible, Math.max(2, Math.round(SMALL_MODEL_UPPER_FILL_EMITTERS_PER_TICK * intensity * adaptiveEmitterScale(quality))));
+        count = state.performanceBudget.signatureFillCount(count);
         if (count <= 0) {
             return;
         }
@@ -3528,6 +3556,7 @@ public final class ShadowPokemonAuraSystem {
                 * profile.emission().bodyVolumeFillScale()
                 * (0.72f + quality * 0.28f) * (1.0f - smallModelBoost * 0.18f), 0.0f, 0.36f);
         int count = Math.max(1, Math.round(BODY_VOLUME_EMITTERS_PER_TICK * (1.0f + smallModelBoost * 0.42f) * intensity * adaptiveEmitterScale(quality)));
+        count = state.performanceBudget.signatureFillCount(count);
 
         for (int i = 0; i < count; i++) {
             int sample = state.bodySampleCursor++;
@@ -4741,11 +4770,13 @@ public final class ShadowPokemonAuraSystem {
         ColosseumAuraVolume colosseumVolume;
         double colosseumBirthCarry;
         double colosseumInfillCarry;
+        double colosseumAccentCarry;
         ColosseumSmokeSpawnSequence colosseumSmokeSequence;
         String species = "";
         int classicEmissionTick;
         double xdCurveBirthCarry;
         double xdFlakeBirthCarry;
+        double xdHazeBirthCarry;
         long classicAnchorTick;
         final Map<Object, BoneAnchor> classicAnchors = new HashMap<>();
         final Map<Object, ClassicPartGeometry> classicGeometry = new LinkedHashMap<>();
@@ -4778,6 +4809,7 @@ public final class ShadowPokemonAuraSystem {
         float fade = 1.0f;
         float corruption = 1.0f;
         float quality = 1.0f;
+        AuraPerformanceBudget performanceBudget = AuraPerformanceBudget.QUALITY;
         float stableWorldPixelLod = maximumWorldPixelLod(
                 ShadowPokemonAuraFBO.maximumWorldPixelSize());
         boolean hasLastBodyCenter;

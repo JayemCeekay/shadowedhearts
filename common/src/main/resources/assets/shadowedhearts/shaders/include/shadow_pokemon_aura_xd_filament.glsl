@@ -2,6 +2,12 @@
 // Color R seed, G normalized life, B material role (.25 dark/.75 pink/0 flake),
 // A lifecycle coverage. R/A density absorbs light; G/B density emits pink/violet.
 // Neither the carrier's sides nor a circular sprite define luminous outlines.
+#moj_import <shadowedhearts:shadow_pokemon_aura_performance.glsl>
+
+flat in vec4 xdPuffTransform;
+flat in vec4 xdPuffCurl;
+flat in vec2 xdPuffFlow;
+
 vec2 shadowXdCellHash(vec2 cell, float seed) {
     return fract(sin(vec2(dot(cell, vec2(127.1, 311.7)),
                          dot(cell, vec2(269.5, 183.3))) + seed) * 43758.5453);
@@ -79,24 +85,42 @@ vec4 shadowPokemonAuraXdFilamentDensity(
     // Retain only a tiny transverse shimmer from the shared clock. The larger
     // twisting/stretching motion depends on life, so clock changes cannot
     // suddenly rotate or stretch the whole cellular field.
-    float microPhase = sin(auraTime * 1200.0 * 0.010 + seed) * 0.10;
-    float angle = puffSeed * 6.283185 + sin(phase + seed) * 0.05;
-    mat2 orientation = mat2(cos(angle), -sin(angle), sin(angle), cos(angle));
-    vec2 p = orientation * puffCoord * mix(1.55, 2.15, fract(seed * 0.37));
-    vec2 curlCenter = vec2(sin(seed * 0.73), cos(seed * 0.51)) * 0.45;
+    float microPhase;
+    vec2 p;
+    vec2 curlCenter;
+    float curlStrength;
+    float strain;
+    vec2 flow;
+    if (AuraPerformance > 0.5) {
+        mat2 orientation = mat2(xdPuffTransform.x, -xdPuffTransform.y,
+                xdPuffTransform.y, xdPuffTransform.x);
+        p = orientation * puffCoord * xdPuffTransform.z;
+        curlCenter = xdPuffCurl.xy;
+        curlStrength = xdPuffCurl.z;
+        microPhase = xdPuffCurl.w;
+        strain = xdPuffTransform.w;
+        flow = xdPuffFlow;
+    } else {
+        microPhase = sin(auraTime * 1200.0 * 0.010 + seed) * 0.10;
+        float angle = puffSeed * 6.283185 + sin(phase + seed) * 0.05;
+        mat2 orientation = mat2(cos(angle), -sin(angle), sin(angle), cos(angle));
+        p = orientation * puffCoord * mix(1.55, 2.15, fract(seed * 0.37));
+        curlCenter = vec2(sin(seed * 0.73), cos(seed * 0.51)) * 0.45;
+        curlStrength = (life - 0.5) * 0.65 + sin(phase * 0.65 + seed) * 0.22;
+        strain = 1.0 + sin(phase * 0.70 + seed * 0.23) * 0.22;
+        flow = vec2(sin(seed + phase * 0.5) * 0.20, -phase * 0.12);
+    }
     vec2 relative = p - curlCenter;
-    float curlAngle = ((life - 0.5) * 0.65 + sin(phase * 0.65 + seed) * 0.22)
-            * exp(-dot(relative, relative) * 0.35);
+    float curlAngle = curlStrength * exp(-dot(relative, relative) * 0.35);
     mat2 curl = mat2(cos(curlAngle), -sin(curlAngle), sin(curlAngle), cos(curlAngle));
     p = curlCenter + curl * relative;
-    float strain = 1.0 + sin(phase * 0.70 + seed * 0.23) * 0.22;
     p *= vec2(strain, 1.0 / strain);
     // Broad rolls pull neighboring links in different directions. The smaller
     // transverse bend roughens their contours without adding another cell search.
     p += vec2(sin(p.y * 1.35 + phase * 0.70 + seed),
               sin(p.x * 1.25 - phase * 0.55 + seed * 0.31)) * 0.34;
     p += sin(p.yx * 3.1 + vec2(phase * 0.8 + microPhase, -phase * 0.7 - microPhase) + seed) * 0.09;
-    p += vec2(sin(seed + phase * 0.5) * 0.20, -phase * 0.12);
+    p += flow;
     vec3 nearest = shadowXdCellDistances(p, seed, phase);
     float wallGap = nearest.y - nearest.x;
     float junctionGap = nearest.z - nearest.x;

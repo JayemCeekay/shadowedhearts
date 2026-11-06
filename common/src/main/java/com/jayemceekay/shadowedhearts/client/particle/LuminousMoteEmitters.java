@@ -4,6 +4,7 @@ import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
 import com.jayemceekay.shadowedhearts.client.aura.ShadowAuraStyle;
 import com.jayemceekay.shadowedhearts.client.aura.ShadowAuraStyleResolver;
 import com.jayemceekay.shadowedhearts.client.aura.ColosseumAuraVolume;
+import com.jayemceekay.shadowedhearts.client.aura.AuraPerformanceBudget;
 import com.jayemceekay.shadowedhearts.common.shadow.ShadowAspectUtil;
 import com.jayemceekay.shadowedhearts.network.aura.LuminousMotePacket;
 import com.jayemceekay.shadowedhearts.registry.util.ModParticleTypes;
@@ -181,6 +182,9 @@ public final class LuminousMoteEmitters {
         }
         double colosseumBudget = colosseumBudgetScale(activeColosseumGroups)
                 * com.jayemceekay.shadowedhearts.client.ClientEffects.ambientDensity();
+        colosseumBudget = AuraPerformanceBudget.forMode(
+                com.jayemceekay.shadowedhearts.client.ClientEffects.auraPerformanceMode())
+                .accentRate(colosseumBudget);
         COLOSSEUM_BUDGET.advance(now, partialTicks, activeColosseumGroups > 0);
         int first = COLOSSEUM_BUDGET.firstSource(colosseumSources.size());
         for (int offset = 0; offset < colosseumSources.size(); offset++) {

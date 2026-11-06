@@ -31,6 +31,8 @@ public final class ClientConfig implements IClientConfig, ISoundConfig {
         public ModConfigSpec.EnumValue<ClientEffectPolicy.EffectOverride> auraEffects;
         public ModConfigSpec.EnumValue<ClientEffectPolicy.EffectOverride> ambientEffects;
         public ModConfigSpec.BooleanValue enableShadowAura;
+        public ModConfigSpec.EnumValue<AuraRenderQuality> auraRenderQuality;
+        public ModConfigSpec.EnumValue<AuraPixelationStyle> signatureAuraPixelation;
         public ModConfigSpec.EnumValue<AuraPixelationStyle> colosseumAuraPixelation;
         public ModConfigSpec.EnumValue<AuraPixelationStyle> xdAuraPixelation;
         public ModConfigSpec.DoubleValue auraReaderYOffset;
@@ -102,6 +104,14 @@ public final class ClientConfig implements IClientConfig, ISoundConfig {
                     .define("enableShadowAura", true);
 
             builder.translation("shadowedhearts.configuration.client.shadowAura").push("shadowAura");
+            auraRenderQuality = builder
+                    .comment("Shadow aura rendering in the world and menu previews: QUALITY preserves full detail; PERFORMANCE reduces rendering detail for all three styles. This is a local visual preference, independent of accessibility and pixelation settings.")
+                    .translation("shadowedhearts.configuration.client.shadowAura.renderingQuality")
+                    .defineEnum("renderingQuality", AuraRenderQuality.QUALITY);
+            signatureAuraPixelation = builder
+                    .comment("Signature aura appearance in the world and menu previews: PIXELATED preserves the existing appearance, SMOOTH removes the pixel grid, and CHUNKY uses larger texels. This is a local visual preference.")
+                    .translation("shadowedhearts.configuration.client.shadowAura.signaturePixelation")
+                    .defineEnum("signaturePixelation", AuraPixelationStyle.PIXELATED);
             colosseumAuraPixelation = builder
                     .comment("Colosseum aura appearance in the world and menu previews: SMOOTH keeps the current appearance, PIXELATED adds a pixel grid, and CHUNKY uses larger texels. This is a local visual preference.")
                     .translation("shadowedhearts.configuration.client.shadowAura.colosseumPixelation")
@@ -318,6 +328,18 @@ public final class ClientConfig implements IClientConfig, ISoundConfig {
     public boolean enableShadowAura() {
         if (!isLoaded()) return IClientConfig.super.enableShadowAura();
         return DATA.enableShadowAura.get();
+    }
+
+    @Override
+    public AuraRenderQuality auraRenderQuality() {
+        if (!isLoaded()) return IClientConfig.super.auraRenderQuality();
+        return DATA.auraRenderQuality.get();
+    }
+
+    @Override
+    public AuraPixelationStyle signatureAuraPixelation() {
+        if (!isLoaded()) return IClientConfig.super.signatureAuraPixelation();
+        return DATA.signatureAuraPixelation.get();
     }
 
     @Override
