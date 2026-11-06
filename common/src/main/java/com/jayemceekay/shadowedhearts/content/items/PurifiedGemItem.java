@@ -1,5 +1,7 @@
 package com.jayemceekay.shadowedhearts.content.items;
 
+import com.jayemceekay.shadowedhearts.common.shadow.ShadowPokemonProperties;
+
 import com.cobblemon.mod.common.api.mark.Mark;
 import com.cobblemon.mod.common.api.mark.Marks;
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
@@ -56,13 +58,13 @@ public class PurifiedGemItem extends Item {
         }
 
         // Check if already immunized
-        if (ShadowAspectUtil.isImmunized(pokemon)) {
+        if (ShadowPokemonProperties.isImmunized(pokemon)) {
             player.displayClientMessage(Component.translatable("message.shadowedhearts.purified_gem.already_immunized").withStyle(ChatFormatting.YELLOW), true);
             return InteractionResult.PASS;
         }
 
         // Immunize
-        ShadowAspectUtil.setImmunizedProperty(pokemon, true);
+        ShadowPokemonProperties.setImmunizedProperty(pokemon, true);
         player.displayClientMessage(Component.translatable("message.shadowedhearts.purified_gem.immunized", pokemon.getDisplayName(false).getString()).withStyle(ChatFormatting.GREEN), true);
         Mark purityRibbon = Marks.getByIdentifier(ResourceLocation.fromNamespaceAndPath(Shadowedhearts.MOD_ID, "ribbon_event_purity"));
         try {

@@ -8,9 +8,10 @@ import com.cobblemon.mod.common.pokemon.Pokemon;
 import com.jayemceekay.shadowedhearts.config.HeartGaugeConfig;
 import com.jayemceekay.shadowedhearts.config.ContextualSpawnConfig;
 import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs;
-import com.jayemceekay.shadowedhearts.common.util.SpeciesTagManager;
+import com.jayemceekay.shadowedhearts.data.SpeciesTagManager;
 import com.jayemceekay.shadowedhearts.world.gen.ImpactLocationSelector;
-import com.jayemceekay.shadowedhearts.network.AuraBroadcastQueue;
+import com.jayemceekay.shadowedhearts.world.umbrafall.UmbrafallProximity;
+import com.jayemceekay.shadowedhearts.network.aura.AuraBroadcastQueue;
 import com.jayemceekay.shadowedhearts.network.S2CUtils;
 import com.jayemceekay.shadowedhearts.registry.ModSounds;
 import kotlin.Unit;
@@ -48,7 +49,7 @@ public final class WildShadowSpawnListener {
             if (ShadowSpawnUtil.isBlacklisted(pokemon)) return Unit.INSTANCE;
 
             // Respect immunization
-            if (ShadowAspectUtil.isImmunized(pokemon)) return Unit.INSTANCE;
+            if (ShadowPokemonProperties.isImmunized(pokemon)) return Unit.INSTANCE;
 
             var context = ContextualSpawnConfig.INSTANCE;
             String dimension = level.dimension().location().toString();
@@ -63,7 +64,7 @@ public final class WildShadowSpawnListener {
             int horizontalRadius = context.umbrafallHorizontalRadius();
             int verticalRadius = context.umbrafallVerticalRadius();
             if (horizontalRadius > 0 && verticalRadius > 0
-                    && ShadowAspectUtil.isNearMeteoroid(level, entity.blockPosition(), horizontalRadius, verticalRadius)) {
+                    && UmbrafallProximity.isNearActiveCore(level, entity.blockPosition(), horizontalRadius, verticalRadius)) {
                 chance *= ShadowedHeartsConfigs.getInstance().getShadowConfig().worldAlteration().meteoroidShadowSpawnChanceMultiplier();
             }
 
@@ -79,7 +80,7 @@ public final class WildShadowSpawnListener {
             ShadowService.setHeartGauge(pokemon, entity, HeartGaugeConfig.getMax(pokemon));
 
             // Ensure required aspects for shadow
-            ShadowAspectUtil.ensureRequiredShadowAspects(pokemon);
+            ShadowStateInitialization.ensureRequiredShadowAspects(pokemon);
 
             // Insert shadow moves
             ShadowMoveUtil.assignShadowMoves(pokemon, RANDOM);

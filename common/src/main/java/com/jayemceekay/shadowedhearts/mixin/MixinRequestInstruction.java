@@ -1,5 +1,7 @@
 package com.jayemceekay.shadowedhearts.mixin;
 
+import com.jayemceekay.shadowedhearts.common.shadow.restrictions.ShadowUnlockPolicy;
+
 import com.cobblemon.mod.common.api.battles.model.actor.ActorType;
 import com.cobblemon.mod.common.api.battles.model.actor.BattleActor;
 import com.cobblemon.mod.common.battles.ShowdownActionRequest;
@@ -67,7 +69,7 @@ public abstract class MixinRequestInstruction {
                 String id = m.getId();
                 boolean forced = m.getMaxpp() == 100 && m.getPp() == 100; // Thrash/forced turn placeholder
                 if (forced || "struggle".equalsIgnoreCase(id)) continue;
-                if (ShadowAspectUtil.shouldMaskMove(effected, id)) {
+                if (ShadowUnlockPolicy.shouldMaskMove(effected, id)) {
                     m.setDisabled(true);
                     var gm = m.getGimmickMove();
                     if (gm != null) gm.setDisabled(true);

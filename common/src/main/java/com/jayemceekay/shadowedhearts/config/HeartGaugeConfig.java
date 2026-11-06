@@ -1,8 +1,9 @@
 package com.jayemceekay.shadowedhearts.config;
 
+import com.jayemceekay.shadowedhearts.common.shadow.ShadowPokemonProperties;
+
 import com.cobblemon.mod.common.pokemon.Pokemon;
 import com.cobblemon.mod.common.pokemon.Species;
-import com.jayemceekay.shadowedhearts.common.shadow.ShadowAspectUtil;
 import com.jayemceekay.shadowedhearts.common.shadow.HeartGaugeClientState;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -1247,7 +1248,7 @@ public final class HeartGaugeConfig {
      */
     public static int getMax(Pokemon pokemon) {
         if (pokemon == null) return DEFAULT_MAX;
-        int propertyMax = ShadowAspectUtil.getHeartGaugeMaxFromProperty(pokemon);
+        int propertyMax = ShadowPokemonProperties.getHeartGaugeMaxFromProperty(pokemon);
         if (propertyMax > 0) return propertyMax;
         Species species = pokemon.getSpecies();
         if (species == null) return DEFAULT_MAX;

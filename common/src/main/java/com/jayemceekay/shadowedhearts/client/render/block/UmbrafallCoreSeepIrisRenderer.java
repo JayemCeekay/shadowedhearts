@@ -2,8 +2,8 @@ package com.jayemceekay.shadowedhearts.client.render.block;
 
 import com.jayemceekay.shadowedhearts.Shadowedhearts;
 import com.jayemceekay.shadowedhearts.client.ModShaders;
-import com.jayemceekay.shadowedhearts.client.aura.AuraReaderPulseRenderer;
-import com.jayemceekay.shadowedhearts.client.aura.IrisHandler;
+import com.jayemceekay.shadowedhearts.client.render.iris.IrisCompat;
+import com.jayemceekay.shadowedhearts.client.render.iris.IrisHandler;
 import com.jayemceekay.shadowedhearts.client.render.DensityFboPipeline;
 import com.jayemceekay.shadowedhearts.client.render.IrisScaledWorldTarget;
 import com.mojang.blaze3d.systems.RenderSystem;
@@ -42,7 +42,7 @@ public final class UmbrafallCoreSeepIrisRenderer {
     private UmbrafallCoreSeepIrisRenderer() { }
 
     public static void beginFrame() {
-        IrisHandler iris = AuraReaderPulseRenderer.IRIS_HANDLER;
+        IrisHandler iris = IrisCompat.IRIS_HANDLER;
         // A nested shadow pass must not discard the pending world-color meshes.
         if (iris != null && iris.isShadowRenderActive()) return;
         clearCaptures();
@@ -59,7 +59,7 @@ public final class UmbrafallCoreSeepIrisRenderer {
     /** A rejected capture leaves the baked core visible without a mismatched custom pass. */
     public static boolean capture(BlockPos id, PoseStack.Pose pose,
                                   List<UmbrafallCoreSeepGeometry.Quad> quads, int light) {
-        IrisHandler iris = AuraReaderPulseRenderer.IRIS_HANDLER;
+        IrisHandler iris = IrisCompat.IRIS_HANDLER;
         if (iris != null && iris.isShadowRenderActive()) return false;
         if (!acceptingCaptures || iris == null || !iris.isShaderPackInUse()
                 || frameLevel == null || Minecraft.getInstance().level != frameLevel
@@ -102,7 +102,7 @@ public final class UmbrafallCoreSeepIrisRenderer {
     /** Caller owns IrisWorldColorScope and has disabled Iris' shader override. */
     public static void renderIris() {
         acceptingCaptures = false;
-        IrisHandler iris = AuraReaderPulseRenderer.IRIS_HANDLER;
+        IrisHandler iris = IrisCompat.IRIS_HANDLER;
         Minecraft mc = Minecraft.getInstance();
         try {
             if (CAPTURES.isEmpty() || iris == null || !iris.isShaderPackInUse()

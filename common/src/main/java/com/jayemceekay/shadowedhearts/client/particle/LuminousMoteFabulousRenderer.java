@@ -1,7 +1,7 @@
 package com.jayemceekay.shadowedhearts.client.particle;
 
 import com.jayemceekay.shadowedhearts.client.ModShaders;
-import com.jayemceekay.shadowedhearts.client.aura.AuraReaderPulseRenderer;
+import com.jayemceekay.shadowedhearts.client.render.iris.IrisCompat;
 import com.jayemceekay.shadowedhearts.client.render.DensityFboPipeline;
 import com.mojang.blaze3d.platform.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
@@ -80,7 +80,7 @@ public final class LuminousMoteFabulousRenderer {
     }
 
     private static boolean usesLatePass() {
-        var iris = AuraReaderPulseRenderer.IRIS_HANDLER;
+        var iris = IrisCompat.IRIS_HANDLER;
         return Minecraft.useShaderTransparency()
                 && (iris == null || (!iris.isShaderPackInUse() && !iris.isShadowRenderActive()));
     }

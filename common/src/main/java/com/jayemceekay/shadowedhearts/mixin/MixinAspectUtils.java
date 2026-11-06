@@ -1,5 +1,7 @@
 package com.jayemceekay.shadowedhearts.mixin;
 
+import com.jayemceekay.shadowedhearts.network.PokemonStateSync;
+
 import com.cobblemon.mod.common.api.moves.BenchedMove;
 import com.cobblemon.mod.common.api.moves.BenchedMoves;
 import com.cobblemon.mod.common.api.moves.Move;
@@ -32,9 +34,9 @@ public abstract class MixinAspectUtils {
         original.call(pokemon, propertyString);
         restoreShadowForcedAspects(pokemon, savedForcedShadowAspects);
         restoreShadowMoves(pokemon, savedSlots, savedBenched);
-        ShadowAspectUtil.syncAspects(pokemon);
-        ShadowAspectUtil.syncMoveSet(pokemon);
-        ShadowAspectUtil.syncBenchedMoves(pokemon);
+        PokemonStateSync.syncAspects(pokemon);
+        PokemonStateSync.syncMoveSet(pokemon);
+        PokemonStateSync.syncBenchedMoves(pokemon);
     }
 
     /**
@@ -73,9 +75,9 @@ public abstract class MixinAspectUtils {
         restoreShadowForcedAspects(pokemon, savedForcedShadowAspects);
         restoreShadowMoves(pokemon, savedSlots, savedBenched);
         // Explicit sync with snapshots to avoid race conditions
-        ShadowAspectUtil.syncAspects(pokemon);
-        ShadowAspectUtil.syncMoveSet(pokemon);
-        ShadowAspectUtil.syncBenchedMoves(pokemon);
+        PokemonStateSync.syncAspects(pokemon);
+        PokemonStateSync.syncMoveSet(pokemon);
+        PokemonStateSync.syncBenchedMoves(pokemon);
     }
 
     private static Move[] saveShadowSlots(Pokemon pokemon) {

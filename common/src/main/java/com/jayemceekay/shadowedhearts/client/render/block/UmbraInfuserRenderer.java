@@ -8,8 +8,8 @@ import com.cobblemon.mod.common.client.render.models.blockbench.repository.Varyi
 import com.cobblemon.mod.common.entity.PoseType;
 import com.jayemceekay.shadowedhearts.Shadowedhearts;
 import com.jayemceekay.shadowedhearts.client.ModShaders;
-import com.jayemceekay.shadowedhearts.client.aura.AuraReaderPulseRenderer;
-import com.jayemceekay.shadowedhearts.client.aura.IrisHandler;
+import com.jayemceekay.shadowedhearts.client.render.iris.IrisCompat;
+import com.jayemceekay.shadowedhearts.client.render.iris.IrisHandler;
 import com.jayemceekay.shadowedhearts.content.blocks.UmbraInfuserBlock;
 import com.jayemceekay.shadowedhearts.content.blocks.entity.UmbraInfuserBlockEntity;
 import com.jayemceekay.shadowedhearts.registry.ModBlocks;
@@ -141,7 +141,7 @@ public final class UmbraInfuserRenderer implements BlockEntityRenderer<UmbraInfu
 
     private static void renderLiquid(UmbraInfuserBlockEntity entity, PoseStack.Pose pose,
                                      MultiBufferSource buffers, Cavity cavity, float top, float yaw, int light) {
-        IrisHandler iris = AuraReaderPulseRenderer.IRIS_HANDLER;
+        IrisHandler iris = IrisCompat.IRIS_HANDLER;
         if (iris != null && iris.isShadowRenderActive()) return;
         float seed = UmbraLiquidSeed.at(entity.getBlockPos().getX(), entity.getBlockPos().getY(),
                 entity.getBlockPos().getZ());

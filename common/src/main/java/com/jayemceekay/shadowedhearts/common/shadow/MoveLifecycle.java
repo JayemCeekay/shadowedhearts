@@ -1,5 +1,7 @@
 package com.jayemceekay.shadowedhearts.common.shadow;
 
+import com.jayemceekay.shadowedhearts.network.PokemonStateSync;
+
 import com.cobblemon.mod.common.api.moves.BenchedMove;
 import com.cobblemon.mod.common.api.moves.Move;
 import com.cobblemon.mod.common.api.moves.MoveTemplate;
@@ -44,7 +46,7 @@ public final class MoveLifecycle {
         if (frustration == null) throw new IllegalStateException("GO move policy requires the Frustration move");
         installFirstMove(pokemon, frustration);
         setState(pokemon, new MoveLifecycleProperty(GO_SHADOW, List.of("frustration")));
-        ShadowAspectUtil.syncProperties(pokemon);
+        PokemonStateSync.syncProperties(pokemon);
         return true;
     }
 
@@ -71,8 +73,8 @@ public final class MoveLifecycle {
         if (pokemon.getMoveSet().getMoves().stream().anyMatch(move -> move.getTemplate().getName().equals(name))) return;
         pokemon.getBenchedMoves().remove(oldMove);
         setState(pokemon, new MoveLifecycleProperty(state.kind(), state.moves().stream().filter(move -> !move.equals(name)).toList()));
-        ShadowAspectUtil.syncProperties(pokemon);
-        ShadowAspectUtil.syncBenchedMoves(pokemon);
+        PokemonStateSync.syncProperties(pokemon);
+        PokemonStateSync.syncBenchedMoves(pokemon);
     }
 
     /** Apply GO conversion after native restoration, before deferred level-ups validate the moveset. */

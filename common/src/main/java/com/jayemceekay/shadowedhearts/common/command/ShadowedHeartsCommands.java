@@ -1,5 +1,8 @@
 package com.jayemceekay.shadowedhearts.common.command;
 
+import com.jayemceekay.shadowedhearts.common.shadow.ShadowHeartGauge;
+import com.jayemceekay.shadowedhearts.common.shadow.ShadowProgressionBuffers;
+
 import com.cobblemon.mod.common.Cobblemon;
 import com.cobblemon.mod.common.command.argument.PokemonPropertiesArgumentType;
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
@@ -8,8 +11,9 @@ import com.jayemceekay.shadowedhearts.common.heart.HeartGaugeEvents;
 import com.jayemceekay.shadowedhearts.common.shadow.ShadowAspectUtil;
 import com.jayemceekay.shadowedhearts.common.shadow.ShadowMoveUtil;
 import com.jayemceekay.shadowedhearts.common.shadow.ShadowService;
+import com.jayemceekay.shadowedhearts.common.shadow.ShadowStateInitialization;
 import com.jayemceekay.shadowedhearts.config.HeartGaugeConfig;
-import com.jayemceekay.shadowedhearts.network.AuraBroadcastQueue;
+import com.jayemceekay.shadowedhearts.network.aura.AuraBroadcastQueue;
 import com.jayemceekay.shadowedhearts.storage.purification.PurificationChamberStore;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
@@ -195,7 +199,7 @@ public class ShadowedHeartsCommands {
                                             Pokemon pokemon = pokemonEntity.getPokemon();
                                             ShadowService.setShadow(pokemon, pokemonEntity, true);
                                             ShadowService.setHeartGauge(pokemon, pokemonEntity, HeartGaugeConfig.getMax(pokemon));
-                                            ShadowAspectUtil.ensureRequiredShadowAspects(pokemon);
+                                            ShadowStateInitialization.ensureRequiredShadowAspects(pokemon);
                                             ShadowMoveUtil.assignShadowMoves(pokemon);
                                             AuraBroadcastQueue.queueBroadcast(pokemonEntity, 2.5f, 200);
 
@@ -278,7 +282,7 @@ public class ShadowedHeartsCommands {
         corrupt(pokemon, entity, gauge);
         ctx.getSource().sendSuccess(() -> gauge == null
                 ? Component.translatable("message.shadowedhearts.command.shadow.entity", pokemon.getSpecies().getTranslatedName())
-                : Component.translatable("message.shadowedhearts.command.shadow.entity_gauge", pokemon.getSpecies().getTranslatedName(), ShadowAspectUtil.getHeartGaugeMeter(pokemon)), true);
+                : Component.translatable("message.shadowedhearts.command.shadow.entity_gauge", pokemon.getSpecies().getTranslatedName(), ShadowHeartGauge.getHeartGaugeMeter(pokemon)), true);
         return 1;
     }
 
@@ -306,7 +310,7 @@ public class ShadowedHeartsCommands {
         corrupt(pokemon, null, gauge);
         ctx.getSource().sendSuccess(() -> gauge == null
                 ? Component.translatable("message.shadowedhearts.command.shadow.party_member", pokemon.getSpecies().getTranslatedName(), player.getDisplayName())
-                : Component.translatable("message.shadowedhearts.command.shadow.party_member_gauge", pokemon.getSpecies().getTranslatedName(), player.getDisplayName(), ShadowAspectUtil.getHeartGaugeMeter(pokemon)), true);
+                : Component.translatable("message.shadowedhearts.command.shadow.party_member_gauge", pokemon.getSpecies().getTranslatedName(), player.getDisplayName(), ShadowHeartGauge.getHeartGaugeMeter(pokemon)), true);
         return 1;
     }
 
@@ -346,8 +350,8 @@ public class ShadowedHeartsCommands {
         source.sendSuccess(() -> Component.translatable("message.shadowedhearts.command.inspect.data"), false);
         source.sendSuccess(() -> Component.translatable("message.shadowedhearts.command.inspect.species", pk.getSpecies().getTranslatedName()), false);
         source.sendSuccess(() -> Component.translatable("message.shadowedhearts.command.inspect.aspects", pk.getAspects().toString()), false);
-        source.sendSuccess(() -> Component.translatable("message.shadowedhearts.command.inspect.gauge", ShadowAspectUtil.getHeartGaugePercent(pk), ShadowAspectUtil.getHeartGaugeMeter(pk), HeartGaugeConfig.getMax(pk)), false);
-        source.sendSuccess(() -> Component.translatable("message.shadowedhearts.command.inspect.experience", ShadowAspectUtil.getBufferedExp(pk)), false);
-        source.sendSuccess(() -> Component.translatable("message.shadowedhearts.command.inspect.evs", Arrays.toString(ShadowAspectUtil.getBufferedEvs(pk))), false);
+        source.sendSuccess(() -> Component.translatable("message.shadowedhearts.command.inspect.gauge", ShadowHeartGauge.getHeartGaugePercent(pk), ShadowHeartGauge.getHeartGaugeMeter(pk), HeartGaugeConfig.getMax(pk)), false);
+        source.sendSuccess(() -> Component.translatable("message.shadowedhearts.command.inspect.experience", ShadowProgressionBuffers.getBufferedExp(pk)), false);
+        source.sendSuccess(() -> Component.translatable("message.shadowedhearts.command.inspect.evs", Arrays.toString(ShadowProgressionBuffers.getBufferedEvs(pk))), false);
     }
 }

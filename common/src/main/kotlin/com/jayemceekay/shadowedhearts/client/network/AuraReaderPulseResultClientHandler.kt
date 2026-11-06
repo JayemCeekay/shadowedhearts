@@ -1,8 +1,8 @@
 package com.jayemceekay.shadowedhearts.client.network
 
 import com.cobblemon.mod.common.api.net.ClientNetworkPacketHandler
-import com.jayemceekay.shadowedhearts.client.aura.AuraReaderClientState
-import com.jayemceekay.shadowedhearts.client.aura.AuraReaderPulseRenderer
+import com.jayemceekay.shadowedhearts.client.aura.reader.AuraReaderClientState
+import com.jayemceekay.shadowedhearts.client.aura.reader.AuraReaderPulseRenderer
 import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs
 import com.jayemceekay.shadowedhearts.network.aura.AuraReaderPulseResultS2CPacket
 import com.jayemceekay.shadowedhearts.registry.ModSounds

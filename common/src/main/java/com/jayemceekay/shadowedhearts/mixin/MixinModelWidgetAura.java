@@ -5,9 +5,8 @@ import com.cobblemon.mod.common.client.gui.summary.Summary;
 import com.cobblemon.mod.common.client.gui.summary.widgets.ModelWidget;
 import com.cobblemon.mod.common.pokemon.RenderablePokemon;
 import com.cobblemon.mod.common.client.render.models.blockbench.FloatingState;
-import com.jayemceekay.shadowedhearts.client.aura.ShadowAuraEmitters;
-import com.jayemceekay.shadowedhearts.client.aura.ShadowPokemonAuraGuiRenderer;
-import com.jayemceekay.shadowedhearts.client.aura.ShadowPokemonAuraSystem;
+import com.jayemceekay.shadowedhearts.client.aura.shadow.ShadowPokemonAuraGuiRenderer;
+import com.jayemceekay.shadowedhearts.client.aura.shadow.ShadowPokemonAuraSystem;
 import com.jayemceekay.shadowedhearts.client.gui.GuiPoseScissor;
 import com.jayemceekay.shadowedhearts.client.gui.PurificationChamberGUI;
 import com.jayemceekay.shadowedhearts.client.gui.UmbraInfuserScreen;
@@ -117,9 +116,9 @@ public abstract class MixinModelWidgetAura {
         // Render the Shadow aura for Shadow Pokémon or those with a Shadow Shard.
         if (!shadowedhearts$shouldHaveAura(this.pokemon)) return;
         if(Minecraft.getInstance().screen instanceof Summary) {
-            ShadowAuraEmitters.renderInSummaryGUI(context, context.bufferSource(), 1.0F, partialTicks, this.pokemon, ((ModelWidget) (Object) this), shadowedhearts$previewAura());
+            ShadowPokemonAuraGuiRenderer.renderInSummaryGUI(context, context.bufferSource(), 1.0F, partialTicks, this.pokemon, ((ModelWidget) (Object) this), shadowedhearts$previewAura());
         } else if(Minecraft.getInstance().screen instanceof PCGUI) {
-            ShadowAuraEmitters.renderInPcGUI(context, context.bufferSource(), 1.0F, partialTicks, this.pokemon, ((ModelWidget) (Object) this), shadowedhearts$previewAura());
+            ShadowPokemonAuraGuiRenderer.renderInPcGUI(context, context.bufferSource(), 1.0F, partialTicks, this.pokemon, ((ModelWidget) (Object) this), shadowedhearts$previewAura());
         }
 
     }

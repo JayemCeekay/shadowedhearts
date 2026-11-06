@@ -10,7 +10,7 @@ public final class ModShadersPlatformImpl {
     public static void registerShaders() {
         CoreShaderRegistrationCallback.EVENT.register((registrationContext) -> {
             com.jayemceekay.shadowedhearts.client.ball.DarkBallCaptureVfx.onResourceReload();
-            com.jayemceekay.shadowedhearts.client.aura.ShadowPokemonAuraFBO.destroy();
+            com.jayemceekay.shadowedhearts.client.aura.shadow.ShadowPokemonAuraFBO.destroy();
             ModShaders.SHADOW_AURA_PIXEL_RESOLVE = null;
             ModShaders.SHADOW_AURA_PIXEL_PRESENT = null;
             com.jayemceekay.shadowedhearts.client.voidshadow.VoidShadowShaders.LIQUID = null;
@@ -67,19 +67,19 @@ public final class ModShadersPlatformImpl {
                 /*registrationContext.register(
                         ResourceLocation.parse("shadowedhearts:shadow_aura_fog"),
                         DefaultVertexFormat.NEW_ENTITY,
-                        program -> { ModShaders.SHADOW_AURA_FOG = program; ModShaders.SHADOW_AURA_FOG_UNIFORMS = com.jayemceekay.shadowedhearts.client.ShadowFogUniforms.from(program); }
+                        program -> { ModShaders.SHADOW_AURA_FOG = program; ModShaders.SHADOW_AURA_FOG_UNIFORMS = com.jayemceekay.shadowedhearts.client.render.ShadowFogUniforms.from(program); }
                 );*/
                 registrationContext.register(
                         ResourceLocation.parse("shadowedhearts:aura/shadow_aura_fog_cylinder"),
                         DefaultVertexFormat.NEW_ENTITY,
-                        program -> { ModShaders.SHADOW_AURA_FOG_CYLINDER = program; ModShaders.SHADOW_AURA_FOG_CYLINDER_UNIFORMS = com.jayemceekay.shadowedhearts.client.ShadowFogUniforms.from(program); }
+                        program -> { ModShaders.SHADOW_AURA_FOG_CYLINDER = program; ModShaders.SHADOW_AURA_FOG_CYLINDER_UNIFORMS = com.jayemceekay.shadowedhearts.client.render.ShadowFogUniforms.from(program); }
                 );
 
                 // XD variant (filament-style)
                 registrationContext.register(
                         ResourceLocation.parse("shadowedhearts:aura/shadow_aura_xd_cylinder"),
                         DefaultVertexFormat.NEW_ENTITY,
-                        program -> { ModShaders.SHADOW_AURA_XD_CYLINDER = program; ModShaders.SHADOW_AURA_XD_CYLINDER_UNIFORMS = com.jayemceekay.shadowedhearts.client.ShadowFogUniforms.from(program); }
+                        program -> { ModShaders.SHADOW_AURA_XD_CYLINDER = program; ModShaders.SHADOW_AURA_XD_CYLINDER_UNIFORMS = com.jayemceekay.shadowedhearts.client.render.ShadowFogUniforms.from(program); }
                 );
 
                 // Purification Chamber background (screen-space quad)

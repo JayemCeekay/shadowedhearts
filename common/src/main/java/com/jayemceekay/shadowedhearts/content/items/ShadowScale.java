@@ -1,5 +1,9 @@
 package com.jayemceekay.shadowedhearts.content.items;
 
+import com.jayemceekay.shadowedhearts.common.shadow.restrictions.ShadowUnlockPolicy;
+
+import com.jayemceekay.shadowedhearts.network.PokemonStateSync;
+
 import com.cobblemon.mod.common.Cobblemon;
 import com.cobblemon.mod.common.api.callback.MoveSelectCallbacks;
 import com.cobblemon.mod.common.api.callback.MoveSelectDTO;
@@ -73,7 +77,7 @@ public class ShadowScale extends Item {
             Move move = pokemon.getMoveSet().get(slot);
             if (move == null) continue;
             choices.add(new Selection(slot, move));
-            if (ShadowAspectUtil.shouldMaskMove(pokemon, move)) {
+            if (ShadowUnlockPolicy.shouldMaskMove(pokemon, move)) {
                 shown.add(new MoveSelectDTO(Moves.getByNameOrDummy("shadow-locked"), false, 0, 0));
             } else {
                 shown.add(new MoveSelectDTO(move, !replacements(pokemon, move).isEmpty()));
@@ -101,7 +105,7 @@ public class ShadowScale extends Item {
                     Selection selected = choices.get(index);
                     if (player.level() != originalLevel || originalLevel.getGameTime() > expiresAt
                             || pokemon.getMoveSet().get(selected.slot()) != selected.move()
-                            || ShadowAspectUtil.shouldMaskMove(pokemon, selected.move())) {
+                            || ShadowUnlockPolicy.shouldMaskMove(pokemon, selected.move())) {
                         refuse(player, "changed");
                         return Unit.INSTANCE;
                     }
@@ -115,8 +119,8 @@ public class ShadowScale extends Item {
                     Replacement replacement = available.get(player.getRandom().nextInt(available.size()));
                     applyReplacement(pokemon, selected, replacement);
                     if (!player.getAbilities().instabuild) stack.shrink(1);
-                    ShadowAspectUtil.syncMoveSet(pokemon);
-                    ShadowAspectUtil.syncBenchedMoves(pokemon);
+                    PokemonStateSync.syncMoveSet(pokemon);
+                    PokemonStateSync.syncBenchedMoves(pokemon);
                     player.getInventory().setChanged();
                     player.containerMenu.broadcastChanges();
                     player.displayClientMessage(Component.translatable(MESSAGE + "replaced",

@@ -1,5 +1,7 @@
 package com.jayemceekay.shadowedhearts.common.shadow;
 
+import com.jayemceekay.shadowedhearts.network.PokemonStateSync;
+
 import com.cobblemon.mod.common.api.moves.*;
 import com.cobblemon.mod.common.api.pokemon.experience.SidemodExperienceSource;
 import com.cobblemon.mod.common.api.pokemon.stats.Stats;
@@ -15,7 +17,6 @@ import net.minecraft.server.level.ServerPlayer;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
-
 
 /**
  * Service façade for synchronizing shadow state between stored Cobblemon Pokemon and live entities.
@@ -36,17 +37,17 @@ public final class ShadowService {
     public static void setShadow(Pokemon pokemon, @Nullable PokemonEntity live, boolean shadow, boolean sync) {
         ShadowAspectUtil.setShadowAspect(pokemon, shadow, false);
         // Ensure required supporting aspects exist when shadowed
-        ShadowAspectUtil.ensureRequiredShadowAspects(pokemon, false);
+        ShadowStateInitialization.ensureRequiredShadowAspects(pokemon, false);
         if (live != null) {
-            ShadowPokemonData.set(live, shadow, ShadowAspectUtil.getHeartGauge(pokemon));
+            ShadowPokemonData.set(live, shadow, ShadowHeartGauge.getHeartGauge(pokemon));
         }
         if (sync) {
             // Proactively sync aspect changes to observing players (party/PC/chamber UI) and mark store dirty.
             // This ensures client UIs (e.g., Summary screen) update immediately without requiring a PC swap.
-            ShadowAspectUtil.syncAspects(pokemon);
-            ShadowAspectUtil.syncProperties(pokemon);
-            ShadowAspectUtil.syncBenchedMoves(pokemon);
-            ShadowAspectUtil.syncMoveSet(pokemon);
+            PokemonStateSync.syncAspects(pokemon);
+            PokemonStateSync.syncProperties(pokemon);
+            PokemonStateSync.syncBenchedMoves(pokemon);
+            PokemonStateSync.syncMoveSet(pokemon);
         }
     }
 
@@ -60,28 +61,28 @@ public final class ShadowService {
     public static void setHeartGauge(Pokemon pokemon, @Nullable PokemonEntity live, int meter, boolean sync) {
         int max = HeartGaugeConfig.getMax(pokemon);
         int clamped = Math.max(0, Math.min(max, meter));
-        ShadowAspectUtil.setHeartGaugeValue(pokemon, clamped, false);
+        ShadowHeartGauge.setHeartGaugeValue(pokemon, clamped, false);
         // Ensure required supporting aspects exist when shadowed (no-op if not shadowed)
-        ShadowAspectUtil.ensureRequiredShadowAspects(pokemon, false);
+        ShadowStateInitialization.ensureRequiredShadowAspects(pokemon, false);
         if (live != null)
-            ShadowPokemonData.set(live, ShadowPokemonData.isShadow(live), ShadowAspectUtil.getHeartGauge(pokemon));
+            ShadowPokemonData.set(live, ShadowPokemonData.isShadow(live), ShadowHeartGauge.getHeartGauge(pokemon));
 
         applyMoveUnlocks(pokemon);
 
         if (sync) {
             // Proactively sync aspect changes to observing players and mark store dirty so client UI updates live.
-            ShadowAspectUtil.syncAspects(pokemon);
-            ShadowAspectUtil.syncProperties(pokemon);
-            ShadowAspectUtil.syncBenchedMoves(pokemon);
-            ShadowAspectUtil.syncMoveSet(pokemon);
+            PokemonStateSync.syncAspects(pokemon);
+            PokemonStateSync.syncProperties(pokemon);
+            PokemonStateSync.syncBenchedMoves(pokemon);
+            PokemonStateSync.syncMoveSet(pokemon);
         }
     }
 
     public static void syncAll(Pokemon pokemon) {
-        ShadowAspectUtil.syncAspects(pokemon);
-        ShadowAspectUtil.syncProperties(pokemon);
-        ShadowAspectUtil.syncBenchedMoves(pokemon);
-        ShadowAspectUtil.syncMoveSet(pokemon);
+        PokemonStateSync.syncAspects(pokemon);
+        PokemonStateSync.syncProperties(pokemon);
+        PokemonStateSync.syncBenchedMoves(pokemon);
+        PokemonStateSync.syncMoveSet(pokemon);
     }
 
     private static void applyMoveUnlocks(Pokemon pokemon) {
@@ -91,7 +92,7 @@ public final class ShadowService {
         var settings = ShadowRestrictionSettings.serverCurrent();
         // Turning off battle/visibility locks must not itself replace assigned Shadow moves.
         // Automatic slot restoration still follows the configured gauge progression.
-        int allowed = HeartGaugeUnlockRules.allowedNonShadowMoves(ShadowAspectUtil.getHeartGaugeMeter(pokemon), HeartGaugeConfig.getMax(pokemon),
+        int allowed = HeartGaugeUnlockRules.allowedNonShadowMoves(ShadowHeartGauge.getHeartGaugeMeter(pokemon), HeartGaugeConfig.getMax(pokemon),
                 true, settings.firstMoveUnlockPercent(), settings.secondMoveUnlockPercent(), settings.thirdMoveUnlockPercent(),
                 settings.exactThresholds());
         if (allowed < 1) return;
@@ -184,7 +185,7 @@ public final class ShadowService {
         ShadowProgressionManager.releaseFriendship(pokemon, wasShadow);
 
         // 3. Apply buffered EXP/EVs and clear gauge/buffers
-        int bufferedExp = ShadowAspectUtil.getBufferedExp(pokemon);
+        int bufferedExp = ShadowProgressionBuffers.getBufferedExp(pokemon);
         if (bufferedExp > 0) {
             bufferedExp = Math.min(bufferedExp,
                     ShadowProgressionManager.experienceCapacity(pokemon, authorizedOwner));
@@ -194,7 +195,7 @@ public final class ShadowService {
             }
         }
 
-        int[] bufferedEvs = ShadowAspectUtil.getBufferedEvs(pokemon);
+        int[] bufferedEvs = ShadowProgressionBuffers.getBufferedEvs(pokemon);
         Stats[] stats = {
                 Stats.HP,
                 Stats.ATTACK,

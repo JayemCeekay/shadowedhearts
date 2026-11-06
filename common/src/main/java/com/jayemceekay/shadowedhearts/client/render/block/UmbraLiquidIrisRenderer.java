@@ -2,8 +2,8 @@ package com.jayemceekay.shadowedhearts.client.render.block;
 
 import com.jayemceekay.shadowedhearts.Shadowedhearts;
 import com.jayemceekay.shadowedhearts.client.ModShaders;
-import com.jayemceekay.shadowedhearts.client.aura.AuraReaderPulseRenderer;
-import com.jayemceekay.shadowedhearts.client.aura.IrisHandler;
+import com.jayemceekay.shadowedhearts.client.render.iris.IrisCompat;
+import com.jayemceekay.shadowedhearts.client.render.iris.IrisHandler;
 import com.jayemceekay.shadowedhearts.client.render.DensityFboPipeline;
 import com.jayemceekay.shadowedhearts.client.render.IrisScaledWorldTarget;
 import com.mojang.blaze3d.systems.RenderSystem;
@@ -38,7 +38,7 @@ public final class UmbraLiquidIrisRenderer {
     private UmbraLiquidIrisRenderer() { }
 
     public static void beginFrame() {
-        IrisHandler iris = AuraReaderPulseRenderer.IRIS_HANDLER;
+        IrisHandler iris = IrisCompat.IRIS_HANDLER;
         if (iris != null && iris.isShadowRenderActive()) return;
         CAPTURES.clear();
         frameLevel = Minecraft.getInstance().level;
@@ -51,7 +51,7 @@ public final class UmbraLiquidIrisRenderer {
                                   float minX, float minY, float minZ,
                                   float maxX, float maxY, float maxZ,
                                   float seed, int quarterTurns, int light) {
-        IrisHandler iris = AuraReaderPulseRenderer.IRIS_HANDLER;
+        IrisHandler iris = IrisCompat.IRIS_HANDLER;
         if (iris != null && iris.isShadowRenderActive()) return true;
         if (!acceptingCaptures || iris == null || !iris.isShaderPackInUse()
                 || frameLevel == null || Minecraft.getInstance().level != frameLevel
@@ -80,7 +80,7 @@ public final class UmbraLiquidIrisRenderer {
     /** Caller owns IrisWorldColorScope and has disabled Iris' shader override. */
     public static void renderIris() {
         acceptingCaptures = false;
-        IrisHandler iris = AuraReaderPulseRenderer.IRIS_HANDLER;
+        IrisHandler iris = IrisCompat.IRIS_HANDLER;
         Minecraft mc = Minecraft.getInstance();
         try {
             if (CAPTURES.isEmpty() || iris == null || !iris.isShaderPackInUse()

@@ -1,7 +1,7 @@
 package com.jayemceekay.shadowedhearts.client.moonwound;
 
-import com.jayemceekay.shadowedhearts.client.aura.AuraReaderHud;
-import com.jayemceekay.shadowedhearts.client.aura.AuraReaderHudGeometry;
+import com.jayemceekay.shadowedhearts.client.aura.reader.AuraReaderHud;
+import com.jayemceekay.shadowedhearts.client.aura.reader.AuraReaderHudGeometry;
 import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs;
 import com.jayemceekay.shadowedhearts.network.moonwound.MoonwoundSnapshot;
 import net.minecraft.client.Minecraft;

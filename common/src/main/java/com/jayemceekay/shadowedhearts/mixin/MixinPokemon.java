@@ -1,5 +1,6 @@
 package com.jayemceekay.shadowedhearts.mixin;
 
+import com.jayemceekay.shadowedhearts.network.PokemonStateSync;
 
 import com.cobblemon.mod.common.api.moves.BenchedMove;
 import com.cobblemon.mod.common.api.moves.Move;
@@ -14,7 +15,7 @@ import com.jayemceekay.shadowedhearts.common.shadow.ShadowAspectUtil;
 import com.jayemceekay.shadowedhearts.common.shadow.ShadowMoveUtil;
 import com.jayemceekay.shadowedhearts.common.shadow.ShadowFriendshipProgression;
 import com.jayemceekay.shadowedhearts.common.shadow.restrictions.ShadowRestrictionPolicy;
-import com.jayemceekay.shadowedhearts.network.AuraServerSync;
+import com.jayemceekay.shadowedhearts.network.aura.AuraServerSync;
 import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.sugar.Local;
@@ -56,7 +57,7 @@ public abstract class MixinPokemon implements AuraStyleProperties.ForcedAspectAc
         boolean changed = !isClient && AuraStyleProperties.normalize(pokemon);
         original.call();
         if (changed) {
-            ShadowAspectUtil.syncProperties(pokemon);
+            PokemonStateSync.syncProperties(pokemon);
         }
         if (!isClient && wasShadow != ShadowAspectUtil.hasShadowAspect(pokemon)) {
             AuraServerSync.onShadowStateChanged(pokemon, wasShadow);
@@ -195,8 +196,8 @@ public abstract class MixinPokemon implements AuraStyleProperties.ForcedAspectAc
         });
 
         // Explicit sync with snapshots after all modifications are done
-        ShadowAspectUtil.syncMoveSet(self);
-        ShadowAspectUtil.syncBenchedMoves(self);
+        PokemonStateSync.syncMoveSet(self);
+        PokemonStateSync.syncBenchedMoves(self);
 
         return result;
     }

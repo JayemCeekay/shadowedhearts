@@ -1,5 +1,7 @@
 package com.jayemceekay.shadowedhearts.client.gui
 
+import com.jayemceekay.shadowedhearts.common.shadow.restrictions.ShadowUnlockPolicy
+
 import com.cobblemon.mod.common.api.gui.blitk
 import com.cobblemon.mod.common.api.pokemon.stats.Stats
 import com.cobblemon.mod.common.api.text.bold
@@ -15,7 +17,6 @@ import com.cobblemon.mod.common.pokemon.Pokemon
 import com.cobblemon.mod.common.util.asTranslated
 import com.cobblemon.mod.common.util.cobblemonResource
 import com.cobblemon.mod.common.util.lang
-import com.jayemceekay.shadowedhearts.common.shadow.ShadowAspectUtil
 import com.jayemceekay.shadowedhearts.common.shadow.ShadowMoveUtil
 import com.mojang.blaze3d.systems.RenderSystem
 import net.minecraft.client.Minecraft
@@ -247,13 +248,13 @@ class UmbraInfuserPokemonPanel {
         }
 
         // Use the same disclosure rules as the purification PC, including after infusion finishes.
-        val nature = if (ShadowAspectUtil.isNatureHiddenByGauge(pokemon)) {
+        val nature = if (ShadowUnlockPolicy.isNatureHiddenByGauge(pokemon)) {
             Component.literal("????")
         } else reformatNatureTextIfMinted(pokemon)
         text(graphics, nature, x + 10, y + 137, 60, mouseX, mouseY, centered = true)
         text(graphics, pokemon.ability.displayName.asTranslated(), x + 10, y + 154, 60, mouseX, mouseY, centered = true)
 
-        val allowed = ShadowAspectUtil.getAllowedVisibleNonShadowMoves(pokemon)
+        val allowed = ShadowUnlockPolicy.getAllowedVisibleNonShadowMoves(pokemon)
         var nonShadowIndex = 0
         val moves = pokemon.moveSet.getMoves().take(4).map { move ->
             if (ShadowMoveUtil.isShadowMove(move)) move.displayName
@@ -270,8 +271,8 @@ class UmbraInfuserPokemonPanel {
 
     private fun renderStats(graphics: GuiGraphics, x: Int, y: Int, pokemon: Pokemon, mouseX: Int, mouseY: Int) {
         val hidden = if (currentStatIndex == STAT_IV) {
-            ShadowAspectUtil.isIVHiddenByGauge(pokemon)
-        } else ShadowAspectUtil.isEVHiddenByGauge(pokemon)
+            ShadowUnlockPolicy.isIVHiddenByGauge(pokemon)
+        } else ShadowUnlockPolicy.isEVHiddenByGauge(pokemon)
         for (index in STATS.indices) {
             val rowY = y + 139 + 10 * index
             text(graphics, STAT_LABELS[index], x + 13, rowY, 44, mouseX, mouseY)

@@ -1,6 +1,6 @@
 package com.jayemceekay.shadowedhearts.client.particle;
 
-import com.jayemceekay.shadowedhearts.client.aura.ColosseumAuraVolume;
+import com.jayemceekay.shadowedhearts.client.aura.shadow.style.colosseum.ColosseumAuraVolume;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.Random;

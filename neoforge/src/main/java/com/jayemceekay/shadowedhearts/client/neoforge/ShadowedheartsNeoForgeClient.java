@@ -5,9 +5,9 @@ import com.cobblemon.mod.common.entity.pokeball.EmptyPokeBallEntity;
 import com.jayemceekay.shadowedhearts.Shadowedhearts;
 import com.jayemceekay.shadowedhearts.client.ModKeybinds;
 import com.jayemceekay.shadowedhearts.client.ShadowedHeartsClient;
-import com.jayemceekay.shadowedhearts.client.aura.ShadowAuraEmitters;
-import com.jayemceekay.shadowedhearts.client.aura.AuraReaderPulseRenderer;
-import com.jayemceekay.shadowedhearts.client.aura.ShadowPokemonAuraSystem;
+import com.jayemceekay.shadowedhearts.client.aura.shadow.ShadowAuraEmitters;
+import com.jayemceekay.shadowedhearts.client.aura.reader.AuraReaderPulseRenderer;
+import com.jayemceekay.shadowedhearts.client.aura.shadow.ShadowPokemonAuraSystem;
 import com.jayemceekay.shadowedhearts.client.ball.BallEmitters;
 import com.jayemceekay.shadowedhearts.client.particle.LuminousMoteEmitters;
 import com.jayemceekay.shadowedhearts.client.particle.LuminousMoteParticle;
@@ -15,7 +15,7 @@ import com.jayemceekay.shadowedhearts.client.particle.PenumbraTrailSystem;
 import com.jayemceekay.shadowedhearts.client.particle.PenumbraTrailParticle;
 import com.jayemceekay.shadowedhearts.client.particle.RelicStoneMoteParticle;
 import com.jayemceekay.shadowedhearts.client.render.VanillaWorldShaderFrame;
-import com.jayemceekay.shadowedhearts.config.ClientConfig;
+import com.jayemceekay.shadowedhearts.config.ConfigLifecycle;
 import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs;
 import com.jayemceekay.shadowedhearts.content.items.ScentItem;
 import com.jayemceekay.shadowedhearts.registry.ModItems;
@@ -107,18 +107,12 @@ public final class ShadowedheartsNeoForgeClient {
 
     @SubscribeEvent
     public static void onConfigLoading(ModConfigEvent.Loading event) {
-        if (event.getConfig().getSpec() == ClientConfig.SPEC) {
-                com.jayemceekay.shadowedhearts.config.preset.ConfigSnapshotService.loaded(event.getConfig().getSpec(), event.getConfig()::getFullPath);
-            ShadowedHeartsConfigs.getInstance().getClientConfig().load();
-        }
+        ConfigLifecycle.loadClient(event.getConfig().getSpec(), event.getConfig()::getFullPath);
     }
 
     @SubscribeEvent
     public static void onConfigReloading(ModConfigEvent.Reloading event) {
-        if (event.getConfig().getSpec() == ClientConfig.SPEC) {
-                com.jayemceekay.shadowedhearts.config.preset.ConfigSnapshotService.loaded(event.getConfig().getSpec(), event.getConfig()::getFullPath);
-            ShadowedHeartsConfigs.getInstance().getClientConfig().load();
-        }
+        ConfigLifecycle.loadClient(event.getConfig().getSpec(), event.getConfig()::getFullPath);
     }
 
     @SubscribeEvent

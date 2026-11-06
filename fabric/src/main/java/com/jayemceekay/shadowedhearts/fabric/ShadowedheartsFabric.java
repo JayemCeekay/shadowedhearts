@@ -2,11 +2,9 @@ package com.jayemceekay.shadowedhearts.fabric;
 
 import com.jayemceekay.shadowedhearts.Shadowedhearts;
 import com.jayemceekay.shadowedhearts.config.ModConfig;
-import com.jayemceekay.shadowedhearts.config.HeartGaugeConfig;
+import com.jayemceekay.shadowedhearts.config.ConfigLifecycle;
 import com.jayemceekay.shadowedhearts.config.ConfigMigrationBootstrap;
 import com.jayemceekay.shadowedhearts.config.ServerConfig;
-import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs;
-import com.jayemceekay.shadowedhearts.common.editor.TrainerEditorConfigBinding;
 import dev.architectury.platform.Platform;
 import fuzs.forgeconfigapiport.fabric.impl.config.ForgeConfigApiPortConfig;
 import fuzs.forgeconfigapiport.fabric.api.neoforge.v4.NeoForgeConfigRegistry;
@@ -35,36 +33,12 @@ public final class ShadowedheartsFabric implements ModInitializer {
         NeoForgeConfigRegistry.INSTANCE.register(Shadowedhearts.MOD_ID, Type.SERVER, ModConfig.SPEC, "shadowedhearts/common.toml");
         NeoForgeConfigRegistry.INSTANCE.register(Shadowedhearts.MOD_ID, Type.SERVER, ServerConfig.SPEC, "shadowedhearts/server.toml");
 
-        NeoForgeModConfigEvents.loading(Shadowedhearts.MOD_ID).register(config -> {
-            com.jayemceekay.shadowedhearts.config.preset.ConfigSnapshotService.loaded(config.getSpec(), config::getFullPath);
-            if (config.getSpec() == ModConfig.SPEC) {
-                bindTrainerConfig(config);
-                ShadowedHeartsConfigs.getInstance().getShadowConfig().load();
-                Shadowedhearts.injectShowdownConfig();
-            } else if (config.getSpec() == ServerConfig.SPEC) {
-                ServerConfig.INSTANCE.load();
-            }
-        });
-
-        NeoForgeModConfigEvents.reloading(Shadowedhearts.MOD_ID).register(config -> {
-            com.jayemceekay.shadowedhearts.config.preset.ConfigSnapshotService.loaded(config.getSpec(), config::getFullPath);
-            if (config.getSpec() == ModConfig.SPEC) {
-                bindTrainerConfig(config);
-                ShadowedHeartsConfigs.getInstance().getShadowConfig().load();
-                Shadowedhearts.injectShowdownConfig();
-            } else if (config.getSpec() == ServerConfig.SPEC) {
-                ServerConfig.INSTANCE.load();
-            }
-        });
-
-        NeoForgeModConfigEvents.unloading(Shadowedhearts.MOD_ID).register(config -> {
-            com.jayemceekay.shadowedhearts.config.preset.ConfigSnapshotService.unloaded(config.getSpec());
-            if (config.getSpec() == ModConfig.SPEC) {
-                TrainerEditorConfigBinding.bind(null);
-                com.jayemceekay.shadowedhearts.config.preset.RulesPresetService.bind(null);
-                HeartGaugeConfig.reset();
-            }
-        });
+        NeoForgeModConfigEvents.loading(Shadowedhearts.MOD_ID).register(config ->
+                ConfigLifecycle.loadGameplay(config.getSpec(), config::getFullPath));
+        NeoForgeModConfigEvents.reloading(Shadowedhearts.MOD_ID).register(config ->
+                ConfigLifecycle.loadGameplay(config.getSpec(), config::getFullPath));
+        NeoForgeModConfigEvents.unloading(Shadowedhearts.MOD_ID).register(config ->
+                ConfigLifecycle.unloadGameplay(config.getSpec()));
 
         // Run our common setup.
         Shadowedhearts.init();
@@ -74,19 +48,7 @@ public final class ShadowedheartsFabric implements ModInitializer {
         // Register C2S codecs and server handlers
         com.jayemceekay.shadowedhearts.fabric.net.ShadowedHeartsFabricNetworkManager.registerServerHandlers();
         net.fabricmc.fabric.api.networking.v1.EntityTrackingEvents.START_TRACKING.register(
-                com.jayemceekay.shadowedhearts.network.AuraServerSync::onStartTracking);
+                com.jayemceekay.shadowedhearts.network.aura.AuraServerSync::onStartTracking);
     }
 
-    private static void bindTrainerConfig(net.neoforged.fml.config.ModConfig config) {
-        try {
-            TrainerEditorConfigBinding.bind(config.getFullPath());
-            com.jayemceekay.shadowedhearts.config.preset.RulesPresetService.bind(config.getFullPath());
-            HeartGaugeConfig.setLegacyFallbackAllowed(true);
-        } catch (IllegalStateException nonFileConfig) {
-            // Remote server config snapshots have no local backing file.
-            TrainerEditorConfigBinding.bind(null);
-            com.jayemceekay.shadowedhearts.config.preset.RulesPresetService.bind(null);
-            HeartGaugeConfig.setLegacyFallbackAllowed(false);
-        }
-    }
 }

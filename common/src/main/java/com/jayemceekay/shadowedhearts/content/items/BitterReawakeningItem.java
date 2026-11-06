@@ -1,5 +1,8 @@
 package com.jayemceekay.shadowedhearts.content.items;
 
+import com.jayemceekay.shadowedhearts.common.shadow.ShadowHeartGauge;
+import com.jayemceekay.shadowedhearts.common.shadow.restrictions.ShadowUnlockPolicy;
+
 import com.jayemceekay.shadowedhearts.common.shadow.restrictions.ShadowRestrictionSettings;
 import com.jayemceekay.shadowedhearts.common.items.ItemRuleSettings;
 import com.jayemceekay.shadowedhearts.common.items.ItemRuleFeedback;
@@ -67,7 +70,7 @@ public final class BitterReawakeningItem extends Item implements HealingSource {
         List<PartySelectPokemonDTO> shown = new ArrayList<>();
         for (Pokemon pokemon : Cobblemon.INSTANCE.getStorage().getParty(player)) {
             if (pokemon == null) continue;
-            int current = ShadowAspectUtil.getHeartGaugeMeter(pokemon);
+            int current = ShadowHeartGauge.getHeartGaugeMeter(pokemon);
             int maximum = HeartGaugeConfig.getMax(pokemon);
             int maximumHealth = pokemon.getMaxHealth();
             String reason = targetRefusal(player, pokemon);
@@ -128,7 +131,7 @@ public final class BitterReawakeningItem extends Item implements HealingSource {
                                 }
                                 // Reclosing changes ordinary-move availability; opening-only
                                 // promotion must not replace moves or heal their PP here.
-                                ShadowAspectUtil.setHeartGaugeValue(pokemon, selection.next(), false);
+                                ShadowHeartGauge.setHeartGaugeValue(pokemon, selection.next(), false);
                                 PokemonEntity entity = pokemon.getEntity();
                                 if (entity != null) ShadowPokemonData.syncFromPokemon(entity);
                                 if (!player.getAbilities().instabuild) stack.shrink(1);
@@ -150,7 +153,7 @@ public final class BitterReawakeningItem extends Item implements HealingSource {
                 Component.translatable(MESSAGE + "preview.health", selection.health(), selection.maximumHealth()).withStyle(ChatFormatting.GREEN),
                 Component.translatable(MESSAGE + "preview.heart", selection.current(), selection.next(), selection.maximum()).withStyle(ChatFormatting.YELLOW),
                 Component.translatable(MESSAGE + "preview.moves",
-                        ShadowAspectUtil.getAllowedVisibleNonShadowMoves(selection.pokemon()),
+                        ShadowUnlockPolicy.getAllowedVisibleNonShadowMoves(selection.pokemon()),
                         BitterReawakeningRules.allowedNonShadowMoves(selection.next(), selection.maximum(),
                                 ShadowRestrictionSettings.serverCurrent())).withStyle(ChatFormatting.YELLOW),
                 Component.translatable(MESSAGE + "preview.confirm").withStyle(ChatFormatting.GRAY));
@@ -165,7 +168,7 @@ public final class BitterReawakeningItem extends Item implements HealingSource {
             return false;
         }
         if (player.level() != originalLevel || originalLevel.getGameTime() > expiresAt
-                || ShadowAspectUtil.getHeartGaugeMeter(selection.pokemon()) != selection.current()
+                || ShadowHeartGauge.getHeartGaugeMeter(selection.pokemon()) != selection.current()
                 || HeartGaugeConfig.getMax(selection.pokemon()) != selection.maximum()
                 || selection.pokemon().getMaxHealth() != selection.maximumHealth()
                 || !BitterReawakeningRules.canPay(selection.current(), selection.maximum())) {

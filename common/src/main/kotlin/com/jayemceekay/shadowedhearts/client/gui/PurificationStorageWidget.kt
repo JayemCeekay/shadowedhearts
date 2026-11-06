@@ -13,13 +13,13 @@ import com.cobblemon.mod.common.util.cobblemonResource
 import com.cobblemon.mod.common.util.math.fromEulerXYZDegrees
 import com.jayemceekay.shadowedhearts.Shadowedhearts
 import com.jayemceekay.shadowedhearts.client.ModShaders
-import com.jayemceekay.shadowedhearts.client.aura.ShadowAuraEmitters
-import com.jayemceekay.shadowedhearts.client.aura.ShadowPokemonAuraGuiRenderer
-import com.jayemceekay.shadowedhearts.client.aura.ShadowPokemonAuraSystem
+import com.jayemceekay.shadowedhearts.client.aura.shadow.ShadowPokemonAuraGuiRenderer
+import com.jayemceekay.shadowedhearts.client.aura.shadow.ShadowPokemonAuraSystem
 import com.jayemceekay.shadowedhearts.client.purification.PurificationClientMetrics
 import com.jayemceekay.shadowedhearts.client.storage.ClientPurificationStorage
 import com.jayemceekay.shadowedhearts.common.purification.PurificationMath
 import com.jayemceekay.shadowedhearts.common.shadow.ShadowAspectUtil
+import com.jayemceekay.shadowedhearts.common.shadow.ShadowHeartGauge
 import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs
 import com.mojang.blaze3d.systems.RenderSystem
 import com.mojang.blaze3d.vertex.BufferUploader
@@ -1111,7 +1111,7 @@ class PurificationStorageWidget(
                         com.jayemceekay.shadowedhearts.client.ClientEffects.auraVisible() &&
                             ShadowAspectUtil.hasShadowAspect(centerPokemon)
                     val shadowAuraStrength =
-                        ShadowAspectUtil.getHeartGaugeValue(centerPokemon) / 100.0f
+                        ShadowHeartGauge.getHeartGaugeValue(centerPokemon) / 100.0f
                     matrices.pushPose()
                     // Translate to the projected center of the platform; lift slightly so feet sit on the pad
                     matrices.translate(
@@ -1157,7 +1157,7 @@ class PurificationStorageWidget(
                     )
                     matrices.popPose()
                     if (hasShadowAura) {
-                        ShadowAuraEmitters.renderInPurificationGUI(
+                        ShadowPokemonAuraGuiRenderer.renderInPurificationGUI(
                             guiGraphics,
                             matrices,
                             Minecraft.getInstance().renderBuffers()
@@ -1260,7 +1260,7 @@ class PurificationStorageWidget(
                             ) {
                                 val value = kotlin.math.max(
                                     0,
-                                    ShadowAspectUtil.getHeartGaugeValue(
+                                    ShadowHeartGauge.getHeartGaugeValue(
                                         centerPokemon
                                     )
                                 )
@@ -1270,7 +1270,7 @@ class PurificationStorageWidget(
                                     value >= 60 -> Component.translatable("gui.shadowedhearts.purification_chamber.heart.opening")
                                     value >= 40 -> Component.translatable("gui.shadowedhearts.purification_chamber.heart.wider")
                                     value >= 20 -> Component.translatable("gui.shadowedhearts.purification_chamber.heart.nearly")
-                                    !ShadowAspectUtil.isReadyForPurification(centerPokemon) -> Component.translatable("gui.shadowedhearts.purification_chamber.heart.almost")
+                                    !ShadowHeartGauge.isReadyForPurification(centerPokemon) -> Component.translatable("gui.shadowedhearts.purification_chamber.heart.almost")
                                     else -> Component.translatable("gui.shadowedhearts.purification_chamber.heart.ready")
                                 }
                             } else {

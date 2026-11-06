@@ -2,8 +2,9 @@ package com.jayemceekay.shadowedhearts.network
 
 import com.cobblemon.mod.common.api.net.NetworkPacket
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
-import com.jayemceekay.shadowedhearts.common.shadow.ShadowAspectUtil
+import com.jayemceekay.shadowedhearts.common.shadow.ShadowHeartGauge
 import com.jayemceekay.shadowedhearts.network.aura.AuraLifecyclePacket
+import com.jayemceekay.shadowedhearts.network.aura.AuraServerSync
 import com.jayemceekay.shadowedhearts.network.aura.AuraStatePacket
 import com.jayemceekay.shadowedhearts.network.aura.LuminousMotePacket
 import net.minecraft.resources.ResourceLocation
@@ -38,7 +39,7 @@ object S2CUtils {
                 entity.bbHeight,
                 entity.boundingBox.size.toFloat(),
                 tick,
-                ShadowAspectUtil.getHeartGauge(entity.pokemon)
+                ShadowHeartGauge.getHeartGauge(entity.pokemon)
             )
             broadcastToTracking(entity, pkt)
         }
@@ -69,7 +70,7 @@ object S2CUtils {
                 entity.bbWidth,
                 entity.bbHeight,
                 entity.boundingBox.size.toFloat(),
-                ShadowAspectUtil.getHeartGauge(entity.pokemon),
+                ShadowHeartGauge.getHeartGauge(entity.pokemon),
                 heightMultiplier,
                 sustainOverride
         )
@@ -90,7 +91,7 @@ object S2CUtils {
                 entity.x, entity.y, entity.z,
                 entity.knownMovement.x.toFloat(), entity.knownMovement.y.toFloat(), entity.knownMovement.z.toFloat(),
                 entity.bbWidth, entity.bbHeight, entity.boundingBox.size.toFloat(),
-                ShadowAspectUtil.getHeartGauge(entity.pokemon)
+                ShadowHeartGauge.getHeartGauge(entity.pokemon)
             )
             broadcastToTracking(entity, pkt)
         }

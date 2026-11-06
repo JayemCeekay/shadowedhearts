@@ -19,7 +19,7 @@ import com.jayemceekay.shadowedhearts.common.moonwound.MoonwoundSavedData;
 import com.jayemceekay.shadowedhearts.common.shadow.ShadowMoveUtil;
 import com.jayemceekay.shadowedhearts.common.shadow.ShadowService;
 import com.jayemceekay.shadowedhearts.content.umbrafall.UmbrafallSiteData;
-import com.jayemceekay.shadowedhearts.network.AuraBroadcastQueue;
+import com.jayemceekay.shadowedhearts.network.aura.AuraBroadcastQueue;
 import com.jayemceekay.shadowedhearts.mixin.raiddens.MoonwoundRaidHealthAccessor;
 import com.necro.raid.dens.common.data.raid.RaidBoss;
 import com.necro.raid.dens.common.events.RaidEvents;

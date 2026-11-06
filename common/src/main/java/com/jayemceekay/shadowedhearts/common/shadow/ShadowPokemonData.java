@@ -1,5 +1,7 @@
 package com.jayemceekay.shadowedhearts.common.shadow;
 
+import com.jayemceekay.shadowedhearts.network.PokemonStateSync;
+
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
@@ -33,9 +35,9 @@ public class ShadowPokemonData implements ShadowFlag {
     /** Update both flags on a live PokemonEntity (values are clamped appropriately). */
     public static void set(PokemonEntity e, boolean shadow, float corruption) {
         setRuntimeState(e, shadow, corruption);
-        ShadowAspectUtil.syncAspects(e.getPokemon());
-        ShadowAspectUtil.syncBenchedMoves(e.getPokemon());
-        ShadowAspectUtil.syncMoveSet(e.getPokemon());
+        PokemonStateSync.syncAspects(e.getPokemon());
+        PokemonStateSync.syncBenchedMoves(e.getPokemon());
+        PokemonStateSync.syncMoveSet(e.getPokemon());
     }
 
     /**
@@ -44,7 +46,7 @@ public class ShadowPokemonData implements ShadowFlag {
      */
     public static void syncFromPokemon(PokemonEntity e) {
         var pokemon = e.getPokemon();
-        setRuntimeState(e, ShadowAspectUtil.hasShadowAspect(pokemon), ShadowAspectUtil.getHeartGauge(pokemon));
+        setRuntimeState(e, ShadowAspectUtil.hasShadowAspect(pokemon), ShadowHeartGauge.getHeartGauge(pokemon));
     }
 
     private static void setRuntimeState(PokemonEntity e, boolean shadow, float corruption) {

@@ -1,9 +1,9 @@
 package com.jayemceekay.shadowedhearts.client.neoforge;
 
 import com.jayemceekay.shadowedhearts.Shadowedhearts;
-import com.jayemceekay.shadowedhearts.client.aura.AuraReaderInputHandler;
-import com.jayemceekay.shadowedhearts.client.aura.AuraReaderHud;
-import com.jayemceekay.shadowedhearts.client.aura.AuraReaderPulseRenderer;
+import com.jayemceekay.shadowedhearts.client.aura.reader.AuraReaderInputHandler;
+import com.jayemceekay.shadowedhearts.client.aura.reader.AuraReaderHud;
+import com.jayemceekay.shadowedhearts.client.aura.reader.AuraReaderPulseRenderer;
 import com.jayemceekay.shadowedhearts.client.ball.BallEmitters;
 import com.jayemceekay.shadowedhearts.client.sound.RelicStoneSoundManager;
 import net.neoforged.api.distmarker.Dist;

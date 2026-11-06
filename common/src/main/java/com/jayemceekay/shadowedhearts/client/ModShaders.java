@@ -1,5 +1,7 @@
 package com.jayemceekay.shadowedhearts.client;
 
+import com.jayemceekay.shadowedhearts.client.render.ShadowFogUniforms;
+
 import com.mojang.blaze3d.vertex.VertexFormat;
 import com.mojang.blaze3d.vertex.VertexFormatElement;
 import net.minecraft.client.renderer.ShaderInstance;

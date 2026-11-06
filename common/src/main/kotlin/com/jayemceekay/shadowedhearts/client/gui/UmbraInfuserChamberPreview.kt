@@ -5,10 +5,10 @@ import com.cobblemon.mod.common.client.render.models.blockbench.FloatingState
 import com.cobblemon.mod.common.pokemon.Pokemon
 import com.cobblemon.mod.common.util.cobblemonResource
 import com.cobblemon.mod.common.util.math.fromEulerXYZDegrees
-import com.jayemceekay.shadowedhearts.client.aura.ShadowAuraEmitters
-import com.jayemceekay.shadowedhearts.client.aura.ShadowPokemonAuraGuiRenderer
-import com.jayemceekay.shadowedhearts.client.aura.ShadowPokemonAuraSystem
+import com.jayemceekay.shadowedhearts.client.aura.shadow.ShadowPokemonAuraGuiRenderer
+import com.jayemceekay.shadowedhearts.client.aura.shadow.ShadowPokemonAuraSystem
 import com.jayemceekay.shadowedhearts.common.shadow.ShadowAspectUtil
+import com.jayemceekay.shadowedhearts.common.shadow.ShadowHeartGauge
 import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs
 import com.jayemceekay.shadowedhearts.content.infusion.UmbraInfuserLayout as Layout
 import com.mojang.blaze3d.platform.Lighting
@@ -138,9 +138,9 @@ class UmbraInfuserChamberPreview {
             }
             if (hasShadowAura) {
                 graphics.flush()
-                ShadowAuraEmitters.renderInPurificationGUI(
+                ShadowPokemonAuraGuiRenderer.renderInPurificationGUI(
                     graphics, matrices, minecraft.renderBuffers().bufferSource(),
-                    ShadowAspectUtil.getHeartGaugeValue(pokemon) / 100F,
+                    ShadowHeartGauge.getHeartGaugeValue(pokemon) / 100F,
                     partialTick, renderablePokemon, state,
                     auraClip.left().toFloat(), auraClip.top().toFloat(),
                     (auraClip.right() - auraClip.left()).toFloat(),

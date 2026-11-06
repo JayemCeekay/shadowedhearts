@@ -1,6 +1,6 @@
 package com.jayemceekay.shadowedhearts.client.particle;
 
-import com.jayemceekay.shadowedhearts.client.aura.ShadowAuraStyle;
+import com.jayemceekay.shadowedhearts.client.aura.shadow.style.ShadowAuraStyle;
 
 /** Style-specific emitter ownership; particle tails retain their own short lifetime. */
 final class LuminousMoteLifecycle {

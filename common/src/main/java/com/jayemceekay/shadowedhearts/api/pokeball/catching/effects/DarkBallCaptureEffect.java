@@ -1,10 +1,11 @@
 package com.jayemceekay.shadowedhearts.api.pokeball.catching.effects;
 
+import com.jayemceekay.shadowedhearts.common.shadow.ShadowPokemonProperties;
+
 import com.cobblemon.mod.common.Cobblemon;
 import com.cobblemon.mod.common.api.pokeball.catching.CaptureEffect;
 import com.cobblemon.mod.common.pokemon.Pokemon;
 import com.jayemceekay.shadowedhearts.common.capture.DarkBallCaptureRules;
-import com.jayemceekay.shadowedhearts.common.shadow.ShadowAspectUtil;
 import com.jayemceekay.shadowedhearts.common.shadow.ShadowService;
 import com.jayemceekay.shadowedhearts.config.HeartGaugeConfig;
 import com.jayemceekay.shadowedhearts.config.IShadowConfig;
@@ -53,7 +54,7 @@ public class DarkBallCaptureEffect implements CaptureEffect {
         pokemon.getPersistentData().putBoolean(DarkBallCaptureRules.NBT_CORRUPTED, true);
         int boostedMax = DarkBallCaptureRules.heartGaugeMaximum(
                 HeartGaugeConfig.getMax(pokemon.getSpecies()), config.darkBallHeartGaugeMultiplier());
-        ShadowAspectUtil.setHeartGaugeMaxProperty(pokemon, boostedMax, false);
+        ShadowPokemonProperties.setHeartGaugeMaxProperty(pokemon, boostedMax, false);
         ShadowService.corrupt(pokemon, null, boostedMax);
     }
 }

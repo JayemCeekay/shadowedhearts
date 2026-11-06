@@ -1,10 +1,11 @@
 package com.jayemceekay.shadowedhearts.mixin;
 
+import com.jayemceekay.shadowedhearts.common.shadow.restrictions.ShadowUnlockPolicy;
+
 import com.cobblemon.mod.common.api.battles.model.actor.ActorType;
 import com.cobblemon.mod.common.battles.ActiveBattlePokemon;
 import com.cobblemon.mod.common.battles.MoveActionResponse;
 import com.cobblemon.mod.common.battles.ShowdownMoveset;
-import com.jayemceekay.shadowedhearts.common.shadow.ShadowAspectUtil;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -30,7 +31,7 @@ public class MixinMoveActionResponse {
         for (var move : showdownMoveSet.getMoves()) {
             if (move.getId().equalsIgnoreCase(moveId) && move.mustBeUsed()) return;
         }
-        if (ShadowAspectUtil.shouldMaskMove(battlePokemon.getEffectedPokemon(), moveId)) {
+        if (ShadowUnlockPolicy.shouldMaskMove(battlePokemon.getEffectedPokemon(), moveId)) {
             cir.setReturnValue(false);
         }
     }

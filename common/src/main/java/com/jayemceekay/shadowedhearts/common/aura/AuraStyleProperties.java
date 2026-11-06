@@ -1,9 +1,10 @@
 package com.jayemceekay.shadowedhearts.common.aura;
 
+import com.jayemceekay.shadowedhearts.network.PokemonStateSync;
+
 import com.cobblemon.mod.common.api.pokemon.PokemonProperties;
 import com.cobblemon.mod.common.api.properties.CustomPokemonProperty;
 import com.cobblemon.mod.common.pokemon.Pokemon;
-import com.jayemceekay.shadowedhearts.common.shadow.ShadowAspectUtil;
 import com.jayemceekay.shadowedhearts.pokemon.properties.AuraStyleProperty;
 
 import java.util.HashSet;
@@ -40,7 +41,7 @@ public final class AuraStyleProperties {
         properties.add(new AuraStyleProperty(selection));
         normalize(pokemon);
         pokemon.updateAspects();
-        ShadowAspectUtil.syncProperties(pokemon);
+        PokemonStateSync.syncProperties(pokemon);
     }
 
     /**

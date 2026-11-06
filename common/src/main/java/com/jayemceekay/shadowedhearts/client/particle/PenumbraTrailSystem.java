@@ -1,8 +1,9 @@
 package com.jayemceekay.shadowedhearts.client.particle;
 
+import com.jayemceekay.shadowedhearts.client.render.iris.IrisCompat;
 import com.jayemceekay.shadowedhearts.client.ModShaders;
-import com.jayemceekay.shadowedhearts.client.aura.AuraReaderPulseRenderer;
-import com.jayemceekay.shadowedhearts.client.aura.IrisHandler;
+import com.jayemceekay.shadowedhearts.client.aura.reader.AuraReaderPulseRenderer;
+import com.jayemceekay.shadowedhearts.client.render.iris.IrisHandler;
 import com.jayemceekay.shadowedhearts.client.render.DensityFboPipeline;
 import com.mojang.blaze3d.platform.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
@@ -114,7 +115,7 @@ public final class PenumbraTrailSystem {
     private static void renderVanillaDensityPipeline(Camera camera, float partialTicks,
                                                        Matrix4f projectionMatrix, Matrix4f modelViewMatrix,
                                                        boolean compositeNow) {
-        IrisHandler iris = AuraReaderPulseRenderer.IRIS_HANDLER;
+        IrisHandler iris = IrisCompat.IRIS_HANDLER;
         // Skip before consuming the frame token: Iris owns a separate world
         // submission after translucents, and shadow passes must never draw puffs.
         if (iris != null && (iris.isShaderPackInUse() || iris.isShadowRenderActive())) {
@@ -142,7 +143,7 @@ public final class PenumbraTrailSystem {
 
     /** Composites the saved density only after vanilla has finished its transparency passes. */
     public static void compositeWorld() {
-        IrisHandler iris = AuraReaderPulseRenderer.IRIS_HANDLER;
+        IrisHandler iris = IrisCompat.IRIS_HANDLER;
         if (iris != null && (iris.isShaderPackInUse() || iris.isShadowRenderActive())) return;
         if (!worldCompositePending) return;
         Minecraft mc = Minecraft.getInstance();
@@ -163,7 +164,7 @@ public final class PenumbraTrailSystem {
 
     /** Called with Iris' default world framebuffer bound, before its final passes. */
     public static void renderIris() {
-        IrisHandler iris = AuraReaderPulseRenderer.IRIS_HANDLER;
+        IrisHandler iris = IrisCompat.IRIS_HANDLER;
         if (iris == null || !iris.isShaderPackInUse() || iris.isShadowRenderActive()) {
             return;
         }

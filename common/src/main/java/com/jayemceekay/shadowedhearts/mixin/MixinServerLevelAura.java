@@ -1,7 +1,7 @@
 package com.jayemceekay.shadowedhearts.mixin;
 
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
-import com.jayemceekay.shadowedhearts.network.AuraServerSync;
+import com.jayemceekay.shadowedhearts.network.aura.AuraServerSync;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 import org.spongepowered.asm.mixin.Mixin;

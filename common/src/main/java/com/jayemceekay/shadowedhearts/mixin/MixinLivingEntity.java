@@ -1,7 +1,7 @@
 package com.jayemceekay.shadowedhearts.mixin;
 
 import com.jayemceekay.shadowedhearts.AspectHolder;
-import com.jayemceekay.shadowedhearts.SyncedEntityAspects;
+import com.jayemceekay.shadowedhearts.common.shadow.SyncedEntityAspects;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.StringTag;

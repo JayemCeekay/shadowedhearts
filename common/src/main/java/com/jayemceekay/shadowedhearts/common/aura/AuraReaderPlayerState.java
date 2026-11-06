@@ -1,7 +1,7 @@
 package com.jayemceekay.shadowedhearts.common.aura;
 
-import com.jayemceekay.shadowedhearts.util.PlayerPersistentData;
-import com.jayemceekay.shadowedhearts.util.ShadowedHeartsPlayerData;
+import com.jayemceekay.shadowedhearts.storage.player.PlayerPersistentData;
+import com.jayemceekay.shadowedhearts.storage.player.ShadowedHeartsPlayerData;
 import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;

@@ -1,7 +1,7 @@
 package com.jayemceekay.shadowedhearts.client.moonwound;
 
 import com.jayemceekay.shadowedhearts.Shadowedhearts;
-import com.jayemceekay.shadowedhearts.client.aura.AuraReaderPulseRenderer;
+import com.jayemceekay.shadowedhearts.client.render.iris.IrisCompat;
 import com.jayemceekay.shadowedhearts.client.ClientEffects;
 import com.jayemceekay.shadowedhearts.config.ClientEffectPolicy;
 import com.jayemceekay.shadowedhearts.client.render.DensityFboPipeline;
@@ -74,7 +74,7 @@ public final class MoonwoundPortalRenderer {
     /** Caller owns a world-color target and installs the matching projection/model-view matrices. */
     public static void render(Camera camera, float partialTicks) {
         Minecraft minecraft = Minecraft.getInstance();
-        var iris = AuraReaderPulseRenderer.IRIS_HANDLER;
+        var iris = IrisCompat.IRIS_HANDLER;
         if (camera == null || minecraft.level == null || !hasActivePortals()
                 || (iris != null && iris.isShadowRenderActive())) return;
         ShaderInstance shader = SHADER;
@@ -349,7 +349,7 @@ public final class MoonwoundPortalRenderer {
 
     /** Called inside IrisWorldColorScope while Iris' own core-shader override is disabled. */
     public static void renderIris() {
-        var iris = AuraReaderPulseRenderer.IRIS_HANDLER;
+        var iris = IrisCompat.IRIS_HANDLER;
         Minecraft minecraft = Minecraft.getInstance();
         if (!hasActivePortals() || iris == null || !iris.isShaderPackInUse() || iris.isShadowRenderActive()) return;
         var snapshot = iris.getIrisRenderingSnapshot();

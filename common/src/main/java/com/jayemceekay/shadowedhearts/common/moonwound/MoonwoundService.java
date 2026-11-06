@@ -5,16 +5,26 @@ import com.cobblemon.mod.common.battles.BattleRegistry;
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
 import com.cobblemon.mod.common.pokemon.Pokemon;
 import com.jayemceekay.shadowedhearts.Shadowedhearts;
-import com.jayemceekay.shadowedhearts.advancements.ModCriteriaTriggers;
+import com.jayemceekay.shadowedhearts.common.moonwound.MoonwoundEvent.FinaleMode;
+import com.jayemceekay.shadowedhearts.common.moonwound.MoonwoundEvent.Layer;
+import com.jayemceekay.shadowedhearts.common.moonwound.MoonwoundEvent.Outcome;
+import com.jayemceekay.shadowedhearts.common.moonwound.MoonwoundEvent.PaceBonus;
+import com.jayemceekay.shadowedhearts.common.moonwound.MoonwoundEvent.Phase;
+import com.jayemceekay.shadowedhearts.common.moonwound.MoonwoundEvent.VoteResult;
 import com.jayemceekay.shadowedhearts.config.ServerConfig;
 import com.jayemceekay.shadowedhearts.integration.ftbchunks.FTBChunksClaimBridgeHolder;
-import com.jayemceekay.shadowedhearts.content.umbrafall.*;
+import com.jayemceekay.shadowedhearts.content.umbrafall.UmbrafallCoreBlockEntity;
+import com.jayemceekay.shadowedhearts.content.umbrafall.UmbrafallCoreState;
+import com.jayemceekay.shadowedhearts.content.umbrafall.UmbrafallSiteData;
 import com.jayemceekay.shadowedhearts.common.moonwound.raid.MoonwoundRaidIntegration;
 import com.jayemceekay.shadowedhearts.network.ShadowedHeartsNetwork;
-import com.jayemceekay.shadowedhearts.network.moonwound.*;
+import com.jayemceekay.shadowedhearts.network.moonwound.MoonwoundActionPacket;
+import com.jayemceekay.shadowedhearts.network.moonwound.MoonwoundClosedPacket;
+import com.jayemceekay.shadowedhearts.network.moonwound.MoonwoundSnapshot;
+import com.jayemceekay.shadowedhearts.network.moonwound.MoonwoundStatePacket;
 import com.jayemceekay.shadowedhearts.registry.ModBlocks;
 import com.jayemceekay.shadowedhearts.registry.ModItems;
-import com.jayemceekay.shadowedhearts.world.umbrafall.*;
+import com.jayemceekay.shadowedhearts.world.umbrafall.UmbrafallTier;
 import dev.architectury.event.events.common.CommandRegistrationEvent;
 import dev.architectury.event.events.common.LifecycleEvent;
 import dev.architectury.event.events.common.PlayerEvent;
@@ -24,7 +34,6 @@ import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.commands.arguments.UuidArgument;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.MinecraftServer;
@@ -35,20 +44,36 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.AABB;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.EnumMap;
+import java.util.HashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.UUID;
 import java.util.function.BooleanSupplier;
 
-import static com.jayemceekay.shadowedhearts.common.moonwound.MoonwoundEvent.*;
+import static com.jayemceekay.shadowedhearts.common.moonwound.MoonwoundSiteQueries.coreExposed;
+import static com.jayemceekay.shadowedhearts.common.moonwound.MoonwoundSiteQueries.eligible;
+import static com.jayemceekay.shadowedhearts.common.moonwound.MoonwoundSiteQueries.inside;
+import static com.jayemceekay.shadowedhearts.common.moonwound.MoonwoundSiteQueries.layer;
+import static com.jayemceekay.shadowedhearts.common.moonwound.MoonwoundSiteQueries.layerAt;
+import static com.jayemceekay.shadowedhearts.common.moonwound.MoonwoundSiteQueries.loaded;
+import static com.jayemceekay.shadowedhearts.common.moonwound.MoonwoundSiteQueries.meteorMaterial;
+import static com.jayemceekay.shadowedhearts.common.moonwound.MoonwoundSiteQueries.near;
+import static com.jayemceekay.shadowedhearts.common.moonwound.MoonwoundSiteQueries.originalAt;
+import static com.jayemceekay.shadowedhearts.common.moonwound.MoonwoundSiteQueries.siteAt;
 
 /** Server-owned opt-in excavation. Client snapshots never authorize mining, combat or rewards. */
 public final class MoonwoundService {
-    private static final int RANGE = 64;
     private static final double ENCOUNTER_ROAM_RADIUS = 32;
     private static final double ENCOUNTER_VERTICAL_RANGE = 48;
     private static final Map<UUID, Long> ACTION_TICKS = new HashMap<>();
@@ -767,43 +792,11 @@ public final class MoonwoundService {
 
     /** Reconcile the receipt and encounters without replacing the core or granting party rewards. */
     private static void reconcileCompletedSite(ServerLevel level, UmbrafallSiteData.Site site, MoonwoundEvent event) {
-        if (!site.rewardClaimed || site.state.active()) {
-            for (Layer layer : Layer.values()) for (UUID id : event.issuedEnemies(layer)) MoonwoundEncounters.discard(level, event.eventId(), id);
-            if (event.alphaId() != null) MoonwoundEncounters.discard(level, event.eventId(), event.alphaId());
-            site.rewardClaimed = true;
-            site.state = event.outcome() == Outcome.SEAL ? UmbrafallCoreState.STABILIZED : UmbrafallCoreState.RUPTURED;
-            UmbrafallSiteData.get(level).setDirty();
-        }
+        MoonwoundCompletion.reconcileCompletedSite(level, site, event);
     }
 
     private static void finish(ServerLevel level, UmbrafallSiteData.Site site, MoonwoundEvent event) {
-        if (event.phase() != Phase.COMPLETE) return;
-        reconcileCompletedSite(level, site, event);
-        if (!MoonwoundClaimProtection.canRun(level, site, event)) return;
-        if (level.hasChunkAt(site.core) && level.getBlockEntity(site.core) instanceof UmbrafallCoreBlockEntity core
-                && core.belongsToSite(site.id) && MoonwoundClaimProtection.canRetireCore(level, site, event)) {
-            level.setBlockAndUpdate(site.core, ModBlocks.UMBRAFALL_SHELL.get().defaultBlockState());
-        }
-        for (UUID member : event.activeMembers()) {
-            ServerPlayer player = level.getServer().getPlayerList().getPlayer(member);
-            if (!near(player, level, site) || !MoonwoundClaimProtection.canInteract(player, level, site)
-                    || event.claimedRewards().contains(member)) continue;
-            List<ItemStack> rewards = MoonwoundRewards.roll(level, site.core, site.tier, event, player);
-            if (!event.claimReward(member)) continue;
-            for (ItemStack reward : rewards) grant(player, reward);
-            if (event.outcome() != Outcome.OVERLOAD || event.overloadSucceeded()) {
-                ModCriteriaTriggers.triggerProgression(player, switch (event.outcome()) {
-                    case HARVEST -> "moonwound_harvest";
-                    case SEAL -> "moonwound_seal";
-                    case OVERLOAD -> "moonwound_overload";
-                });
-            }
-            message(player, Component.translatable("message.shadowedhearts.moonwound.rewards_delivered", Component.translatable("moonwound.outcome." + event.outcome().name().toLowerCase(java.util.Locale.ROOT))));
-        }
-    }
-
-    private static void grant(ServerPlayer player, ItemStack stack) {
-        if (!player.getInventory().add(stack)) player.drop(stack, false);
+        MoonwoundCompletion.finish(level, site, event);
     }
 
     private static boolean pending(MoonwoundEvent event, UUID id) {
@@ -840,70 +833,6 @@ public final class MoonwoundService {
                 .map(event -> new Located(player.serverLevel(), UmbrafallSiteData.get(player.serverLevel()).sites.get(event.siteId()), event))
                 .filter(found -> found.site != null && near(player, found.level, found.site))
                 .min(Comparator.comparingDouble(found -> found.site.center.distSqr(player.blockPosition()))).orElse(null);
-    }
-
-    private static boolean eligible(UmbrafallSiteData.Site site) {
-        return site.hasValidTerrainProfile() && site.placement == UmbrafallSiteData.Placement.READY
-                && site.geometry.usesStratifiedLayers() && (site.tier == UmbrafallTier.STRONG || site.tier == UmbrafallTier.RESONANT);
-    }
-
-    private static boolean near(ServerPlayer player, ServerLevel level, UmbrafallSiteData.Site site) {
-        return player != null && player.isAlive() && player.serverLevel() == level && site != null
-                && player.distanceToSqr(Vec3.atCenterOf(site.center)) <= RANGE * RANGE;
-    }
-
-    private static boolean loaded(ServerLevel level, UmbrafallSiteData.Site site) {
-        int radius = site.footprintRadius() + 16;
-        for (int x = (site.center.getX() - radius) >> 4; x <= (site.center.getX() + radius) >> 4; x++)
-            for (int z = (site.center.getZ() - radius) >> 4; z <= (site.center.getZ() + radius) >> 4; z++)
-                if (level.getChunkSource().getChunkNow(x, z) == null) return false;
-        return true;
-    }
-
-    private static boolean coreExposed(ServerLevel level, UmbrafallSiteData.Site site) {
-        if (!level.hasChunkAt(site.core) || !level.getBlockState(site.core).is(ModBlocks.UMBRAFALL_CORE.get())) return false;
-        for (Direction direction : Direction.values()) {
-            BlockPos adjacent = site.core.relative(direction);
-            if (level.getChunkSource().getChunkNow(adjacent.getX() >> 4, adjacent.getZ() >> 4) != null
-                    && level.getBlockState(adjacent).isAir()) return true;
-        }
-        return false;
-    }
-
-    private static UmbrafallSiteData.Site siteAt(ServerLevel level, BlockPos pos) {
-        return UmbrafallSiteData.get(level).sites.values().stream().filter(site -> eligible(site) && inside(site, pos))
-                .min(Comparator.comparingDouble(site -> site.core.distSqr(pos))).orElse(null);
-    }
-
-    private static boolean inside(UmbrafallSiteData.Site site, BlockPos pos) {
-        return Math.abs(pos.getX() - site.center.getX()) <= site.footprintRadius()
-                && Math.abs(pos.getZ() - site.center.getZ()) <= site.footprintRadius()
-                && Math.abs(pos.getY() - site.core.getY()) <= 24;
-    }
-
-    private static Layer layerAt(UmbrafallSiteData.Site site, BlockPos pos) {
-        return layer(site.shape().structuralLayerAt(pos.getX() - site.center.getX(), pos.getY() - site.center.getY(), pos.getZ() - site.center.getZ()));
-    }
-
-    private static Layer layer(UmbrafallShapeBuilder.StructuralLayer layer) {
-        return switch (layer) { case OUTER_SHELL -> Layer.SHELL; case LATTICE_MANTLE -> Layer.MANTLE; case CORE_CASING -> Layer.CASING; default -> null; };
-    }
-
-    private static boolean originalAt(ServerLevel level, UmbrafallSiteData.Site site, BlockPos pos) {
-        if (!level.hasChunkAt(pos)) return false;
-        var material = site.shape().materialAt(pos.getX() - site.center.getX(), pos.getY() - site.center.getY(), pos.getZ() - site.center.getZ());
-        return switch (material) {
-            case SHELL, CRACKED_SHELL, UMBRAL_LATTICE, CORE_CASING, VEIN, CRYSTAL, CORE ->
-                    level.getBlockState(pos).is(UmbrafallSiteGenerator.stateFor(material, level, pos).getBlock());
-            default -> false;
-        };
-    }
-
-    private static boolean meteorMaterial(BlockState state) {
-        return state.is(ModBlocks.UMBRAFALL_SHELL.get()) || state.is(ModBlocks.CRACKED_UMBRAFALL_SHELL.get())
-                || state.is(ModBlocks.UMBRAL_LATTICE.get()) || state.is(ModBlocks.UMBRAFALL_CORE_CASING.get())
-                || state.is(ModBlocks.UMBRAFALL_VEIN.get()) || state.is(ModBlocks.UMBRAFALL_CRYSTAL.get())
-                || state.is(ModBlocks.UMBRAFALL_CORE.get());
     }
 
     private static String playerName(ServerLevel level, UUID id) {

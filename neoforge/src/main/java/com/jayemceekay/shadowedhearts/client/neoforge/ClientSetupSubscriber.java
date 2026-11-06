@@ -2,7 +2,7 @@ package com.jayemceekay.shadowedhearts.client.neoforge;
 
 import com.jayemceekay.shadowedhearts.Shadowedhearts;
 import com.jayemceekay.shadowedhearts.client.ModShaders;
-import com.jayemceekay.shadowedhearts.client.aura.AuraReaderPulseRenderer;
+import com.jayemceekay.shadowedhearts.client.aura.reader.AuraReaderPulseRenderer;
 import com.jayemceekay.shadowedhearts.client.particle.LuminousMoteEmitters;
 import com.jayemceekay.shadowedhearts.client.render.DepthCapture;
 import net.neoforged.bus.api.SubscribeEvent;

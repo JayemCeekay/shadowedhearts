@@ -2,11 +2,9 @@ package com.jayemceekay.shadowedhearts.neoforge;
 
 import com.jayemceekay.shadowedhearts.Shadowedhearts;
 import com.jayemceekay.shadowedhearts.config.ModConfig;
-import com.jayemceekay.shadowedhearts.config.HeartGaugeConfig;
+import com.jayemceekay.shadowedhearts.config.ConfigLifecycle;
 import com.jayemceekay.shadowedhearts.config.ConfigMigrationBootstrap;
 import com.jayemceekay.shadowedhearts.config.ServerConfig;
-import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs;
-import com.jayemceekay.shadowedhearts.common.editor.TrainerEditorConfigBinding;
 import com.jayemceekay.shadowedhearts.neoforge.net.ShadowedHeartsNeoForgeNetworkRegistrar;
 import com.jayemceekay.shadowedhearts.neoforge.worldgen.ShadowedHeartsBiomeModifiers;
 import net.neoforged.bus.api.IEventBus;
@@ -41,52 +39,20 @@ public final class ShadowedheartsNeoForge {
 
     private static void onStartTracking(net.neoforged.neoforge.event.entity.player.PlayerEvent.StartTracking event) {
         if (event.getEntity() instanceof net.minecraft.server.level.ServerPlayer player) {
-            com.jayemceekay.shadowedhearts.network.AuraServerSync.onStartTracking(event.getTarget(), player);
+            com.jayemceekay.shadowedhearts.network.aura.AuraServerSync.onStartTracking(event.getTarget(), player);
         }
     }
 
     public static void onConfigLoading(ModConfigEvent.Loading event) {
-        com.jayemceekay.shadowedhearts.config.preset.ConfigSnapshotService.loaded(event.getConfig().getSpec(), event.getConfig()::getFullPath);
-        if (event.getConfig().getSpec() == ModConfig.SPEC) {
-            bindTrainerConfig(event.getConfig());
-            ShadowedHeartsConfigs.getInstance().getShadowConfig().load();
-            Shadowedhearts.injectShowdownConfig();
-        } else if (event.getConfig().getSpec() == ServerConfig.SPEC) {
-            ServerConfig.INSTANCE.load();
-        }
+        ConfigLifecycle.loadGameplay(event.getConfig().getSpec(), event.getConfig()::getFullPath);
     }
 
     public static void onConfigReloading(ModConfigEvent.Reloading event) {
-        com.jayemceekay.shadowedhearts.config.preset.ConfigSnapshotService.loaded(event.getConfig().getSpec(), event.getConfig()::getFullPath);
-        if (event.getConfig().getSpec() == ModConfig.SPEC) {
-            bindTrainerConfig(event.getConfig());
-            ShadowedHeartsConfigs.getInstance().getShadowConfig().load();
-            Shadowedhearts.injectShowdownConfig();
-        } else if (event.getConfig().getSpec() == ServerConfig.SPEC) {
-            ServerConfig.INSTANCE.load();
-        }
+        ConfigLifecycle.loadGameplay(event.getConfig().getSpec(), event.getConfig()::getFullPath);
     }
 
 
     public static void onConfigUnloading(ModConfigEvent.Unloading event) {
-        com.jayemceekay.shadowedhearts.config.preset.ConfigSnapshotService.unloaded(event.getConfig().getSpec());
-        if (event.getConfig().getSpec() == ModConfig.SPEC) {
-            TrainerEditorConfigBinding.bind(null);
-            com.jayemceekay.shadowedhearts.config.preset.RulesPresetService.bind(null);
-            HeartGaugeConfig.reset();
-        }
-    }
-
-    private static void bindTrainerConfig(net.neoforged.fml.config.ModConfig config) {
-        try {
-            TrainerEditorConfigBinding.bind(config.getFullPath());
-            com.jayemceekay.shadowedhearts.config.preset.RulesPresetService.bind(config.getFullPath());
-            HeartGaugeConfig.setLegacyFallbackAllowed(true);
-        } catch (IllegalStateException nonFileConfig) {
-            // Remote server config snapshots have no local backing file.
-            TrainerEditorConfigBinding.bind(null);
-            com.jayemceekay.shadowedhearts.config.preset.RulesPresetService.bind(null);
-            HeartGaugeConfig.setLegacyFallbackAllowed(false);
-        }
+        ConfigLifecycle.unloadGameplay(event.getConfig().getSpec());
     }
 }

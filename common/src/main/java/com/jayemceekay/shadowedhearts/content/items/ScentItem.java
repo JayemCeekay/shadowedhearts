@@ -1,5 +1,8 @@
 package com.jayemceekay.shadowedhearts.content.items;
 
+import com.jayemceekay.shadowedhearts.common.shadow.ShadowHeartGauge;
+import com.jayemceekay.shadowedhearts.common.shadow.ShadowPokemonProperties;
+
 import com.cobblemon.mod.common.api.pokemon.Natures;
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
 import com.cobblemon.mod.common.pokemon.Nature;
@@ -209,13 +212,13 @@ public class ScentItem extends Item {
             return InteractionResult.FAIL;
         }
 
-        int current = ShadowAspectUtil.getHeartGaugeMeter(pokemon);
+        int current = ShadowHeartGauge.getHeartGaugeMeter(pokemon);
         boolean canCalm = ProgressionEconomyConfig.INSTANCE.scentsClearModes() && ScentModeRecovery.hasMode(pokemon);
         if (!canCalm && (current <= 0 || GameplayTuningConfig.INSTANCE.scentMultiplier() <= 0.0)) return noEffect(player);
 
         // Check cooldown
         long now = level.getGameTime(); // using game time ticks
-        long lastUse = ShadowAspectUtil.getScentCooldown(pokemon);
+        long lastUse = ShadowPokemonProperties.getScentCooldown(pokemon);
         long cooldownTicks = ShadowedHeartsConfigs.getInstance().getShadowConfig().scentCooldownSeconds() * 20L;
 
         if (cooldownTicks > 0 && lastUse >= 0 && now - lastUse < cooldownTicks) {
@@ -243,7 +246,7 @@ public class ScentItem extends Item {
             int next = Math.max(0, current + delta);
             ShadowService.setHeartGauge(pokemon, pe, next);
         }
-        boolean reduced = ShadowAspectUtil.getHeartGaugeMeter(pokemon) < current;
+        boolean reduced = ShadowHeartGauge.getHeartGaugeMeter(pokemon) < current;
         boolean calmed = canCalm && ScentModeRecovery.calm(pokemon, pe);
         if (!reduced && !calmed) return noEffect(player);
 
@@ -255,7 +258,7 @@ public class ScentItem extends Item {
         }
 
         // A real gauge reduction or mode recovery starts cooldown and consumes one dose.
-        ShadowAspectUtil.setScentCooldown(pokemon, now);
+        ShadowPokemonProperties.setScentCooldown(pokemon, now);
 
         // Consume one scent
         if (!player.getAbilities().instabuild) {

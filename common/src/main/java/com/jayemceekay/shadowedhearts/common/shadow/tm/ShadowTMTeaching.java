@@ -1,5 +1,9 @@
 package com.jayemceekay.shadowedhearts.common.shadow.tm;
 
+import com.jayemceekay.shadowedhearts.common.shadow.restrictions.ShadowUnlockPolicy;
+
+import com.jayemceekay.shadowedhearts.network.PokemonStateSync;
+
 import com.cobblemon.mod.common.Cobblemon;
 import com.cobblemon.mod.common.CobblemonItems;
 import com.cobblemon.mod.common.CobblemonSounds;
@@ -125,7 +129,7 @@ public final class ShadowTMTeaching {
             Move current = pokemon.getMoveSet().get(slot);
             if (current == null) continue;
             selections.add(new Selection(slot, current));
-            if (ShadowAspectUtil.shouldMaskMove(pokemon, current)) {
+            if (ShadowUnlockPolicy.shouldMaskMove(pokemon, current)) {
                 shown.add(new MoveSelectDTO(Moves.getByNameOrDummy("shadow-locked"), false, 0, 0));
             } else {
                 shown.add(new MoveSelectDTO(current, ShadowMoveUtil.isShadowMove(current)));
@@ -169,8 +173,8 @@ public final class ShadowTMTeaching {
                         return Unit.INSTANCE;
                     });
                     if (!player.getAbilities().instabuild && !Cobblemon.INSTANCE.getConfig().getInfiniteTmUses()) stack.shrink(1);
-                    ShadowAspectUtil.syncMoveSet(pokemon);
-                    ShadowAspectUtil.syncBenchedMoves(pokemon);
+                    PokemonStateSync.syncMoveSet(pokemon);
+                    PokemonStateSync.syncBenchedMoves(pokemon);
                     updateInventory.run();
                     player.displayClientMessage(Component.translatable(MESSAGE + "replaced",
                             pokemon.getDisplayName(false), selected.move().getDisplayName(), move.getDisplayName())

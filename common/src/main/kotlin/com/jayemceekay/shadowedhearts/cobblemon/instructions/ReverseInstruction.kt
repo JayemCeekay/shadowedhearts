@@ -1,10 +1,11 @@
 package com.jayemceekay.shadowedhearts.cobblemon.instructions
 
+import com.jayemceekay.shadowedhearts.network.PokemonStateSync
+
 import com.cobblemon.mod.common.api.battles.interpreter.BattleMessage
 import com.cobblemon.mod.common.api.battles.model.PokemonBattle
 import com.cobblemon.mod.common.battles.dispatch.InterpreterInstruction
 import com.jayemceekay.shadowedhearts.common.shadow.SHAspects
-import com.jayemceekay.shadowedhearts.common.shadow.ShadowAspectUtil
 
 /**
  * Custom instruction emitted by our Showdown patches to persist Reverse Mode outside battle.
@@ -44,14 +45,14 @@ class ReverseInstruction(private val message: BattleMessage) : InterpreterInstru
                         aspectsEff.add(SHAspects.REVERSE_MODE)
                         effected.forcedAspects = aspectsEff
                         effected.updateAspects()
-                        ShadowAspectUtil.syncAspects(effected)
+                        PokemonStateSync.syncAspects(effected)
                     }
                     val aspectsOrig = original.aspects.toMutableSet()
                     if (!aspectsOrig.contains(SHAspects.REVERSE_MODE)) {
                         aspectsOrig.add(SHAspects.REVERSE_MODE)
                         original.forcedAspects = aspectsOrig
                         original.updateAspects()
-                        ShadowAspectUtil.syncAspects(original)
+                        PokemonStateSync.syncAspects(original)
                     }
                 }
                 "end" -> {
@@ -59,13 +60,13 @@ class ReverseInstruction(private val message: BattleMessage) : InterpreterInstru
                     if (aspectsEff.remove(SHAspects.REVERSE_MODE)) {
                         effected.forcedAspects = aspectsEff
                         effected.updateAspects()
-                        ShadowAspectUtil.syncAspects(effected)
+                        PokemonStateSync.syncAspects(effected)
                     }
                     val aspectsOrig = original.aspects.toMutableSet()
                     if (aspectsOrig.remove(SHAspects.REVERSE_MODE)) {
                         original.forcedAspects = aspectsOrig
                         original.updateAspects()
-                        ShadowAspectUtil.syncAspects(original)
+                        PokemonStateSync.syncAspects(original)
                     }
                 }
             }

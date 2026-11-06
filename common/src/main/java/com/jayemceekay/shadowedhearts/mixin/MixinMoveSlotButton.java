@@ -3,7 +3,7 @@ package com.jayemceekay.shadowedhearts.mixin;
 import com.cobblemon.mod.common.api.moves.MoveTemplate;
 import com.cobblemon.mod.common.api.types.ElementalType;
 import com.cobblemon.mod.common.client.gui.interact.moveselect.MoveSlotButton;
-import com.jayemceekay.shadowedhearts.util.ShadowMaskingUtil;
+import com.jayemceekay.shadowedhearts.client.gui.ShadowMaskingUtil;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.mojang.blaze3d.vertex.PoseStack;

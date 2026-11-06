@@ -4,7 +4,7 @@ import com.cobblemon.mod.common.api.battles.model.PokemonBattle;
 import com.cobblemon.mod.common.battles.BattleRegistry;
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
 import com.cobblemon.mod.common.pokemon.Pokemon;
-import com.jayemceekay.shadowedhearts.common.shadow.ShadowAspectUtil;
+import com.jayemceekay.shadowedhearts.common.shadow.ShadowHeartGauge;
 import com.jayemceekay.shadowedhearts.config.HeartGaugeConfig;
 import org.jetbrains.annotations.Nullable;
 
@@ -13,7 +13,7 @@ public final class HeartGaugeBattleSync {
     private HeartGaugeBattleSync() {}
 
     public static double fraction(Pokemon pokemon) {
-        return fraction(ShadowAspectUtil.getHeartGaugeMeter(pokemon), HeartGaugeConfig.getMax(pokemon));
+        return fraction(ShadowHeartGauge.getHeartGaugeMeter(pokemon), HeartGaugeConfig.getMax(pokemon));
     }
 
     static double fraction(int meter, int maximum) {

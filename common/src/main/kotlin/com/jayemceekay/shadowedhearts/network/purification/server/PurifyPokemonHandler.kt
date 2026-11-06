@@ -3,7 +3,7 @@ package com.jayemceekay.shadowedhearts.network.purification.server
 import com.cobblemon.mod.common.api.mark.Marks
 import com.cobblemon.mod.common.api.net.ServerNetworkPacketHandler
 import com.jayemceekay.shadowedhearts.advancements.ModCriteriaTriggers
-import com.jayemceekay.shadowedhearts.common.shadow.ShadowAspectUtil
+import com.jayemceekay.shadowedhearts.common.shadow.ShadowHeartGauge
 import com.jayemceekay.shadowedhearts.common.shadow.ShadowService
 import com.jayemceekay.shadowedhearts.config.GameplayTuningConfig
 import com.jayemceekay.shadowedhearts.network.purification.PurifyPokemonPacket
@@ -36,7 +36,7 @@ object PurifyPokemonHandler : ServerNetworkPacketHandler<PurifyPokemonPacket> {
 
 
         // Verify it's actually ready for purification (heart gauge 0)
-        if (ShadowAspectUtil.isReadyForPurification(pokemon)) {
+        if (ShadowHeartGauge.isReadyForPurification(pokemon)) {
             ShadowService.fullyPurify(pokemon, null, player)
             // Cobblemon's getOwnerPlayer only recognizes party/PC stores, not our custom chamber.
             ModCriteriaTriggers.triggerShadowPurified(player)

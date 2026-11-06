@@ -106,7 +106,7 @@ public final class NPCShadowInjector {
     private static void initializeShadow(Pokemon pokemon, Random rng) {
         forceShadow(pokemon);
         pokemon.setOriginalTrainer("?????");
-        ShadowAspectUtil.ensureRequiredShadowAspects(pokemon);
+        ShadowStateInitialization.ensureRequiredShadowAspects(pokemon);
         ShadowMoveUtil.assignShadowMoves(pokemon, rng);
     }
 

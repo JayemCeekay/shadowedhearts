@@ -3,6 +3,7 @@ package com.jayemceekay.shadowedhearts.common.aura;
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
 import com.jayemceekay.shadowedhearts.common.shadow.SHAspects;
 import com.jayemceekay.shadowedhearts.common.shadow.ShadowAspectUtil;
+import com.jayemceekay.shadowedhearts.common.shadow.ShadowHeartGauge;
 import com.jayemceekay.shadowedhearts.config.HeartGaugeConfig;
 import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs;
 import net.minecraft.world.phys.AABB;
@@ -130,7 +131,7 @@ public final class ShadowPokemonReadingProvider implements AuraReadingProvider {
 
         if (targeted) {
             AuraScanOwnership ownership = AuraScanOwnership.resolve(context.player().getUUID(), entity);
-            int heartMeter = ShadowAspectUtil.getHeartGaugeMeter(pokemon);
+            int heartMeter = ShadowHeartGauge.getHeartGaugeMeter(pokemon);
             int heartMaximum = HeartGaugeConfig.getMax(pokemon);
             heartGauge = ownership.heartGauge(heartMeter, heartMaximum);
             boolean hyper = pokemon.getAspects().contains(SHAspects.HYPER_MODE);

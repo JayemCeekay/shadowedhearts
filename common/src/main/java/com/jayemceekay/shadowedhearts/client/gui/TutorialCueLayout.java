@@ -1,6 +1,6 @@
 package com.jayemceekay.shadowedhearts.client.gui;
 
-import com.jayemceekay.shadowedhearts.client.aura.AuraReaderHudRect;
+import com.jayemceekay.shadowedhearts.client.aura.reader.AuraReaderHudRect;
 
 /** Reattaches tutorial cues after the popup has been wrapped, scaled and clamped. */
 public final class TutorialCueLayout {

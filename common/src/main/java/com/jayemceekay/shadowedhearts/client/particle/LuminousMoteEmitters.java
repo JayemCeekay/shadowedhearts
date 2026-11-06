@@ -1,10 +1,10 @@
 package com.jayemceekay.shadowedhearts.client.particle;
 
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
-import com.jayemceekay.shadowedhearts.client.aura.ShadowAuraStyle;
-import com.jayemceekay.shadowedhearts.client.aura.ShadowAuraStyleResolver;
-import com.jayemceekay.shadowedhearts.client.aura.ColosseumAuraVolume;
-import com.jayemceekay.shadowedhearts.client.aura.AuraPerformanceBudget;
+import com.jayemceekay.shadowedhearts.client.aura.shadow.style.ShadowAuraStyle;
+import com.jayemceekay.shadowedhearts.client.aura.shadow.style.ShadowAuraStyleResolver;
+import com.jayemceekay.shadowedhearts.client.aura.shadow.style.colosseum.ColosseumAuraVolume;
+import com.jayemceekay.shadowedhearts.client.aura.shadow.AuraPerformanceBudget;
 import com.jayemceekay.shadowedhearts.common.shadow.ShadowAspectUtil;
 import com.jayemceekay.shadowedhearts.network.aura.LuminousMotePacket;
 import com.jayemceekay.shadowedhearts.registry.util.ModParticleTypes;

@@ -4,7 +4,7 @@ import com.cobblemon.mod.common.battles.BattleRegistry;
 import com.cobblemon.mod.common.battles.pokemon.BattlePokemon;
 import com.jayemceekay.shadowedhearts.common.heart.HeartGaugeBattleSync;
 import com.jayemceekay.shadowedhearts.common.shadow.SHAspects;
-import com.jayemceekay.shadowedhearts.common.shadow.ShadowAspectUtil;
+import com.jayemceekay.shadowedhearts.common.shadow.ShadowHeartGauge;
 import com.llamalad7.mixinextras.sugar.Local;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -31,7 +31,7 @@ public class MixinBattleRegistry {
             }
             // Stored state is authoritative for the whole team, including benched members
             // with no live entity. Mode probabilities and damage share the same gauge.
-            heartGaugeBars = ShadowAspectUtil.getBarsRemaining(pk);
+            heartGaugeBars = ShadowHeartGauge.getBarsRemaining(pk);
             heartGaugeFraction = HeartGaugeBattleSync.fraction(pk);
         } catch (Throwable ignored) {
             heartGaugeBars = isShadow ? 5 : 0;

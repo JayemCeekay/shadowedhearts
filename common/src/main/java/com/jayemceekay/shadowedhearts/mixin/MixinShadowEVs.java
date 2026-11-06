@@ -1,9 +1,10 @@
 package com.jayemceekay.shadowedhearts.mixin;
 
+import com.jayemceekay.shadowedhearts.common.shadow.ShadowProgressionBuffers;
+
 import com.cobblemon.mod.common.api.pokemon.stats.EvSource;
 import com.cobblemon.mod.common.api.pokemon.stats.Stat;
 import com.cobblemon.mod.common.pokemon.EVs;
-import com.jayemceekay.shadowedhearts.common.shadow.ShadowAspectUtil;
 import com.jayemceekay.shadowedhearts.common.shadow.restrictions.ShadowRestrictionPolicy;
 import com.jayemceekay.shadowedhearts.common.shadow.ShadowProgressionManager;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
@@ -20,7 +21,7 @@ public abstract class MixinShadowEVs {
     private int shadowedhearts$bufferAcceptedEvs(EVs evs, Stat stat, int amount, Operation<Integer> original,
                                                @Local(argsOnly = true) EvSource source) {
         return switch (ShadowProgressionManager.evPolicy(source)) {
-            case BUFFER -> ShadowAspectUtil.acceptBufferedEv(source.getPokemon(), stat, amount);
+            case BUFFER -> ShadowProgressionBuffers.acceptBufferedEv(source.getPokemon(), stat, amount);
             case DISCARD -> 0;
             default -> original.call(evs, stat, amount);
         };

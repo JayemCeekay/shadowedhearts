@@ -1,9 +1,10 @@
 package com.jayemceekay.shadowedhearts.mixin;
 
+import com.jayemceekay.shadowedhearts.common.shadow.restrictions.ShadowUnlockPolicy;
+
 import com.cobblemon.mod.common.client.gui.pc.PCGUI;
 import com.cobblemon.mod.common.pokemon.Pokemon;
-import com.jayemceekay.shadowedhearts.common.shadow.ShadowAspectUtil;
-import com.jayemceekay.shadowedhearts.util.ShadowMaskingUtil;
+import com.jayemceekay.shadowedhearts.client.gui.ShadowMaskingUtil;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.llamalad7.mixinextras.sugar.Local;
@@ -43,7 +44,7 @@ public abstract class MixinPCGUIMasking {
             )
     )
     private MutableComponent shadowedhearts$maskNatureInPC(Pokemon pokemon, Operation<MutableComponent> original) {
-        if (ShadowAspectUtil.isNatureHiddenByGauge(pokemon)) {
+        if (ShadowUnlockPolicy.isNatureHiddenByGauge(pokemon)) {
             return ShadowMaskingUtil.MASKED_NATURE;
         }
         return original.call(pokemon);
@@ -62,7 +63,7 @@ public abstract class MixinPCGUIMasking {
         Pokemon pokemon = this.previewPokemon;
         if (pokemon == null) return original;
         if (this.currentStatIndex != STAT_EV) return original;
-        if (!ShadowAspectUtil.isEVHiddenByGauge(pokemon)) return original;
+        if (!ShadowUnlockPolicy.isEVHiddenByGauge(pokemon)) return original;
 
         String s = original.getString();
         // Numeric-only components in EV page represent the EV value display (including italic variant)
@@ -85,7 +86,7 @@ public abstract class MixinPCGUIMasking {
         Pokemon pokemon = this.previewPokemon;
         if (pokemon == null) return original;
         if (this.currentStatIndex != STAT_IV) return original;
-        if (!ShadowAspectUtil.isIVHiddenByGauge(pokemon)) return original;
+        if (!ShadowUnlockPolicy.isIVHiddenByGauge(pokemon)) return original;
 
         String s = original.getString();
         // Numeric-only components in IV page represent the IV value display (including italic variant)
@@ -112,7 +113,7 @@ public abstract class MixinPCGUIMasking {
         try {
             if (pokemon == null) return original;
 
-            if (ShadowAspectUtil.shouldMaskMove(pokemon, i)) {
+            if (ShadowUnlockPolicy.shouldMaskMove(pokemon, i)) {
                 return ShadowMaskingUtil.MASKED_NAME;
             }
         } catch (Throwable ignored) { }

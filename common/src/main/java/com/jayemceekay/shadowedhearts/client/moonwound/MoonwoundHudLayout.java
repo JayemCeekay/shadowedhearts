@@ -1,6 +1,6 @@
 package com.jayemceekay.shadowedhearts.client.moonwound;
 
-import com.jayemceekay.shadowedhearts.client.aura.AuraReaderHudRect;
+import com.jayemceekay.shadowedhearts.client.aura.reader.AuraReaderHudRect;
 import com.jayemceekay.shadowedhearts.config.MoonwoundObjectivePlacement;
 
 import java.util.List;

@@ -1,9 +1,9 @@
 package com.jayemceekay.shadowedhearts.mixin;
 
+import com.jayemceekay.shadowedhearts.common.shadow.restrictions.ShadowUnlockPolicy;
 
 import com.cobblemon.mod.common.client.gui.summary.widgets.screens.info.InfoWidget;
 import com.cobblemon.mod.common.pokemon.Pokemon;
-import com.jayemceekay.shadowedhearts.common.shadow.ShadowAspectUtil;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.mojang.blaze3d.vertex.PoseStack;
@@ -28,7 +28,7 @@ public class MixinInfoWidget {
 
     @ModifyArgs(method = "renderWidget", at = @At(value = "INVOKE", target = "Lcom/cobblemon/mod/common/client/render/RenderHelperKt;drawScaledText$default(Lnet/minecraft/client/gui/GuiGraphics;Lnet/minecraft/resources/ResourceLocation;Lnet/minecraft/network/chat/MutableComponent;Ljava/lang/Number;Ljava/lang/Number;FLjava/lang/Number;IIZZLjava/lang/Integer;Ljava/lang/Integer;ILjava/lang/Object;)V", ordinal = 2))
     public void shadowedhearts$maskExperience(Args args) {
-        if(ShadowAspectUtil.isLevelExpHiddenByGauge(pokemon)) {
+        if(ShadowUnlockPolicy.isLevelExpHiddenByGauge(pokemon)) {
             args.set(2, Component.literal("???").copy().withStyle(s -> s.withBold(true)));
             args.set(3,(((InfoWidget)(Object)this).getX() + 127) - (Minecraft.getInstance().font.width("???") * 0.5f));
         }
@@ -36,7 +36,7 @@ public class MixinInfoWidget {
 
     @ModifyArgs(method = "renderWidget", at = @At(value = "INVOKE", target = "Lcom/cobblemon/mod/common/client/render/RenderHelperKt;drawScaledText$default(Lnet/minecraft/client/gui/GuiGraphics;Lnet/minecraft/resources/ResourceLocation;Lnet/minecraft/network/chat/MutableComponent;Ljava/lang/Number;Ljava/lang/Number;FLjava/lang/Number;IIZZLjava/lang/Integer;Ljava/lang/Integer;ILjava/lang/Object;)V", ordinal = 3))
     public void shadowedhearts$maskLevel(Args args) {
-        if(ShadowAspectUtil.isLevelExpHiddenByGauge(pokemon)) {
+        if(ShadowUnlockPolicy.isLevelExpHiddenByGauge(pokemon)) {
             args.set(2, Component.literal("???").copy().withStyle(s -> s.withBold(true)));
             args.set(3,(((InfoWidget)(Object)this).getX() + 127) - (Minecraft.getInstance().font.width("???") * 0.5f));
         }
@@ -45,7 +45,7 @@ public class MixinInfoWidget {
     // Cobblemon 1.8 draws the size icon between the background and the EXP bar.
     @WrapOperation(method = "renderWidget", at = @At(value = "INVOKE", target = "Lcom/cobblemon/mod/common/api/gui/GuiUtilsKt;blitk$default(Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/resources/ResourceLocation;Ljava/lang/Number;Ljava/lang/Number;Ljava/lang/Number;Ljava/lang/Number;Ljava/lang/Number;Ljava/lang/Number;Ljava/lang/Number;Ljava/lang/Number;Ljava/lang/Number;Ljava/lang/Number;Ljava/lang/Number;Ljava/lang/Number;Ljava/lang/Number;ZFILjava/lang/Object;)V", ordinal = 2))
     public void shadowedhearts$maskExperienceBar(PoseStack poseStack, ResourceLocation resourceLocation, Number x, Number y, Number height, Number width, Number uOffset, Number vOffset, Number textureWidth, Number textureHeight, Number blitOffset, Number red, Number green, Number blue, Number alpha, boolean b, float v, int i, Object o, Operation<Void> original) {
-        if(ShadowAspectUtil.isLevelExpHiddenByGauge(pokemon)) {
+        if(ShadowUnlockPolicy.isLevelExpHiddenByGauge(pokemon)) {
             return;
         }
         original.call(poseStack, resourceLocation, x, y, height, width, uOffset, vOffset, textureWidth, textureHeight, blitOffset, red, green, blue, alpha, b, v, i, o);
@@ -53,7 +53,7 @@ public class MixinInfoWidget {
 
     @WrapOperation(method = "renderWidget", at = @At(value = "INVOKE", target = "Lcom/cobblemon/mod/common/client/gui/summary/widgets/common/NatureInfoUtilsKt;reformatNatureTextIfMinted(Lcom/cobblemon/mod/common/pokemon/Pokemon;)Lnet/minecraft/network/chat/MutableComponent;"))
     public MutableComponent shadowedhearts$maskNature(Pokemon pokemon, Operation<MutableComponent> original) {
-        if(ShadowAspectUtil.isNatureHiddenByGauge(pokemon)) {
+        if(ShadowUnlockPolicy.isNatureHiddenByGauge(pokemon)) {
             return Component.literal("????");
         }
         return original.call(pokemon);

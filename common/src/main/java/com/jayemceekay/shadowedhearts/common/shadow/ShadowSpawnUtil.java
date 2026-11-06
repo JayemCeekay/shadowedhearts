@@ -2,7 +2,7 @@ package com.jayemceekay.shadowedhearts.common.shadow;
 
 import com.cobblemon.mod.common.pokemon.Pokemon;
 import com.cobblemon.mod.common.pokemon.Species;
-import com.jayemceekay.shadowedhearts.common.util.SpeciesTagManager;
+import com.jayemceekay.shadowedhearts.data.SpeciesTagManager;
 import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs;
 
 import java.util.List;

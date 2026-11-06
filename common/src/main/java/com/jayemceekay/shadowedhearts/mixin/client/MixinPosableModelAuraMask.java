@@ -5,8 +5,8 @@ import com.cobblemon.mod.common.client.render.models.blockbench.frame.ModelFrame
 import com.cobblemon.mod.common.client.render.models.blockbench.pose.Bone;
 import com.cobblemon.mod.common.client.render.models.blockbench.repository.RenderContext;
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
-import com.jayemceekay.shadowedhearts.client.aura.ShadowPokemonAuraGuiRenderer;
-import com.jayemceekay.shadowedhearts.client.aura.ShadowPokemonAuraSystem;
+import com.jayemceekay.shadowedhearts.client.aura.shadow.ShadowPokemonAuraGuiRenderer;
+import com.jayemceekay.shadowedhearts.client.aura.shadow.ShadowPokemonAuraSystem;
 import com.jayemceekay.shadowedhearts.client.ball.DarkBallCaptureVfx;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;

@@ -21,7 +21,7 @@ public class ModShadersPlatformImpl {
     @SubscribeEvent
     public static void registerShaders(RegisterShadersEvent evt) {
         com.jayemceekay.shadowedhearts.client.ball.DarkBallCaptureVfx.onResourceReload();
-        com.jayemceekay.shadowedhearts.client.aura.ShadowPokemonAuraFBO.destroy();
+        com.jayemceekay.shadowedhearts.client.aura.shadow.ShadowPokemonAuraFBO.destroy();
         ModShaders.SHADOW_AURA_PIXEL_RESOLVE = null;
         ModShaders.SHADOW_AURA_PIXEL_PRESENT = null;
         com.jayemceekay.shadowedhearts.client.voidshadow.VoidShadowShaders.LIQUID = null;
@@ -73,14 +73,14 @@ public class ModShadersPlatformImpl {
             evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:aura/shadow_aura_fog_cylinder", DefaultVertexFormat.NEW_ENTITY),
                     shader -> {
                         ModShaders.SHADOW_AURA_FOG_CYLINDER = shader;
-                        ModShaders.SHADOW_AURA_FOG_CYLINDER_UNIFORMS = com.jayemceekay.shadowedhearts.client.ShadowFogUniforms.from(shader);
+                        ModShaders.SHADOW_AURA_FOG_CYLINDER_UNIFORMS = com.jayemceekay.shadowedhearts.client.render.ShadowFogUniforms.from(shader);
                     });
 
             // XD variant (filament-style)
             evt.registerShader(new ShaderInstance(evt.getResourceProvider(), "shadowedhearts:aura/shadow_aura_xd_cylinder", DefaultVertexFormat.NEW_ENTITY),
                     shader -> {
                         ModShaders.SHADOW_AURA_XD_CYLINDER = shader;
-                        ModShaders.SHADOW_AURA_XD_CYLINDER_UNIFORMS = com.jayemceekay.shadowedhearts.client.ShadowFogUniforms.from(shader);
+                        ModShaders.SHADOW_AURA_XD_CYLINDER_UNIFORMS = com.jayemceekay.shadowedhearts.client.render.ShadowFogUniforms.from(shader);
                     });
 
             // Purification Chamber background

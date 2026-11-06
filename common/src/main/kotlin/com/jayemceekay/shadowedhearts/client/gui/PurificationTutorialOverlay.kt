@@ -2,8 +2,8 @@ package com.jayemceekay.shadowedhearts.client.gui
 
 import com.cobblemon.mod.common.api.text.font
 import com.cobblemon.mod.common.client.CobblemonResources
-import com.jayemceekay.shadowedhearts.client.aura.AuraReaderTutorialLayout
-import com.jayemceekay.shadowedhearts.client.aura.AuraReaderHudRect
+import com.jayemceekay.shadowedhearts.client.aura.reader.AuraReaderTutorialLayout
+import com.jayemceekay.shadowedhearts.client.aura.reader.AuraReaderHudRect
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.Font
 import net.minecraft.client.gui.GuiGraphics

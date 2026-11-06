@@ -1,7 +1,7 @@
 package com.jayemceekay.shadowedhearts.mixin.client;
 
-import com.jayemceekay.shadowedhearts.client.aura.ShadowPokemonAuraSystem;
-import com.jayemceekay.shadowedhearts.client.aura.ShadowPokemonAuraGuiRenderer;
+import com.jayemceekay.shadowedhearts.client.aura.shadow.ShadowPokemonAuraSystem;
+import com.jayemceekay.shadowedhearts.client.aura.shadow.ShadowPokemonAuraGuiRenderer;
 import com.jayemceekay.shadowedhearts.client.ball.DarkBallCaptureVfx;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;

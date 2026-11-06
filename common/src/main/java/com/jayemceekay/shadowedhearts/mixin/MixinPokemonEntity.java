@@ -1,7 +1,7 @@
 package com.jayemceekay.shadowedhearts.mixin;
 
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
-import com.jayemceekay.shadowedhearts.SyncedEntityAspects;
+import com.jayemceekay.shadowedhearts.common.shadow.SyncedEntityAspects;
 import com.jayemceekay.shadowedhearts.common.shadow.ShadowFlag;
 import com.jayemceekay.shadowedhearts.common.shadow.ShadowPokemonData;
 import net.minecraft.network.syncher.SynchedEntityData;

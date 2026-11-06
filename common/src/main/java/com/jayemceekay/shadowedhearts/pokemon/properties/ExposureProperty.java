@@ -1,8 +1,9 @@
 package com.jayemceekay.shadowedhearts.pokemon.properties;
 
+import com.jayemceekay.shadowedhearts.common.shadow.ShadowPokemonProperties;
+
 import com.cobblemon.mod.common.api.properties.CustomPokemonProperty;
 import com.cobblemon.mod.common.pokemon.Pokemon;
-import com.jayemceekay.shadowedhearts.common.shadow.ShadowAspectUtil;
 
 public class ExposureProperty implements CustomPokemonProperty {
     private final double value;
@@ -22,7 +23,7 @@ public class ExposureProperty implements CustomPokemonProperty {
 
     @Override
     public void apply(Pokemon pokemon) {
-        ShadowAspectUtil.setExposureProperty(pokemon, value);
+        ShadowPokemonProperties.setExposureProperty(pokemon, value);
     }
 
     @Override

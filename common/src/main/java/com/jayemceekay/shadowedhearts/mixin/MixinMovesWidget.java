@@ -1,14 +1,15 @@
 package com.jayemceekay.shadowedhearts.mixin;
 
+import com.jayemceekay.shadowedhearts.common.shadow.restrictions.ShadowUnlockPolicy;
+
 import com.cobblemon.mod.common.api.moves.Move;
 import com.cobblemon.mod.common.client.gui.summary.widgets.screens.moves.MoveDescriptionScrollList;
 import com.cobblemon.mod.common.client.gui.summary.widgets.screens.moves.MoveSlotWidget;
 import com.cobblemon.mod.common.client.gui.summary.widgets.screens.moves.MovesWidget;
 import com.cobblemon.mod.common.pokemon.Pokemon;
-import com.jayemceekay.shadowedhearts.common.shadow.ShadowAspectUtil;
 import com.jayemceekay.shadowedhearts.common.shadow.battle.ShadowBattleClientState;
 import com.jayemceekay.shadowedhearts.common.shadow.restrictions.ShadowRestrictionPolicy;
-import com.jayemceekay.shadowedhearts.util.ShadowMaskingUtil;
+import com.jayemceekay.shadowedhearts.client.gui.ShadowMaskingUtil;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import org.jetbrains.annotations.NotNull;
@@ -34,7 +35,7 @@ public abstract class MixinMovesWidget {
 
     @Unique
     private boolean shadowedhearts$shouldMask(Move m, Pokemon pokemon) {
-        return ShadowAspectUtil.shouldMaskMove(pokemon, m);
+        return ShadowUnlockPolicy.shouldMaskMove(pokemon, m);
     }
 
     @Inject(method = "reorderMove", remap = false, at = @At("HEAD"), cancellable = true)

@@ -1,12 +1,13 @@
 package com.jayemceekay.shadowedhearts.mixin;
 
+import com.jayemceekay.shadowedhearts.common.shadow.restrictions.ShadowUnlockPolicy;
+
 import com.cobblemon.mod.common.api.moves.Move;
 import com.cobblemon.mod.common.api.types.ElementalType;
 import com.cobblemon.mod.common.client.gui.summary.widgets.screens.moves.MoveSlotWidget;
 import com.cobblemon.mod.common.client.gui.summary.widgets.screens.moves.SwapMoveButton;
-import com.jayemceekay.shadowedhearts.common.shadow.ShadowAspectUtil;
 import com.jayemceekay.shadowedhearts.common.shadow.restrictions.ShadowRestrictionPolicy;
-import com.jayemceekay.shadowedhearts.util.ShadowMaskingUtil;
+import com.jayemceekay.shadowedhearts.client.gui.ShadowMaskingUtil;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.mojang.blaze3d.vertex.PoseStack;
@@ -65,7 +66,7 @@ public abstract class MixinMoveSlotWidget {
 
     @Unique
     private boolean shadowedhearts$shouldMask() {
-        return ShadowAspectUtil.shouldMaskMove(pokemon, this.getMove());
+        return ShadowUnlockPolicy.shouldMaskMove(pokemon, this.getMove());
     }
 
     // Mask PP text (first drawScaledText call in MoveSlotWidget.renderWidget)

@@ -3,11 +3,11 @@ package com.jayemceekay.shadowedhearts.client.render;
 import com.google.common.base.MoreObjects;
 import com.jayemceekay.shadowedhearts.client.ModShaders;
 import com.jayemceekay.shadowedhearts.client.ball.BallEmitters;
-import com.jayemceekay.shadowedhearts.client.aura.AuraReaderPulseRenderer;
+import com.jayemceekay.shadowedhearts.client.render.iris.IrisCompat;
 import com.jayemceekay.shadowedhearts.client.render.rendertypes.BallRenderTypes;
 import com.jayemceekay.shadowedhearts.client.trail.BallTrailManager;
 import com.jayemceekay.shadowedhearts.client.snag.ClientSnagState;
-import com.jayemceekay.shadowedhearts.util.HeldItemAnchorCache;
+import com.jayemceekay.shadowedhearts.client.render.HeldItemAnchorCache;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.ByteBufferBuilder;
 import com.mojang.blaze3d.vertex.VertexConsumer;
@@ -99,7 +99,7 @@ public final class HeldBallSnagGlowRenderer {
     public static void renderWorldHands(Camera camera, float partialTicks) {
         var minecraft = Minecraft.getInstance();
         if (!ClientSnagState.isArmed() || minecraft.level == null || camera == null) return;
-        var iris = AuraReaderPulseRenderer.IRIS_HANDLER;
+        var iris = IrisCompat.IRIS_HANDLER;
         if (iris != null && (iris.isShaderPackInUse() || iris.isShadowRenderActive())) return;
         renderWorldHands(camera, partialTicks, false);
     }
@@ -107,7 +107,7 @@ public final class HeldBallSnagGlowRenderer {
     /** Collect native hand anchors before Iris reaches its final world-color seam. */
     public static void queueWorldHandsForIris(Camera camera, float partialTicks) {
         var minecraft = Minecraft.getInstance();
-        var iris = AuraReaderPulseRenderer.IRIS_HANDLER;
+        var iris = IrisCompat.IRIS_HANDLER;
         if (!ClientSnagState.isArmed() || minecraft.level == null || camera == null
                 || iris == null || !iris.isShaderPackInUse() || iris.isShadowRenderActive()) return;
         renderWorldHands(camera, partialTicks, true);
@@ -309,7 +309,7 @@ public final class HeldBallSnagGlowRenderer {
     public static void renderAtHandPoseThirdPerson(
             float partialTicks, PoseStack poseStack, MultiBufferSource buffers
     ) {
-        var iris = AuraReaderPulseRenderer.IRIS_HANDLER;
+        var iris = IrisCompat.IRIS_HANDLER;
         if (iris != null && iris.isShadowRenderActive()) return;
         if (iris != null && iris.isShaderPackInUse()) {
             // Loader callbacks run while Iris owns its entity/translucent

@@ -4,11 +4,11 @@ import com.cobblemon.mod.common.entity.pokeball.EmptyPokeBallEntity;
 import com.jayemceekay.shadowedhearts.Shadowedhearts;
 import com.jayemceekay.shadowedhearts.client.ModKeybinds;
 import com.jayemceekay.shadowedhearts.client.ModShaders;
-import com.jayemceekay.shadowedhearts.client.aura.ShadowAuraEmitters;
-import com.jayemceekay.shadowedhearts.client.aura.AuraReaderInputHandler;
-import com.jayemceekay.shadowedhearts.client.aura.AuraReaderHud;
-import com.jayemceekay.shadowedhearts.client.aura.AuraReaderPulseRenderer;
-import com.jayemceekay.shadowedhearts.client.aura.ShadowPokemonAuraSystem;
+import com.jayemceekay.shadowedhearts.client.aura.shadow.ShadowAuraEmitters;
+import com.jayemceekay.shadowedhearts.client.aura.reader.AuraReaderInputHandler;
+import com.jayemceekay.shadowedhearts.client.aura.reader.AuraReaderHud;
+import com.jayemceekay.shadowedhearts.client.aura.reader.AuraReaderPulseRenderer;
+import com.jayemceekay.shadowedhearts.client.aura.shadow.ShadowPokemonAuraSystem;
 import com.jayemceekay.shadowedhearts.client.ball.BallEmitters;
 import com.jayemceekay.shadowedhearts.client.particle.LuminousMoteEmitters;
 import com.jayemceekay.shadowedhearts.client.particle.LuminousMoteParticle;
@@ -19,7 +19,7 @@ import com.jayemceekay.shadowedhearts.client.render.DepthCapture;
 import com.jayemceekay.shadowedhearts.client.render.VanillaWorldShaderFrame;
 import com.jayemceekay.shadowedhearts.client.sound.RelicStoneSoundManager;
 import com.jayemceekay.shadowedhearts.config.ClientConfig;
-import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs;
+import com.jayemceekay.shadowedhearts.config.ConfigLifecycle;
 import com.jayemceekay.shadowedhearts.content.items.ScentItem;
 import com.jayemceekay.shadowedhearts.fabric.net.ShadowedHeartsFabricNetworkManager;
 import com.jayemceekay.shadowedhearts.registry.ModBlocks;
@@ -46,18 +46,10 @@ public final class ShadowedheartsFabricClient implements ClientModInitializer {
 
     @Override
     public void onInitializeClient() {
-        NeoForgeModConfigEvents.loading(Shadowedhearts.MOD_ID).register(config -> {
-            if (config.getSpec() == ClientConfig.SPEC) {
-                com.jayemceekay.shadowedhearts.config.preset.ConfigSnapshotService.loaded(config.getSpec(), config::getFullPath);
-                ShadowedHeartsConfigs.getInstance().getClientConfig().load();
-            }
-        });
-        NeoForgeModConfigEvents.reloading(Shadowedhearts.MOD_ID).register(config -> {
-            if (config.getSpec() == ClientConfig.SPEC) {
-                com.jayemceekay.shadowedhearts.config.preset.ConfigSnapshotService.loaded(config.getSpec(), config::getFullPath);
-                ShadowedHeartsConfigs.getInstance().getClientConfig().load();
-            }
-        });
+        NeoForgeModConfigEvents.loading(Shadowedhearts.MOD_ID).register(config ->
+                ConfigLifecycle.loadClient(config.getSpec(), config::getFullPath));
+        NeoForgeModConfigEvents.reloading(Shadowedhearts.MOD_ID).register(config ->
+                ConfigLifecycle.loadClient(config.getSpec(), config::getFullPath));
         // FCAP loads client configs synchronously during registration, so listeners must exist first.
         NeoForgeConfigRegistry.INSTANCE.register(Shadowedhearts.MOD_ID, Type.CLIENT, ClientConfig.SPEC, "shadowedhearts/client.toml");
         ConfigScreenFactoryRegistry.INSTANCE.register(Shadowedhearts.MOD_ID, (modId, parent) ->

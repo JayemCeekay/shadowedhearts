@@ -1,6 +1,7 @@
 package com.jayemceekay.shadowedhearts.common.shadow;
 
 import com.cobblemon.mod.common.pokemon.Pokemon;
+import com.jayemceekay.shadowedhearts.network.PokemonStateSync;
 
 import java.util.IdentityHashMap;
 import java.util.Map;
@@ -31,8 +32,8 @@ public final class ShadowHeartGaugeInitialization {
         // Reached only after successful application and outside the outermost scope.
         // Do not replay Shadow initialization: that would also reapply IV/move rules.
         if (scope.depth == 0 && scope.defaultRequested && ShadowAspectUtil.hasShadowAspect(pokemon)
-                && ShadowAspectUtil.initializeMissingHeartGauge(pokemon)) {
-            ShadowAspectUtil.syncProperties(pokemon);
+                && ShadowStateInitialization.initializeMissingHeartGauge(pokemon)) {
+            PokemonStateSync.syncProperties(pokemon);
         }
     }
 

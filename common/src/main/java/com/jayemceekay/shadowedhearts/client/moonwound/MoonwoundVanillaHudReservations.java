@@ -1,6 +1,6 @@
 package com.jayemceekay.shadowedhearts.client.moonwound;
 
-import com.jayemceekay.shadowedhearts.client.aura.AuraReaderHudRect;
+import com.jayemceekay.shadowedhearts.client.aura.reader.AuraReaderHudRect;
 import com.jayemceekay.shadowedhearts.mixin.client.MoonwoundBossHealthOverlayAccessor;
 import com.jayemceekay.shadowedhearts.mixin.client.MoonwoundChatComponentAccessor;
 import net.minecraft.client.Minecraft;

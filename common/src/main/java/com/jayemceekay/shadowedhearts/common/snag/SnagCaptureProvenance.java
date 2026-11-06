@@ -8,6 +8,7 @@ import com.cobblemon.mod.common.battles.actor.PlayerBattleActor;
 import com.cobblemon.mod.common.entity.pokeball.EmptyPokeBallEntity;
 import com.jayemceekay.shadowedhearts.common.shadow.SHAspects;
 import com.jayemceekay.shadowedhearts.common.shadow.ShadowAspectUtil;
+import com.jayemceekay.shadowedhearts.common.shadow.ShadowHeartGauge;
 import com.jayemceekay.shadowedhearts.common.shadow.ShadowService;
 import net.minecraft.server.level.ServerPlayer;
 
@@ -75,7 +76,7 @@ public final class SnagCaptureProvenance {
                 && origin.player().equals(owner.getUUID());
         if (successful && origin.settings().gaugeReductionPercent() > 0.0
                 && ShadowAspectUtil.hasShadowAspect(event.getPokemon())) {
-            int current = ShadowAspectUtil.getHeartGaugeMeter(event.getPokemon());
+            int current = ShadowHeartGauge.getHeartGaugeMeter(event.getPokemon());
             ShadowService.setHeartGauge(event.getPokemon(), event.getPokemon().getEntity(),
                     origin.settings().remainingGaugeAfterCapture(current));
         }

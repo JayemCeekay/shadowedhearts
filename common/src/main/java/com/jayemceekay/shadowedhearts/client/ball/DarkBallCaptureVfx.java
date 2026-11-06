@@ -6,7 +6,7 @@ import com.cobblemon.mod.common.entity.pokeball.EmptyPokeBallEntity;
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
 import com.jayemceekay.shadowedhearts.Shadowedhearts;
 import com.jayemceekay.shadowedhearts.client.ModShaders;
-import com.jayemceekay.shadowedhearts.client.aura.AuraReaderPulseRenderer;
+import com.jayemceekay.shadowedhearts.client.render.iris.IrisCompat;
 import com.jayemceekay.shadowedhearts.client.render.DarkBallFieldMaskBufferSource;
 import com.jayemceekay.shadowedhearts.client.render.rendertypes.BallRenderTypes;
 import com.jayemceekay.shadowedhearts.common.capture.DarkBallCaptureTimings;
@@ -543,7 +543,7 @@ public final class DarkBallCaptureVfx {
         if (entity == null || renderStack == null || rootPart == null || renderingModelMask) {
             return;
         }
-        if (AuraReaderPulseRenderer.IRIS_HANDLER != null && AuraReaderPulseRenderer.IRIS_HANDLER.isShadowRenderActive()) {
+        if (IrisCompat.IRIS_HANDLER != null && IrisCompat.IRIS_HANDLER.isShadowRenderActive()) {
             return;
         }
 
@@ -621,8 +621,8 @@ public final class DarkBallCaptureVfx {
     }
 
     private static boolean isIrisShadowRenderActive() {
-        return AuraReaderPulseRenderer.IRIS_HANDLER != null
-                && AuraReaderPulseRenderer.IRIS_HANDLER.isShadowRenderActive();
+        return IrisCompat.IRIS_HANDLER != null
+                && IrisCompat.IRIS_HANDLER.isShadowRenderActive();
     }
 
     public static void renderModelMask(PokemonEntity entity,

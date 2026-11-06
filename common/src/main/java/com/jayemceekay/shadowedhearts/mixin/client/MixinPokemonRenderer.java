@@ -9,7 +9,7 @@ import com.jayemceekay.shadowedhearts.client.ball.DarkBallCaptureVfx;
 import com.jayemceekay.shadowedhearts.client.ball.SnagCaptureVfx;
 import com.jayemceekay.shadowedhearts.client.render.DissolveBufferSource;
 import com.jayemceekay.shadowedhearts.client.render.SnagDissolveRenderer;
-import com.jayemceekay.shadowedhearts.client.aura.ShadowPokemonAuraSystem;
+import com.jayemceekay.shadowedhearts.client.aura.shadow.ShadowPokemonAuraSystem;
 import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.resources.ResourceLocation;

@@ -1,7 +1,7 @@
 package com.jayemceekay.shadowedhearts.client.ball;
 
 import com.jayemceekay.shadowedhearts.client.ModShaders;
-import com.jayemceekay.shadowedhearts.client.aura.AuraReaderPulseRenderer;
+import com.jayemceekay.shadowedhearts.client.render.iris.IrisCompat;
 import com.jayemceekay.shadowedhearts.client.render.DensityFboPipeline;
 import com.mojang.blaze3d.platform.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
@@ -129,7 +129,7 @@ public final class SnagTrailDensitySystem {
      * {@link SnagDensityFBO}.
      */
     public static void renderDensityPipeline(Camera camera, float partialTicks) {
-        var iris = AuraReaderPulseRenderer.IRIS_HANDLER;
+        var iris = IrisCompat.IRIS_HANDLER;
         if (iris != null && (iris.isShaderPackInUse() || iris.isShadowRenderActive())) return;
         try (var state = DensityFboPipeline.preserveRenderState()) {
             renderDensityPipelineInternal(camera, partialTicks);

@@ -1,7 +1,7 @@
 package com.jayemceekay.shadowedhearts.client.render;
 
-import com.jayemceekay.shadowedhearts.client.aura.AuraReaderPulseRenderer;
-import com.jayemceekay.shadowedhearts.client.aura.ShadowPokemonAuraSystem;
+import com.jayemceekay.shadowedhearts.client.aura.reader.AuraReaderPulseRenderer;
+import com.jayemceekay.shadowedhearts.client.aura.shadow.ShadowPokemonAuraSystem;
 import com.jayemceekay.shadowedhearts.client.ball.BallEmitters;
 import com.jayemceekay.shadowedhearts.client.particle.LuminousMoteFabulousRenderer;
 import com.jayemceekay.shadowedhearts.client.moonwound.MoonwoundPortalRenderer;

@@ -1,5 +1,7 @@
 package com.jayemceekay.shadowedhearts.api.pokeball.catching.effects;
 
+import com.jayemceekay.shadowedhearts.common.shadow.ShadowPokemonProperties;
+
 import com.cobblemon.mod.common.api.pokeball.catching.CaptureEffect;
 import com.cobblemon.mod.common.pokemon.Pokemon;
 import com.jayemceekay.shadowedhearts.common.shadow.ShadowAspectUtil;
@@ -19,7 +21,7 @@ public class AntumbraBallCaptureEffect implements CaptureEffect {
             int max = HeartGaugeConfig.getMax(pokemon);
             int boostedMax = (int) Math.min(Integer.MAX_VALUE,
                     Math.ceil(max * (1.0 + config.antumbraBallHeartGaugeMaxBonus())));
-            ShadowAspectUtil.setHeartGaugeMaxProperty(pokemon, boostedMax);
+            ShadowPokemonProperties.setHeartGaugeMaxProperty(pokemon, boostedMax);
         } else if (thrower.getRandom().nextDouble() < config.antumbraBallShadowConversionChance()) {
             ShadowService.corrupt(pokemon, null, HeartGaugeConfig.getMax(pokemon));
         }

@@ -1,7 +1,7 @@
 package com.jayemceekay.shadowedhearts.client.network
 
 import com.cobblemon.mod.common.api.net.ClientNetworkPacketHandler
-import com.jayemceekay.shadowedhearts.client.aura.AuraReaderClientState
+import com.jayemceekay.shadowedhearts.client.aura.reader.AuraReaderClientState
 import com.jayemceekay.shadowedhearts.network.aura.AuraReaderStateS2CPacket
 import net.minecraft.client.Minecraft
 

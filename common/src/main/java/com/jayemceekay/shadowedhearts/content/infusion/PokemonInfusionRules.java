@@ -1,5 +1,7 @@
 package com.jayemceekay.shadowedhearts.content.infusion;
 
+import com.jayemceekay.shadowedhearts.common.shadow.ShadowPokemonProperties;
+
 import com.cobblemon.mod.common.battles.BattleRegistry;
 import com.cobblemon.mod.common.pokemon.Pokemon;
 import com.cobblemon.mod.common.trade.TradeManager;
@@ -9,7 +11,7 @@ import com.jayemceekay.shadowedhearts.common.shadow.ShadowService;
 import com.jayemceekay.shadowedhearts.common.voidshadow.VoidShadowService;
 import com.jayemceekay.shadowedhearts.config.HeartGaugeConfig;
 import com.jayemceekay.shadowedhearts.config.InfuserConfig;
-import com.jayemceekay.shadowedhearts.common.util.SpeciesTagManager;
+import com.jayemceekay.shadowedhearts.data.SpeciesTagManager;
 import com.jayemceekay.shadowedhearts.integration.lostlore.LostLoreInfusion;
 import net.minecraft.server.level.ServerPlayer;
 
@@ -24,7 +26,7 @@ public final class PokemonInfusionRules {
     private static boolean eligibleBase(Pokemon pokemon) {
         return InfuserConfig.INSTANCE.pokemonEnabled() && pokemon != null && !pokemon.isBattleClone() && !isEgg(pokemon)
                 && !ShadowAspectUtil.hasShadowAspect(pokemon)
-                && !ShadowAspectUtil.isImmunized(pokemon)
+                && !ShadowPokemonProperties.isImmunized(pokemon)
                 && !VoidShadowService.isVoidShadow(pokemon);
     }
 

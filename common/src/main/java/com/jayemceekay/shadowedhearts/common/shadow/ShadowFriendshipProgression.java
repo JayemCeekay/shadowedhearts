@@ -1,5 +1,7 @@
 package com.jayemceekay.shadowedhearts.common.shadow;
 
+import com.jayemceekay.shadowedhearts.network.PokemonStateSync;
+
 import com.cobblemon.mod.common.Cobblemon;
 import com.cobblemon.mod.common.api.events.CobblemonEvents;
 import com.cobblemon.mod.common.api.events.pokemon.FriendshipUpdatedEvent;
@@ -25,7 +27,7 @@ public final class ShadowFriendshipProgression {
         pokemon.getCustomProperties().removeIf(FriendshipBufferProperty.class::isInstance);
         pokemon.getCustomProperties().add(new FriendshipBufferProperty(delta));
         pokemon.getPersistentData().putInt(BUFFER, delta);
-        ShadowAspectUtil.syncProperties(pokemon);
+        PokemonStateSync.syncProperties(pokemon);
     }
 
     /** Null delegates to Cobblemon, preserving its ordinary semantics and compatibility defaults. */

@@ -4,8 +4,9 @@ import com.cobblemon.mod.common.pokemon.Pokemon
 import com.cobblemon.mod.common.util.getPlayer
 import com.jayemceekay.shadowedhearts.common.heart.HeartGaugeEvents
 import com.jayemceekay.shadowedhearts.common.heart.HeartGaugeProgressionMath
-import com.jayemceekay.shadowedhearts.common.shadow.ShadowAspectUtil
+import com.jayemceekay.shadowedhearts.common.shadow.ShadowHeartGauge
 import com.jayemceekay.shadowedhearts.common.shadow.ShadowService
+import com.jayemceekay.shadowedhearts.common.shadow.ShadowStateInitialization
 import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs
 import com.jayemceekay.shadowedhearts.config.GameplayTuningConfig
 import com.jayemceekay.shadowedhearts.storage.purification.PurificationChamberStore
@@ -29,7 +30,7 @@ object ChamberLogic {
         // compatibility repair could overwrite the newly applied batch reduction.
         for (setIndex in 0 until setsCount) {
             if (store.getSupports(setIndex).any { it != null }) {
-                store.getShadow(setIndex)?.let { ShadowAspectUtil.ensureRequiredShadowAspects(it, false) }
+                store.getShadow(setIndex)?.let { ShadowStateInitialization.ensureRequiredShadowAspects(it, false) }
             }
         }
         val perfectCount = (0 until setsCount).count { setIndex ->
@@ -45,7 +46,7 @@ object ChamberLogic {
                 GameplayTuningConfig.INSTANCE.chamberMultiplier())
             
             if (delta != 0 && shadow != null) {
-                val cur = ShadowAspectUtil.getHeartGaugeMeter(shadow)
+                val cur = ShadowHeartGauge.getHeartGaugeMeter(shadow)
                 // Supports and types are fixed during this call. Batch completed intervals
                 // so a large saved remainder or /sh debug steps input cannot monopolize the server.
                 val next = (cur.toLong() + delta.toLong() * intervals).coerceIn(0L, Int.MAX_VALUE.toLong()).toInt()

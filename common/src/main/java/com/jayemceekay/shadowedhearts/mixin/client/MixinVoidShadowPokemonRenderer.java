@@ -3,7 +3,7 @@ package com.jayemceekay.shadowedhearts.mixin.client;
 import com.cobblemon.mod.common.client.render.pokemon.PokemonRenderer;
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
 import com.jayemceekay.shadowedhearts.client.ball.DarkBallCaptureVfx;
-import com.jayemceekay.shadowedhearts.client.aura.ShadowPokemonAuraSystem;
+import com.jayemceekay.shadowedhearts.client.aura.shadow.ShadowPokemonAuraSystem;
 import com.jayemceekay.shadowedhearts.client.voidshadow.VoidShadowBufferSource;
 import com.jayemceekay.shadowedhearts.client.voidshadow.VoidShadowEyeRenderer;
 import com.jayemceekay.shadowedhearts.client.voidshadow.VoidShadowIrisRenderer;

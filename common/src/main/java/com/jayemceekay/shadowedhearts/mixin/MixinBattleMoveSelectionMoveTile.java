@@ -1,12 +1,13 @@
 package com.jayemceekay.shadowedhearts.mixin;
 
+import com.jayemceekay.shadowedhearts.common.shadow.restrictions.ShadowUnlockPolicy;
+
 import com.cobblemon.mod.common.api.types.ElementalType;
 import com.cobblemon.mod.common.battles.InBattleMove;
 import com.cobblemon.mod.common.client.gui.TypeIcon;
 import com.cobblemon.mod.common.client.gui.battle.subscreen.BattleMoveSelection;
-import com.jayemceekay.shadowedhearts.common.shadow.ShadowAspectUtil;
-import com.jayemceekay.shadowedhearts.client.ShadowBattleMoveDetails;
-import com.jayemceekay.shadowedhearts.util.ShadowMaskingUtil;
+import com.jayemceekay.shadowedhearts.client.battle.ShadowBattleMoveDetails;
+import com.jayemceekay.shadowedhearts.client.gui.ShadowMaskingUtil;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.mojang.blaze3d.vertex.PoseStack;
@@ -22,7 +23,6 @@ import org.spongepowered.asm.mixin.injection.ModifyArg;
 @Mixin(value = BattleMoveSelection.MoveTile.class, remap = false)
 public abstract class MixinBattleMoveSelectionMoveTile {
 
-
     private static boolean shadowedhearts$shouldMask(BattleMoveSelection.MoveTile self) {
         InBattleMove m = self.getMove();
         var pokemon = self.getPokemon();
@@ -30,7 +30,7 @@ public abstract class MixinBattleMoveSelectionMoveTile {
         boolean forcedPlaceholder = (m.getPp() == 100 && m.getMaxpp() == 100); // Thrash/forced turn UI
         return m.getDisabled()
                 && !forcedPlaceholder
-                && ShadowAspectUtil.shouldMaskMove(pokemon, m.getId());
+                && ShadowUnlockPolicy.shouldMaskMove(pokemon, m.getId());
     }
 
     // Replace the move name text when masked

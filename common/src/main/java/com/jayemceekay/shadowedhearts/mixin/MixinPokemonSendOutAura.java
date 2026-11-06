@@ -2,7 +2,7 @@ package com.jayemceekay.shadowedhearts.mixin;
 
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
 import com.cobblemon.mod.common.pokemon.Pokemon;
-import com.jayemceekay.shadowedhearts.network.AuraServerSync;
+import com.jayemceekay.shadowedhearts.network.aura.AuraServerSync;
 import kotlin.Unit;
 import kotlin.jvm.functions.Function1;
 import org.spongepowered.asm.mixin.Mixin;

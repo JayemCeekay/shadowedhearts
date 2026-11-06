@@ -1,6 +1,6 @@
 package com.jayemceekay.shadowedhearts.client.sound;
 
-import com.jayemceekay.shadowedhearts.client.aura.AuraReaderSearchClientState;
+import com.jayemceekay.shadowedhearts.client.aura.reader.AuraReaderSearchClientState;
 import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs;
 import com.jayemceekay.shadowedhearts.content.items.ShadowSignalDataItem;
 import com.jayemceekay.shadowedhearts.content.umbrafall.AuraReaderSearchProgress;

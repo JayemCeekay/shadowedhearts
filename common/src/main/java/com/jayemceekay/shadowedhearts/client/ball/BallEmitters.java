@@ -4,8 +4,8 @@ import com.cobblemon.mod.common.entity.pokeball.EmptyPokeBallEntity;
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
 import com.jayemceekay.shadowedhearts.Shadowedhearts;
 import com.jayemceekay.shadowedhearts.client.ModShaders;
-import com.jayemceekay.shadowedhearts.client.aura.AuraReaderPulseRenderer;
-import com.jayemceekay.shadowedhearts.client.aura.ShadowPokemonAuraSystem;
+import com.jayemceekay.shadowedhearts.client.render.iris.IrisCompat;
+import com.jayemceekay.shadowedhearts.client.aura.shadow.ShadowPokemonAuraSystem;
 import com.jayemceekay.shadowedhearts.client.particle.PenumbraTrailSystem;
 import com.jayemceekay.shadowedhearts.client.render.DensityFboPipeline;
 import com.jayemceekay.shadowedhearts.client.render.SnagDissolveRenderer;
@@ -108,8 +108,8 @@ public final class BallEmitters {
      * combines its transparency targets.
      */
     public static void onRender(net.minecraft.client.Camera camera, float partialTicks) {
-        if (AuraReaderPulseRenderer.IRIS_HANDLER != null
-                && AuraReaderPulseRenderer.IRIS_HANDLER.isShadowRenderActive()) return;
+        if (IrisCompat.IRIS_HANDLER != null
+                && IrisCompat.IRIS_HANDLER.isShadowRenderActive()) return;
         var mc = Minecraft.getInstance();
         if (!prepareClientLevel(mc)) return;
         // Advance the capture choreography before either native or Iris drawing.
@@ -221,9 +221,9 @@ public final class BallEmitters {
     /** Draws native ball effects into the caller's scene target with its retained world depth. */
     public static void onRenderFBO(net.minecraft.client.Camera camera, float partialTicks,
                                    Matrix4f projectionMatrix, Matrix4f modelViewMatrix) {
-        if (AuraReaderPulseRenderer.IRIS_HANDLER != null
-                && (AuraReaderPulseRenderer.IRIS_HANDLER.isShaderPackInUse()
-                || AuraReaderPulseRenderer.IRIS_HANDLER.isShadowRenderActive())) return;
+        if (IrisCompat.IRIS_HANDLER != null
+                && (IrisCompat.IRIS_HANDLER.isShaderPackInUse()
+                || IrisCompat.IRIS_HANDLER.isShadowRenderActive())) return;
         if (camera == null || !DarkBallRenderContext.isUsablePerspective(projectionMatrix)
                 || !DarkBallRenderContext.isUsableModelView(modelViewMatrix)) return;
         var mc = Minecraft.getInstance();
@@ -262,7 +262,7 @@ public final class BallEmitters {
     /** Called inside Iris' core-shader/color-output scope before final passes. */
     public static void renderSnagIris() {
         if (!hasSnagEffects()) return;
-        var iris = AuraReaderPulseRenderer.IRIS_HANDLER;
+        var iris = IrisCompat.IRIS_HANDLER;
         if (iris == null || !iris.isShaderPackInUse() || iris.isShadowRenderActive()) return;
         var mc = Minecraft.getInstance();
         if (!prepareClientLevel(mc) || mc.gameRenderer == null) return;
@@ -354,8 +354,8 @@ public final class BallEmitters {
      */
     public static void renderDarkBallIris() {
         if (!ShadowPokemonAuraSystem.isIrisShaderPackActive()
-                || AuraReaderPulseRenderer.IRIS_HANDLER == null
-                || AuraReaderPulseRenderer.IRIS_HANDLER.isShadowRenderActive()) {
+                || IrisCompat.IRIS_HANDLER == null
+                || IrisCompat.IRIS_HANDLER.isShadowRenderActive()) {
             return;
         }
         Minecraft mc = Minecraft.getInstance();
@@ -370,7 +370,7 @@ public final class BallEmitters {
             return;
         }
         var camera = mc.gameRenderer.getMainCamera();
-        var irisSnapshot = AuraReaderPulseRenderer.IRIS_HANDLER
+        var irisSnapshot = IrisCompat.IRIS_HANDLER
                 .getIrisRenderingSnapshot();
         if (irisSnapshot == null
                 || !DarkBallRenderContext.isUsableIrisFrame(
@@ -525,7 +525,7 @@ public final class BallEmitters {
     }
 
     private static void logIrisTransactionDiagnosticOnce(
-            com.jayemceekay.shadowedhearts.client.aura.IrisHandler
+            com.jayemceekay.shadowedhearts.client.render.iris.IrisHandler
                     .IrisRenderingSnapshot snapshot,
             IntBuffer viewport) {
         if (irisTransactionDiagnosticLogged) {

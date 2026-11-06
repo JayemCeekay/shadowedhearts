@@ -18,10 +18,10 @@ public final class ShadowProgressionManager {
 
     public static int bufferExperience(Pokemon pokemon, int requested) {
         requested = earnedExperience(pokemon, requested);
-        int buffered = ShadowAspectUtil.getBufferedExp(pokemon);
+        int buffered = ShadowProgressionBuffers.getBufferedExp(pokemon);
         int accepted = ShadowProgressionRules.acceptedExperience(requested, buffered,
                 experienceCapacity(pokemon, null));
-        if (accepted > 0) ShadowAspectUtil.setBufferedExp(pokemon, buffered + accepted);
+        if (accepted > 0) ShadowProgressionBuffers.setBufferedExp(pokemon, buffered + accepted);
         return accepted;
     }
 
@@ -33,7 +33,7 @@ public final class ShadowProgressionManager {
     }
 
     public static boolean belowThreshold(Pokemon pokemon, int percent) {
-        return ShadowProgressionRules.belowThreshold(ShadowAspectUtil.getHeartGaugeMeter(pokemon),
+        return ShadowProgressionRules.belowThreshold(ShadowHeartGauge.getHeartGaugeMeter(pokemon),
                 HeartGaugeConfig.getMax(pokemon), percent);
     }
 

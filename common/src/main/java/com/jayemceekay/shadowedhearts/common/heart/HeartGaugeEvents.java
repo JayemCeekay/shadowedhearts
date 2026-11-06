@@ -4,7 +4,9 @@ import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
 import com.cobblemon.mod.common.pokemon.Pokemon;
 import com.jayemceekay.shadowedhearts.advancements.ModCriteriaTriggers;
 import com.jayemceekay.shadowedhearts.common.shadow.ShadowAspectUtil;
+import com.jayemceekay.shadowedhearts.common.shadow.ShadowHeartGauge;
 import com.jayemceekay.shadowedhearts.common.shadow.ShadowService;
+import com.jayemceekay.shadowedhearts.common.shadow.ShadowStateInitialization;
 import com.jayemceekay.shadowedhearts.config.GameplayTuningConfig;
 import com.jayemceekay.shadowedhearts.config.PresetCompatibilityConfig;
 import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs;
@@ -25,21 +27,21 @@ public final class HeartGaugeEvents {
     private static void apply(Pokemon pokemon, PokemonEntity live, int delta, boolean sync) {
         if (delta == 0 || pokemon == null || !ShadowAspectUtil.hasShadowAspect(pokemon)) return;
         // Ensure required aspects are present before we modify the gauge
-        ShadowAspectUtil.ensureRequiredShadowAspects(pokemon);
-        int cur = ShadowAspectUtil.getHeartGaugeMeter(pokemon);
+        ShadowStateInitialization.ensureRequiredShadowAspects(pokemon);
+        int cur = ShadowHeartGauge.getHeartGaugeMeter(pokemon);
         int next = cur + delta; // delta negative reduces meter
         ShadowService.setHeartGauge(pokemon, live, next, sync);
         if (pokemon.getOwnerPlayer() instanceof ServerPlayer owner) {
             recordCareProgress(owner, pokemon, cur);
         }
         // Post-application validation (idempotent) to keep aspects consistent
-        ShadowAspectUtil.ensureRequiredShadowAspects(pokemon);
+        ShadowStateInitialization.ensureRequiredShadowAspects(pokemon);
     }
 
     /** Records a real care action for its server-resolved owner, including custom chamber stores. */
     public static void recordCareProgress(ServerPlayer owner, Pokemon pokemon, int previousMeter) {
         if (!ShadowAspectUtil.hasShadowAspect(pokemon) || previousMeter <= 0) return;
-        int remaining = ShadowAspectUtil.getHeartGaugeMeter(pokemon);
+        int remaining = ShadowHeartGauge.getHeartGaugeMeter(pokemon);
         if (remaining >= previousMeter) return;
         ModCriteriaTriggers.triggerProgression(owner, "heart_opened");
         if (remaining == 0) {

@@ -5,7 +5,7 @@ import com.cobblemon.mod.common.pokemon.Pokemon;
 import com.jayemceekay.shadowedhearts.common.shadow.ShadowMoveUtil;
 import com.jayemceekay.shadowedhearts.common.shadow.ShadowService;
 import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs;
-import com.jayemceekay.shadowedhearts.network.AuraBroadcastQueue;
+import com.jayemceekay.shadowedhearts.network.aura.AuraBroadcastQueue;
 import com.jayemceekay.shadowedhearts.registry.ModItems;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;

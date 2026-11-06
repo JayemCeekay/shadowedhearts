@@ -1,8 +1,9 @@
 package com.jayemceekay.shadowedhearts.pokemon.properties;
 
+import com.jayemceekay.shadowedhearts.common.shadow.ShadowPokemonProperties;
+
 import com.cobblemon.mod.common.api.properties.CustomPokemonProperty;
 import com.cobblemon.mod.common.pokemon.Pokemon;
-import com.jayemceekay.shadowedhearts.common.shadow.ShadowAspectUtil;
 import org.jetbrains.annotations.NotNull;
 
 public class ImmunizedProperty implements CustomPokemonProperty {
@@ -23,7 +24,7 @@ public class ImmunizedProperty implements CustomPokemonProperty {
 
     @Override
     public void apply(@NotNull Pokemon pokemon) {
-        ShadowAspectUtil.setImmunizedProperty(pokemon, value);
+        ShadowPokemonProperties.setImmunizedProperty(pokemon, value);
     }
 
     @Override

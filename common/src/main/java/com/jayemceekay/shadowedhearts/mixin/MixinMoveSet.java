@@ -1,5 +1,7 @@
 package com.jayemceekay.shadowedhearts.mixin;
 
+import com.jayemceekay.shadowedhearts.network.PokemonStateSync;
+
 import com.cobblemon.mod.common.api.moves.Move;
 import com.cobblemon.mod.common.api.moves.MoveSet;
 import com.cobblemon.mod.common.api.types.ElementalTypes;
@@ -47,7 +49,7 @@ public abstract class MixinMoveSet {
                 return null;
             });
             // The explicit sync will be handled by MixinPokemon.shadowedhearts$wrapCopyFrom
-            // which calls ShadowAspectUtil.syncMoveSet() after all modifications complete
+            // which calls PokemonStateSync.syncMoveSet() after all modifications complete
         }
     }*/
 }

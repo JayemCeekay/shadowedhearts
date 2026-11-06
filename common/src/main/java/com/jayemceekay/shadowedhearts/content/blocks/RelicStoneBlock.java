@@ -9,6 +9,7 @@ import com.cobblemon.mod.common.pokemon.Pokemon;
 import com.cobblemon.mod.common.trade.TradeManager;
 import com.jayemceekay.shadowedhearts.advancements.ModCriteriaTriggers;
 import com.jayemceekay.shadowedhearts.common.shadow.ShadowAspectUtil;
+import com.jayemceekay.shadowedhearts.common.shadow.ShadowHeartGauge;
 import com.jayemceekay.shadowedhearts.common.shadow.ShadowService;
 import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs;
 import com.jayemceekay.shadowedhearts.config.GameplayTuningConfig;
@@ -17,8 +18,8 @@ import com.jayemceekay.shadowedhearts.integration.ftbchunks.FTBChunksClaimBridge
 import com.jayemceekay.shadowedhearts.network.purification.RelicStoneMotePacket;
 import com.jayemceekay.shadowedhearts.registry.ModBlockEntities;
 import com.jayemceekay.shadowedhearts.registry.ModItems;
-import com.jayemceekay.shadowedhearts.util.PlayerPersistentData;
-import com.jayemceekay.shadowedhearts.util.ShadowedHeartsPlayerData;
+import com.jayemceekay.shadowedhearts.storage.player.PlayerPersistentData;
+import com.jayemceekay.shadowedhearts.storage.player.ShadowedHeartsPlayerData;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
@@ -436,7 +437,7 @@ public class RelicStoneBlock extends Block implements EntityBlock {
                     battleBlocked = true;
                     continue;
                 }
-                if (ShadowAspectUtil.isReadyForPurification(p)) {
+                if (ShadowHeartGauge.isReadyForPurification(p)) {
                     ShadowService.fullyPurify(p, pe, serverPlayer);
                     Mark nationalRibbon = Marks.getByIdentifier(ResourceLocation.fromNamespaceAndPath("cobblemon", "ribbon_event_national"));
                     if (nationalRibbon != null) p.exchangeMark(nationalRibbon, true);

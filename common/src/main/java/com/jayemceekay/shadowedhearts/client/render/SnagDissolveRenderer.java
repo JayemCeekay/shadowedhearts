@@ -1,8 +1,8 @@
 package com.jayemceekay.shadowedhearts.client.render;
 
 import com.jayemceekay.shadowedhearts.client.ModShaders;
-import com.jayemceekay.shadowedhearts.client.aura.AuraReaderPulseRenderer;
-import com.jayemceekay.shadowedhearts.client.aura.IrisHandler;
+import com.jayemceekay.shadowedhearts.client.render.iris.IrisCompat;
+import com.jayemceekay.shadowedhearts.client.render.iris.IrisHandler;
 import com.jayemceekay.shadowedhearts.client.render.rendertypes.BallRenderTypes;
 import com.mojang.blaze3d.vertex.ByteBufferBuilder;
 import com.mojang.blaze3d.vertex.DefaultVertexFormat;
@@ -45,7 +45,7 @@ public final class SnagDissolveRenderer {
     /** Returns native buffers when the inspected Iris submission seam is unavailable. */
     public static MultiBufferSource wrap(int entityId, MultiBufferSource nativeBuffers,
                                         ResourceLocation texture, float progress, float age) {
-        IrisHandler iris = AuraReaderPulseRenderer.IRIS_HANDLER;
+        IrisHandler iris = IrisCompat.IRIS_HANDLER;
         if (!acceptingCaptures || iris == null || !iris.isShaderPackInUse()
                 || iris.isShadowRenderActive() || ModShaders.SNAG_DISSOLVE == null
                 || !isUsableFrame(iris.getIrisRenderingSnapshot())

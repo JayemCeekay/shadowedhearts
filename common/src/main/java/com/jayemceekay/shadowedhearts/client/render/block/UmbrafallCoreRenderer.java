@@ -1,8 +1,8 @@
 package com.jayemceekay.shadowedhearts.client.render.block;
 
 import com.jayemceekay.shadowedhearts.client.ModShaders;
-import com.jayemceekay.shadowedhearts.client.aura.AuraReaderPulseRenderer;
-import com.jayemceekay.shadowedhearts.client.aura.IrisHandler;
+import com.jayemceekay.shadowedhearts.client.render.iris.IrisCompat;
+import com.jayemceekay.shadowedhearts.client.render.iris.IrisHandler;
 import com.jayemceekay.shadowedhearts.content.umbrafall.UmbrafallCoreBlockEntity;
 import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.Minecraft;
@@ -29,7 +29,7 @@ public final class UmbrafallCoreRenderer implements BlockEntityRenderer<Umbrafal
         if (density < 1) return;
         Level level = core.getLevel();
         if (level == null || core.isRemoved() || ModShaders.UMBRAFALL_CORE_SEEP == null) return;
-        IrisHandler iris = AuraReaderPulseRenderer.IRIS_HANDLER;
+        IrisHandler iris = IrisCompat.IRIS_HANDLER;
         if (iris != null && iris.isShadowRenderActive()) return;
         BlockPos pos = core.getBlockPos();
         Vec3 eye = Minecraft.getInstance().gameRenderer.getMainCamera().getPosition()

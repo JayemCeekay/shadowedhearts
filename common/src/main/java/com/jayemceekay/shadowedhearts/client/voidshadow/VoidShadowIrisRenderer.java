@@ -4,8 +4,8 @@ import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
 import com.jayemceekay.shadowedhearts.Shadowedhearts;
 import com.jayemceekay.shadowedhearts.client.ModShaders;
 import com.jayemceekay.shadowedhearts.client.ball.SnagCaptureVfx;
-import com.jayemceekay.shadowedhearts.client.aura.AuraReaderPulseRenderer;
-import com.jayemceekay.shadowedhearts.client.aura.IrisHandler;
+import com.jayemceekay.shadowedhearts.client.render.iris.IrisCompat;
+import com.jayemceekay.shadowedhearts.client.render.iris.IrisHandler;
 import com.jayemceekay.shadowedhearts.client.render.DensityFboPipeline;
 import com.jayemceekay.shadowedhearts.client.render.DepthCopyFormat;
 import com.mojang.blaze3d.pipeline.TextureTarget;
@@ -45,7 +45,7 @@ public final class VoidShadowIrisRenderer {
     private VoidShadowIrisRenderer() { }
 
     public static boolean isShadowPass() {
-        IrisHandler iris = AuraReaderPulseRenderer.IRIS_HANDLER;
+        IrisHandler iris = IrisCompat.IRIS_HANDLER;
         return iris != null && iris.isShadowRenderActive();
     }
 
@@ -53,7 +53,7 @@ public final class VoidShadowIrisRenderer {
 
     /** Iris main-world HEAD owns the lifetime, including frames with no visible Void Shadows. */
     public static void beginFrame() {
-        IrisHandler iris = AuraReaderPulseRenderer.IRIS_HANDLER;
+        IrisHandler iris = IrisCompat.IRIS_HANDLER;
         if (iris != null && iris.isShadowRenderActive()) return;
         QUEUED.clear();
         vertexCount = 0;
@@ -63,7 +63,7 @@ public final class VoidShadowIrisRenderer {
     }
 
     public static MultiBufferSource capture(PokemonEntity entity, MultiBufferSource buffers) {
-        IrisHandler iris = AuraReaderPulseRenderer.IRIS_HANDLER;
+        IrisHandler iris = IrisCompat.IRIS_HANDLER;
         if (iris == null || !iris.isShaderPackInUse() || iris.isShadowRenderActive()
                 || frameLevel == null || entity.level() != frameLevel || frameShader == null
                 || frameShader != VoidShadowShaders.LIQUID
@@ -89,7 +89,7 @@ public final class VoidShadowIrisRenderer {
         List<VoidShadowIrisBufferSource.Captured> meshes = List.copyOf(QUEUED.values());
         QUEUED.clear();
         vertexCount = 0;
-        IrisHandler iris = AuraReaderPulseRenderer.IRIS_HANDLER;
+        IrisHandler iris = IrisCompat.IRIS_HANDLER;
         Minecraft mc = Minecraft.getInstance();
         if (meshes.isEmpty() || iris == null || !iris.isShaderPackInUse() || iris.isShadowRenderActive()
                 || mc.level != frameLevel || frameShader == null || frameShader != VoidShadowShaders.LIQUID) return;
