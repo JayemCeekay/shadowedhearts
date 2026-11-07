@@ -102,8 +102,11 @@ dependencies {
 
     // Optional in production; included in development to exercise the config screen.
     modRuntimeOnly "com.terraformersmc:modmenu:${rootProject.modmenu_version}"
+    // Loom needs YACL's widget hierarchy to remap inherited Minecraft members in the release jar.
+    def yacl = "dev.isxander:yet-another-config-lib:${rootProject.yacl_version}+${rootProject.minecraft_version}-fabric"
+    modCompileOnly(yacl) { transitive = false }
     if (rootProject.devYaclEnabled) {
-        modLocalRuntime("dev.isxander:yet-another-config-lib:${rootProject.yacl_version}+${rootProject.minecraft_version}-fabric") {
+        modLocalRuntime(yacl) {
             // The loader, Fabric API and Kotlin are supplied by this project.
             exclude group: 'net.fabricmc'
             exclude group: 'net.fabricmc.fabric-api'
