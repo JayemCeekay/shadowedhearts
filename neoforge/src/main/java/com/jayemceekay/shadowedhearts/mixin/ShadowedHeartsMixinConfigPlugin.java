@@ -1,5 +1,6 @@
 package com.jayemceekay.shadowedhearts.mixin;
 
+import com.jayemceekay.shadowedhearts.integration.yacl.YaclCompatibility;
 import net.neoforged.fml.loading.FMLLoader;
 import org.objectweb.asm.tree.ClassNode;
 import org.spongepowered.asm.mixin.extensibility.IMixinConfigPlugin;
@@ -13,6 +14,10 @@ public class ShadowedHeartsMixinConfigPlugin implements IMixinConfigPlugin {
 
     @Override
     public boolean shouldApplyMixin(String targetClassName, String mixinClassName) {
+        if (mixinClassName.startsWith("com.jayemceekay.shadowedhearts.mixin.yacl.")) {
+            return FMLLoader.getLoadingModList().getMods().stream().anyMatch(mod -> mod.getModId().equals(YaclCompatibility.MOD_ID)
+                    && YaclCompatibility.supportsHeadingLayout(mod.getVersion().toString()));
+        }
         if (mixinClassName.startsWith("com.jayemceekay.shadowedhearts.mixin.emi.")) {
             return FMLLoader.getLoadingModList().getModFileById("emi") != null;
         }

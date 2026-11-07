@@ -274,7 +274,7 @@ public final class ShadowAspectUtil {
     }
 
     /**
-     * Shared visibility and battle-use gate. Defaults preserve the original 79/40/20 thresholds.
+     * Shared visibility and battle-use gate for ordinary moves.
      * Disabling the restriction allows all ordinary moves without removing assigned Shadow moves.
      */
     public static int getAllowedVisibleNonShadowMoves(Pokemon pokemon) {

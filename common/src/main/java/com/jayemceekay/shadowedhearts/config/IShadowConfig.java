@@ -5,6 +5,8 @@ import com.jayemceekay.shadowedhearts.common.aura.AuraStyleDefault;
 import java.util.List;
 
 public interface IShadowConfig extends IModConfig {
+    int DEFAULT_FIRST_MOVE_UNLOCK_PERCENT = 80;
+
     default AuraStyleDefault shadowAuraStyle() { return AuraStyleDefault.SIGNATURE; }
 
     default double shadowSpawnChancePercent() { return 0.78125; }
@@ -107,7 +109,7 @@ public interface IShadowConfig extends IModConfig {
     default boolean heartGaugeHideIVs() { return true; }
     default int heartGaugeIvRevealPercent() { return 40; }
     default boolean heartGaugeRestrictNonShadowMoves() { return true; }
-    default int heartGaugeFirstMoveUnlockPercent() { return 79; }
+    default int heartGaugeFirstMoveUnlockPercent() { return DEFAULT_FIRST_MOVE_UNLOCK_PERCENT; }
     default int heartGaugeSecondMoveUnlockPercent() { return 40; }
     default int heartGaugeThirdMoveUnlockPercent() { return 20; }
     default boolean heartGaugeExactThresholds() { return false; }

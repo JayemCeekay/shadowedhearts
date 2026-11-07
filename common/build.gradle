@@ -62,6 +62,9 @@ dependencies {
 
     modImplementation "dev.architectury:architectury:$rootProject.architectury_api_version"
 
+    // YACL publishes its shared screen API in the Fabric artifact.
+    modCompileOnly("dev.isxander:yet-another-config-lib:${rootProject.yacl_version}+${rootProject.minecraft_version}-fabric") { transitive = false }
+
     modImplementation("com.cobblemon:mod:${project.property('cobblemon_version')}")
     modCompileOnly( "com.cobblemon:fabric:${cobblemon_version}")
 
@@ -98,6 +101,8 @@ dependencies {
 
     // Forge Config API Port
     compileOnly "fuzs.forgeconfigapiport:forgeconfigapiport-common-neoforgeapi:$rootProject.fcap_version"
+    // Its native client screens mirror NeoForge but are absent from the common API artifact.
+    modCompileOnly("fuzs.forgeconfigapiport:forgeconfigapiport-fabric:$rootProject.fcap_version") { transitive = false }
     // Exercise real config schemas and TOML migration without a running client.
     testImplementation "fuzs.forgeconfigapiport:forgeconfigapiport-common-neoforgeapi:$rootProject.fcap_version"
 

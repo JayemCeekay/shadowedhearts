@@ -102,6 +102,14 @@ dependencies {
 
     // Optional in production; included in development to exercise the config screen.
     modRuntimeOnly "com.terraformersmc:modmenu:${rootProject.modmenu_version}"
+    if (rootProject.devYaclEnabled) {
+        modLocalRuntime("dev.isxander:yet-another-config-lib:${rootProject.yacl_version}+${rootProject.minecraft_version}-fabric") {
+            // The loader, Fabric API and Kotlin are supplied by this project.
+            exclude group: 'net.fabricmc'
+            exclude group: 'net.fabricmc.fabric-api'
+            exclude group: 'org.jetbrains.kotlin'
+        }
+    }
 
     // Opt-in development viewers; none is required or bundled in the published mod.
     def recipeViewers = providers.gradleProperty('recipeViewers').getOrElse('none').split(',') as List

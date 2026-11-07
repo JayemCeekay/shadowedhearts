@@ -1,5 +1,6 @@
 package com.jayemceekay.shadowedhearts.mixin;
 
+import com.jayemceekay.shadowedhearts.integration.yacl.YaclCompatibility;
 import dev.architectury.platform.Platform;
 import org.objectweb.asm.tree.ClassNode;
 import org.spongepowered.asm.mixin.extensibility.IMixinConfigPlugin;
@@ -12,6 +13,10 @@ public class ShadowedHeartsMixinConfigPlugin implements IMixinConfigPlugin {
 
     @Override
     public boolean shouldApplyMixin(String targetClassName, String mixinClassName) {
+        if (mixinClassName.startsWith("com.jayemceekay.shadowedhearts.mixin.yacl.")) {
+            return net.fabricmc.loader.api.FabricLoader.getInstance().getModContainer(YaclCompatibility.MOD_ID)
+                    .map(mod -> YaclCompatibility.supportsHeadingLayout(mod.getMetadata().getVersion().getFriendlyString())).orElse(false);
+        }
         if (mixinClassName.startsWith("com.jayemceekay.shadowedhearts.mixin.emi.")) {
             return Platform.isModLoaded("emi");
         }

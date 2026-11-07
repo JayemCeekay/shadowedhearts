@@ -40,7 +40,7 @@ import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.RenderType;
 import net.neoforged.fml.config.ModConfig.Type;
-import net.neoforged.neoforge.client.gui.ConfigurationScreen;
+import com.jayemceekay.shadowedhearts.client.gui.ShadowedHeartsConfigScreen;
 
 public final class ShadowedheartsFabricClient implements ClientModInitializer {
 
@@ -53,8 +53,7 @@ public final class ShadowedheartsFabricClient implements ClientModInitializer {
         // FCAP loads client configs synchronously during registration, so listeners must exist first.
         NeoForgeConfigRegistry.INSTANCE.register(Shadowedhearts.MOD_ID, Type.CLIENT, ClientConfig.SPEC, "shadowedhearts/client.toml");
         ConfigScreenFactoryRegistry.INSTANCE.register(Shadowedhearts.MOD_ID, (modId, parent) ->
-                new com.jayemceekay.shadowedhearts.client.gui.ShadowedHeartsConfigScreen(parent,
-                        previous -> new ConfigurationScreen(modId, previous)));
+                new ShadowedHeartsConfigScreen(parent));
         // Register client-side handlers for our Cobblemon-style packets
         ShadowedHeartsFabricNetworkManager.registerClientHandlers();
         // Client-side common init

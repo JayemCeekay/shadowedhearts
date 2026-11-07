@@ -33,7 +33,7 @@ public record ShadowRestrictionSettings(
 ) {
     private static final ShadowRestrictionSettings DEFAULTS = new ShadowRestrictionSettings(
             true, true, true, true, true, true, true, true, true, true, true, true, true,
-            40, 40, 40, 40, 79, 40, 20);
+            40, 40, 40, 40, IShadowConfig.DEFAULT_FIRST_MOVE_UNLOCK_PERCENT, 40, 20);
 
     /** Existing callers retain rounded thresholds and unrestricted Hyper Training. */
     public ShadowRestrictionSettings(boolean bufferExperience, boolean bufferEVs, boolean blockFriendshipChanges,

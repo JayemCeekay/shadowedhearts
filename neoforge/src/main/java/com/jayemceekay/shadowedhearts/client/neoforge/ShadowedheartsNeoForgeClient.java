@@ -32,7 +32,7 @@ import net.neoforged.fml.config.ModConfig;
 import net.neoforged.fml.event.config.ModConfigEvent;
 import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
 import net.neoforged.neoforge.client.event.*;
-import net.neoforged.neoforge.client.gui.ConfigurationScreen;
+import com.jayemceekay.shadowedhearts.client.gui.ShadowedHeartsConfigScreen;
 import net.neoforged.neoforge.client.gui.IConfigScreenFactory;
 import net.neoforged.neoforge.client.model.obj.ObjLoader;
 import net.neoforged.neoforge.event.entity.EntityLeaveLevelEvent;
@@ -50,8 +50,7 @@ public final class ShadowedheartsNeoForgeClient {
        // ShadowedHeartsConfigs.getInstance().getClientConfig().load();
         modContainer.registerConfig(ModConfig.Type.CLIENT, ShadowedHeartsConfigs.getInstance().getClientConfig().getSpec(), "shadowedhearts/client.toml");
         modContainer.registerExtensionPoint(IConfigScreenFactory.class, (container, parent) ->
-                new com.jayemceekay.shadowedhearts.client.gui.ShadowedHeartsConfigScreen(parent,
-                        previous -> new ConfigurationScreen(container, previous)));
+                new ShadowedHeartsConfigScreen(parent));
         ShadowedHeartsClient.init();
     }
 

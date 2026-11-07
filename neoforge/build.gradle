@@ -117,6 +117,12 @@ dependencies {
     // Both LAN test clients share these dev-only mods; they are not bundled or published dependencies.
     modLocalRuntime("maven.modrinth:GebWh45l:${rootProject.raid_dens_neoforge_version}") { transitive = false }
     modLocalRuntime("software.bernie.geckolib:geckolib-neoforge-1.21.1:4.7.7")
+    if (rootProject.devYaclEnabled) {
+        modLocalRuntime("dev.isxander:yet-another-config-lib:${rootProject.yacl_version}+${rootProject.minecraft_version}-neoforge") { transitive = false }
+        // Loom strips YACL's nested jars. Supply them on the NeoForge dev module path.
+        forgeRuntimeLibrary('org.quiltmc.parsers:gson:0.2.1') { exclude group: 'com.google.code.gson' }
+        forgeRuntimeLibrary 'com.twelvemonkeys.imageio:imageio-webp:3.12.0'
+    }
     minecraft "net.minecraft:minecraft:$rootProject.minecraft_version"
     mappings loom.officialMojangMappings()
     neoForge "net.neoforged:neoforge:$rootProject.neoforge_version"

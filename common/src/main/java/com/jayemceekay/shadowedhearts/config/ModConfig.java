@@ -1020,7 +1020,7 @@ public final class ModConfig implements IShadowConfig {
             firstMoveUnlockPercent = builder
                     .comment("First ordinary move threshold in remaining Heart Gauge percent; comparison follows exactThresholds. Use 80 with exact mode for the original Orre below-80% milestone.")
                     .translation("shadowedhearts.configuration.heartGauge.restrictions.firstMoveUnlockPercent")
-                    .defineInRange("firstMoveUnlockPercent", 79, 0, 100);
+                    .defineInRange("firstMoveUnlockPercent", IShadowConfig.DEFAULT_FIRST_MOVE_UNLOCK_PERCENT, 0, 100);
             secondMoveUnlockPercent = builder
                     .comment("Second ordinary move threshold after the first has unlocked; comparison follows exactThresholds.")
                     .translation("shadowedhearts.configuration.heartGauge.restrictions.secondMoveUnlockPercent")

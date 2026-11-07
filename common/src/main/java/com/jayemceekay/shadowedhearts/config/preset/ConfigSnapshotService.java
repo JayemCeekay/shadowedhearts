@@ -11,6 +11,7 @@ import net.neoforged.neoforge.common.ModConfigSpec;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
 
@@ -55,6 +56,55 @@ public final class ConfigSnapshotService {
     public static void unloaded(net.neoforged.fml.config.IConfigSpec config) {
         String scope = scope(config);
         if (scope != null) PATHS.remove(scope);
+    }
+
+    /** Check the loader-selected file before a screen publishes edits into its live spec. */
+    public static ScreenEditFile beginScreenEdit(ModConfigSpec spec) {
+        String scope = scope(spec);
+        Path path = scope == null ? null : PATHS.get(scope);
+        if (path == null || !spec.isLoaded()) throw new IllegalStateException("Settings file is not bound");
+        return new ScreenEditFile(scope, spec, path);
+    }
+
+    public static final class ScreenEditFile {
+        private final String scope;
+        private final ModConfigSpec spec;
+        private final Path path;
+        private final byte[] before;
+        private byte[] expectedWrite;
+
+        private ScreenEditFile(String scope, ModConfigSpec spec, Path path) {
+            this.scope = scope;
+            this.spec = spec;
+            this.path = path;
+            this.before = readCurrent();
+            if (!RulesPresetTransaction.persistedMatchesRuntime(spec, before)) throw stale();
+        }
+
+        public void save() {
+            byte[] expected = RulesPresetTransaction.expectedSavedBytes(spec, before);
+            if (!Arrays.equals(before, readCurrent())) throw stale();
+            expectedWrite = expected;
+            spec.save();
+        }
+
+        public void saveRollback() {
+            if (expectedWrite == null) return;
+            byte[] current = readCurrent();
+            if (Arrays.equals(before, current)) return;
+            if (!Arrays.equals(expectedWrite, current)) throw stale();
+            spec.save();
+        }
+
+        public boolean isBound() { return spec.isLoaded() && path.equals(PATHS.get(scope)); }
+
+        private byte[] readCurrent() {
+            if (!isBound()) throw stale();
+            try { return Files.readAllBytes(path); }
+            catch (IOException failure) { throw new UncheckedIOException("Could not read " + path, failure); }
+        }
+
+        private ConcurrentModificationException stale() { return new ConcurrentModificationException(path.toString()); }
     }
 
     public static void beforeMutation(Path path, byte[] before) {

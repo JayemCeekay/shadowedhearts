@@ -132,6 +132,14 @@ ordering = "NONE"
 side = "CLIENT"
 reason = "Enables Iris shader integration for aura and capture effects."
 
+[[dependencies.shadowedhearts]]
+modId = "yet_another_config_lib_v3"
+type = "optional"
+versionRange = "*"
+ordering = "NONE"
+side = "CLIENT"
+reason = "Provides the searchable settings screen."
+
 # Client recipe viewers are optional; these versions provide the APIs used by the adapters.
 [[dependencies.shadowedhearts]]
 modId = "jei"
