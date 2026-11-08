@@ -28,6 +28,7 @@ import com.jayemceekay.shadowedhearts.content.infusion.InfuserPokemonRecoveryDat
 import com.jayemceekay.shadowedhearts.content.umbrafall.UmbrafallSites;
 import com.jayemceekay.shadowedhearts.data.ShadowAspectPresets;
 import com.jayemceekay.shadowedhearts.data.ShadowPools;
+import com.jayemceekay.shadowedhearts.data.ShadowLearnsets;
 import com.jayemceekay.shadowedhearts.data.SpeciesTagManager;
 import com.jayemceekay.shadowedhearts.integration.accessories.SnagAccessoryBridgeHolder;
 import com.jayemceekay.shadowedhearts.integration.ftbchunks.FTBChunksClaimBridgeHolder;
@@ -154,6 +155,7 @@ public final class Shadowedhearts {
         ShadowAspectValidator.init();
         ShadowAspectPresets.init();
         ShadowPools.init();
+        ShadowLearnsets.init();
         SnagEvents.init();
         DeferredSnagDelivery.init();
         ModCommands.init();

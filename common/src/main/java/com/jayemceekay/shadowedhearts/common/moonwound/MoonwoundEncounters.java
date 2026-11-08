@@ -22,6 +22,7 @@ import com.cobblemon.mod.common.pokemon.Pokemon;
 import com.cobblemon.mod.common.pokemon.properties.UncatchableProperty;
 import com.jayemceekay.shadowedhearts.common.moonwound.raid.MoonwoundRaidIntegration;
 import com.jayemceekay.shadowedhearts.common.shadow.ShadowMoveUtil;
+import com.jayemceekay.shadowedhearts.common.shadow.ShadowStartingMoves;
 import com.jayemceekay.shadowedhearts.common.shadow.ShadowService;
 import com.jayemceekay.shadowedhearts.common.voidshadow.VoidShadowService;
 import com.jayemceekay.shadowedhearts.common.voidshadow.VoidShadowSpawnTemplates;
@@ -184,13 +185,13 @@ public final class MoonwoundEncounters {
             if (local != null && !local.isBattleClone() && !local.isLegendary() && !local.isMythical()) pokemon = local;
         }
         identify(pokemon, eventId, issuedPokemonId, true);
-        pokemon.setLevel(level);
+        ShadowStartingMoves.setNewEncounterLevel(pokemon, level);
         pokemon.setAlpha(true);
         pokemon.initializeMovesetFromDefault();
         pokemon.setTradeable(true);
         UncatchableProperty.INSTANCE.catchable().apply(pokemon);
         ShadowService.fullyCorrupt(pokemon, null, false);
-        ShadowMoveUtil.assignShadowMoves(pokemon);
+        ShadowMoveUtil.assignNewEncounterMoves(pokemon);
         pokemon.heal();
         return pokemon;
     }

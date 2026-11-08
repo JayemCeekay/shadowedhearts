@@ -13,6 +13,7 @@ import com.cobblemon.mod.common.pokemon.properties.UncatchableProperty;
 import com.cobblemon.mod.common.pokemon.requirements.LevelRequirement;
 import com.jayemceekay.shadowedhearts.Shadowedhearts;
 import com.jayemceekay.shadowedhearts.data.ShadowPools;
+import com.jayemceekay.shadowedhearts.data.ShadowLearnsets;
 import kotlin.Unit;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
@@ -104,7 +105,7 @@ public final class NPCShadowInjector {
     }
 
     private static void initializeShadow(Pokemon pokemon, Random rng) {
-        forceShadow(pokemon);
+        forceShadow(pokemon, false);
         pokemon.setOriginalTrainer("?????");
         ShadowStateInitialization.ensureRequiredShadowAspects(pokemon);
         ShadowMoveUtil.assignShadowMoves(pokemon, rng);
@@ -116,7 +117,7 @@ public final class NPCShadowInjector {
         int converted = 0;
         for (int index : eligible) {
             if (chance >= 0 && rng.nextInt(100) >= chance) continue;
-            forceShadow(pokemon(list.get(index)));
+            forceShadow(pokemon(list.get(index)), true);
             if (++converted >= count) break;
         }
     }
@@ -138,13 +139,13 @@ public final class NPCShadowInjector {
                 Pokemon original = pokemon(source);
                 if (original == null) return null;
                 BattlePokemon clone = BattlePokemon.Companion.safeCopyOf(original);
-                clone.getEffectedPokemon().setLevel(level);
+                ShadowStartingMoves.setNewEncounterLevel(clone.getEffectedPokemon(), level);
                 return clone;
             }, NPCShadowInjector::species, candidate -> !profile.enforceMinEvolutionLevel()
                     || getMinEvolutionLevel(candidate.getEffectedPokemon()) <= candidate.getEffectedPokemon().getLevel());
         }
         for (BattlePokemon addition : additions) {
-            forceShadow(addition.getEffectedPokemon());
+            forceShadow(addition.getEffectedPokemon(), true);
             addition.setActor(actor);
         }
         party.addAll(additions);
@@ -169,13 +170,13 @@ public final class NPCShadowInjector {
                 replacement = candidates.get(0);
             } else {
                 replacement = BattlePokemon.Companion.safeCopyOf(pokemon(party.get(slot)));
-                replacement.getEffectedPokemon().setLevel(level);
+                ShadowStartingMoves.setNewEncounterLevel(replacement.getEffectedPokemon(), level);
                 if (profile.enforceMinEvolutionLevel()
                         && getMinEvolutionLevel(replacement.getEffectedPokemon()) > replacement.getEffectedPokemon().getLevel()) continue;
             }
             if (profile.unique() && NPCShadowSelection.containsSpecies(party, species(replacement), slot,
                     NPCShadowInjector::species)) continue;
-            forceShadow(replacement.getEffectedPokemon());
+            forceShadow(replacement.getEffectedPokemon(), true);
             replacement.setActor(actor);
             party.set(slot, replacement);
             replaced++;
@@ -218,13 +219,17 @@ public final class NPCShadowInjector {
         return result;
     }
 
-    private static void forceShadow(Pokemon pokemon) {
+    private static void forceShadow(Pokemon pokemon, boolean fresh) {
         if (pokemon == null) return;
         Set<String> forced = new HashSet<>(pokemon.getForcedAspects());
         forced.add(SHAspects.SHADOW);
         pokemon.setForcedAspects(forced);
         UncatchableProperty.INSTANCE.catchable().apply(pokemon);
         pokemon.updateAspects();
+        if (fresh && (ShadowLearnsets.get(pokemon) != null
+                || !ShadowStartingMoves.encounter(pokemon).isEmpty())) {
+            ShadowMoveUtil.assignShadowMoves(pokemon, true);
+        }
     }
 
     private static Set<String> collectSpeciesIds(List<BattlePokemon> party, int excludedSlot) {

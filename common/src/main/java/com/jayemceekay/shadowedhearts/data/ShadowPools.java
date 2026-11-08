@@ -11,6 +11,7 @@ import dev.architectury.registry.ReloadListenerRegistry;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.network.chat.Component;
 import com.jayemceekay.shadowedhearts.common.editor.TrainerEditorMessageException;
+import com.jayemceekay.shadowedhearts.pokemon.properties.ShadowEncounterMoves;
 import static com.jayemceekay.shadowedhearts.data.DefinitionMessages.text;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.packs.PackType;
@@ -237,6 +238,9 @@ public final class ShadowPools {
             if (PokemonSpecies.INSTANCE.getByIdentifier(id) == null) {
                 throw new TrainerEditorMessageException(text("pool.species_unknown", species));
             }
+        }
+        for (var property : properties.getCustomProperties()) {
+            if (property instanceof ShadowEncounterMoves encounter) encounter.validateRegistered();
         }
     }
 

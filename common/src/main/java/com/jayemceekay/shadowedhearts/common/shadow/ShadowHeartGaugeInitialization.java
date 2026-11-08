@@ -6,7 +6,7 @@ import com.jayemceekay.shadowedhearts.network.PokemonStateSync;
 import java.util.IdentityHashMap;
 import java.util.Map;
 
-/** Delays only default gauge creation while native properties are still choosing species and overrides. */
+/** Defers species-dependent initialization until an entire native properties application succeeds. */
 public final class ShadowHeartGaugeInitialization {
     private static final ThreadLocal<Map<Pokemon, Scope>> SCOPES = new ThreadLocal<>();
 
@@ -35,6 +35,11 @@ public final class ShadowHeartGaugeInitialization {
                 && ShadowStateInitialization.initializeMissingHeartGauge(pokemon)) {
             PokemonStateSync.syncProperties(pokemon);
         }
+        if (scope.depth == 0 && scope.movesRequested && ShadowAspectUtil.hasShadowAspect(pokemon)) {
+            ShadowMoveUtil.assignShadowMoves(pokemon, scope.newCorruption);
+            PokemonStateSync.syncMoveSet(pokemon);
+            PokemonStateSync.syncBenchedMoves(pokemon);
+        }
     }
 
     static boolean deferDefault(Pokemon pokemon) {
@@ -45,8 +50,19 @@ public final class ShadowHeartGaugeInitialization {
         return true;
     }
 
+    static boolean deferMoves(Pokemon pokemon, boolean newCycle) {
+        Map<Pokemon, Scope> scopes = SCOPES.get();
+        Scope scope = scopes == null ? null : scopes.get(pokemon);
+        if (scope == null) return false;
+        scope.movesRequested = true;
+        scope.newCorruption |= newCycle;
+        return true;
+    }
+
     private static final class Scope {
         private int depth;
         private boolean defaultRequested;
+        private boolean movesRequested;
+        private boolean newCorruption;
     }
 }

@@ -9,6 +9,7 @@ import com.jayemceekay.shadowedhearts.network.items.DarkBallSettingsS2CPacket
 import com.jayemceekay.shadowedhearts.network.items.SnagMachineSettingsS2CPacket
 import com.jayemceekay.shadowedhearts.network.items.MoveLifecycleSettingsS2CPacket
 import com.jayemceekay.shadowedhearts.network.items.ItemRuleSettingsS2CPacket
+import com.jayemceekay.shadowedhearts.network.items.ShadowLearnsetsS2CPacket
 import com.jayemceekay.shadowedhearts.network.restrictions.ShadowRestrictionSettingsS2CPacket
 import com.jayemceekay.shadowedhearts.network.restrictions.HeartGaugeSettingsS2CPacket
 import com.jayemceekay.shadowedhearts.network.restrictions.ShadowBattleSettingsS2CPacket
@@ -49,6 +50,7 @@ object ShadowedHeartsNetwork {
         add(PacketRegisterInfo(SnagMachineSettingsS2CPacket.ID, SnagMachineSettingsS2CPacket::decode, SnagMachineSettingsClientHandler))
         add(PacketRegisterInfo(MoveLifecycleSettingsS2CPacket.ID, MoveLifecycleSettingsS2CPacket::decode, MoveLifecycleSettingsClientHandler))
         add(PacketRegisterInfo(ItemRuleSettingsS2CPacket.ID, ItemRuleSettingsS2CPacket::decode, ItemRuleSettingsClientHandler))
+        add(PacketRegisterInfo(ShadowLearnsetsS2CPacket.ID, ShadowLearnsetsS2CPacket::decode, ShadowLearnsetsClientHandler))
         add(PacketRegisterInfo(ShadowBattleSettingsS2CPacket.ID, ShadowBattleSettingsS2CPacket::decode, ShadowBattleSettingsClientHandler))
         add(PacketRegisterInfo(OpenPurificationChamberPacket.ID, OpenPurificationChamberPacket::decode, OpenPurificationChamberHandler))
         add(PacketRegisterInfo(PurificationChamberSyncPacket.ID, PurificationChamberSyncPacket::decode, PurificationChamberSyncHandler))

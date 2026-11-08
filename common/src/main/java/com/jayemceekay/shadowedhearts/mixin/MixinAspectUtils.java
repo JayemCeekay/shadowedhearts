@@ -10,6 +10,7 @@ import com.cobblemon.mod.common.pokemon.Pokemon;
 import com.github.yajatkaul.mega_showdown.utils.AspectUtils;
 import com.jayemceekay.shadowedhearts.common.shadow.ShadowAspectUtil;
 import com.jayemceekay.shadowedhearts.common.shadow.ShadowMoveUtil;
+import com.jayemceekay.shadowedhearts.common.shadow.ShadowStartingMoves;
 import com.jayemceekay.shadowedhearts.integration.lostlore.LostLoreShadowMoves;
 import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
@@ -28,15 +29,7 @@ public abstract class MixinAspectUtils {
      */
     @WrapMethod(method = "applyProperties")
     private static void shadowedhearts$wrapApplyProperties(Pokemon pokemon, Optional<String> propertyString, Operation<Void> original) {
-        Move[] savedSlots = saveShadowSlots(pokemon);
-        List<BenchedMove> savedBenched = saveShadowBenched(pokemon);
-        Set<String> savedForcedShadowAspects = saveShadowForcedAspects(pokemon);
-        original.call(pokemon, propertyString);
-        restoreShadowForcedAspects(pokemon, savedForcedShadowAspects);
-        restoreShadowMoves(pokemon, savedSlots, savedBenched);
-        PokemonStateSync.syncAspects(pokemon);
-        PokemonStateSync.syncMoveSet(pokemon);
-        PokemonStateSync.syncBenchedMoves(pokemon);
+        applyPreservingShadowState(pokemon, () -> original.call(pokemon, propertyString));
     }
 
     /**
@@ -52,6 +45,7 @@ public abstract class MixinAspectUtils {
             original.call(pokemon);
             return;
         }
+        if (ShadowStartingMoves.hasExactSet(pokemon)) return;
         Move[] savedSlots = saveShadowSlots(pokemon);
         List<BenchedMove> savedBenched = saveShadowBenched(pokemon);
         original.call(pokemon);
@@ -68,12 +62,28 @@ public abstract class MixinAspectUtils {
      */
     @WrapMethod(method = "applyAspects")
     private static void shadowedhearts$wrapApplyAspects(Pokemon pokemon, List<String> aspects, Operation<Void> original) {
+        applyPreservingShadowState(pokemon, () -> original.call(pokemon, aspects));
+    }
+
+    private static void applyPreservingShadowState(Pokemon pokemon, Runnable apply) {
+        boolean hadAuthoredSet = ShadowStartingMoves.assigned(pokemon);
+        String encounter = ShadowStartingMoves.encounter(pokemon);
+        MoveSet exact = null;
+        if (ShadowStartingMoves.hasExactSet(pokemon)) {
+            exact = new MoveSet();
+            exact.copyFrom(pokemon.getMoveSet());
+        }
         Move[] savedSlots = saveShadowSlots(pokemon);
         List<BenchedMove> savedBenched = saveShadowBenched(pokemon);
         Set<String> savedForcedShadowAspects = saveShadowForcedAspects(pokemon);
-        original.call(pokemon, aspects);
+        apply.run();
         restoreShadowForcedAspects(pokemon, savedForcedShadowAspects);
-        restoreShadowMoves(pokemon, savedSlots, savedBenched);
+        // A conversion inside the property callback already reconciled both the active set and bench.
+        if ((hadAuthoredSet || !ShadowStartingMoves.assigned(pokemon))
+                && encounter.equals(ShadowStartingMoves.encounter(pokemon))) {
+            restoreShadowMoves(pokemon, savedSlots, savedBenched);
+            if (exact != null) pokemon.getMoveSet().copyFrom(exact);
+        }
         // Explicit sync with snapshots to avoid race conditions
         PokemonStateSync.syncAspects(pokemon);
         PokemonStateSync.syncMoveSet(pokemon);
@@ -140,7 +150,9 @@ public abstract class MixinAspectUtils {
 
     private static void restoreShadowMoves(Pokemon pokemon, Move[] savedSlots, List<BenchedMove> savedBenched) {
         Set<String> preferredIds = new HashSet<>();
-        LostLoreShadowMoves.getPreferredMoves(pokemon).forEach(move -> preferredIds.add(move.getName()));
+        if (!ShadowStartingMoves.assigned(pokemon)) {
+            LostLoreShadowMoves.getPreferredMoves(pokemon).forEach(move -> preferredIds.add(move.getName()));
+        }
         List<BenchedMove> toRestoreBenched = new ArrayList<>(savedBenched);
         // Restore active shadow move slots
         MoveSet moveSet = pokemon.getMoveSet();

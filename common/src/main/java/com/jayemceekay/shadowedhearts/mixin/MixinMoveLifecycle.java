@@ -5,6 +5,7 @@ import com.cobblemon.mod.common.api.moves.MovesetBuilder;
 import com.cobblemon.mod.common.pokemon.FormData;
 import com.cobblemon.mod.common.pokemon.Pokemon;
 import com.jayemceekay.shadowedhearts.common.shadow.MoveLifecycle;
+import com.jayemceekay.shadowedhearts.common.shadow.ShadowLearnsetMoves;
 import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import org.spongepowered.asm.mixin.Mixin;
@@ -15,7 +16,8 @@ public abstract class MixinMoveLifecycle {
     @WrapMethod(method = "exchangeMove")
     private boolean shadowedhearts$exchangeLifecycleMove(MoveTemplate oldMove, MoveTemplate newMove, Operation<Boolean> original) {
         Pokemon pokemon = (Pokemon) (Object) this;
-        if (MoveLifecycle.blocksReplacement(pokemon, oldMove) || MoveLifecycle.blocksLearning(pokemon, newMove)) return false;
+        if (MoveLifecycle.blocksReplacement(pokemon, oldMove) || MoveLifecycle.blocksLearning(pokemon, newMove)
+                || !ShadowLearnsetMoves.isLegal(pokemon, newMove, true)) return false;
         boolean changed = original.call(oldMove, newMove);
         if (changed) MoveLifecycle.afterExchange(pokemon, oldMove);
         return changed;

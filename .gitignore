@@ -34,6 +34,7 @@
 /logs/
 /common/logs/
 /datapacks/*
+!/datapacks/shadowedhearts-shadow-learnsets/
 /resourcepacks/*
 
 # Local tests, test resources, and test fixtures in every module

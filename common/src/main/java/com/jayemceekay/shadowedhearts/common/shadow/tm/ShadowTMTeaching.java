@@ -9,6 +9,7 @@ import com.cobblemon.mod.common.CobblemonItems;
 import com.cobblemon.mod.common.CobblemonSounds;
 import com.cobblemon.mod.common.api.callback.MoveSelectCallbacks;
 import com.cobblemon.mod.common.api.callback.MoveSelectDTO;
+import com.cobblemon.mod.common.api.moves.BenchedMove;
 import com.cobblemon.mod.common.api.moves.Move;
 import com.cobblemon.mod.common.api.moves.MoveSet;
 import com.cobblemon.mod.common.api.moves.MoveTemplate;
@@ -22,7 +23,9 @@ import com.cobblemon.mod.common.pokemon.Pokemon;
 import com.cobblemon.mod.common.trade.TradeManager;
 import com.jayemceekay.shadowedhearts.common.shadow.ShadowAspectUtil;
 import com.jayemceekay.shadowedhearts.common.shadow.ShadowMoveUtil;
+import com.jayemceekay.shadowedhearts.common.shadow.ShadowLearnsetMoves;
 import com.jayemceekay.shadowedhearts.common.items.ItemRuleSettings;
+import com.jayemceekay.shadowedhearts.data.ShadowLearnsets;
 import kotlin.Unit;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
@@ -37,7 +40,7 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Supplier;
 
-/** Native Shadow discs tune an existing Shadow slot; they never grant a remembered move or a new slot. */
+/** Shadow discs tune an existing Shadow slot. Explicit ordinary-state compatibility follows native TM teaching. */
 public final class ShadowTMTeaching {
     private static final Set<String> MOVE_IDS = Set.of(ShadowMoveUtil.SHADOW_IDS);
     private static final long SELECTION_LIFETIME_TICKS = 20 * 60;
@@ -58,15 +61,27 @@ public final class ShadowTMTeaching {
         return false;
     }
 
-    /** Also used by client previews, without changing any species' ordinary TM learnset. */
+    public static boolean permitsSpecies(Pokemon pokemon, MoveTemplate move) {
+        if (pokemon == null || !isSupportedMove(move)) return false;
+        var profile = ShadowLearnsets.get(pokemon);
+        boolean shadow = ShadowAspectUtil.hasShadowAspect(pokemon);
+        return profile == null ? shadow : profile.permits(move.getName(), pokemon.getLevel(), shadow);
+    }
+
+    public static boolean alreadyLearned(Pokemon pokemon, MoveTemplate move) {
+        return knowsActiveMove(pokemon, move) || (!ShadowAspectUtil.hasShadowAspect(pokemon)
+                && pokemon.getAllAccessibleMoves().contains(move));
+    }
+
+    /** Also used by client previews. */
     public static boolean canReplace(Pokemon pokemon, MoveTemplate move) {
         return canReplace(pokemon, move, ItemRuleSettings.serverCurrent());
     }
 
     public static boolean canReplace(Pokemon pokemon, MoveTemplate move, ItemRuleSettings settings) {
-        if (!isSupportedMove(move) || pokemon == null || !ShadowAspectUtil.hasShadowAspect(pokemon)
-                || settings == null || !settings.permitsShadowTM(move.getName())
-                || knowsActiveMove(pokemon, move)) return false;
+        if (!permitsSpecies(pokemon, move) || settings == null || !settings.permitsShadowTM(move.getName())
+                || alreadyLearned(pokemon, move)) return false;
+        if (!ShadowAspectUtil.hasShadowAspect(pokemon)) return true;
         for (Move active : pokemon.getMoveSet()) {
             if (ShadowMoveUtil.isShadowMove(active)) return true;
         }
@@ -123,6 +138,18 @@ public final class ShadowTMTeaching {
                                  Supplier<String> sourceValidation, Runnable updateInventory) {
         String reason = refusal(player, pokemon, stack, move, sourceValidation);
         if (reason != null) return refuse(player, reason);
+        if (!ShadowAspectUtil.hasShadowAspect(pokemon)) {
+            if (pokemon.getMoveSet().hasSpace()) pokemon.getMoveSet().add(move.create());
+            else pokemon.getBenchedMoves().add(new BenchedMove(move, 0));
+            if (!player.getAbilities().instabuild && !Cobblemon.INSTANCE.getConfig().getInfiniteTmUses()) stack.shrink(1);
+            PokemonStateSync.syncMoveSet(pokemon);
+            PokemonStateSync.syncBenchedMoves(pokemon);
+            updateInventory.run();
+            player.displayClientMessage(Component.translatable("cobblemon.tms.teach_move",
+                    pokemon.getDisplayName(false), move.getDisplayName()).withStyle(ChatFormatting.GREEN), true);
+            player.playNotifySound(CobblemonSounds.MOVE_LEARN, SoundSource.MASTER, 1.0F, 1.0F);
+            return true;
+        }
         List<Selection> selections = new ArrayList<>();
         List<MoveSelectDTO> shown = new ArrayList<>();
         for (int slot = 0; slot < MoveSet.MOVE_COUNT; slot++) {
@@ -155,7 +182,7 @@ public final class ShadowTMTeaching {
                     Selection selected = selections.get(index);
                     if (player.level() != originalLevel || originalLevel.getGameTime() > expiresAt
                             || pokemon.getMoveSet().get(selected.slot()) != selected.move()
-                            || !ShadowMoveUtil.isShadowMove(selected.move())) {
+                            || !ShadowAspectUtil.hasShadowAspect(pokemon) || !ShadowMoveUtil.isShadowMove(selected.move())) {
                         refuse(player, "changed");
                         return Unit.INSTANCE;
                     }
@@ -166,12 +193,7 @@ public final class ShadowTMTeaching {
                         pokemon.getMoveSet().setMove(selected.slot(), replacement);
                         return Unit.INSTANCE;
                     });
-                    pokemon.getBenchedMoves().doWithoutEmitting(() -> {
-                        // Do not retain stale copies that could reintroduce either move through the bench.
-                        pokemon.getBenchedMoves().remove(selected.move().getTemplate());
-                        pokemon.getBenchedMoves().remove(move);
-                        return Unit.INSTANCE;
-                    });
+                    ShadowLearnsetMoves.updateShadowSlotBench(pokemon, selected.move(), move);
                     if (!player.getAbilities().instabuild && !Cobblemon.INSTANCE.getConfig().getInfiniteTmUses()) stack.shrink(1);
                     PokemonStateSync.syncMoveSet(pokemon);
                     PokemonStateSync.syncBenchedMoves(pokemon);
@@ -193,11 +215,11 @@ public final class ShadowTMTeaching {
         if (pokemon == null || !player.getUUID().equals(pokemon.getOwnerUUID())) return "not_owned";
         String sourceReason = sourceValidation.get();
         if (sourceReason != null) return sourceReason;
-        if (!ShadowAspectUtil.hasShadowAspect(pokemon)) return "not_shadow";
+        if (!permitsSpecies(pokemon, move)) return ShadowLearnsets.get(pokemon) == null ? "not_shadow" : "incompatible";
         if (pokemon.isBattleClone() || (pokemon.getEntity() != null && pokemon.getEntity().isBattling())
                 || BattleRegistry.getBattleByParticipatingPlayerId(player.getUUID()) != null) return "in_battle";
         if (TradeManager.INSTANCE.getActiveTrade(player.getUUID()) != null) return "in_trade";
-        if (knowsActiveMove(pokemon, move)) return "already_known";
+        if (alreadyLearned(pokemon, move)) return "already_known";
         if (!canReplace(pokemon, move)) return "no_moves";
         return null;
     }

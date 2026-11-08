@@ -200,7 +200,7 @@ public class ShadowedHeartsCommands {
                                             ShadowService.setShadow(pokemon, pokemonEntity, true);
                                             ShadowService.setHeartGauge(pokemon, pokemonEntity, HeartGaugeConfig.getMax(pokemon));
                                             ShadowStateInitialization.ensureRequiredShadowAspects(pokemon);
-                                            ShadowMoveUtil.assignShadowMoves(pokemon);
+                                            ShadowMoveUtil.assignNewEncounterMoves(pokemon);
                                             AuraBroadcastQueue.queueBroadcast(pokemonEntity, 2.5f, 200);
 
                                             ctx.getSource().sendSuccess(() -> Component.translatable("message.shadowedhearts.command.spawn.success", pokemon.getSpecies().getTranslatedName()), true);

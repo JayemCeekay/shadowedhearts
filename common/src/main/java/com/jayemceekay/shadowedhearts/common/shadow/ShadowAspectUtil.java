@@ -30,28 +30,26 @@ public final class ShadowAspectUtil {
     }
 
     public static void setShadowAspect(Pokemon pokemon, boolean isShadow, boolean sync) {
-        if (hasShadowAspect(pokemon) != isShadow) {
+        boolean wasShadow = hasShadowAspect(pokemon);
+        if (wasShadow != isShadow) {
             PokemonPurificationWalking.clear(pokemon);
         }
         // Work on a defensive copy to avoid mutating the live Set while it may be iterated elsewhere
         Set<String> aspectsCopy = new HashSet<>(pokemon.getAspects());
         if (isShadow) {
             aspectsCopy.add(SHAspects.SHADOW);
-            replaceMovesWithShadowMoves(pokemon);
         } else {
             aspectsCopy.remove(SHAspects.SHADOW);
+            if (wasShadow) ShadowStartingMoves.endCycle(pokemon);
         }
         pokemon.setForcedAspects(aspectsCopy);
         pokemon.updateAspects();
+        if (isShadow) ShadowMoveUtil.assignShadowMoves(pokemon, !wasShadow);
         if (sync) {
             PokemonStateSync.syncAspects(pokemon);
             PokemonStateSync.syncBenchedMoves(pokemon);
             PokemonStateSync.syncMoveSet(pokemon);
         }
-    }
-
-    private static void replaceMovesWithShadowMoves(Pokemon pokemon) {
-        ShadowMoveUtil.assignShadowMoves(pokemon);
     }
 
     public static boolean hasShadowAspect(Pokemon pokemon) {

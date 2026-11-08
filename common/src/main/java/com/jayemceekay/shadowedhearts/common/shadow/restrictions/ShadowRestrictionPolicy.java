@@ -4,6 +4,7 @@ import com.cobblemon.mod.common.pokemon.Pokemon;
 import com.cobblemon.mod.common.api.moves.MoveTemplate;
 import com.jayemceekay.shadowedhearts.common.shadow.ShadowAspectUtil;
 import com.jayemceekay.shadowedhearts.common.shadow.ShadowMoveUtil;
+import com.jayemceekay.shadowedhearts.data.ShadowLearnsets;
 
 /** Shared Shadow restrictions for authoritative gameplay and synchronized client previews. */
 public final class ShadowRestrictionPolicy {
@@ -49,10 +50,11 @@ public final class ShadowRestrictionPolicy {
                 && ShadowRestrictionSettings.forPokemon(pokemon).blockMoveTeaching();
     }
 
-    /** Manual editing cannot replace assigned Shadow moves, even when ordinary move editing is allowed. */
+    /** Legacy assigned slots stay protected. Authored learnsets use the server's normal move-edit rule. */
     public static boolean blocksMoveReplacement(Pokemon pokemon, MoveTemplate oldMove) {
         return blocksMoveChanges(pokemon)
                 || com.jayemceekay.shadowedhearts.common.shadow.MoveLifecycle.blocksReplacement(pokemon, oldMove)
-                || (ShadowAspectUtil.hasShadowAspect(pokemon) && ShadowMoveUtil.isShadowMove(oldMove));
+                || (ShadowAspectUtil.hasShadowAspect(pokemon) && ShadowMoveUtil.isShadowMove(oldMove)
+                && ShadowLearnsets.get(pokemon) == null);
     }
 }

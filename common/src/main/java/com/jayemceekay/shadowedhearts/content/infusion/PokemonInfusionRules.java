@@ -6,7 +6,7 @@ import com.cobblemon.mod.common.battles.BattleRegistry;
 import com.cobblemon.mod.common.pokemon.Pokemon;
 import com.cobblemon.mod.common.trade.TradeManager;
 import com.jayemceekay.shadowedhearts.common.shadow.ShadowAspectUtil;
-import com.jayemceekay.shadowedhearts.common.shadow.ShadowMoveUtil;
+import com.jayemceekay.shadowedhearts.common.shadow.ShadowHeartGaugeInitialization;
 import com.jayemceekay.shadowedhearts.common.shadow.ShadowService;
 import com.jayemceekay.shadowedhearts.common.voidshadow.VoidShadowService;
 import com.jayemceekay.shadowedhearts.config.HeartGaugeConfig;
@@ -68,11 +68,11 @@ public final class PokemonInfusionRules {
     /** Call only after validating and committing the server-side energy transaction. */
     public static boolean convert(Pokemon pokemon) {
         if (!eligible(pokemon)) return false;
-        ShadowService.fullyCorrupt(pokemon, null, false);
-        // Select the optional form after corruption protects learned moves, but before
-        // the final assignment so the Lost Lore move preference can use its learnset.
-        LostLoreInfusion.applyLugiaForm(pokemon);
-        ShadowMoveUtil.assignShadowMoves(pokemon);
+        ShadowHeartGaugeInitialization.applyProperties(pokemon, () -> {
+            ShadowService.fullyCorrupt(pokemon, null, false);
+            // Apply the form under the Shadow form-change guard before resolving starting moves.
+            LostLoreInfusion.applyLugiaForm(pokemon);
+        });
         ShadowService.syncAll(pokemon);
         return true;
     }

@@ -3,6 +3,7 @@ package com.jayemceekay.shadowedhearts.pokemon.properties;
 import com.cobblemon.mod.common.api.pokemon.aspect.AspectProvider;
 import com.cobblemon.mod.common.api.properties.CustomPokemonProperty;
 import com.jayemceekay.shadowedhearts.common.aura.AuraStyleAspectProvider;
+import com.jayemceekay.shadowedhearts.common.shadow.RetainedShadowMoves;
 import com.jayemceekay.shadowedhearts.pokemon.properties.type.AuraStylePropertyType;
 import com.jayemceekay.shadowedhearts.pokemon.properties.type.ShadowChancePropertyType;
 
@@ -19,6 +20,7 @@ public final class PropertyRegistration {
         try {
             CustomPokemonProperty.Companion.register("sh_move_lifecycle", true, MoveLifecycleProperty::parse,
                     () -> List.of("go_shadow:frustration", "go_purified:return"));
+            CustomPokemonProperty.Companion.register(RetainedShadowMoves.KEY, true, RetainedShadowMoves::parse, List::of);
             CustomPokemonProperty.Companion.register(new AuraStylePropertyType());
             AspectProvider.Companion.register(AuraStyleAspectProvider.INSTANCE);
 
@@ -71,6 +73,8 @@ public final class PropertyRegistration {
             }, () -> List.of("0"));
 
             CustomPokemonProperty.Companion.register("sh_shadow", true, (val) -> new ShadowProperty(), () -> List.of());
+            CustomPokemonProperty.Companion.register("sh_shadow_moves", true, ShadowEncounterMoves::parse,
+                    () -> List.of("shadowrush,bite"));
 
         } catch (Throwable ignored) {
             ignored.printStackTrace();

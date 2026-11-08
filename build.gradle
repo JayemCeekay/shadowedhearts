@@ -41,6 +41,16 @@ tasks.register('testDatapack', Zip) {
     reproducibleFileOrder = true
 }
 
+tasks.register('shadowLearnsetExample', Zip) {
+    group = 'distribution'
+    description = 'Package the optional Houndour Shadow learnset and its authoring guide.'
+    from layout.projectDirectory.dir('datapacks/shadowedhearts-shadow-learnsets')
+    archiveFileName = "ShadowedHearts-shadow-learnsets-${project.minecraft_version}.zip"
+    destinationDirectory = layout.buildDirectory.dir('datapacks')
+    preserveFileTimestamps = false
+    reproducibleFileOrder = true
+}
+
 // Client-side translations for the manually installed testing datapack.
 // This is deliberately independent of normal mod builds and client runs.
 tasks.register('testResourcePack', Zip) {

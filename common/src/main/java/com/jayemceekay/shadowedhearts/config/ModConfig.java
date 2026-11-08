@@ -703,18 +703,18 @@ public final class ModConfig implements IShadowConfig {
                     .define("superEffectiveEnabled", true);
             
             replaceCount = builder
-                    .comment("How many moves to replace with Shadow moves. Supports single values (e.g. '1') or ranges (e.g. '1-3').")
+                    .comment("Number of Shadow moves for random assignment. Use a single count such as '1' or a range such as '1-3'. Authored learnsets supply their own starting slot count.")
                     .translation("shadowedhearts.configuration.shadowMoves.replaceCount")
                     .define("replaceCount", "1");
             
             onlyShadowRush = builder
-                    .comment("If true, only 'Shadow Rush' will be assigned, even if replaceCount > 1.")
+                    .comment("Assign one Shadow Rush when using random assignment. Authored encounters and species learnsets supply their own starting moves.")
                     .translation("shadowedhearts.configuration.shadowMoves.onlyShadowRush")
                     .define("onlyShadowRush", false);
 
             preferLostLoreShadowMoves = builder
                     .comment("Use Lost Lore's Shadow move sets for its Shadow Lugia and Shadow Mewtwo forms when assigning Shadow moves.",
-                            "Overrides onlyShadowRush and replaceCount for those forms. Requires Lost Lore.",
+                            "Used when the encounter and species have no authored starting moveset. Takes priority over onlyShadowRush and replaceCount. Requires Lost Lore.",
                             "Changing this option does not automatically rewrite existing Pokemon's moves.")
                     .translation("shadowedhearts.configuration.shadowMoves.preferLostLoreShadowMoves")
                     .define("preferLostLoreShadowMoves", false);

@@ -1,0 +1,12 @@
+{
+  "starting_shadow_slots": 2,
+  "level_up": [
+    { "level": 1,  "move": "shadowrush" },
+    { "level": 16, "move": "shadowhold" },
+    { "level": 28, "move": "shadowfire", "requires_shadow": false }
+  ],
+  "tm": [
+    "shadowpanic",
+    { "move": "shadowbreak", "retain_on_purification": true }
+  ]
+}

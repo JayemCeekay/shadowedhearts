@@ -93,6 +93,8 @@
     "MixinPokeBallItem",
     "MixinPokemon",
     "MixinMoveLifecycle",
+    "MixinShadowLearnsetPokemon",
+    "MixinShadowLearnsetBuilder",
     "MixinFriendshipItemSources",
     "MixinModeSelectingItem",
     "MixinModeMoveSelectingItem",

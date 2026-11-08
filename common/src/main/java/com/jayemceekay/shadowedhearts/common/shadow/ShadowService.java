@@ -10,6 +10,8 @@ import com.cobblemon.mod.common.pokemon.Pokemon;
 import com.jayemceekay.shadowedhearts.common.shadow.restrictions.HeartGaugeUnlockRules;
 import com.jayemceekay.shadowedhearts.common.shadow.restrictions.ShadowRestrictionSettings;
 import com.jayemceekay.shadowedhearts.config.HeartGaugeConfig;
+import com.jayemceekay.shadowedhearts.data.ShadowLearnset;
+import com.jayemceekay.shadowedhearts.data.ShadowLearnsets;
 import com.jayemceekay.shadowedhearts.pokemon.properties.EVBufferProperty;
 import com.jayemceekay.shadowedhearts.pokemon.properties.HeartGaugeProperty;
 import com.jayemceekay.shadowedhearts.pokemon.properties.XPBufferProperty;
@@ -116,7 +118,15 @@ public final class ShadowService {
 
         if (shadowMovesToReplace <= 0) return;
 
+        var profile = ShadowLearnsets.get(pokemon);
+        Set<String> earned = RetainedShadowMoves.ids(pokemon);
+        shadowMoves.removeIf(move -> {
+            String id = move.getName();
+            return earned.contains(id) || profile != null
+                    && (profile.retains(id) || profile.permits(id, pokemon.getLevel(), false));
+        });
         int toReplace = Math.min(Math.min(shadowMoves.size(), candidates.size()), shadowMovesToReplace);
+        if (toReplace == 0) return;
 
         // Record which shadow move names are being replaced
         Set<String> replacedShadowNames = new HashSet<>();
@@ -148,6 +158,13 @@ public final class ShadowService {
                 newBenchedMoves.add(bm);
             }
         }
+        // Authored moves can be remembered while Shadow, including moves earned from a disc.
+        for (int i = 0; profile != null && i < toReplace; i++) {
+            Move move = shadowMoves.get(i);
+            if (profile.permits(move.getName(), pokemon.getLevel(), true)) {
+                newBenchedMoves.add(new BenchedMove(move.getTemplate(), move.getRaisedPpStages()));
+            }
+        }
 
         // Apply both atomically — each copyFrom does a single update() at the end
         pokemon.getMoveSet().copyFrom(newMoveSet);
@@ -170,8 +187,10 @@ public final class ShadowService {
                                    @Nullable ServerPlayer authorizedOwner) {
         boolean wasShadow = ShadowAspectUtil.hasShadowAspect(pokemon);
         com.jayemceekay.shadowedhearts.common.event.player.PokemonPurificationWalking.clear(pokemon);
-        // 1. Restore all moves (replace all shadow moves)
-        restoreAllMoves(pokemon);
+        // Record individual rewards while the pre-purification moves are still present.
+        var profile = ShadowLearnsets.get(pokemon);
+        if (wasShadow) RetainedShadowMoves.onPurification(pokemon, profile);
+        restoreAllMoves(pokemon, profile);
 
         // 2. Remove shadow aspects
         Set<String> aspects = new HashSet<>(pokemon.getAspects());
@@ -180,6 +199,7 @@ public final class ShadowService {
         aspects.remove(SHAspects.REVERSE_MODE);
         pokemon.setForcedAspects(aspects);
         pokemon.updateAspects();
+        ShadowStartingMoves.endCycle(pokemon);
 
         MoveLifecycle.onPurified(pokemon, wasShadow);
         ShadowProgressionManager.releaseFriendship(pokemon, wasShadow);
@@ -227,8 +247,9 @@ public final class ShadowService {
         syncAll(pokemon);
     }
 
-    private static void restoreAllMoves(Pokemon pokemon) {
+    private static void restoreAllMoves(Pokemon pokemon, @Nullable ShadowLearnset profile) {
         List<Move> candidates = ordinaryMoveReplacementCandidates(pokemon);
+        Set<String> retained = RetainedShadowMoves.ids(pokemon);
 
         // Build the desired MoveSet: replace shadow slots with candidates, preserve others
         MoveSet newMoveSet = new MoveSet();
@@ -237,8 +258,7 @@ public final class ShadowService {
         int candidateIdx = 0;
         for (int i = 0; i < 4; i++) {
             Move m = movesWithNulls.get(i);
-            if (ShadowMoveUtil.isShadowMove(m)) {
-                // Always remove shadow moves; replace with a candidate if available, otherwise null
+            if (m != null && losesOnPurification(m.getTemplate(), profile, pokemon.getLevel(), retained)) {
                 Move replacement = candidateIdx < candidates.size() ? candidates.get(candidateIdx++) : null;
                 newMoveSet.setMove(i, replacement);
                 if (replacement != null) promotedNames.add(replacement.getTemplate().getName());
@@ -247,10 +267,10 @@ public final class ShadowService {
             }
         }
 
-        // Exclude all Shadow moves and ordinary moves promoted from the bench.
+        // Keep individually earned and ordinary-eligible moves on the bench with their PP Ups.
         BenchedMoves newBenchedMoves = new BenchedMoves();
         for (BenchedMove bm : pokemon.getBenchedMoves()) {
-            if (!ShadowMoveUtil.isShadowMove(bm.getMoveTemplate())
+            if (!losesOnPurification(bm.getMoveTemplate(), profile, pokemon.getLevel(), retained)
                     && !promotedNames.contains(bm.getMoveTemplate().getName())) {
                 newBenchedMoves.add(bm);
             }
@@ -259,6 +279,12 @@ public final class ShadowService {
         // Apply both atomically — each copyFrom does a single update() at the end
         pokemon.getMoveSet().copyFrom(newMoveSet);
         pokemon.getBenchedMoves().copyFrom(newBenchedMoves);
+    }
+
+    private static boolean losesOnPurification(MoveTemplate move, @Nullable ShadowLearnset profile, int level,
+                                                Set<String> retained) {
+        return ShadowMoveUtil.isShadowMove(move) && !retained.contains(move.getName())
+                && (profile == null || !profile.permits(move.getName(), level, false));
     }
 
     private static List<Move> ordinaryMoveReplacementCandidates(Pokemon pokemon) {

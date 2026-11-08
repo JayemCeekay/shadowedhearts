@@ -18,8 +18,10 @@ import com.cobblemon.mod.common.pokemon.Pokemon;
 import com.cobblemon.mod.common.trade.TradeManager;
 import com.jayemceekay.shadowedhearts.common.shadow.ShadowAspectUtil;
 import com.jayemceekay.shadowedhearts.common.shadow.ShadowMoveUtil;
+import com.jayemceekay.shadowedhearts.common.shadow.ShadowLearnsetMoves;
 import com.jayemceekay.shadowedhearts.common.items.ItemRuleSettings;
 import com.jayemceekay.shadowedhearts.common.items.ItemRuleFeedback;
+import com.jayemceekay.shadowedhearts.data.ShadowLearnsets;
 import kotlin.Unit;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
@@ -34,9 +36,12 @@ import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.level.Level;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -152,10 +157,21 @@ public class ShadowScale extends Item {
         for (Move move : pokemon.getMoveSet()) activeIds.add(move.getName().toLowerCase(Locale.ROOT));
         List<Replacement> result = new ArrayList<>();
         if (ShadowMoveUtil.isShadowMove(current)) {
-            for (String id : ShadowMoveUtil.SHADOW_IDS) {
+            var profile = ShadowLearnsets.get(pokemon);
+            var candidates = new LinkedHashSet<String>();
+            Map<String, Integer> ppRaises = new HashMap<>();
+            if (profile == null) candidates.addAll(List.of(ShadowMoveUtil.SHADOW_IDS));
+            else {
+                candidates.addAll(profile.levelMoves(pokemon.getLevel(), true));
+                for (var entry : profile.tm()) candidates.add(entry.move());
+                for (BenchedMove benched : pokemon.getBenchedMoves()) {
+                    ppRaises.put(benched.getMoveTemplate().getName(), benched.getPpRaisedStages());
+                }
+            }
+            for (String id : candidates) {
                 MoveTemplate template = Moves.getByName(id);
                 if (ShadowMoveUtil.isShadowMove(template) && !activeIds.contains(id.toLowerCase(Locale.ROOT))) {
-                    result.add(new Replacement(template, 0));
+                    result.add(new Replacement(template, ppRaises.getOrDefault(id, 0)));
                 }
             }
         } else {
@@ -179,6 +195,8 @@ public class ShadowScale extends Item {
                 pokemon.getBenchedMoves().add(new BenchedMove(selected.move().getTemplate(), selected.move().getRaisedPpStages()));
                 return Unit.INSTANCE;
             });
+        } else if (ShadowLearnsets.get(pokemon) != null) {
+            ShadowLearnsetMoves.updateShadowSlotBench(pokemon, selected.move(), replacement.template());
         }
         pokemon.getMoveSet().doWithoutEmitting(() -> {
             pokemon.getMoveSet().setMove(selected.slot(), replacement.template().create(

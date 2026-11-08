@@ -5,6 +5,7 @@ import com.cobblemon.mod.common.api.properties.CustomPokemonProperty
 import com.cobblemon.mod.common.net.messages.client.pokemon.update.SingleUpdatePacket
 import com.cobblemon.mod.common.pokemon.Pokemon
 import com.jayemceekay.shadowedhearts.Shadowedhearts
+import com.jayemceekay.shadowedhearts.common.shadow.ShadowStartingMoves
 import net.minecraft.network.RegistryFriendlyByteBuf
 import net.minecraft.resources.ResourceLocation
 
@@ -20,6 +21,7 @@ class PokemonPropertyUpdatePacket(pokemon: () -> Pokemon?, value: List<CustomPok
     override fun set(pokemon: Pokemon, value: List<CustomPokemonProperty>) {
         pokemon.customProperties.clear()
         pokemon.customProperties.addAll(value)
+        ShadowStartingMoves.updateClientEncounter(pokemon)
     }
 
     companion object {

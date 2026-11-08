@@ -7,7 +7,9 @@ import com.cobblemon.mod.common.pokemon.Pokemon;
 import com.jayemceekay.shadowedhearts.common.shadow.ShadowAspectUtil;
 import com.jayemceekay.shadowedhearts.common.shadow.ShadowHeartGauge;
 import com.jayemceekay.shadowedhearts.common.shadow.ShadowMoveUtil;
+import com.jayemceekay.shadowedhearts.common.shadow.ShadowStartingMoves;
 import com.jayemceekay.shadowedhearts.config.HeartGaugeConfig;
+import com.jayemceekay.shadowedhearts.data.ShadowLearnsets;
 
 /** Heart Gauge unlock policy shared by authoritative gameplay and client presentation. */
 public final class ShadowUnlockPolicy {
@@ -58,9 +60,15 @@ public final class ShadowUnlockPolicy {
     public static int getAllowedVisibleNonShadowMoves(Pokemon pokemon) {
         if (!ShadowAspectUtil.hasShadowAspect(pokemon)) return MoveSet.MOVE_COUNT;
         var settings = ShadowRestrictionSettings.forPokemon(pokemon);
-        return HeartGaugeUnlockRules.allowedNonShadowMoves(ShadowHeartGauge.getHeartGaugeMeter(pokemon), HeartGaugeConfig.getMax(pokemon),
+        int allowed = HeartGaugeUnlockRules.allowedNonShadowMoves(ShadowHeartGauge.getHeartGaugeMeter(pokemon), HeartGaugeConfig.getMax(pokemon),
                 settings.restrictNonShadowMoves(), settings.firstMoveUnlockPercent(),
                 settings.secondMoveUnlockPercent(), settings.thirdMoveUnlockPercent(), settings.exactThresholds());
+        if (allowed == 0 && pokemon.getMoveSet().getMoves().stream().noneMatch(ShadowMoveUtil::isShadowMove)
+                && (ShadowLearnsets.get(pokemon) != null || ShadowStartingMoves.hasExactSet(pokemon))) {
+            // A pack can defer its first Shadow move or author an encounter with ordinary moves only.
+            return 1;
+        }
+        return allowed;
     }
 
     public static boolean shouldMaskMove(Pokemon pokemon, Move move) {

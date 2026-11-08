@@ -128,7 +128,7 @@ public final class RaidDensMoonwoundAdapter {
                 reward.getPersistentData().remove(KEY);
                 reward.setAlpha(false);
                 ShadowService.fullyCorrupt(reward, null, false);
-                ShadowMoveUtil.assignShadowMoves(reward);
+                ShadowMoveUtil.assignNewEncounterMoves(reward);
                 UncatchableProperty.INSTANCE.catchable().apply(reward);
             }
             return Unit.INSTANCE;
@@ -222,7 +222,7 @@ public final class RaidDensMoonwoundAdapter {
             pokemon.setAlpha(false);
             identify(pokemon, event);
             ShadowService.fullyCorrupt(pokemon, entity, false);
-            ShadowMoveUtil.assignShadowMoves(pokemon);
+            ShadowMoveUtil.assignNewEncounterMoves(pokemon);
             pokemon.heal();
             CompoundTag savedDefinition = new CompoundTag();
             savedDefinition.putString("Id", definition.getId().toString());

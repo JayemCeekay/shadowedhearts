@@ -22,7 +22,7 @@ public abstract class MixinTMMachineScreen {
         if (ShadowMoveUtil.isShadowMove(move)) {
             int status = TMPartySlotWidget.CANNOT_LEARN;
             if (ShadowTMClientEligibility.isCompatible(pokemon, move)) {
-                status = ShadowTMTeaching.knowsActiveMove(pokemon, move)
+                status = ShadowTMTeaching.alreadyLearned(pokemon, move)
                         ? TMPartySlotWidget.LEARNED : TMPartySlotWidget.CAN_LEARN;
             }
             cir.setReturnValue(status);

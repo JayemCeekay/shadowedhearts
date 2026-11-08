@@ -37,15 +37,31 @@ public class ShadowMoveUtil {
     }
 
     public static void assignShadowMoves(Pokemon pokemon) {
-        assignShadowMoves(pokemon, new Random(pokemon.getUuid().getLeastSignificantBits()));
+        assignShadowMoves(pokemon, false);
     }
 
     public static void assignShadowMoves(Pokemon pokemon, Random rng) {
+        assignShadowMoves(pokemon, rng, false);
+    }
+
+    /** New encounter or reward whose aspect may already have been set by another integration. */
+    public static void assignNewEncounterMoves(Pokemon pokemon) {
+        assignShadowMoves(pokemon, true);
+    }
+
+    static void assignShadowMoves(Pokemon pokemon, boolean newCycle) {
+        if (pokemon != null) assignShadowMoves(pokemon, new Random(pokemon.getUuid().getLeastSignificantBits()), newCycle);
+    }
+
+    private static void assignShadowMoves(Pokemon pokemon, Random rng, boolean newCycle) {
         if (pokemon == null) return;
+        if (pokemon.isClient$common() || ShadowStartingMoves.assigned(pokemon)) return;
+        if (ShadowHeartGaugeInitialization.deferMoves(pokemon, newCycle)) return;
         if (MoveLifecycle.assignGoIfEnabled(pokemon)) return;
+        if (ShadowStartingMoves.assignIfAuthored(pokemon, newCycle)) return;
         if (LostLoreShadowMoves.assignIfEnabled(pokemon)) return;
 
-        Random r = (rng == null ? new Random() : rng);
+        Random r = rng == null ? new Random() : rng;
         int count = ModConfig.resolveReplaceCount(r);
         List<String> pool = new ArrayList<>(Arrays.asList(SHADOW_IDS));
 

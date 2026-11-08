@@ -3,6 +3,7 @@ package com.jayemceekay.shadowedhearts.client;
 import com.jayemceekay.shadowedhearts.client.aura.shadow.style.AuraStyleClientState;
 import com.jayemceekay.shadowedhearts.common.capture.DarkBallClientState;
 import com.jayemceekay.shadowedhearts.common.items.ItemRuleClientState;
+import com.jayemceekay.shadowedhearts.data.ShadowLearnsetClientState;
 import com.jayemceekay.shadowedhearts.common.shadow.HeartGaugeClientState;
 import com.jayemceekay.shadowedhearts.common.shadow.MoveLifecycleClientState;
 import com.jayemceekay.shadowedhearts.common.shadow.NullCharmClientState;
@@ -22,6 +23,7 @@ final class ClientConnectionSettings {
         ShadowBattleClientState.INSTANCE.initialize(() -> Minecraft.getInstance().getConnection());
         MoveLifecycleClientState.INSTANCE.initialize(() -> Minecraft.getInstance().getConnection());
         ItemRuleClientState.INSTANCE.initialize(() -> Minecraft.getInstance().getConnection());
+        ShadowLearnsetClientState.INSTANCE.initialize(() -> Minecraft.getInstance().getConnection());
         SnagMachineClientState.INSTANCE.initialize(() -> Minecraft.getInstance().getConnection());
         ShadowRestrictionClientState.INSTANCE.initialize(() -> Minecraft.getInstance().getConnection());
         HeartGaugeClientState.INSTANCE.initialize(() -> Minecraft.getInstance().getConnection(),
@@ -35,6 +37,7 @@ final class ClientConnectionSettings {
         ShadowBattleClientState.INSTANCE.refreshConnection();
         MoveLifecycleClientState.INSTANCE.refreshConnection();
         ItemRuleClientState.INSTANCE.refreshConnection();
+        ShadowLearnsetClientState.INSTANCE.refreshConnection();
         SnagMachineClientState.INSTANCE.refreshConnection();
         ShadowRestrictionClientState.INSTANCE.refreshConnection();
         HeartGaugeClientState.INSTANCE.refreshConnection();

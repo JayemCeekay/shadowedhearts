@@ -27,7 +27,7 @@ public abstract class MixinRaidDensShadowCompatibility {
     @Inject(method = "setShadowBoss", at = @At("HEAD"), cancellable = true)
     private static void shadowedhearts$boss(Pokemon pokemon, PokemonEntity entity, CallbackInfo ci) {
         ShadowService.fullyCorrupt(pokemon, entity, false);
-        ShadowMoveUtil.assignShadowMoves(pokemon);
+        ShadowMoveUtil.assignNewEncounterMoves(pokemon);
         AuraBroadcastQueue.queueBroadcast(entity, 2.5F, Integer.MAX_VALUE);
         ci.cancel();
     }
@@ -35,7 +35,7 @@ public abstract class MixinRaidDensShadowCompatibility {
     @Inject(method = "setShadowReward", at = @At("HEAD"), cancellable = true)
     private static void shadowedhearts$reward(Pokemon pokemon, CallbackInfo ci) {
         ShadowService.fullyCorrupt(pokemon, null, false);
-        ShadowMoveUtil.assignShadowMoves(pokemon);
+        ShadowMoveUtil.assignNewEncounterMoves(pokemon);
         ci.cancel();
     }
 

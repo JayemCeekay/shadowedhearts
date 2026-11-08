@@ -13,6 +13,7 @@ import com.jayemceekay.shadowedhearts.common.aura.AuraStyleProperties;
 import com.jayemceekay.shadowedhearts.common.shadow.SHAspects;
 import com.jayemceekay.shadowedhearts.common.shadow.ShadowAspectUtil;
 import com.jayemceekay.shadowedhearts.common.shadow.ShadowMoveUtil;
+import com.jayemceekay.shadowedhearts.common.shadow.ShadowStartingMoves;
 import com.jayemceekay.shadowedhearts.common.shadow.ShadowFriendshipProgression;
 import com.jayemceekay.shadowedhearts.common.shadow.restrictions.ShadowRestrictionPolicy;
 import com.jayemceekay.shadowedhearts.network.aura.AuraServerSync;
@@ -217,6 +218,7 @@ public abstract class MixinPokemon implements AuraStyleProperties.ForcedAspectAc
             original.call(builder);
             return;
         }
+        if (ShadowStartingMoves.preserveDuringBuilder(pokemon, () -> original.call(builder))) return;
 
         MoveSet moveSet = pokemon.getMoveSet();
         Move[] shadowSlots = new Move[MoveSet.MOVE_COUNT];
