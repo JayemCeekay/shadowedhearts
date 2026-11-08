@@ -8,6 +8,7 @@ import com.cobblemon.mod.common.api.battles.model.actor.ActorType;
 import com.cobblemon.mod.common.api.drop.DropTable;
 import com.cobblemon.mod.common.api.events.CobblemonEvents;
 import com.cobblemon.mod.common.api.pokemon.PokemonProperties;
+import com.cobblemon.mod.common.api.pokemon.feature.StringSpeciesFeature;
 import com.cobblemon.mod.common.battles.BattleRegistry;
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
 import com.cobblemon.mod.common.pokemon.Pokemon;
@@ -20,17 +21,15 @@ import com.jayemceekay.shadowedhearts.common.shadow.ShadowMoveUtil;
 import com.jayemceekay.shadowedhearts.common.shadow.ShadowService;
 import com.jayemceekay.shadowedhearts.content.umbrafall.UmbrafallSiteData;
 import com.jayemceekay.shadowedhearts.network.aura.AuraBroadcastQueue;
-import com.jayemceekay.shadowedhearts.mixin.raiddens.MoonwoundRaidHealthAccessor;
 import com.necro.raid.dens.common.data.raid.RaidBoss;
+import com.necro.raid.dens.common.data.raid.RaidBattleFormat;
 import com.necro.raid.dens.common.events.RaidEvents;
-import com.necro.raid.dens.common.network.RaidDenNetworkMessages;
-import com.necro.raid.dens.common.raids.RaidInstance;
+import com.necro.raid.dens.common.party.RaidStoreFactory;
+import com.necro.raid.dens.common.raids.RaidSession;
 import com.necro.raid.dens.common.raids.RaidState;
 import com.necro.raid.dens.common.raids.helpers.RaidHelper;
 import com.necro.raid.dens.common.raids.helpers.RaidJoinHelper;
-import com.necro.raid.dens.common.registry.RaidRegistry;
-import com.necro.raid.dens.common.showdown.events.AbstractEvent;
-import com.necro.raid.dens.common.showdown.events.ShowdownEvents;
+import com.necro.raid.dens.common.registry.CustomRaidRegistries;
 import com.necro.raid.dens.common.util.IRaidAccessor;
 import com.necro.raid.dens.common.util.IRaidBattle;
 import dev.architectury.event.events.common.LifecycleEvent;
@@ -47,12 +46,11 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
-/** Typed adapter for the published Raid Dens 0.13.5 API, loaded only through the version-gated façade. */
+/** Typed adapter for the published Raid Dens 0.14.1 API, loaded only through the version-gated façade. */
 public final class RaidDensMoonwoundAdapter {
     public static final ResourceLocation BOSS = ResourceLocation.fromNamespaceAndPath("shadowedhearts", "moonwound_resonant");
     public static final String KEY = MoonwoundRaidIntegration.ENCOUNTER_KEY;
@@ -124,7 +122,7 @@ public final class RaidDensMoonwoundAdapter {
             return Unit.INSTANCE;
         });
         // Upstream may clone a shared reward after the feature hook: repair the actual capture candidate too.
-        RaidEvents.RAID_END.subscribe(Priority.HIGHEST, event -> {
+        RaidEvents.RAID_BATTLE_END.subscribe(Priority.HIGHEST, event -> {
             if (event.isWin() && BOSS.equals(event.raidBoss().getId()) && event.pokemon() != null) {
                 Pokemon reward = event.pokemon();
                 reward.getPersistentData().remove(KEY);
@@ -149,7 +147,7 @@ public final class RaidDensMoonwoundAdapter {
         CompoundTag saved = event.raidDefinition();
         if (saved != null) {
             try {
-                RaidBoss definition = RaidBoss.decode(ResourceLocation.parse(saved.getString("Id")), saved.getByteArray("Definition"));
+                RaidBoss definition = decodeSavedDefinition(ResourceLocation.parse(saved.getString("Id")), saved.getByteArray("Definition"));
                 if (!BOSS.equals(definition.getId())) throw new IllegalStateException("Unexpected saved Moonwound raid definition");
                 spawn(level, site, event, definition);
             } catch (RuntimeException error) { pause(level, event, error); }
@@ -157,7 +155,7 @@ public final class RaidDensMoonwoundAdapter {
         }
         UUID request = UUID.randomUUID();
         LOADING.put(event.eventId(), request);
-        RaidRegistry.requestRaidBoss(BOSS, template -> {
+        CustomRaidRegistries.RAID_REGISTRY.requestRaidBoss(BOSS, template -> {
             if (!LOADING.remove(event.eventId(), request)) return;
             if (!active(event) || level.getServer().isStopped()
                     || !MoonwoundClaimProtection.canRun(level, site, event)) return;
@@ -235,6 +233,8 @@ public final class RaidDensMoonwoundAdapter {
         } else {
             Pokemon pokemon = Pokemon.Companion.loadFromNBT(level.registryAccess(), snapshot);
             if (!event.raidId().equals(pokemon.getUuid()) || pokemon.isAlpha()) throw new IllegalStateException("Invalid saved raid Pokemon");
+            // The 0.14 challenge key recognizes raid-boss when targeting a restored world entity.
+            new StringSpeciesFeature("raid", "boss").apply(pokemon);
             pokemon.heal();
             identify(pokemon, event);
             Entity loaded = level.getEntity(event.raidId());
@@ -268,14 +268,14 @@ public final class RaidDensMoonwoundAdapter {
         Attempt attempt = new Attempt(level, site, event, entity, definition, origin);
         ATTEMPTS.put(event.eventId(), attempt);
         try {
-            OwnedRaid raid = new OwnedRaid(entity, attempt);
+            MoonwoundRaidSession raid = new MoonwoundRaidSession(attempt);
             attempt.raid = raid;
-            if (raid.failedToStart()) throw new IllegalStateException("Raid Dens could not initialize the Moonwound raid");
+            if (raid.getActive().failedToStart()) throw new IllegalStateException("Raid Dens could not initialize the Moonwound raid");
             if (!MoonwoundClaimProtection.canSpawn(level, event.eventId(), entity.getBoundingBox().expandTowards(0, -1, 0))) {
                 cleanupEvent(event.eventId());
                 return;
             }
-            RaidInstance previous = RaidHelper.ACTIVE_RAIDS.putIfAbsent(event.raidId(), raid);
+            RaidSession previous = RaidHelper.ACTIVE_RAIDS.putIfAbsent(event.raidId(), raid);
             if (previous != null) throw new IllegalStateException("Moonwound raid instance identity collision");
             if (!level.addFreshEntity(entity)) throw new IllegalStateException("Could not spawn Moonwound raid boss");
             if (snapshot != null) AuraBroadcastQueue.queueBroadcast(entity, 2.5F, Integer.MAX_VALUE, 1);
@@ -309,7 +309,7 @@ public final class RaidDensMoonwoundAdapter {
         // Raid Dens shares one world boss between battles. Its single battleId can clear while
         // another participant still fights, so inspect the native raid's entire battle list.
         if (entity.isBusy() || entity.getBeamMode() != 0
-                || attempt.raid.getBattles().stream().anyMatch(battle -> !battle.getEnded())) return;
+                || attempt.raid.getActive().getBattles().stream().anyMatch(battle -> !battle.getEnded())) return;
         Vec3 offset = entity.position().subtract(attempt.origin);
         if (offset.horizontalDistanceSqr() <= 32 * 32 && Math.abs(offset.y) <= 48
                 && MoonwoundClaimProtection.canSpawn(attempt.level, attempt.event.eventId(),
@@ -322,6 +322,13 @@ public final class RaidDensMoonwoundAdapter {
         entity.teleportTo(ground.x, ground.y, ground.z);
         entity.setDeltaMovement(Vec3.ZERO);
         attempt.origin = ground;
+    }
+
+    public static RaidBoss decodeSavedDefinition(ResourceLocation id, byte[] definition) {
+        RaidBoss boss = RaidBoss.decode(id, definition);
+        // 0.13.5 issued single battles and saved no battle_format. Keep the other issued settings intact.
+        if (boss.getBattleFormat() == null) boss.setBattleFormat(RaidBattleFormat.SINGLES);
+        return boss;
     }
 
     public static @Nullable RaidBoss definitionFor(PokemonEntity entity) {
@@ -361,18 +368,23 @@ public final class RaidDensMoonwoundAdapter {
         if (!eligible(player, entity)) return;
         NativeChallenge previous = NATIVE_CHALLENGE.get();
         NATIVE_CHALLENGE.set(new NativeChallenge(player, entity));
+        boolean hadRaidParty = RaidStoreFactory.hasPlayerParty(player.getUUID());
         try { original.run(); }
         finally {
             if (previous == null) NATIVE_CHALLENGE.remove();
             else NATIVE_CHALLENGE.set(previous);
+            // RaidBuilder installs a temporary party before Cobblemon can reject the battle.
+            if (!hadRaidParty && RaidStoreFactory.hasPlayerParty(player.getUUID()) && !isMoonwoundRaidBattle(player)) {
+                RaidStoreFactory.removePlayerParty(player);
+            }
         }
     }
 
-    private static boolean eligible(ServerPlayer player, PokemonEntity entity) {
+    static boolean eligible(ServerPlayer player, PokemonEntity entity) {
         MoonwoundEvent event = eventFor(entity);
         Attempt attempt = event == null ? null : ATTEMPTS.get(event.eventId());
         return event != null && active(event) && event.isActiveMember(player.getUUID())
-                && attempt != null && attempt.entity == entity && attempt.raid != null && !attempt.raid.closed
+                && attempt != null && attempt.entity == entity && attempt.raid != null && !attempt.raid.isFinished()
                 && player.level() == entity.level() && player.distanceToSqr(entity) <= 96 * 96
                 && MoonwoundClaimProtection.canInteractEncounter(player, event.eventId(), entity.getBoundingBox());
     }
@@ -385,7 +397,7 @@ public final class RaidDensMoonwoundAdapter {
         return event != null && event.eventId().equals(identity.getUUID("Event")) ? event : null;
     }
 
-    private static boolean active(MoonwoundEvent event) {
+    static boolean active(MoonwoundEvent event) {
         return event.phase() == MoonwoundEvent.Phase.OVERLOAD && event.finaleMode() == MoonwoundEvent.FinaleMode.RAID
                 && !event.activeMembers().isEmpty();
     }
@@ -393,7 +405,7 @@ public final class RaidDensMoonwoundAdapter {
     public static void leaveParticipant(UUID eventId, UUID playerId) {
         Attempt attempt = ATTEMPTS.get(eventId);
         if (attempt == null || attempt.raid == null) return;
-        attempt.raid.depart(playerId);
+        attempt.raid.withdraw(playerId);
     }
 
     /** Native leave/disconnect ends only this player's battle; the Moonwound roster is still controller-owned. */
@@ -402,7 +414,7 @@ public final class RaidDensMoonwoundAdapter {
         if (participant == null) return;
         for (Attempt attempt : new ArrayList<>(ATTEMPTS.values())) {
             if (participant.raid().equals(attempt.event.raidId()) && attempt.raid != null) {
-                attempt.raid.withdraw(player.getUUID(), false);
+                attempt.raid.withdraw(player.getUUID());
                 return;
             }
         }
@@ -419,8 +431,8 @@ public final class RaidDensMoonwoundAdapter {
 
     public static boolean isMoonwoundRaidBattle(ServerPlayer player) {
         PokemonBattle battle = BattleRegistry.getBattleByParticipatingPlayer(player);
-        return battle != null && ((IRaidBattle) battle).crd_getRaidBattle() instanceof OwnedRaid raid
-                && raid.attempt != null && raid.attempt.event.isActiveMember(player.getUUID()) && !raid.closed;
+        return battle != null && ((IRaidBattle) battle).crd_getRaidSession() instanceof MoonwoundRaidSession raid
+                && raid.isPlayerIn(player);
     }
 
     private static void pause(ServerLevel level, MoonwoundEvent event, Throwable error) {
@@ -432,21 +444,21 @@ public final class RaidDensMoonwoundAdapter {
         }
     }
 
-    private static void notifyParty(Attempt attempt, Component message) {
+    static void notifyParty(Attempt attempt, Component message) {
         for (UUID id : attempt.event.activeMembers()) {
             ServerPlayer player = attempt.level.getServer().getPlayerList().getPlayer(id);
             if (player != null && player.level() == attempt.level) player.displayClientMessage(message, false);
         }
     }
 
-    private static final class Attempt {
+    static final class Attempt {
         final ServerLevel level;
         final UmbrafallSiteData.Site site;
         final MoonwoundEvent event;
         final PokemonEntity entity;
         final RaidBoss definition;
         Vec3 origin;
-        OwnedRaid raid;
+        MoonwoundRaidSession raid;
         Attempt(ServerLevel level, UmbrafallSiteData.Site site, MoonwoundEvent event, PokemonEntity entity,
                 RaidBoss definition, Vec3 origin) {
             this.level = level; this.site = site; this.event = event; this.entity = entity; this.definition = definition;
@@ -454,194 +466,9 @@ public final class RaidDensMoonwoundAdapter {
         }
     }
 
-    /** The callback is bound to this exact native instance, not a species-wide/per-player end event. */
-    private static final class OwnedRaid extends RaidInstance {
-        private Attempt attempt;
-        private final Set<UUID> joined = new HashSet<>();
-        private final Map<UUID, ServerPlayer> participantOwners = new HashMap<>();
-        private boolean stopping;
-        private boolean closed;
-
-        OwnedRaid(PokemonEntity entity, Attempt attempt) {
-            super(entity, null, false);
-            this.attempt = attempt;
-        }
-
-        @Override public void addPlayer(ServerPlayer player) {
-            if (attempt == null || !eligible(player, attempt.entity)) return;
-            if (!RaidJoinHelper.isParticipating(player, attempt.event.raidId())
-                    && !RaidJoinHelper.addParticipant(player, attempt.event.raidId(), false, false)) return;
-            participantOwners.put(player.getUUID(), player);
-            if (joined.add(player.getUUID())) {
-                float ratio = getCurrentHealth() / getMaxHealth();
-                super.addPlayer(player);
-                // Native RaidInstance counts its retained player list. We remove leavers from that list,
-                // so retain the same native formula using unique historical joins instead.
-                if (attempt.definition.getMultiplayerHealthMulti() > 1F) {
-                    MoonwoundRaidHealthAccessor health = (MoonwoundRaidHealthAccessor) (Object) this;
-                    float initial = health.shadowedhearts$initialHealth();
-                    float maximum = initial + initial * (attempt.definition.getMultiplayerHealthMulti() - 1F) * (joined.size() - 1);
-                    health.shadowedhearts$maxHealth(maximum);
-                    health.shadowedhearts$currentHealth(maximum * ratio);
-                }
-            } else replacePlayer(player);
-        }
-
-        @Override public boolean isPlayerIn(ServerPlayer player) {
-            if (attempt == null || !eligible(player, attempt.entity) || !joined.contains(player.getUUID())) return false;
-            replacePlayer(player);
-            return true;
-        }
-
-        private void replacePlayer(ServerPlayer player) {
-            if (!RaidJoinHelper.isParticipating(player, attempt.event.raidId())) {
-                if (!RaidJoinHelper.addParticipant(player, attempt.event.raidId(), false, false)) return;
-            }
-            participantOwners.put(player.getUUID(), player);
-            for (ServerPlayer previous : new ArrayList<>(getPlayers())) {
-                if (previous.getUUID().equals(player.getUUID()) && previous != player) {
-                    removeFromBossEvent(previous);
-                    getPlayers().remove(previous);
-                }
-            }
-            if (!getPlayers().contains(player)) { getPlayers().add(player); addToBossEvent(player); }
-        }
-
-        @Override public void addBattle(PokemonBattle battle) {
-            if (attempt == null || closed || battle.getPlayers().isEmpty()
-                    || battle.getPlayers().stream().anyMatch(player -> !eligible(player, attempt.entity)
-                    || !RaidJoinHelper.isParticipating(player, attempt.event.raidId()))) {
-                battle.stop();
-                return;
-            }
-            super.addBattle(battle);
-        }
-
-        @Override public void sendEvent(AbstractEvent event, @Nullable PokemonBattle source) {
-            if (event instanceof ShowdownEvents.PlayerJoinShowdownEvent join) {
-                // Raid Dens 0.13.5 still emits >eval for this cosmetic notification.
-                // Cobblemon 1.8.4 rejects it and closes the first participant's simulator output.
-                // Health scaling already happens in addPlayer; keep the notification out of Showdown.
-                if (closed || isFinished()) return;
-                for (PokemonBattle battle : getBattles()) {
-                    if (battle.getEnded()) continue;
-                    battle.broadcastChatMessage(Component.translatable("battle.cobblemonraiddens.player_join", join.player()));
-                    battle.broadcastChatMessage(Component.translatable("battle.cobblemonraiddens.raid_energy",
-                            getBossEntity().getPokemon().getDisplayName(false)));
-                }
-                return;
-            }
-            super.sendEvent(event, source);
-        }
-
-        @Override public void syncHealth(ServerPlayer player, PokemonBattle battle, float damage) {
-            if (attempt != null && !closed && getBattles().contains(battle)
-                    && eligible(player, attempt.entity) && Float.isFinite(damage)) super.syncHealth(player, battle, damage);
-        }
-
-        @Override public void removePlayer(ServerPlayer player, @Nullable PokemonBattle battle, boolean ignoreLives) {
-            if (ignoreLives && attempt != null && attempt.event.isActiveMember(player.getUUID())) {
-                // Flee/disconnect is a pause for this Moonwound member, not implicit abandonment.
-                if (battle != null) {
-                    getBattles().remove(battle);
-                    ((IRaidBattle) battle).crd_setRaidBattle(null);
-                }
-                removeFromBossEvent(player);
-                getPlayers().remove(player);
-                if (RaidJoinHelper.isParticipating(player, attempt.event.raidId())) RaidJoinHelper.removeParticipant(player);
-                return;
-            }
-            super.removePlayer(player, battle, ignoreLives);
-        }
-
-        @Override public void stopRaid(boolean success) {
-            if (closed || stopping || attempt == null) return;
-            if (!MoonwoundClaimProtection.canSpawn(attempt.level, attempt.event.eventId(),
-                    attempt.entity.getBoundingBox().expandTowards(0, -1, 0))) {
-                // Do not call the native outcome/reward distributor for a revoked event.
-                closeRaid(attempt.level.getServer(), true);
-                return;
-            }
-            stopping = true;
-            // Exclude departed/offline/revoked players before native outcome and reward handling.
-            refreshPlayers();
-            if (getPlayers().isEmpty()) {
-                closeRaid(attempt.level.getServer(), true);
-                return;
-            }
-            boolean won = success && getCurrentHealth() <= 0F && active(attempt.event)
-                    && MoonwoundClaimProtection.canRun(attempt.level, attempt.site, attempt.event);
-            try {
-                super.stopRaid(won);
-            } finally {
-                if (won && getRaidState() == RaidState.SUCCESS) attempt.event.completeRaid(attempt.event.raidId(), true);
-                else if (active(attempt.event)) notifyParty(attempt, Component.translatable("message.shadowedhearts.moonwound.raid_retry_available"));
-                closeRaid(attempt.level.getServer(), true);
-            }
-        }
-
-        @Override public void closeRaid(net.minecraft.server.MinecraftServer server, boolean cancelled) {
-            if (closed) return;
-            closed = true;
-            var entityIds = new ArrayList<Integer>();
-            for (PokemonBattle battle : getBattles()) for (var actor : battle.getActors()) for (var pokemon : actor.getPokemonList()) {
-                if (pokemon.getEntity() != null) entityIds.add(pokemon.getEntity().getId());
-            }
-            getPlayers().forEach(player -> RaidDenNetworkMessages.RAID_HEALTH_BAR.accept(player, entityIds, false));
-            for (PokemonBattle battle : new ArrayList<>(getBattles())) {
-                ((IRaidBattle) battle).crd_setRaidBattle(null);
-                if (!battle.getEnded()) battle.stop();
-            }
-            getBattles().clear();
-            // Remove only our own participant bindings, including disconnected players.
-            // Clearing the list before upstream cleanup protects unrelated den participation.
-            if (attempt != null) for (ServerPlayer player : participantOwners.values()) {
-                if (RaidJoinHelper.isParticipating(player, attempt.event.raidId())) RaidJoinHelper.removeParticipant(player);
-            }
-            var players = new ArrayList<>(getPlayers());
-            players.forEach(this::removeFromBossEvent);
-            getPlayers().clear();
-            RaidInstance registered = RaidHelper.ACTIVE_RAIDS.get(((IRaidAccessor) getBossEntity()).crd_getRaidId());
-            if (registered == null || registered == this) super.closeRaid(server, cancelled);
-            else getBossEntity().discard();
-            if (attempt != null) {
-                ATTEMPTS.remove(attempt.event.eventId(), attempt);
-                RETRY_AFTER.put(attempt.event.eventId(), attempt.level.getGameTime() + 100);
-            }
-        }
-
-        void depart(UUID playerId) {
-            withdraw(playerId, true);
-        }
-
-        void withdraw(UUID playerId, boolean permanentlyLeaving) {
-            for (PokemonBattle battle : new ArrayList<>(getBattles())) {
-                if (battle.getPlayers().stream().anyMatch(player -> player.getUUID().equals(playerId))) {
-                    ServerPlayer player = battle.getPlayers().stream().filter(p -> p.getUUID().equals(playerId)).findFirst().orElse(null);
-                    if (player != null && permanentlyLeaving) super.removePlayer(player, battle, true);
-                    else {
-                        getBattles().remove(battle);
-                        ((IRaidBattle) battle).crd_setRaidBattle(null);
-                    }
-                    if (!battle.getEnded()) battle.stop();
-                }
-            }
-            for (ServerPlayer player : new ArrayList<>(getPlayers())) {
-                if (player.getUUID().equals(playerId)) { removeFromBossEvent(player); getPlayers().remove(player); }
-            }
-            ServerPlayer owner = participantOwners.remove(playerId);
-            if (owner != null && RaidJoinHelper.isParticipating(owner, attempt.event.raidId())) RaidJoinHelper.removeParticipant(owner);
-        }
-
-        void refreshPlayers() {
-            if (attempt == null) return;
-            for (ServerPlayer player : new ArrayList<>(getPlayers())) {
-                ServerPlayer online = attempt.level.getServer().getPlayerList().getPlayer(player.getUUID());
-                if (!attempt.event.isActiveMember(player.getUUID()) || online == null || online.level() != attempt.level
-                        || !MoonwoundClaimProtection.canInteractEncounter(online, attempt.event.eventId(), attempt.entity.getBoundingBox())) {
-                    withdraw(player.getUUID(), false);
-                } else if (online != player) replacePlayer(online);
-            }
+    static void closed(Attempt attempt) {
+        if (ATTEMPTS.remove(attempt.event.eventId(), attempt)) {
+            RETRY_AFTER.put(attempt.event.eventId(), attempt.level.getGameTime() + 100);
         }
     }
 }

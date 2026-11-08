@@ -50,6 +50,8 @@
     "raiddens.MixinMoonwoundRaidChallenge",
     "raiddens.MixinMoonwoundRaidDefinition",
     "raiddens.MixinMoonwoundRaidLeave",
+    "raiddens.MixinMoonwoundRaidInstance",
+    "raiddens.MixinMoonwoundRaidDamage",
     "raiddens.MixinMoonwoundRaidRewardPersistence",
     "raiddens.MoonwoundRaidHealthAccessor",
     "MixinMoonwoundMining",

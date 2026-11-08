@@ -1,11 +1,14 @@
 package com.jayemceekay.shadowedhearts.mixin.raiddens;
 
+import com.cobblemon.mod.common.api.pokemon.feature.StringSpeciesFeature;
 import com.cobblemon.mod.common.pokemon.Pokemon;
 import com.jayemceekay.shadowedhearts.Shadowedhearts;
 import com.jayemceekay.shadowedhearts.common.moonwound.raid.RaidDensMoonwoundAdapter;
 import com.jayemceekay.shadowedhearts.common.moonwound.raid.MoonwoundRaidRewardDefinitionAccess;
 import com.jayemceekay.shadowedhearts.common.shadow.ShadowMoveUtil;
 import com.jayemceekay.shadowedhearts.common.shadow.ShadowService;
+import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.necro.raid.dens.common.raids.rewards.RewardHandler;
 import com.necro.raid.dens.common.data.raid.RaidBoss;
 import net.minecraft.core.HolderLookup;
@@ -24,7 +27,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import java.util.concurrent.CompletableFuture;
 
-/** Repairs the published 0.13.5 reward key mismatch and retains the selected boss definition. */
+/** Restores the issued Moonwound definition and the item pouch earned by pre-0.14 rewards. */
 @Pseudo
 @Mixin(targets = "com.necro.raid.dens.common.raids.rewards.RewardHandler", remap = false)
 public abstract class MixinMoonwoundRaidRewardPersistence implements MoonwoundRaidRewardDefinitionAccess {
@@ -34,24 +37,27 @@ public abstract class MixinMoonwoundRaidRewardPersistence implements MoonwoundRa
     @Shadow private RaidBoss raidBoss;
     @Unique private byte[] shadowedhearts$frozenDefinition;
 
-    @Inject(method = "deserialize", at = @At("HEAD"), cancellable = true)
-    private static void shadowedhearts$readReward(CompoundTag tag, HolderLookup.Provider registries,
-                                                CallbackInfoReturnable<RewardHandler> cir) {
-        if (!RaidDensMoonwoundAdapter.BOSS.toString().equals(tag.getString("raid_boss"))) return;
-        CompoundTag pokemon = tag.contains("pokemon_reward", Tag.TAG_COMPOUND) ? tag.getCompound("pokemon_reward").copy() : null;
-        RewardHandler reward = new RewardHandler(RaidDensMoonwoundAdapter.BOSS, tag.getUUID("player"), pokemon, tag.getFloat("catch_rate"));
+    @WrapMethod(method = "deserialize")
+    private static RewardHandler shadowedhearts$readReward(CompoundTag tag, HolderLookup.Provider registries,
+                                                          Operation<RewardHandler> original) {
+        if (!RaidDensMoonwoundAdapter.BOSS.toString().equals(tag.getString("raid_boss"))) return original.call(tag, registries);
+        if (!tag.contains("item_reward")) {
+            tag = tag.copy();
+            tag.putBoolean("item_reward", true);
+        }
+        RewardHandler reward = original.call(tag, registries);
         if (tag.contains("shadowedhearts_raid_definition", Tag.TAG_BYTE_ARRAY)) {
             ((MoonwoundRaidRewardDefinitionAccess) reward).shadowedhearts$restoreMoonwoundDefinition(
                     tag.getByteArray("shadowedhearts_raid_definition"));
         }
-        cir.setReturnValue(reward);
+        return reward;
     }
 
     @Override
     public void shadowedhearts$restoreMoonwoundDefinition(byte[] definition) {
         shadowedhearts$frozenDefinition = definition.clone();
         try {
-            raidBoss = RaidBoss.decode(RaidDensMoonwoundAdapter.BOSS, definition);
+            raidBoss = RaidDensMoonwoundAdapter.decodeSavedDefinition(RaidDensMoonwoundAdapter.BOSS, definition);
         } catch (RuntimeException error) {
             // Keep both the Pokemon NBT and definition bytes, even if an addon/data change prevents decoding.
             Shadowedhearts.LOGGER.error("Could not restore queued Moonwound raid definition; saved Pokemon retained", error);
@@ -70,6 +76,7 @@ public abstract class MixinMoonwoundRaidRewardPersistence implements MoonwoundRa
     private void shadowedhearts$decodeReward(ServerPlayer player, CallbackInfoReturnable<CompletableFuture<Boolean>> cir) {
         if (!RaidDensMoonwoundAdapter.BOSS.equals(raidBossId) || pokemonReward != null || serializedPokemonReward == null) return;
         pokemonReward = Pokemon.Companion.loadFromNBT(player.registryAccess(), serializedPokemonReward);
+        new StringSpeciesFeature("raid", "reward").apply(pokemonReward);
         pokemonReward.setAlpha(false);
         pokemonReward.getPersistentData().remove(RaidDensMoonwoundAdapter.KEY);
         ShadowService.fullyCorrupt(pokemonReward, null, false);

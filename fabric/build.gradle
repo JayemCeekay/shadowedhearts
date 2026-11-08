@@ -79,7 +79,8 @@ dependencies {
 
     modImplementation( "com.cobblemon:fabric:${cobblemon_version}")
 
-    modCompileOnly("maven.modrinth:GebWh45l:${rootProject.raid_dens_fabric_version}") { transitive = false }
+    modCompileOnly("curse.maven:cobblemonraiddens-1349231:${rootProject.raid_dens_fabric_file}") { transitive = false }
+    modCompileOnly("curse.maven:asymmetric-battles-api-1717490:${rootProject.asymmetric_battles_fabric_file}") { transitive = false }
 
     modCompileOnly("io.wispforest:accessories-fabric:${project.accessories_version}")
 

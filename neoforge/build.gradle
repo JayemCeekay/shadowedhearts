@@ -112,10 +112,14 @@ repositories {
 }
 
 dependencies {
-    // Optional published 0.13.5 API; users install Raid Dens separately if desired.
-    modCompileOnly("maven.modrinth:GebWh45l:${rootProject.raid_dens_neoforge_version}") { transitive = false }
-    // Both LAN test clients share these dev-only mods; they are not bundled or published dependencies.
-    modLocalRuntime("maven.modrinth:GebWh45l:${rootProject.raid_dens_neoforge_version}") { transitive = false }
+    // Both LAN test clients exercise the optional raid adapter and its native battle engine.
+    [
+            "curse.maven:cobblemonraiddens-1349231:${rootProject.raid_dens_neoforge_file}",
+            "curse.maven:asymmetric-battles-api-1717490:${rootProject.asymmetric_battles_neoforge_file}"
+    ].each { dependency ->
+        modCompileOnly(dependency) { transitive = false }
+        modLocalRuntime(dependency) { transitive = false }
+    }
     modLocalRuntime("software.bernie.geckolib:geckolib-neoforge-1.21.1:4.7.7")
     if (rootProject.devYaclEnabled) {
         modLocalRuntime("dev.isxander:yet-another-config-lib:${rootProject.yacl_version}+${rootProject.minecraft_version}-neoforge") { transitive = false }

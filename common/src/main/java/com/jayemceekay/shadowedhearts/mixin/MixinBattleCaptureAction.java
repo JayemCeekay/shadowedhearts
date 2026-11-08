@@ -22,14 +22,17 @@ public class MixinBattleCaptureAction {
     }
 
     @Inject(method = "attach$lambda$3", remap = false, at = @At(value = "INVOKE", target = "Lcom/cobblemon/mod/common/api/battles/model/PokemonBattle;writeShowdownAction([Ljava/lang/String;)V", shift = At.Shift.AFTER), require = 0)
-    private static void shadowedhearts$attachLambda5Head(BattleCaptureAction this$0, Boolean successful, CallbackInfoReturnable<Unit> cir) {
-        if (successful) {
-            if (this$0.getTargetPokemon().getBattlePokemon().getEffectedPokemon().getAspects().contains(SHAspects.SHADOW)) {
-                MegaShowdownBridgeHolder.INSTANCE.revertMegaShowdownAspects(this$0.getTargetPokemon().getBattlePokemon().getEffectedPokemon());
-                BattleActor npcActor = this$0.getTargetPokemon().getActor();
-                int capturedIndex = this$0.getTargetPokemon().getDigit(true) - 1;
-                npcActor.getResponses().set(capturedIndex, PassActionResponse.INSTANCE);
-            }
+    private static void shadowedhearts$clearCapturedAction(BattleCaptureAction action, Boolean successful, CallbackInfoReturnable<Unit> cir) {
+        var target = action.getTargetPokemon();
+        var member = target.getBattlePokemon();
+        if (!successful || member == null || !member.getEffectedPokemon().getAspects().contains(SHAspects.SHADOW)) return;
+        MegaShowdownBridgeHolder.INSTANCE.revertMegaShowdownAspects(member.getEffectedPokemon());
+
+        // Responses are indexed within this actor. A late-joining actor may have no choice queued yet.
+        BattleActor actor = target.getActor();
+        int index = actor.getActivePokemon().indexOf(target);
+        if (index >= 0 && index < actor.getResponses().size()) {
+            actor.getResponses().set(index, PassActionResponse.INSTANCE);
         }
     }
 }

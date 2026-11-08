@@ -16,6 +16,8 @@ loom.createRemapConfigurations(sourceSets.test)
 configurations {
     showdownMegaFabric { canBeConsumed = false; canBeResolved = true }
     showdownMegaNeoForge { canBeConsumed = false; canBeResolved = true }
+    showdownAsymmetricFabric { canBeConsumed = false; canBeResolved = true }
+    showdownAsymmetricNeoForge { canBeConsumed = false; canBeResolved = true }
     all {
         resolutionStrategy.cacheChangingModulesFor(0, "seconds")
     }
@@ -53,6 +55,8 @@ repositories {
 dependencies {
     showdownMegaFabric("maven.modrinth:SszvX85I:${rootProject.mega_showdown_fabric_version}") { transitive = false }
     showdownMegaNeoForge("maven.modrinth:SszvX85I:${rootProject.mega_showdown_neoforge_version}") { transitive = false }
+    showdownAsymmetricFabric("curse.maven:asymmetric-battles-api-1717490:${rootProject.asymmetric_battles_fabric_file}") { transitive = false }
+    showdownAsymmetricNeoForge("curse.maven:asymmetric-battles-api-1717490:${rootProject.asymmetric_battles_neoforge_file}") { transitive = false }
     minecraft "net.minecraft:minecraft:$rootProject.minecraft_version"
     mappings loom.officialMojangMappings()
     // We depend on Fabric Loader here to use the Fabric @Environment annotations,
@@ -77,7 +81,8 @@ dependencies {
     modCompileOnly("dev.emi:emi-fabric:${rootProject.emi_version}") { transitive = false }
 
     // Optional typed Moonwound raid adapter; never bundled or required at runtime.
-    modCompileOnly("maven.modrinth:GebWh45l:${rootProject.raid_dens_fabric_version}") { transitive = false }
+    modCompileOnly("curse.maven:cobblemonraiddens-1349231:${rootProject.raid_dens_fabric_file}") { transitive = false }
+    modCompileOnly("curse.maven:asymmetric-battles-api-1717490:${rootProject.asymmetric_battles_fabric_file}") { transitive = false }
 
     //implementation("org.graalvm.sdk:graal-sdk:22.3.0")
 
@@ -85,8 +90,9 @@ dependencies {
     testImplementation platform("org.junit:junit-bom:${rootProject.junit_version}")
     testImplementation "org.junit.jupiter:junit-jupiter"
     testRuntimeOnly "org.junit.platform:junit-platform-launcher"
-    // Inspect Raid Dens' contributed mixin methods without launching Minecraft.
-    testRuntimeOnly("maven.modrinth:GebWh45l:${rootProject.raid_dens_fabric_version}") { transitive = false }
+    // Inspect the published raid and battle engine contracts without launching Minecraft.
+    testRuntimeOnly("curse.maven:cobblemonraiddens-1349231:${rootProject.raid_dens_fabric_file}") { transitive = false }
+    testRuntimeOnly("curse.maven:asymmetric-battles-api-1717490:${rootProject.asymmetric_battles_fabric_file}") { transitive = false }
     testImplementation "mezz.jei:jei-${rootProject.minecraft_version}-common-api:${rootProject.jei_version}"
     modTestImplementation("dev.emi:emi-fabric:${rootProject.emi_version}") { transitive = false }
     modTestImplementation("me.shedaniel:RoughlyEnoughItems-api:${rootProject.rei_version}") { transitive = false }
@@ -133,7 +139,7 @@ dependencies {
 // Explicit release verification: Node is required only for this task, never to build the mod.
 tasks.register('showdownTest', JavaExec) {
     group = 'verification'
-    description = 'Run simulator regression suites against fresh stock and pinned Mega Showdown runtimes.'
+    description = 'Run simulator regressions against stock, Mega Showdown and Asymmetric Battles runtimes.'
     dependsOn tasks.named('testClasses')
     classpath = sourceSets.test.runtimeClasspath
     javaLauncher = javaToolchains.launcherFor(java.toolchain)
@@ -144,7 +150,9 @@ tasks.register('showdownTest', JavaExec) {
                  layout.buildDirectory.dir('reports/showdown').get().asFile.absolutePath,
                  providers.gradleProperty('nodeExecutable').getOrElse('node'),
                  configurations.showdownMegaFabric.singleFile.absolutePath,
-                 configurations.showdownMegaNeoForge.singleFile.absolutePath])
+                 configurations.showdownMegaNeoForge.singleFile.absolutePath,
+                 configurations.showdownAsymmetricFabric.singleFile.absolutePath,
+                 configurations.showdownAsymmetricNeoForge.singleFile.absolutePath])
     }
 }
 

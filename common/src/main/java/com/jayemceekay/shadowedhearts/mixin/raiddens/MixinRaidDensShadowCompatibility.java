@@ -20,7 +20,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 
-/** Raid Dens 0.13.5 still calls retired ShadowedHearts packages. Version-gated by both loaders. */
+/** Raid Dens 0.14.1 calls retired ShadowedHearts packages. Version-gated by both loaders. */
 @Pseudo
 @Mixin(targets = "com.necro.raid.dens.common.compat.shadowedhearts.RaidDensShadowedHeartsCompat", remap = false)
 public abstract class MixinRaidDensShadowCompatibility {

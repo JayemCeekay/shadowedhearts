@@ -4,7 +4,7 @@ import com.necro.raid.dens.common.raids.RaidInstance;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.gen.Accessor;
 
-/** Exact 0.13.5 fields; preserves native scaling after removing reward-ineligible participant references. */
+/** Shared HP belongs to the encounter while eligible participants belong to the session. */
 @Mixin(value = RaidInstance.class, remap = false)
 public interface MoonwoundRaidHealthAccessor {
     @Accessor("initMaxHealth") float shadowedhearts$initialHealth();

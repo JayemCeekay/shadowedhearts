@@ -20,6 +20,7 @@ import com.jayemceekay.shadowedhearts.network.ShadowedHeartsNetwork;
 import com.jayemceekay.shadowedhearts.network.snag.SnagArmedPacket;
 import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import dev.architectury.platform.Platform;
 import kotlin.Unit;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
@@ -106,7 +107,8 @@ public abstract class MixinEmptyPokeBallEntity extends ThrowableItemProjectile {
                         if (battle != null) {
                             var throwerActor = battle.getActor(owner.getUUID());
                             var hitActor = Iterables.find(battle.getActors(), actor -> actor.isForPokemon(pokemonEntity), null);
-                            var hitBattlePokemon = hitActor == null ? null : Iterables.find(hitActor.getActivePokemon(), battlePokemon -> battlePokemon.getBattlePokemon().getEffectedPokemon().getEntity() == pokemonEntity, null);
+                            var hitBattlePokemon = hitActor == null ? null : Iterables.find(hitActor.getActivePokemon(),
+                                    slot -> slot.getBattlePokemon() != null && slot.getBattlePokemon().getEffectedPokemon().getEntity() == pokemonEntity, null);
 
                             if (throwerActor == null) {
                                 owner.sendSystemMessage(lang("capture.in_battle", pokemonEntity.getExposedSpecies().getTranslatedName().withStyle(ChatFormatting.RED)));
@@ -115,6 +117,15 @@ public abstract class MixinEmptyPokeBallEntity extends ThrowableItemProjectile {
                             }
 
                             if (hitActor == null || hitBattlePokemon == null) {
+                                drop();
+                                return;
+                            }
+
+                            // ABA permits a wild capture once only one opponent remains in a multi/horde battle.
+                            if (hitActor.getType() == ActorType.WILD && Platform.isModLoaded("asymmetricbattles")
+                                    && (hitActor.getPokemonList().stream().filter(member -> member.getHealth() > 0).count() > 1
+                                    || hitActor.getSide().getActivePokemon().stream().filter(slot -> slot.getBattlePokemon() != null).count() > 1)) {
+                                owner.sendSystemMessage(lang("capture.not_single").withStyle(ChatFormatting.RED));
                                 drop();
                                 return;
                             }

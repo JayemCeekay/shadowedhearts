@@ -1,5 +1,6 @@
 package com.jayemceekay.shadowedhearts.mixin;
 
+import com.cobblemon.mod.common.api.battles.model.actor.ActorType;
 import com.cobblemon.mod.common.client.gui.battle.BattleGUI;
 import com.cobblemon.mod.common.client.gui.battle.subscreen.BattleGeneralActionSelection;
 import com.cobblemon.mod.common.client.gui.battle.widgets.BattleOptionTile;
@@ -10,7 +11,7 @@ import com.jayemceekay.shadowedhearts.common.snag.SnagBattleUtil;
 import com.jayemceekay.shadowedhearts.network.ShadowedHeartsNetwork;
 import com.jayemceekay.shadowedhearts.network.snag.SnagArmPacket;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
-import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
+import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
 import kotlin.Unit;
 import kotlin.jvm.functions.Function0;
 import net.minecraft.client.Minecraft;
@@ -21,24 +22,18 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.Style;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.network.chat.contents.TranslatableContents;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.Slice;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import java.util.List;
 
-/**
- * Inject a "Snag" option just before the Forfeit button in Cobblemon's BattleGeneralActionSelection.
- *
- * We wrap the specific addOption invocation for Forfeit, insert our Snag option first (same rank),
- * then call the original addOption with rank + 1 so Forfeit is placed after it.
- */
 @Mixin(value = BattleGeneralActionSelection.class, remap = false)
 public abstract class MixinBattleGeneralActionSelection {
 
@@ -130,18 +125,20 @@ public abstract class MixinBattleGeneralActionSelection {
     }
 }
 
-    // WrapOperation's array-valued injection points work with both loaders. The newer
-    // common Mixin API emits Redirect.at as an array, which NeoForge's MixinExtras 0.5.3 cannot read.
-    @WrapOperation(
-            method = "<init>(Lcom/cobblemon/mod/common/client/gui/battle/BattleGUI;Lcom/cobblemon/mod/common/client/battle/SingleActionRequest;)V",
-            at = @At(value = "INVOKE", target = "Lcom/cobblemon/mod/common/client/gui/battle/subscreen/BattleGeneralActionSelection;addOption(ILnet/minecraft/network/chat/MutableComponent;Lnet/minecraft/resources/ResourceLocation;Lkotlin/jvm/functions/Function0;)V"),
-            slice = @Slice(from = @At(value = "CONSTANT", args = "stringValue=ui.forfeit"))
-    )
-    private void shadowedhearts$wrapForfeitAddOption(BattleGeneralActionSelection instance, int rank, MutableComponent text, ResourceLocation texture, Function0<Unit> onClick, Operation<Void> original) {
+    @WrapMethod(method = "addOption")
+    private void shadowedhearts$addSnagOption(int rank, MutableComponent text, ResourceLocation texture, Function0<Unit> onClick, Operation<Void> original) {
         var mc = Minecraft.getInstance();
         var player = mc.player;
-        // Keep the eligible Snag option visible while its machine recharges.
-        if (player != null && SnagBattleUtil.canShowSnagButton(player)) {
+        if (player != null && SnagBattleUtil.canShowSnagButton(player) && text.getContents() instanceof TranslatableContents label) {
+            boolean forfeit = label.getKey().equals("cobblemon.battle.ui.forfeit");
+            // ABA offers Catch instead of Forfeit when an NPC side contains an open WILD slot.
+            var battle = CobblemonClient.INSTANCE.getBattle();
+            boolean trainerCatch = label.getKey().equals("cobblemon.battle.ui.capture") && battle != null
+                    && battle.getSide2().getActors().stream().anyMatch(actor -> actor.getType() == ActorType.NPC);
+            if (!forfeit && !trainerCatch) {
+                original.call(rank, text, texture, onClick);
+                return;
+            }
             MutableComponent snagText = Component.empty().append(Component.translatable("ui.shadowedhearts.snag"));
             ResourceLocation snagIcon = ResourceLocation.fromNamespaceAndPath("cobblemon", "textures/gui/battle/battle_menu_switch.png");
             Function0<Unit> snagClick = () -> {
@@ -153,12 +150,13 @@ public abstract class MixinBattleGeneralActionSelection {
                 return Unit.INSTANCE;
             };
             // Insert our Snag option at the current rank
-            original.call(instance, rank, snagText, snagIcon, snagClick);
+            original.call(rank, snagText, snagIcon, snagClick);
             shadowedhearts$snagButtonTile = tiles.get(tiles.size() - 1);
+            if (trainerCatch) return;
             rank++;
         }
 
         // Place the Forfeit option after it
-        original.call(instance, rank, text, texture, onClick);
+        original.call(rank, text, texture, onClick);
     }
 }

@@ -93,6 +93,14 @@ side = "BOTH"
 reason = "Enables supported Raid Dens bosses during Moonwound events."
 
 [[dependencies.shadowedhearts]]
+modId = "asymmetricbattles"
+type = "optional"
+versionRange = "*"
+ordering = "AFTER"
+side = "BOTH"
+reason = "Supports Shadow battles in asymmetric Cobblemon battle formats."
+
+[[dependencies.shadowedhearts]]
 modId = "lost_lore"
 type = "optional"
 versionRange = "*"

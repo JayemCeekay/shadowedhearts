@@ -56,17 +56,12 @@ final class ShowdownBattlePatches {
                 if (move.flags["cantusetwice"] && pokemon.lastMove?.id === move.id) {
             """.stripTrailing()));
 
+    // Insert at the command boundary so Asymmetric Battles retains its own player/join handling.
     static final LiteralShowdownPatch HEART_GAUGE_UPDATE = new LiteralShowdownPatch(
-            "battleStream.heartGauge", "      case \"player\":", """
-                  case "player":
-                    const [slot, optionsText] = splitFirst(message, " ");
-                    this.battle.setPlayer(slot, JSON.parse(optionsText));
+            "battleStream.heartGauge", "      case \"capture\":", """
                     break;
                   case "capture":
             """.stripTrailing(), """
-                  case "player":
-                    const [slot, optionsText] = splitFirst(message, " ");
-                    this.battle.setPlayer(slot, JSON.parse(optionsText));
                     break;
                   case "shheartgauge": {
                     const tokens = message.trim().split(/\\s+/);
