@@ -82,6 +82,14 @@ ordering = "AFTER"
 side = "BOTH"
 reason = "Enables Mega Showdown battle mechanics and Shadowium Z."
 
+[[dependencies.shadowedhearts]]
+modId = "cobblemon_battle_extras"
+type = "optional"
+versionRange = "*"
+ordering = "AFTER"
+side = "CLIENT"
+reason = "Displays Shadow moves and hides locked move details in the Battle Extras interface."
+
 # The raid adapter checks its supported version at runtime and otherwise uses fallback bosses.
 # Keep the launcher permissive so an unsupported Raid Dens version does not prevent startup.
 [[dependencies.shadowedhearts]]

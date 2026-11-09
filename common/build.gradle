@@ -125,6 +125,8 @@ dependencies {
     modCompileOnly("maven.modrinth:YL57xq9U:zsoi0dso")
     // Inspect Iris' actual mixin seam and core-shader state contract without launching it.
     testRuntimeOnly("maven.modrinth:YL57xq9U:zsoi0dso")
+    // The optional add-on contributes the hovered MoveTile method. Its NeoForge jar uses the test suite's Mojang names.
+    testRuntimeOnly("maven.modrinth:2iY8VFqL:kXNdY5X7") { transitive = false }
 
     //mega showdown
     modCompileOnly("maven.modrinth:SszvX85I:${rootProject.mega_showdown_fabric_version}")

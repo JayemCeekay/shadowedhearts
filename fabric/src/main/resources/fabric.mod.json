@@ -50,6 +50,7 @@
     "rctapi": ">=0.16.2-beta",
     "accessories": ">=1.1.0-beta.54+1.21.1",
     "rctmod": "*",
+    "cobblemon-battle-extras": "1.13.47",
     "mega_showdown": "*",
     "cobblemonraiddens": "*",
     "sosencounters": "*",

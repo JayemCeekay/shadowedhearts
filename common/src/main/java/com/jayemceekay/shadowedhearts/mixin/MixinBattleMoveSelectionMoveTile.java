@@ -1,9 +1,6 @@
 package com.jayemceekay.shadowedhearts.mixin;
 
-import com.jayemceekay.shadowedhearts.common.shadow.restrictions.ShadowUnlockPolicy;
-
 import com.cobblemon.mod.common.api.types.ElementalType;
-import com.cobblemon.mod.common.battles.InBattleMove;
 import com.cobblemon.mod.common.client.gui.TypeIcon;
 import com.cobblemon.mod.common.client.gui.battle.subscreen.BattleMoveSelection;
 import com.jayemceekay.shadowedhearts.client.battle.ShadowBattleMoveDetails;
@@ -23,16 +20,6 @@ import org.spongepowered.asm.mixin.injection.ModifyArg;
 @Mixin(value = BattleMoveSelection.MoveTile.class, remap = false)
 public abstract class MixinBattleMoveSelectionMoveTile {
 
-    private static boolean shadowedhearts$shouldMask(BattleMoveSelection.MoveTile self) {
-        InBattleMove m = self.getMove();
-        var pokemon = self.getPokemon();
-        if (m == null || pokemon == null) return false;
-        boolean forcedPlaceholder = (m.getPp() == 100 && m.getMaxpp() == 100); // Thrash/forced turn UI
-        return m.getDisabled()
-                && !forcedPlaceholder
-                && ShadowUnlockPolicy.shouldMaskMove(pokemon, m.getId());
-    }
-
     // Replace the move name text when masked
     @ModifyArg(
             method = "render",
@@ -47,7 +34,7 @@ public abstract class MixinBattleMoveSelectionMoveTile {
     )
     private MutableComponent shadowedhearts$maskName(MutableComponent par3) {
         BattleMoveSelection.MoveTile self = (BattleMoveSelection.MoveTile) (Object) this;
-        if (shadowedhearts$shouldMask(self)) {
+        if (ShadowBattleMoveDetails.masked(self)) {
             return ShadowMaskingUtil.MASKED_NAME;
         }
         return par3;
@@ -65,7 +52,7 @@ public abstract class MixinBattleMoveSelectionMoveTile {
     )
     private MutableComponent shadowedhearts$maskPP(MutableComponent original) {
         BattleMoveSelection.MoveTile self = (BattleMoveSelection.MoveTile) (Object) this;
-        if (shadowedhearts$shouldMask(self)) {
+        if (ShadowBattleMoveDetails.masked(self)) {
             return ShadowMaskingUtil.MASKED_PP;
         }
         if (ShadowBattleMoveDetails.unlimited(self.getMoveTemplate(), self.getPokemon())) {
@@ -101,7 +88,7 @@ public abstract class MixinBattleMoveSelectionMoveTile {
             boolean b, float v, int i, Object o, Operation<Void> original
     ) {
         BattleMoveSelection.MoveTile self = (BattleMoveSelection.MoveTile) (Object) this;
-        if (shadowedhearts$shouldMask(self)) {
+        if (ShadowBattleMoveDetails.masked(self)) {
             // Neutral gray/black; pick one. Example: dark gray with lower alpha.
             red = ShadowMaskingUtil.NEUTRAL_TINT[0]; 
             green = ShadowMaskingUtil.NEUTRAL_TINT[1]; 
@@ -121,7 +108,7 @@ public abstract class MixinBattleMoveSelectionMoveTile {
     )
     private void shadowedhearts$dimTypeIcon(TypeIcon instance, GuiGraphics offsetX, Operation<Void> original) {
         BattleMoveSelection.MoveTile self = (BattleMoveSelection.MoveTile) (Object) this;
-        if (shadowedhearts$shouldMask(self)) {
+        if (ShadowBattleMoveDetails.masked(self)) {
             // Reduce the MoveTile's overall opacity path by editing its field via accessor if desired,
             // or leave as-is — the neutral bar is already a strong cue.
         }
@@ -139,6 +126,6 @@ public abstract class MixinBattleMoveSelectionMoveTile {
     )
     private ElementalType shadowedhearts$swapTypeIconWhenLocked(ElementalType original) {
         BattleMoveSelection.MoveTile self = (BattleMoveSelection.MoveTile) (Object) this;
-        return shadowedhearts$shouldMask(self) ? ShadowMaskingUtil.getLockedType() : original;
+        return ShadowBattleMoveDetails.masked(self) ? ShadowMaskingUtil.getLockedType() : original;
     }
 }
