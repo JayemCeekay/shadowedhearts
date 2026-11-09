@@ -217,6 +217,19 @@ public final class UmbrafallShapeBuilder {
         return columnShifts[(z + radius()) * diameter() + x + radius()];
     }
 
+    /** The carved basin stops where the profile's rim band begins. */
+    public boolean isInsideCrater(int x, int z) {
+        if (x < -radius() || x > radius() || z < -radius() || z > radius()) return false;
+        if (variedShape != null) return variedShape.craterRadial(x, z) < 0.90;
+        if (compactBody != null) return compactCraterRadial(x, z) < 0.90;
+        return Math.hypot(x, z) < 0.90 * legacyCraterRadius(Math.atan2(z, x));
+    }
+
+    private double legacyCraterRadius(double azimuth) {
+        return radius() * (0.80 + 0.035 * Math.sin(azimuth * 3 + phase)
+                + 0.022 * Math.cos(azimuth * 5 - phase));
+    }
+
     /** Surface ejecta require terrain support; body voxels must never be skipped by that check. */
     public boolean isSurfaceDebris(int x, int y, int z, Material material) {
         if (material == Material.FRAGMENT) {
@@ -267,8 +280,7 @@ public final class UmbrafallShapeBuilder {
         int terrainY = y - columnShift(x, z);
         double horizontalDistance = Math.sqrt(x * (double) x + z * (double) z);
         double azimuth = Math.atan2(z, x);
-        double craterRadius = radius() * (0.80 + 0.035 * Math.sin(azimuth * 3 + phase)
-                + 0.022 * Math.cos(azimuth * 5 - phase));
+        double craterRadius = legacyCraterRadius(azimuth);
         double radial = horizontalDistance / craterRadius;
         if (radial < 1) {
             int floor = (int) Math.floor(-craterDepth() * (1 - radial * radial));

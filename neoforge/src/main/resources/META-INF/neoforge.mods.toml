@@ -101,6 +101,14 @@ side = "BOTH"
 reason = "Supports Shadow battles in asymmetric Cobblemon battle formats."
 
 [[dependencies.shadowedhearts]]
+modId = "sosencounters"
+type = "optional"
+versionRange = "*"
+ordering = "AFTER"
+side = "BOTH"
+reason = "Lets the responding Pokémon join an Answering the Howl battle on supported SOS Encounters versions."
+
+[[dependencies.shadowedhearts]]
 modId = "lost_lore"
 type = "optional"
 versionRange = "*"

@@ -1,6 +1,8 @@
 package com.jayemceekay.shadowedhearts.mixin;
 
+import com.jayemceekay.shadowedhearts.common.moonwound.raid.MoonwoundRaidCompatibility;
 import com.jayemceekay.shadowedhearts.integration.yacl.YaclCompatibility;
+import com.jayemceekay.shadowedhearts.integration.CraterSosCompatibility;
 import net.neoforged.fml.loading.FMLLoader;
 import org.objectweb.asm.tree.ClassNode;
 import org.spongepowered.asm.mixin.extensibility.IMixinConfigPlugin;
@@ -14,6 +16,14 @@ public class ShadowedHeartsMixinConfigPlugin implements IMixinConfigPlugin {
 
     @Override
     public boolean shouldApplyMixin(String targetClassName, String mixinClassName) {
+        if (mixinClassName.startsWith("com.jayemceekay.shadowedhearts.mixin.sos.")) {
+            return FMLLoader.getLoadingModList().getMods().stream().anyMatch(mod -> mod.getModId().equals(CraterSosCompatibility.MOD_ID)
+                    && (mixinClassName.endsWith(".MixinCraterSosEligibility") || CraterSosCompatibility.supports(mod.getVersion().toString())));
+        }
+        if (mixinClassName.startsWith("com.jayemceekay.shadowedhearts.mixin.horde.")) {
+            return FMLLoader.getLoadingModList().getModFileById("hordeencounters") != null
+                    && FMLLoader.getLoadingModList().getModFileById("asymmetricbattles") != null;
+        }
         if (mixinClassName.startsWith("com.jayemceekay.shadowedhearts.mixin.yacl.")) {
             return FMLLoader.getLoadingModList().getMods().stream().anyMatch(mod -> mod.getModId().equals(YaclCompatibility.MOD_ID)
                     && YaclCompatibility.supportsHeadingLayout(mod.getVersion().toString()));
@@ -23,9 +33,8 @@ public class ShadowedHeartsMixinConfigPlugin implements IMixinConfigPlugin {
         }
         if (mixinClassName.startsWith("com.jayemceekay.shadowedhearts.mixin.raiddens.")) {
             return FMLLoader.getLoadingModList().getMods().stream()
-                    .anyMatch(mod -> mod.getModId().equals("cobblemonraiddens")
-                            && com.jayemceekay.shadowedhearts.common.moonwound.raid.MoonwoundRaidCompatibility
-                            .supportsVersion(mod.getVersion().toString()));
+                    .anyMatch(mod -> mod.getModId().equals(MoonwoundRaidCompatibility.MOD_ID)
+                            && MoonwoundRaidCompatibility.supportsMixin(mixinClassName, mod.getVersion().toString()));
         }
 
         if (mixinClassName.equals("com.jayemceekay.shadowedhearts.mixin.MixinCancelThrownPokeballInBattleHelper") ||

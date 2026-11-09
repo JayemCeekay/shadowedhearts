@@ -1,0 +1,5 @@
+{
+  "biomes": ["#minecraft:is_mountain"],
+  "pack": "cobblemon:rookidee",
+  "carrier": "cobblemon:corvisquire"
+}

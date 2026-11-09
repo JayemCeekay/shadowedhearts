@@ -1,0 +1,6 @@
+{
+  "biomes": ["#cobblemon:is_forest", "#cobblemon:is_plains"],
+  "attacker": "cobblemon:poochyena",
+  "victim": "cobblemon:deerling",
+  "weight": 2
+}

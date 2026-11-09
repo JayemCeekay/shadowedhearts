@@ -1,0 +1,5 @@
+{
+  "biomes": ["#minecraft:is_mountain"],
+  "caller": "cobblemon:rockruff",
+  "responder": "cobblemon:lycanroc"
+}

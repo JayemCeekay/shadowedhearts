@@ -17,6 +17,8 @@ public final class ModKeybinds {
     public static KeyMapping AURA_NEXT_SIGNAL;
     public static KeyMapping AURA_PREV_SIGNAL;
     public static KeyMapping DEBUG_REINIT_HUD;
+    public static KeyMapping RESCUE_WELCOME;
+    public static KeyMapping RESCUE_RELEASE;
 
     private static final String CAT = "key.categories.shadowedhearts";
 
@@ -48,6 +50,11 @@ public final class ModKeybinds {
 
         if (DEBUG_REINIT_HUD == null) {
             DEBUG_REINIT_HUD = new KeyMapping("key.shadowedhearts.debug_reinit_hud", GLFW.GLFW_KEY_F8, CAT);
+        }
+        // Y/N are local to the dialog. Reserving them globally would collide with Aura Lock and Raid Dens.
+        if (RESCUE_WELCOME == null) {
+            RESCUE_WELCOME = new KeyMapping("key.shadowedhearts.rescue_welcome", GLFW.GLFW_KEY_UNKNOWN, CAT);
+            RESCUE_RELEASE = new KeyMapping("key.shadowedhearts.rescue_release", GLFW.GLFW_KEY_UNKNOWN, CAT);
         }
     }
 

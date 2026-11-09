@@ -81,6 +81,10 @@ public class MeteoroidStructurePiece extends StructurePiece {
         }
     }
 
+    public boolean isFaintSiteNear(BlockPos pos) {
+        return rejectedShapeData == null && tier == UmbrafallTier.FAINT && center.closerThan(pos, 16);
+    }
+
     @Override
     public void postProcess(WorldGenLevel level, StructureManager structureManager, ChunkGenerator generator, RandomSource random, BoundingBox box, ChunkPos chunkPos, BlockPos pos) {
         // Retired crater starts retain their NBT and bounds without carving more terrain.

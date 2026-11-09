@@ -86,11 +86,15 @@ public final class UmbrafallCoreBlockEntity extends BlockEntity {
         this.tier = tier;
         this.geometry = java.util.Objects.requireNonNull(geometry);
         this.rejectedShapeVersion = null;
-        this.siteId = siteId == null ? UUID.nameUUIDFromBytes((center.asLong() + ":" + seed).getBytes(StandardCharsets.UTF_8)) : siteId;
+        this.siteId = siteId == null ? naturalSiteId(center, seed) : siteId;
         this.owner = owner;
         this.center = center.immutable();
         this.seed = seed;
         setChanged();
+    }
+
+    public static UUID naturalSiteId(BlockPos center, long seed) {
+        return UUID.nameUUIDFromBytes((center.asLong() + ":" + seed).getBytes(StandardCharsets.UTF_8));
     }
 
     private UmbrafallSiteData.Site record(ServerLevel world) {
@@ -141,6 +145,7 @@ public final class UmbrafallCoreBlockEntity extends BlockEntity {
             world.setBlockAndUpdate(worldPosition, ModBlocks.UMBRAFALL_SHELL.get().defaultBlockState());
             return;
         }
+        com.jayemceekay.shadowedhearts.common.craterrescue.CraterRescueService.discover(world, site);
         if (state.ordinal() < UmbrafallCoreState.EXPOSED.ordinal()) {
             for (Direction direction : Direction.values()) {
                 if (world.getBlockState(worldPosition.relative(direction)).isAir()) {
@@ -149,7 +154,7 @@ public final class UmbrafallCoreBlockEntity extends BlockEntity {
                 }
             }
         }
-        // Surging records excavation disturbance. Moonwound owns Pokemon encounters.
+        // Surging records excavation disturbance independently of field encounters.
     }
 
     public void disturbed(Player player) {

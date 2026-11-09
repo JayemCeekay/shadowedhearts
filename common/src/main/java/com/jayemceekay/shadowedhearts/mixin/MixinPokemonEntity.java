@@ -1,6 +1,7 @@
 package com.jayemceekay.shadowedhearts.mixin;
 
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
+import com.jayemceekay.shadowedhearts.common.craterrescue.CraterRescueService;
 import com.jayemceekay.shadowedhearts.common.shadow.SyncedEntityAspects;
 import com.jayemceekay.shadowedhearts.common.shadow.ShadowFlag;
 import com.jayemceekay.shadowedhearts.common.shadow.ShadowPokemonData;
@@ -17,6 +18,11 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  */
 @Mixin(value = PokemonEntity.class)
 public abstract class MixinPokemonEntity implements ShadowFlag {
+
+    @Inject(method = "tick", at = @At("TAIL"))
+    private void shadowedhearts$tickCraterActor(CallbackInfo ci) {
+        CraterRescueService.tickActor((PokemonEntity) (Object) this);
+    }
 
     @Inject(method = "<clinit>", at = @At("TAIL"), remap = false)
     private static void shadowedhearts$clinit(CallbackInfo ci) {

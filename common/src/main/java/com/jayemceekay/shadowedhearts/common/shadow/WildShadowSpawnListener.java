@@ -5,6 +5,7 @@ import com.cobblemon.mod.common.api.events.CobblemonEvents;
 import com.cobblemon.mod.common.api.events.entity.SpawnEvent;
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
 import com.cobblemon.mod.common.pokemon.Pokemon;
+import com.jayemceekay.shadowedhearts.common.craterrescue.CraterRescueActors;
 import com.jayemceekay.shadowedhearts.config.HeartGaugeConfig;
 import com.jayemceekay.shadowedhearts.config.ContextualSpawnConfig;
 import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs;
@@ -38,6 +39,7 @@ public final class WildShadowSpawnListener {
 
             Pokemon pokemon = entity.getPokemon();
             if (pokemon == null) return Unit.INSTANCE;
+            if (CraterRescueActors.site(pokemon) != null) return Unit.INSTANCE;
             if (com.jayemceekay.shadowedhearts.common.voidshadow.VoidShadowService.isVoidShadow(pokemon))
                 return Unit.INSTANCE;
 

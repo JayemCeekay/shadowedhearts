@@ -1,0 +1,5 @@
+{
+  "biomes": ["#cobblemon:is_coast"],
+  "attacker": "cobblemon:wingull",
+  "victim": "cobblemon:krabby"
+}

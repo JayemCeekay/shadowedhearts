@@ -71,6 +71,8 @@ public final class ShadowedheartsFabricClient implements ClientModInitializer {
         ModKeybindsPlatformImpl.register(ModKeybinds.AURA_NEXT_SIGNAL);
         ModKeybindsPlatformImpl.register(ModKeybinds.AURA_PREV_SIGNAL);
         ModKeybindsPlatformImpl.register(ModKeybinds.DEBUG_REINIT_HUD);
+        ModKeybindsPlatformImpl.register(ModKeybinds.RESCUE_WELCOME);
+        ModKeybindsPlatformImpl.register(ModKeybinds.RESCUE_RELEASE);
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             BallEmitters.onClientTick(client);

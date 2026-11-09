@@ -125,6 +125,33 @@ final class ShowdownBattlePatches {
                   }
             """.stripTrailing());
 
+    static final LiteralShowdownPatch CRATER_HOWL = new LiteralShowdownPatch(
+            "battleStream.craterHowl", "      case \"version\":", """
+                  case "version":
+                  case "version-origin":
+                    break;
+            """.stripTrailing(), """
+                  case "shcraterhowl": {
+                    const [action, uuid, turn] = message.trim().split(" ");
+                    const battle = this.battle;
+                    if (!battle || battle.ended || battle.gameType !== "multi" || Number(turn) !== battle.turn) break;
+                    const caller = battle.sides[1]?.pokemon.find(p => p.uuid === uuid);
+                    if (!caller) break;
+                    if (action === "prepare" && battle.turn === 1) {
+                      battle.shadowedheartsHowlCaller = uuid;
+                      caller.removeVolatile("wild");
+                    } else if (battle.shadowedheartsHowlCaller === uuid) {
+                      if (action === "warn") caller.addVolatile("shadowedheartshowl");
+                      if (action === "resume" && battle.awaitTurnEnd) battle.delayedNextTurn();
+                    }
+                    break;
+                  }
+                  case "version":
+                  case "version-origin": {
+                    break;
+                  }
+            """.stripTrailing());
+
     static final LiteralShowdownPatch DEX_FIELD = new LiteralShowdownPatch(
             "dexConditions.field", "class Condition extends import_dex_data.BasicEffect {", """
             class Condition extends import_dex_data.BasicEffect {

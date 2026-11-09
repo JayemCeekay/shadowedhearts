@@ -1,6 +1,8 @@
 package com.jayemceekay.shadowedhearts.mixin;
 
+import com.jayemceekay.shadowedhearts.common.moonwound.raid.MoonwoundRaidCompatibility;
 import com.jayemceekay.shadowedhearts.integration.yacl.YaclCompatibility;
+import com.jayemceekay.shadowedhearts.integration.CraterSosCompatibility;
 import dev.architectury.platform.Platform;
 import org.objectweb.asm.tree.ClassNode;
 import org.spongepowered.asm.mixin.extensibility.IMixinConfigPlugin;
@@ -13,6 +15,14 @@ public class ShadowedHeartsMixinConfigPlugin implements IMixinConfigPlugin {
 
     @Override
     public boolean shouldApplyMixin(String targetClassName, String mixinClassName) {
+        if (mixinClassName.startsWith("com.jayemceekay.shadowedhearts.mixin.sos.")) {
+            return net.fabricmc.loader.api.FabricLoader.getInstance().getModContainer(CraterSosCompatibility.MOD_ID)
+                    .map(mod -> mixinClassName.endsWith(".MixinCraterSosEligibility")
+                            || CraterSosCompatibility.supports(mod.getMetadata().getVersion().getFriendlyString())).orElse(false);
+        }
+        if (mixinClassName.startsWith("com.jayemceekay.shadowedhearts.mixin.horde.")) {
+            return Platform.isModLoaded("hordeencounters") && Platform.isModLoaded("asymmetricbattles");
+        }
         if (mixinClassName.startsWith("com.jayemceekay.shadowedhearts.mixin.yacl.")) {
             return net.fabricmc.loader.api.FabricLoader.getInstance().getModContainer(YaclCompatibility.MOD_ID)
                     .map(mod -> YaclCompatibility.supportsHeadingLayout(mod.getMetadata().getVersion().getFriendlyString())).orElse(false);
@@ -21,9 +31,9 @@ public class ShadowedHeartsMixinConfigPlugin implements IMixinConfigPlugin {
             return Platform.isModLoaded("emi");
         }
         if (mixinClassName.startsWith("com.jayemceekay.shadowedhearts.mixin.raiddens.")) {
-            return net.fabricmc.loader.api.FabricLoader.getInstance().getModContainer("cobblemonraiddens")
-                    .map(mod -> com.jayemceekay.shadowedhearts.common.moonwound.raid.MoonwoundRaidCompatibility
-                            .supportsVersion(mod.getMetadata().getVersion().getFriendlyString())).orElse(false);
+            return net.fabricmc.loader.api.FabricLoader.getInstance().getModContainer(MoonwoundRaidCompatibility.MOD_ID)
+                    .map(mod -> MoonwoundRaidCompatibility.supportsMixin(mixinClassName, mod.getMetadata().getVersion().getFriendlyString()))
+                    .orElse(false);
         }
         if (mixinClassName.equals("com.jayemceekay.shadowedhearts.mixin.MixinCancelThrownPokeballInBattleHelper") ||
                 mixinClassName.equals("com.jayemceekay.shadowedhearts.mixin.MixinPokeballHitReserved")) {

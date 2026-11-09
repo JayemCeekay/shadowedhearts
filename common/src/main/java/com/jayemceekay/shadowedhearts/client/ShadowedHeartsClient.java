@@ -5,6 +5,7 @@ import com.jayemceekay.shadowedhearts.Shadowedhearts;
 import com.jayemceekay.shadowedhearts.client.aura.reader.AuraReaderTooltips;
 import com.jayemceekay.shadowedhearts.client.aura.shadow.ShadowAuraEmitters;
 import com.jayemceekay.shadowedhearts.client.ball.ShadowBallTooltips;
+import com.jayemceekay.shadowedhearts.client.craterrescue.CraterRescuePrompt;
 import com.jayemceekay.shadowedhearts.client.moonwound.MoonwoundClient;
 import com.jayemceekay.shadowedhearts.client.purification.PurificationChamberClientSession;
 import com.jayemceekay.shadowedhearts.client.render.armor.AuraReaderModel;
@@ -24,6 +25,7 @@ public class ShadowedHeartsClient {
             ClientConnectionSettings.refreshConnection();
             PurificationChamberClientSession.INSTANCE.onClientTick(client);
             MoonwoundClient.onClientTick(client);
+            CraterRescuePrompt.onClientTick(client);
             ShadowSignalSearchSoundManager.onClientTick(client);
         });
         registerTooltips();

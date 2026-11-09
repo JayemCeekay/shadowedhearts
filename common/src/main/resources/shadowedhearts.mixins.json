@@ -44,8 +44,16 @@
     "pokeball.MixinPokeBallPosableState"
   ],
   "mixins": [
+    "horde.MixinCraterRescueHerd",
+    "horde.MixinCraterRescueRandomHorde",
+    "MixinCraterHowlTurn",
+    "MixinCraterHowlStatus",
+    "sos.MixinCraterSosEligibility",
+    "sos.MixinCraterSosRoll",
+    "sos.MixinCraterSosSpawn",
     "MixinDeferredSnagDelivery",
     "MixinShadowHyperTrainingItem",
+    "raiddens.MixinRaidDensEmptyTeam",
     "raiddens.MixinRaidDensShadowCompatibility",
     "raiddens.MixinMoonwoundRaidChallenge",
     "raiddens.MixinMoonwoundRaidDefinition",

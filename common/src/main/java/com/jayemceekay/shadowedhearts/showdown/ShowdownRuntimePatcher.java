@@ -5,6 +5,7 @@ import com.jayemceekay.shadowedhearts.config.IShadowConfig;
 import com.jayemceekay.shadowedhearts.config.PresetCompatibilityConfig;
 import com.jayemceekay.shadowedhearts.config.ShadowBattleRulesConfig;
 import com.jayemceekay.shadowedhearts.config.ShadowedHeartsConfigs;
+import com.jayemceekay.shadowedhearts.integration.CraterSosCompatibility;
 import dev.architectury.platform.Platform;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -33,6 +34,7 @@ public final class ShowdownRuntimePatcher {
                 new FilePatch(ShowdownCapturePatches.CAPTURE, "battle.js"),
                 new FilePatch(ShowdownBattlePatches.HEART_GAUGE_UPDATE, "battle-stream.js"),
                 new FilePatch(ShowdownBattlePatches.SCENT_CALM, "battle-stream.js"),
+                new FilePatch(ShowdownBattlePatches.CRATER_HOWL, "battle-stream.js"),
                 new FilePatch(ShowdownBattlePatches.SHADOW_ENGINE, "battle.js"),
                 new FilePatch(ShowdownBattlePatches.CALL_CHOICE, "side.js"),
                 new FilePatch(ShowdownBattlePatches.CALL_ORDER, "battle-queue.js"),
@@ -53,6 +55,7 @@ public final class ShowdownRuntimePatcher {
     }
 
     public static void applyPatches() {
+        CraterSosCompatibility.setSimulatorReady(false);
         Shadowedhearts.LOGGER.info("Applying Showdown runtime patches...");
         List<Path> directories = locateShowdownDirs();
         if (directories.isEmpty()) Shadowedhearts.LOGGER.error("No extracted Showdown runtime directory found");
@@ -61,12 +64,14 @@ public final class ShowdownRuntimePatcher {
             Path sim = showdown.resolve("sim");
             applyTeamPatches(sim.resolve("teams.js"));
             for (FilePatch filePatch : patches()) {
+                if (filePatch.patch() == ShowdownBattlePatches.CRATER_HOWL && !CraterSosCompatibility.installed()) continue;
                 applyLiteralPatch(filePatch.patch(), sim.resolve(filePatch.file()));
             }
         }
     }
     public static class DynamicInjector {
         public static void prepareContext(Object context) {
+            CraterSosCompatibility.setSimulatorReady(false);
             final ShowdownContextAccess access;
             final boolean mega;
             try {
@@ -83,6 +88,27 @@ public final class ShowdownRuntimePatcher {
             injectResource(access, "receiveConditionData", "hypermode", "conditions/hypermode.js", null);
             injectResource(access, "receiveConditionData", "reversemode", "conditions/reversemode.js", null);
             injectResource(access, "receiveConditionData", "shadowengine", "conditions/shadowengine.js", null);
+            if (CraterSosCompatibility.installed()) {
+                injectResource(access, "receiveConditionData", "shadowedheartshowl", "conditions/shadowedheartshowl.js", null);
+                try {
+                    access.eval("js", """
+                            (() => {
+                              const stream = require('./sim/battle-stream').BattleStream.prototype;
+                              const caller = {uuid: "probe", removeVolatile() {}};
+                              const battle = {gameType: "multi", turn: 1, sides: [null, {pokemon: [caller]}]};
+                              stream._writeLine.call({battle}, "shcraterhowl", "prepare probe 1");
+                              const condition = require('./sim/dex').Dex.mod('cobblemon').conditions.get('shadowedheartshowl');
+                              if (battle.shadowedheartsHowlCaller !== caller.uuid || condition.id !== 'shadowedheartshowl' || typeof condition.onResidual !== "function"
+                                  || typeof require('./sim/battle').Battle.prototype.delayedNextTurn !== "function") {
+                                throw new Error("Crater SOS simulator hook unavailable");
+                              }
+                            })()
+                            """);
+                    CraterSosCompatibility.setSimulatorReady(true);
+                } catch (Exception ex) {
+                    Shadowedhearts.LOGGER.warn("Crater howls will use a second wild battle", ex);
+                }
+            }
             injectResource(access, "receiveTypeChartData", "shadow", "typecharts/shadow.js", null);
             injectResource(access, "receiveMoveData", "maxshadow", "moves/maxshadow.js", null);
             injectResource(access, "receiveMoveData", "shadowsupernova", "moves/shadowsupernova.js", null);

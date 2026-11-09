@@ -4,6 +4,7 @@ import com.cobblemon.mod.common.api.net.NetworkPacket
 import com.cobblemon.mod.common.net.PacketRegisterInfo
 import com.jayemceekay.shadowedhearts.client.network.*
 import com.jayemceekay.shadowedhearts.network.aura.*
+import com.jayemceekay.shadowedhearts.network.craterrescue.*
 import com.jayemceekay.shadowedhearts.network.items.NullCharmEffectS2CPacket
 import com.jayemceekay.shadowedhearts.network.items.DarkBallSettingsS2CPacket
 import com.jayemceekay.shadowedhearts.network.items.SnagMachineSettingsS2CPacket
@@ -44,6 +45,7 @@ object ShadowedHeartsNetwork {
         add(PacketRegisterInfo(UmbraInfuserStatePacket.ID, UmbraInfuserStatePacket::decode, UmbraInfuserStateHandler))
         add(PacketRegisterInfo(MoonwoundStatePacket.ID, MoonwoundStatePacket::decode, MoonwoundStateHandler))
         add(PacketRegisterInfo(MoonwoundClosedPacket.ID, MoonwoundClosedPacket::decode, MoonwoundClosedHandler))
+        add(PacketRegisterInfo(CraterRescueOfferPacket.ID, CraterRescueOfferPacket::decode, CraterRescueOfferHandler))
         add(PacketRegisterInfo(OpenTrainerEditorPacket.ID, OpenTrainerEditorPacket::decode, OpenTrainerEditorHandler))
         add(PacketRegisterInfo(TrainerEditorResponsePacket.ID, TrainerEditorResponsePacket::decode, TrainerEditorResponseHandler))
         add(PacketRegisterInfo(RulesPresetResponsePacket.ID, RulesPresetResponsePacket::decode, RulesPresetResponseHandler))
@@ -79,6 +81,7 @@ object ShadowedHeartsNetwork {
     val c2sPayloads: List<PacketRegisterInfo<*>> = buildList {
         add(PacketRegisterInfo(UmbraInfuserActionPacket.ID, UmbraInfuserActionPacket::decode, UmbraInfuserActionHandler))
         add(PacketRegisterInfo(MoonwoundActionPacket.ID, MoonwoundActionPacket::decode, MoonwoundActionHandler))
+        add(PacketRegisterInfo(CraterRescueResponsePacket.ID, CraterRescueResponsePacket::decode, CraterRescueResponseHandler))
         add(PacketRegisterInfo(TrainerEditorRequestPacket.ID, TrainerEditorRequestPacket::decode, TrainerEditorRequestHandler))
         add(PacketRegisterInfo(RulesPresetRequestPacket.ID, RulesPresetRequestPacket::decode, RulesPresetRequestHandler))
         add(

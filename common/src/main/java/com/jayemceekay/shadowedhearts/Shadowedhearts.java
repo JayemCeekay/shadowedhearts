@@ -169,6 +169,7 @@ public final class Shadowedhearts {
         WildShadowSpawnListener.init();
         VoidShadowService.init();
         UmbrafallSites.init();
+        com.jayemceekay.shadowedhearts.common.craterrescue.CraterRescueService.init();
         MoonwoundService.init();
         ShadowCatchRateListener.init();
         StarterShadowListener.init();
