@@ -92,8 +92,8 @@ dependencies {
     //simpleTMs
     modCompileOnly("maven.modrinth:yFqR0DNc:uWiIETYV")
 
-    //specialModelLoader
-    modCompileOnly("maven.modrinth:ajFw7VkX:tbPW2bdB")
+    // Read OBJ/MTL files on the client. Loom nests the plain Java parser in the Fabric jar.
+    implementation(include("de.javagl:obj:0.4.0"))
 
     //iris shaders
     modCompileOnly("maven.modrinth:YL57xq9U:zsoi0dso")
@@ -157,8 +157,6 @@ if (rootProject.ftbGameTestsEnabled) {
         compileClasspath += sourceSets.main.compileClasspath
     }
     dependencies {
-        // Required by the production metadata, but normally only on the compile classpath.
-        modLocalRuntime('maven.modrinth:ajFw7VkX:tbPW2bdB') { transitive = false }
         minecraftServerLibraries 'com.ibm.icu:icu4j:71.1'
     }
     loom.runs.named('gameTest') {

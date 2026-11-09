@@ -10,6 +10,7 @@ import com.jayemceekay.shadowedhearts.client.aura.reader.AuraReaderHud;
 import com.jayemceekay.shadowedhearts.client.aura.reader.AuraReaderPulseRenderer;
 import com.jayemceekay.shadowedhearts.client.aura.shadow.ShadowPokemonAuraSystem;
 import com.jayemceekay.shadowedhearts.client.ball.BallEmitters;
+import com.jayemceekay.shadowedhearts.client.fabric.model.ShadowedHeartsObjModels;
 import com.jayemceekay.shadowedhearts.client.particle.LuminousMoteEmitters;
 import com.jayemceekay.shadowedhearts.client.particle.LuminousMoteParticle;
 import com.jayemceekay.shadowedhearts.client.particle.PenumbraTrailSystem;
@@ -25,7 +26,6 @@ import com.jayemceekay.shadowedhearts.fabric.net.ShadowedHeartsFabricNetworkMana
 import com.jayemceekay.shadowedhearts.registry.ModBlocks;
 import com.jayemceekay.shadowedhearts.registry.ModItems;
 import com.jayemceekay.shadowedhearts.registry.util.ModParticleTypes;
-import dev.felnull.specialmodelloader.api.event.SpecialModelLoaderEvents;
 import fuzs.forgeconfigapiport.fabric.api.neoforge.v4.NeoForgeConfigRegistry;
 import fuzs.forgeconfigapiport.fabric.api.neoforge.v4.NeoForgeModConfigEvents;
 import fuzs.forgeconfigapiport.fabric.api.neoforge.v4.client.ConfigScreenFactoryRegistry;
@@ -86,8 +86,7 @@ public final class ShadowedheartsFabricClient implements ClientModInitializer {
                 com.jayemceekay.shadowedhearts.client.moonwound.MoonwoundClient.renderHud(graphics));
         // Screens
 
-        // Special Model Loader registration
-        SpecialModelLoaderEvents.LOAD_SCOPE.register(() -> (resourceManager, location) -> Shadowedhearts.MOD_ID.equals(location.getNamespace()));
+        ShadowedHeartsObjModels.register();
 
         // Blocks with transparent texture cutouts.
         BlockRenderLayerMap.INSTANCE.putBlock(ModBlocks.RELIC_STONE.get(), RenderType.cutout());

@@ -39,7 +39,6 @@
     "cobblemon": ">=1.8.4",
     "fabric-api": ">=0.116.17+1.21.1",
     "fabric-language-kotlin": ">=1.14.2+kotlin.2.4.21",
-    "special-model-loader": "1.3.0",
     "forgeconfigapiport": ">=21.1.6"
   },
   "suggests": {

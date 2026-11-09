@@ -189,10 +189,6 @@ public final class ModItems {
                 new Item.Properties().arch$tab(ModCreativeTabs.SHADOWED_HEARTS_TAB).stacksTo(16), style));
     }
 
-    public static final RegistrySupplier<Item> DIRECTION_ARROW = ITEMS.register(
-            "direction_arrow",
-            () -> new Item(new Item.Properties()));
-
     // Shadow Signal Data — tiered hunt-initiating items (tiers 1–5)
     public static final RegistrySupplier<Item> SHADOW_SIGNAL_DATA_FAINT = registerSignalData("faint", UmbrafallTier.FAINT);
 
