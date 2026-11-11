@@ -55,6 +55,7 @@
     "pokeball.MixinPokeBallPosableState"
   ],
   "mixins": [
+    "midbattleexp.MixinMidBattleMoveLearning",
     "horde.MixinCraterRescueHerd",
     "horde.MixinCraterRescueRandomHorde",
     "MixinCraterHowlTurn",

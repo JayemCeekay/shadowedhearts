@@ -2,6 +2,7 @@ package com.jayemceekay.shadowedhearts.mixin;
 
 import com.jayemceekay.shadowedhearts.common.moonwound.raid.MoonwoundRaidCompatibility;
 import com.jayemceekay.shadowedhearts.integration.BattleExtrasCompatibility;
+import com.jayemceekay.shadowedhearts.integration.MidBattleExpCompatibility;
 import com.jayemceekay.shadowedhearts.integration.yacl.YaclCompatibility;
 import com.jayemceekay.shadowedhearts.integration.CraterSosCompatibility;
 import dev.architectury.platform.Platform;
@@ -16,6 +17,11 @@ public class ShadowedHeartsMixinConfigPlugin implements IMixinConfigPlugin {
 
     @Override
     public boolean shouldApplyMixin(String targetClassName, String mixinClassName) {
+        if (mixinClassName.equals(MidBattleExpCompatibility.MIXIN)) {
+            return net.fabricmc.loader.api.FabricLoader.getInstance().getModContainer(MidBattleExpCompatibility.MOD_ID)
+                    .map(mod -> MidBattleExpCompatibility.VERSION.equals(mod.getMetadata().getVersion().getFriendlyString()))
+                    .orElse(false);
+        }
         if (mixinClassName.startsWith(BattleExtrasCompatibility.MIXIN_PACKAGE)) {
             return net.fabricmc.loader.api.FabricLoader.getInstance().getModContainer("cobblemon-battle-extras")
                     .map(mod -> BattleExtrasCompatibility.VERSION.equals(mod.getMetadata().getVersion().getFriendlyString()))
