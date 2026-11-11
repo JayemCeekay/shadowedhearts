@@ -407,7 +407,7 @@ public class RelicStoneBlock extends Block implements EntityBlock {
 
             if (now - lastPurify < cooldownTicks && lastPurify != 0) {
                 long remainingTicks = cooldownTicks - (now - lastPurify);
-                long remainingSeconds = remainingTicks / 20;
+                long remainingSeconds = Math.ceilDiv(remainingTicks, 20);
                 long minutes = remainingSeconds / 60;
                 long seconds = remainingSeconds % 60;
                 serverPlayer.displayClientMessage(Component.translatable("message.shadowedhearts.relic_stone.cooldown", minutes, seconds).withStyle(ChatFormatting.RED), true);
