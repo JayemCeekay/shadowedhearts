@@ -1,6 +1,6 @@
 # Shadow moves and Shadow TMs
 
-This guide covers ShadowedHearts 2.0.0-alpha with Cobblemon 1.8.4. The examples use the mod defaults unless they name a preset or datapack.
+This guide covers Shadowed Hearts 2.0.0-alpha with Cobblemon 1.8.4. The examples use the mod defaults unless they name a preset or datapack.
 
 ## From corruption to purification
 

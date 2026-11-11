@@ -1080,7 +1080,7 @@
   "message.shadowedhearts.stencil.no_attachment": "No stencil attachment present; saving empty mask.",
   "message.shadowedhearts.stencil.no_entity": "Entity not found for stencil dump",
   "message.shadowedhearts.stencil.no_main_attachment": "No stencil attachment on main FBO; dump will be empty",
-  "message.shadowedhearts.stencil.prefix": "[ShadowedHearts] %s",
+  "message.shadowedhearts.stencil.prefix": "[Shadowed Hearts] %s",
   "message.shadowedhearts.stencil.saved": "Saved %s",
   "message.shadowedhearts.umbrafall.cancelled_preflight": "Canceled the preflight search for %s. Signal Data was not consumed.",
   "message.shadowedhearts.umbrafall.cannot_resume": "Cannot resume Umbrafall placement: %s.",
