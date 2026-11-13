@@ -1,4 +1,4 @@
-<img align="right" width="96" alt="Shadowed Hearts mod icon" src="common/src/main/resources/assets/shadowedhearts/icon.png">
+<img align="left" width="96" alt="Shadowed Hearts mod icon" src="common/src/main/resources/assets/shadowedhearts/icon.png"></br>
 
 # Cobblemon: Shadowed Hearts
 
