@@ -1,0 +1,28 @@
+name: Publish Shadowed Hearts
+
+on:
+  push:
+    tags: ['v[0-9]*']
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    if: ${{ !github.event.deleted }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Check the release tag
+        run: grep -Fxq "mod_version=${GITHUB_REF_NAME#v}" gradle.properties || { echo "The release tag must match mod_version."; exit 1; }
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Publish Fabric and NeoForge
+        env:
+          CURSEFORGE_TOKEN: ${{ secrets.CURSEFORGE_TOKEN }}
+          MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
+        run: |
+          : "${CURSEFORGE_TOKEN:?Missing CurseForge token}" "${MODRINTH_TOKEN:?Missing Modrinth token}"
+          sh gradlew publishMods -PpublishLive=true

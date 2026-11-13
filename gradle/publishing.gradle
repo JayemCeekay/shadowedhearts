@@ -1,0 +1,64 @@
+// Each loader publishes its own primary jar. Dependency names below are site project slugs.
+def requiredByLoader = [
+        fabric  : ['cobblemon', 'architectury-api', 'fabric-api', 'fabric-language-kotlin', 'forge-config-api-port'],
+        neoforge: ['cobblemon', 'architectury-api', 'kotlin-for-forge']
+]
+def sharedOptional = [
+        'accessories', 'asymmetric-battles-api', 'cobblemon-mega-showdown', 'cobblemon-tim-core',
+        'cobblemonraiddens', 'emi', 'jei', 'rctmod', 'yacl'
+]
+
+publishMods {
+    dryRun = providers.gradleProperty('publishLive').map { it != 'true' }.orElse(true)
+    type = [ALPHA: ALPHA, BETA: BETA, STABLE: STABLE][project.mod_release_type]
+    changelog = providers.fileContents(layout.projectDirectory.file(
+            "docs/changelogs/${project.version}-modrinth-curseforge.md")).asText
+
+    [fabric: 'Fabric', neoforge: 'NeoForge'].each { loader, label ->
+        def releaseJar = project(":${loader}").tasks.named('remapJar').flatMap { it.archiveFile }
+        def title = "Cobblemon: Shadowed Hearts ${project.version} (${label})"
+        def requiredMods = requiredByLoader[loader]
+        def optionalMods = loader == 'fabric' ? sharedOptional + ['modmenu'] : sharedOptional
+
+        curseforge("curseforge${label}") {
+            file = releaseJar
+            displayName = title
+            modLoaders.add(loader)
+            projectId = '1438842'
+            accessToken = providers.environmentVariable('CURSEFORGE_TOKEN')
+            minecraftVersions.add(project.minecraft_version)
+            javaVersions.add(JavaVersion.VERSION_21)
+            client = true
+            server = true
+            requires(*requiredMods)
+            optional(*optionalMods)
+            optional('radical-cobblemon-trainers-api', 'lost-lore', 'roughly-enough-items', 'irisshaders',
+                    'cobblemon-battle-extras', 'cobblemon-sos-encounters',
+                    'cobblemon-horde-encounters', 'cobblemon-mid-battle-exp')
+            optional(loader == 'fabric' ? 'ftb-chunks-fabric' : 'ftb-chunks-forge')
+        }
+
+        modrinth("modrinth${label}") {
+            file = releaseJar
+            displayName = title
+            modLoaders.add(loader)
+            projectId = 'A8Qdw4kv'
+            accessToken = providers.environmentVariable('MODRINTH_TOKEN')
+            minecraftVersions.add(project.minecraft_version)
+            environment = CLIENT_AND_SERVER
+            requires(*requiredMods)
+            optional(*optionalMods)
+            // Lost Lore is published under poketwo. FTB Chunks, Horde Encounters and
+            // Mid-Battle EXP have no official Modrinth projects to reference.
+            optional('rctapi', 'poketwo', 'rei', 'iris')
+            optional {
+                slug = 'cobblemon-battle-extras'
+                version = loader == 'fabric' ? 'ZMERSNGG' : 'kXNdY5X7' // 1.13.47
+            }
+            optional {
+                slug = 'cobblemon-sos-encounters'
+                version = loader == 'fabric' ? 'b8rMIAe9' : 'TA5QRqvw' // 1.3.0+1.21.1
+            }
+        }
+    }
+}

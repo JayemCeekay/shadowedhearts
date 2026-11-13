@@ -21,7 +21,10 @@
 /CobblemonNPCJsonGenerator/
 /documents/
 /.aiignore
-/docs/
+/docs/*
+!/docs/changelogs/
+/docs/changelogs/*
+!/docs/changelogs/*-modrinth-curseforge.md
 /Compat_Check_Mods/
 /Cobblemon Source/
 /concept art/

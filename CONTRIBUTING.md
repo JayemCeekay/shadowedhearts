@@ -24,6 +24,14 @@ Build both loader jars from the repository root. The Gradle wrapper downloads Gr
 
 The installable jars appear in `fabric/build/libs/` and `neoforge/build/libs/`. Choose the file named `ShadowedHearts-<loader>-<version>.jar`.
 
+## Publish a release
+
+Set `mod_version` and `mod_release_type` (`ALPHA`, `BETA`, or `STABLE`) in `gradle.properties`. Put the player-facing release notes in `docs/changelogs/<mod_version>-modrinth-curseforge.md`. Both sites use that file. The loader and site dependency lists are in [gradle/publishing.gradle](gradle/publishing.gradle).
+
+Run `.\gradlew.bat publishMods` (or `sh gradlew publishMods`) to preview the release. By default the plugin logs the four destinations and stages the production jars in `build/publishMods/`. This works without publishing tokens.
+
+To enable tag publishing, add the CurseForge author token and Modrinth version-publishing token as GitHub Actions secrets named `CURSEFORGE_TOKEN` and `MODRINTH_TOKEN`. Push a tag matching `v<mod_version>` to publish both jars to both sites. For a partial upload, check which files exist on each site, then retry just the missing destination locally with its token in the environment, for example `.\gradlew.bat publishModrinthNeoForge -PpublishLive=true`.
+
 ## Find the right place for a change
 
 - [common/src/main](common/src/main) contains the Java and Kotlin gameplay code, shared client code, and resources used by both loaders. For a translation, use [en_us.json](common/src/main/resources/assets/shadowedhearts/lang/en_us.json) as the key reference and preserve any placeholders in the strings.

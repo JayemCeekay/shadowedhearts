@@ -133,14 +133,6 @@ side = "BOTH"
 reason = "Respects FTB Chunks claims for protected interactions and world changes."
 
 [[dependencies.shadowedhearts]]
-modId = "simpletms"
-type = "optional"
-versionRange = "*"
-ordering = "AFTER"
-side = "BOTH"
-reason = "Applies Shadow move restrictions to SimpleTMs."
-
-[[dependencies.shadowedhearts]]
 modId = "tim_core"
 type = "optional"
 versionRange = "*"
